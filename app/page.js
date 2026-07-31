@@ -16,6 +16,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [direction, setDirection] = useState('long')
   const [saving, setSaving] = useState(false)
+  const [screenshotFile, setScreenshotFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
 
   // useEffect with an empty [] dependency array means:
   // "run this once, right when the page first loads."
@@ -47,7 +49,28 @@ export default function Home() {
     setSaving(true)
 
     const form = e.target
+
+    // If a screenshot was picked, upload it to the 'screenshots' storage
+    // bucket first, and get back a public URL to save alongside the trade.
+    let screenshot_url = null
+    if (screenshotFile) {
+      const fileExt = screenshotFile.name.split('.').pop()
+      const filePath = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('screenshots')
+        .upload(filePath, screenshotFile)
+
+      if (uploadError) {
+        alert('Screenshot upload failed: ' + uploadError.message)
+        setSaving(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('screenshots').getPublicUrl(filePath)
+      screenshot_url = urlData.publicUrl
+    }
+
     const newTrade = {
+      // --- technical: what the AI will use ---
       instrument: form.instrument.value.trim().toUpperCase(),
       trade_date: form.trade_date.value,
       trade_time: form.trade_time.value,
@@ -55,9 +78,12 @@ export default function Home() {
       entry: parseFloat(form.entry.value),
       stop: parseFloat(form.stop.value),
       r_multiple: parseFloat(form.r_multiple.value),
+      // --- behavioral: structured, drives your discipline stats ---
       in_plan: form.in_plan.value === 'yes',
+      // --- context: for you only, the AI ignores these ---
       tag: form.tag.value.trim(),
       reasoning: form.reasoning.value.trim(),
+      screenshot_url,
     }
 
     // .insert([...]) sends a new row to the trades table.
@@ -68,6 +94,7 @@ export default function Home() {
     } else {
       form.reset()
       setDirection('long')
+      setScreenshotFile(null)
       await fetchTrades() // reload the list so the new trade shows up
     }
     setSaving(false)
@@ -105,6 +132,20 @@ export default function Home() {
           <div className="title">Edge<span>Log</span> — Discretionary trade journal</div>
           <h1>NQ Journal</h1>
         </div>
+        <div className="progress-card">
+          <div className="progress-label">
+            <span>Toward analysis threshold</span>
+            <span className="progress-count">{n} / {THRESHOLD}</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: pct + '%' }} />
+          </div>
+          <div className="progress-note">
+            {n >= THRESHOLD
+              ? 'Threshold reached — enough data to begin pattern analysis.'
+              : `${THRESHOLD - n} more trades until pattern analysis unlocks.`}
+          </div>
+        </div>
       </header>
 
       <div className="stats">
@@ -133,6 +174,10 @@ export default function Home() {
       <div className="panel">
         <div className="panel-title">Log a trade</div>
         <form onSubmit={handleSubmit}>
+
+          <div className="field full section-label">
+            Technical — what the AI will use to find this setup in market data
+          </div>
           <div className="field wide">
             <label>Instrument</label>
             <input name="instrument" type="text" defaultValue="NQ" required />
@@ -145,7 +190,6 @@ export default function Home() {
             <label>Time (entry)</label>
             <input name="trade_time" type="time" step="60" required />
           </div>
-
           <div className="field wide">
             <label>Direction</label>
             <div className="dir-toggle">
@@ -171,10 +215,13 @@ export default function Home() {
             <label>Stop price</label>
             <input name="stop" type="number" step="0.01" placeholder="20138.00" required />
           </div>
-
           <div className="field wide">
             <label>R multiple result</label>
             <input name="r_multiple" type="number" step="0.01" placeholder="2.4 or -1" required />
+          </div>
+
+          <div className="field full section-label">
+            Behavioral — drives your discipline stats, not used to locate the setup
           </div>
           <div className="field wide">
             <label>In-plan?</label>
@@ -183,11 +230,22 @@ export default function Home() {
               <option value="no">No — off-plan / impulse</option>
             </select>
           </div>
+
+          <div className="field full section-label">
+            Context — for you only, the AI ignores this
+          </div>
           <div className="field wide">
             <label>Setup tag (optional)</label>
             <input name="tag" type="text" placeholder="e.g. London sweep reversal" />
           </div>
-
+          <div className="field wide">
+            <label>Screenshot (optional)</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setScreenshotFile(e.target.files[0] || null)}
+            />
+          </div>
           <div className="field full">
             <label>Why did you take it?</label>
             <textarea name="reasoning" placeholder="One or two lines on the read at the time." />
@@ -212,7 +270,7 @@ export default function Home() {
             <thead>
               <tr>
                 <th>Date / Time</th><th>Instr</th><th>Dir</th><th>Entry</th>
-                <th>Stop</th><th>Result</th><th>Plan</th><th>Tag</th><th></th>
+                <th>Stop</th><th>Result</th><th>Plan</th><th>Tag</th><th>Shot</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -230,6 +288,16 @@ export default function Home() {
                     <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple}R</span></td>
                     <td>{t.in_plan ? '✓' : <span style={{ color: 'var(--loss)' }}>✕</span>}</td>
                     <td className="tag-cell">{t.tag || '—'}</td>
+                    <td>
+                      {t.screenshot_url ? (
+                        <img
+                          src={t.screenshot_url}
+                          alt="Trade screenshot"
+                          className="thumb"
+                          onClick={() => setPreviewUrl(t.screenshot_url)}
+                        />
+                      ) : '—'}
+                    </td>
                     <td><span className="del" onClick={() => handleDelete(t.id)}>remove</span></td>
                   </tr>
                 )
@@ -240,6 +308,15 @@ export default function Home() {
       </div>
 
       <div className="footnote">Your trades, stored in your own database.</div>
+
+      {previewUrl && (
+        <div className="modal-overlay" onClick={() => setPreviewUrl(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-close" onClick={() => setPreviewUrl(null)}>✕</div>
+            <img src={previewUrl} alt="Trade screenshot full view" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

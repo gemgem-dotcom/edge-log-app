@@ -124,6 +124,7 @@ table{min-width:640px;}
 
   form{grid-template-columns:repeat(2,1fr); gap:10px;}
   .field.wide, .field.full{grid-column:span 2;}
+  .submit-row{grid-column:span 2;}
   .section-label{font-size:10px;}
 
   input, select, textarea{font-size:16px; padding:10px;}
@@ -139,5 +140,6 @@ table{min-width:640px;}
   .stats{grid-template-columns:1fr 1fr;}
   form{grid-template-columns:1fr;}
   .field.wide, .field.full{grid-column:span 1;}
+  .submit-row{grid-column:span 1;}
   .modal-overlay{padding:16px;}
 }

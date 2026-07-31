@@ -138,6 +138,6 @@ table{min-width:640px;}
 @media (max-width:400px){
   .stats{grid-template-columns:1fr 1fr;}
   form{grid-template-columns:1fr;}
-  .field.wide{grid-column:span 1;}
+  .field.wide, .field.full{grid-column:span 1;}
   .modal-overlay{padding:16px;}
 }

@@ -132,21 +132,7 @@ export default function Home() {
           <div className="title">Edge<span>Log</span> — Discretionary trade journal</div>
           <h1>NQ Journal</h1>
         </div>
-        <div className="progress-card">
-          <div className="progress-label">
-            <span>Toward analysis threshold</span>
-            <span className="progress-count">{n} / {THRESHOLD}</span>
-          </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: pct + '%' }} />
-          </div>
-          <div className="progress-note">
-            {n >= THRESHOLD
-              ? 'Threshold reached — enough data to begin pattern analysis.'
-              : `${THRESHOLD - n} more trades until pattern analysis unlocks.`}
-          </div>
-        </div>
-      </header>
+</header>
 
       <div className="stats">
         <div className="stat">

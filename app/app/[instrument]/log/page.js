@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
 import TradeLogTable from '../../../../components/TradeLogTable'
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 function resultOf(t) {
   if (t.r_multiple > 0) return 'win'
   if (t.r_multiple < 0) return 'loss'

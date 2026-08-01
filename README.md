@@ -67,3 +67,4 @@ for a validated text input instead.
 - Feature extraction (Phase 3) — market-context vectors per trade
 - Strategy verification, population scan, edge verification (Phases 4–6)
 - Strategy generation (Phase 7)
+

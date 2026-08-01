@@ -105,7 +105,7 @@ export default function InstrumentLayout({ children, params }) {
         </a>
 
         <div className="shell-topbar-right">
-          <a href="/app/account" className="icon-btn" title="Settings"><Settings size={19} /></a>
+          <a href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></a>
         </div>
       </header>
 

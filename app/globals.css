@@ -470,3 +470,6 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
   .account-wrap{padding:20px 16px 50px;}
   .field.wide, .field.full, .field.half{grid-column:span 2;}
 }
+
+
+.account-topbar-left{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}

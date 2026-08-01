@@ -131,8 +131,6 @@ export default function InstrumentLayout({ children, params }) {
             </div>
           )}
 
-          <div className="sidebar-divider" />
-
           <a href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
             <List size={17} /> Trades
           </a>

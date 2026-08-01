@@ -22,6 +22,10 @@ export default function InstrumentLayout({ children, params }) {
   const [newSymbol, setNewSymbol] = useState('')
 
   useEffect(() => {
+    if (window.innerWidth <= 900) setStrategiesExpanded(false)
+  }, [])
+
+  useEffect(() => {
     loadData()
   }, [currentSymbol])
 

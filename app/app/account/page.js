@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, LogOut } from 'lucide-react'
 import { supabase } from '../../../lib/supabaseClient'
 
 export default function AccountPage() {
@@ -37,6 +37,11 @@ async function loadData() {
 
 async function handleNameBlur() {
   await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
+}
+
+async function handleLogout() {
+  await supabase.auth.signOut()
+  router.push('/login')
 }
 
 async function handleUpdatePassword() {
@@ -116,8 +121,11 @@ if (loading) return <div className="page-loading">Loading…</div>
 return (
   <div>
   <div className="account-topbar">
+  <div className="account-topbar-left">
   <div className="shell-logo">Edge<span>Log</span></div>
   <a href="/app" className="back-btn"><ArrowLeft size={16} /> Back to dashboard</a>
+  </div>
+  <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
   </div>
 
 <div className="account-wrap">

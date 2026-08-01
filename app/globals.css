@@ -363,6 +363,7 @@ table{min-width:640px;}
   .stats-6{grid-template-columns:repeat(2,1fr);}
   .shell-topbar{padding:12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
   .new-trade-btn span{display:none;}
+  .perf-table th:nth-child(5), .perf-table th:nth-child(6), .perf-table th:nth-child(7), .perf-table td:nth-child(5), .perf-table td:nth-child(6), .perf-table td:nth-child(7){display:none;}
 }
 
 /* ---------- Filter bar ---------- */

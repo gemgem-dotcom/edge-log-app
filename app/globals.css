@@ -361,7 +361,7 @@ table{min-width:640px;}
   .sidebar-divider{display:none;}
   .main-area{padding:20px 16px 50px;}
   .stats-6{grid-template-columns:repeat(2,1fr);}
-  .shell-topbar{padding:12px 16px; gap:10px;}
+  .shell-topbar{padding:12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
   .new-trade-btn span{display:none;}
 }
 

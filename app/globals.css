@@ -337,7 +337,7 @@ table{min-width:640px;}
 @media (max-width:900px){
   .shell-body{flex-direction:column;}
   .sidebar{
-    width:100%; flex-direction:row; overflow-x:auto; border-right:none;
+    width:100%; flex-direction:row; flex-wrap:wrap; border-right:none;
     border-bottom:1px solid var(--line); padding:10px 14px; gap:20px;
     align-items:center; position:relative;
   }
@@ -364,6 +364,7 @@ table{min-width:640px;}
   .shell-topbar{padding:12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
   .new-trade-btn span{display:none;}
   .perf-table th:nth-child(5), .perf-table th:nth-child(6), .perf-table th:nth-child(7), .perf-table td:nth-child(5), .perf-table td:nth-child(6), .perf-table td:nth-child(7){display:none;}
+  .perf-table{min-width:0; table-layout:fixed;} .perf-table th, .perf-table td{padding:6px 4px; font-size:10.5px; word-break:break-word;} .panel:has(.perf-table){overflow-x:auto;}
 }
 
 /* ---------- Filter bar ---------- */

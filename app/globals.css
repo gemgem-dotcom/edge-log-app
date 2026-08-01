@@ -27,7 +27,7 @@ body{
 }
 
 header{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:28px; flex-wrap:wrap; gap:16px;}
-.title{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:600;}
+.title{font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--text); font-weight:800;}
 .title span{color:var(--accent);}
 h1{font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:4px;}
 
@@ -271,7 +271,7 @@ table{min-width:640px;}
   display:flex; align-items:center; gap:20px; padding:14px 24px;
   border-bottom:1px solid var(--line); flex-shrink:0;
 }
-.shell-logo{font-size:15px; font-weight:800; letter-spacing:-.01em;}
+.shell-logo{font-size:16px; font-weight:800; letter-spacing:.02em; text-transform:uppercase;}
 .shell-logo span{color:var(--accent);}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .icon-btn{

@@ -570,6 +570,7 @@ timezone you use for your trade log, rather than defaulting to your browser's lo
 
           <div className="section-heading" style={{ marginTop: '8px' }}>Danger zone</div>
           <div className="panel danger-panel">
+          <div className="danger-row">
   <div>
   <div className="danger-row-title">Delete your account</div>
 <div className="danger-row-note">This action cannot be undone.</div>

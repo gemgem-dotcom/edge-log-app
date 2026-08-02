@@ -464,6 +464,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
   display:flex; align-items:center; justify-content:center;
 }
 .eye-btn:hover{color:var(--text);}
+.field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px;}
 
 .danger-panel{border-color:rgba(225,92,92,.35);}
 .danger-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}

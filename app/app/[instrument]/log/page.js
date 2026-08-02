@@ -97,7 +97,7 @@ export default function LogPage({ params }) {
       </div>
 
       <div className="panel">
-        <TradeLogTable trades={visible} strategyNameById={strategyName} showStrategyColumn={true} />
+        <TradeLogTable trades={visible} strategyNameById={strategyName} showStrategyColumn={true}  symbol={symbol}/>
       </div>
     </div>
   )

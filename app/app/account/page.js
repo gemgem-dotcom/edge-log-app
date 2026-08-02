@@ -568,9 +568,8 @@ timezone you use for your trade log, rather than defaulting to your browser's lo
 {exportError && <div className="account-msg account-msg-error" style={{ marginTop: '14px' }}>{exportError}</div>}
   </div>
 
-  <div className="panel danger-panel">
-  <div className="panel-title">Danger zone</div>
-<div className="danger-row">
+          <div className="section-heading" style={{ marginTop: '8px' }}>Danger zone</div>
+          <div className="panel danger-panel">
   <div>
   <div className="danger-row-title">Delete your account</div>
 <div className="danger-row-note">This action cannot be undone.</div>

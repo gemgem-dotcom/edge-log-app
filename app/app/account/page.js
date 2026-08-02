@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ArrowLeft, LogOut, Sun, Moon, Download, Copy, Check } from 'lucide-react'
 import { supabase } from '../../../lib/supabaseClient'
+import { validatePassword } from '../../../lib/validatePassword'
 
 const UTC_OFFSETS = [-12, -11, -10, -9.5, -9, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2, -1, 0, 1, 2, 3, 3.5, 4, 4.5, 5, 5.5, 5.75, 6, 6.5, 7, 8, 8.75, 9, 9.5, 10, 10.5, 11, 12, 12.75, 13, 14].map((h) => {
   const sign = h >= 0 ? '+' : '-'
@@ -127,10 +128,11 @@ async function handleUpdatePassword() {
     setPasswordError('Fill in all three password fields.')
     return
   }
-  if (newPassword.length < 6) {
-    setPasswordError('New password must be at least 6 characters.')
-    return
-  }
+const passwordRuleError = validatePassword(newPassword)
+    if (passwordRuleError) {
+          setPasswordError(passwordRuleError)
+          return
+    }
   if (newPassword !== confirmPassword) {
     setPasswordError('New password and confirmation do not match.')
     return
@@ -401,12 +403,15 @@ onChange={(e) => setCurrentPassword(e.target.value)}
   </div>
  <div className="field wide">
   <label>New password</label>
+  <span className="field-hint">8-15 characters. Letters, numbers, and standard special characters only.</span>
  <div className="password-field">
   <input
  type={showNew ? 'text' : 'password'}
 placeholder="Enter new password"
 value={newPassword}
 onChange={(e) => setNewPassword(e.target.value)}
+  minLength={8}
+    maxLength={15}
 />
   <button type="button" className="eye-btn" onClick={() => setShowNew(!showNew)}>
 {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -421,6 +426,7 @@ onChange={(e) => setNewPassword(e.target.value)}
 placeholder="Confirm new password"
 value={confirmPassword}
 onChange={(e) => setConfirmPassword(e.target.value)}
+  maxLength={15}
 />
   <button type="button" className="eye-btn" onClick={() => setShowConfirm(!showConfirm)}>
 {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}

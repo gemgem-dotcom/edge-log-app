@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, ArrowLeft, LogOut, Shield, Monitor, Sun, Moon, Download, Copy, Check } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, LogOut, Sun, Moon, Download, Copy, Check } from 'lucide-react'
 import { supabase } from '../../../lib/supabaseClient'
 
 const UTC_OFFSETS = [-12, -11, -10, -9.5, -9, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2, -1, 0, 1, 2, 3, 3.5, 4, 4.5, 5, 5.5, 5.75, 6, 6.5, 7, 8, 8.75, 9, 9.5, 10, 10.5, 11, 12, 12.75, 13, 14].map((h) => {
@@ -440,7 +440,7 @@ onChange={(e) => setConfirmPassword(e.target.value)}
 
  <div className="panel-divider" />
 
-    <div className="panel-title"><Shield size={15} style={{ marginRight: '8px', verticalAlign: '-3px' }} />Two-factor authentication</div>
+                  <div className="panel-title">Two-factor authentication</div>
  {mfaFactors.length > 0 && !enrolling ? (
    <div className="mfa-status-row">
    <div>
@@ -488,7 +488,7 @@ onChange={(e) => setConfirmPassword(e.target.value)}
 
 <div className="panel-divider" />
 
-  <div className="panel-title"><Monitor size={15} style={{ marginRight: '8px', verticalAlign: '-3px' }} />Recent sign-ins</div>
+                <div className="panel-title">Recent sign-ins</div>
   <p className="onboard-note" style={{ marginTop: '-8px' }}>These are devices that have recently signed in to your account.</p>
 {loginEvents.length === 0 ? (
   <div className="empty" style={{ padding: '14px' }}>No sign-in history yet.</div>
@@ -528,9 +528,9 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   </p>
   </div>
 
-<div className="section-heading" style={{ marginTop: '8px' }}>Preferences</div>
-<p className="onboard-note" style={{ marginTop: '-8px' }}>Customize your experience and default settings.</p>
-<div className="panel">
+                    <div className="section-heading" style={{ marginTop: '8px' }}>Preferences</div>
+                    <p className="onboard-note" style={{ marginTop: '-8px' }}>Customize your experience and default settings.</p>
+                  <div className="panel">
   <div className="field wide">
   <label>Theme</label>
 <div className="dir-toggle">
@@ -554,8 +554,8 @@ timezone you use for your trade log, rather than defaulting to your browser's lo
   </p>
   </div>
 
-<div className="section-heading" style={{ marginTop: '8px' }}>Data</div>
-<div className="panel">
+                    <div className="section-heading" style={{ marginTop: '8px' }}>Data</div>
+                <div className="panel">
   <div className="danger-row">
   <div>
   <div className="danger-row-title">Download my journal</div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 
 export default function TradeLogTable({ trades, strategyNameById, showStrategyColumn = false, symbol }) {
@@ -69,7 +70,7 @@ return (
 <td>{t.trade_date}</td>
 {showStrategyColumn && (
     <td className="tag-cell">{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
-)}
+    )}
 <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>
 {t.direction.toUpperCase()}
 </td>
@@ -82,14 +83,14 @@ className="row-action-btn"
 onClick={(e) => e.stopPropagation()}
 title="Edit trade"
 >
-    edit
+    <Pencil size={15} />
     </a>
 <span
 className="row-action-btn row-action-danger"
 onClick={(e) => handleDelete(e, t)}
 title="Delete trade"
 >
-    delete
+    <Trash2 size={15} />
     </span>
     </span>
     </td>

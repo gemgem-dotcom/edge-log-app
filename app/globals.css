@@ -483,9 +483,9 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 .row-actions{text-align:right; white-space:nowrap;}
 .row-actions-inner{display:inline-flex; gap:12px; align-items:center;}
-.row-action-btn{font-size:12px; color:var(--muted); cursor:pointer; text-decoration:none; font-family:'Inter',sans-serif;}
+.row-action-btn{font-size:12px; color:var(--muted); cursor:pointer; text-decoration:none; font-family:'Inter',sans-serif; display:inline-flex; align-items:center; justify-content:center;}
 .row-action-btn:hover{color:var(--accent);}
-.row-action-danger:hover{color:var(--loss);}
+.row-action-danger{color:var(--loss);}.row-action-danger:hover{opacity:.75;}
 .actions-col-header{min-width:70px;}
 
 
@@ -495,7 +495,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
     background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
-        color:var(--muted); width:22px; height:22px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+        color:var(--muted); width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
 .strategy-menu-btn:hover{color:var(--text); border-color:var(--accent);}
 .strategy-menu-dropdown{

@@ -5,6 +5,29 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ArrowLeft, LogOut, Shield, Monitor, Sun, Moon, Download, Copy, Check } from 'lucide-react'
 import { supabase } from '../../../lib/supabaseClient'
 
+const GMT_OFFSETS = [-12, -11, -10, -9.5, -9, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2, -1, 0, 1, 2, 3, 3.5, 4, 4.5, 5, 5.5, 5.75, 6, 6.5, 7, 8, 8.75, 9, 9.5, 10, 10.5, 11, 12, 12.75, 13, 14].map((h) => {
+  const sign = h >= 0 ? '+' : '-'
+  const abs = Math.abs(h)
+  const hh = Math.floor(abs)
+  const mm = Math.round((abs - hh) * 60)
+  const label = `GMT${sign}${hh}${mm ? ':' + String(mm).padStart(2, '0') : ''}`
+  return { value: String(h), label }
+})
+
+function formatInTz(isoString, tz) {
+  const offsetHours = parseFloat(tz)
+  const instant = new Date(isoString)
+  const shifted = new Date(instant.getTime() + (isNaN(offsetHours) ? 0 : offsetHours) * 3600000)
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const datePart = `${months[shifted.getUTCMonth()]} ${shifted.getUTCDate()}, ${shifted.getUTCFullYear()}`
+  let hh = shifted.getUTCHours()
+  const mm = String(shifted.getUTCMinutes()).padStart(2, '0')
+  const ampm = hh >= 12 ? 'PM' : 'AM'
+  hh = hh % 12
+  if (hh === 0) hh = 12
+  return `${datePart}, ${hh}:${mm} ${ampm}`
+}
+
 export default function AccountPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -42,8 +65,7 @@ const [deleting, setDeleting] = useState(false)
 
   // Preferences
   const [theme, setTheme] = useState('dark')
-  const [timezone, setTimezone] = useState('')
-  const [timezoneOptions, setTimezoneOptions] = useState([])
+  const [timezone, setTimezone] = useState('0')
 
   // Data export
   const [exporting, setExporting] = useState(false)
@@ -57,13 +79,15 @@ async function loadData() {
   const { data: { user } } = await supabase.auth.getUser()
   setEmail(user.email)
   setFullName(user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : '')
-  setTimezone(user.user_metadata?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
-
-  // Timezone options — modern browsers expose the full IANA list directly.
-  try {
-    setTimezoneOptions(Intl.supportedValuesOf('timeZone'))
-  } catch (e) {
-    setTimezoneOptions([Intl.DateTimeFormat().resolvedOptions().timeZone])
+const savedTz = user.user_metadata?.timezone
+  if (savedTz !== undefined && savedTz !== null && GMT_OFFSETS.some((o) => o.value === String(savedTz))) {
+    setTimezone(String(savedTz))
+  } else {
+    const browserOffset = -(new Date().getTimezoneOffset()) / 60
+    const nearest = GMT_OFFSETS.reduce((best, o) =>
+      Math.abs(parseFloat(o.value) - browserOffset) < Math.abs(parseFloat(best.value) - browserOffset) ? o : best
+      )
+    setTimezone(nearest.value)
   }
 
   // Theme — read from localStorage (matches the inline script in layout.js
@@ -467,7 +491,7 @@ onChange={(e) => setConfirmPassword(e.target.value)}
       <tbody>
         {loginEvents.map((ev) => (
           <tr key={ev.id}>
-            <td>{new Date(ev.created_at).toLocaleString()}</td>
+            <td>{formatInTz(ev.created_at, timezone)}</td>
             <td className="tag-cell">{ev.user_agent || 'Unknown'}</td>
           </tr>
         ))}
@@ -495,13 +519,13 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   </div>
   <div className="field wide" style={{ marginTop: '14px' }}>
     <label>Timezone</label>
-    <select value={timezone} onChange={(e) => handleTimezoneChange(e.target.value)}>
-      {timezoneOptions.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-    </select>
-  </div>
-  <p className="account-fine-print">
-    Timezone is saved to your profile now for future use in date displays — trade times throughout the app are still shown
-    exactly as logged for the moment.
+<select value={timezone} onChange={(e) => handleTimezoneChange(e.target.value)}>
+{GMT_OFFSETS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                 </select>
+                 </div>
+                 <p className="account-fine-print">
+                 Set this to the GMT offset your trade times are logged in. It keeps the sign-in times above consistent with the
+    timezone you use for your trade log, rather than defaulting to your browser's local time.
   </p>
 </div>
 

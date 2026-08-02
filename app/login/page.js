@@ -120,7 +120,7 @@ required
   </div>
   </div>
  <div className="auth-forgot-row">
-  <a href="#" className="auth-forgot-link">Forgot password?</a>
+<a href="/forgot-password" className="auth-forgot-link">Forgot password?</a>
 </div>
 {error && <div className="auth-error">{error}</div>}
  <button type="submit" disabled={loading} className="auth-submit">

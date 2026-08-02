@@ -68,7 +68,7 @@ return (
 <td className="trade-id-cell">{t.id.slice(0, 8)}</td>
 <td>{t.trade_date}</td>
 {showStrategyColumn && (
-    <td className="tag-cell">{strategyNameById?.(t.strategy_id) || '—'}</td>
+    <td className="tag-cell">{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
 )}
 <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>
 {t.direction.toUpperCase()}

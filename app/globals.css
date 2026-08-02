@@ -491,7 +491,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 .unclassified-tag{color:var(--loss); font-weight:600;}
 
-.strategy-header-row{display:flex; align-items:center; gap:10px;}
+.strategy-header-row{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
     background:var(--panel-2); border:1px solid var(--line); border-radius:7px;

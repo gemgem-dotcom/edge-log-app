@@ -156,7 +156,7 @@ export default function StrategyDetailPage({ params }) {
 
       <div className="section-heading">Trade log — {strategy.name}</div>
       <div className="panel">
-        <TradeLogTable trades={trades} showStrategyColumn={false} />
+                  <TradeLogTable trades={trades} showStrategyColumn={false} symbol={symbol} />
       </div>
     </div>
   )

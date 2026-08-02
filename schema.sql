@@ -48,7 +48,7 @@ create table trades (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
   instrument_id uuid references instruments(id) on delete cascade not null,
-  strategy_id uuid references strategies(id) not null,
+  strategy_id uuid references strategies(id), -- null = "Unclassified" (e.g. after its strategy was deleted)
 
   -- Technical: what the AI will eventually use to locate this setup
   trade_date date not null,

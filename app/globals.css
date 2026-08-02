@@ -479,3 +479,12 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .sidebar-strategy-add-form{display:flex; gap:6px; padding:6px 12px 6px 30px;}
 .sidebar-strategy-add-form input{padding:6px 8px; font-size:12.5px;}
 .sidebar-strategy-add-form button{padding:6px 10px; font-size:12px;}
+
+
+.row-actions{display:flex; gap:12px; align-items:center; justify-content:flex-end; white-space:nowrap;}
+.row-action-btn{font-size:12px; color:var(--muted); cursor:pointer; text-decoration:none; font-family:'Inter',sans-serif;}
+.row-action-btn:hover{color:var(--accent);}
+.row-action-danger:hover{color:var(--loss);}
+.actions-col-header{min-width:70px;}
+.row-action-danger:hover{color:var(--loss);}
+.actions-col-header{min-width:70px;}

@@ -166,6 +166,11 @@ async function handleUpdatePassword() {
 async function handleEnroll2FA() {
   setMfaError('')
   setMfaBusy(true)
+  const { data: existing } = await supabase.auth.mfa.listFactors()
+    const stale = (existing?.totp || []).filter((f) => f.status !== 'verified')
+      for (const f of stale) {
+        await supabase.auth.mfa.unenroll({ factorId: f.id })
+      }
   const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
   setMfaBusy(false)
   if (error) {

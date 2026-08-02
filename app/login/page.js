@@ -17,9 +17,16 @@ export default function LoginPage() {
   const [mfaFactorId, setMfaFactorId] = useState(null)
 
   async function recordLoginEvent() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('login_events').insert([{ user_id: user.id, user_agent: navigator.userAgent }])
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session ? session.access_token : null
+    if (!token) return
+    try {
+      await fetch('/api/record-login', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+      })
+    } catch (e) {
+      // best-effort — don't block login if logging fails
     }
   }
 

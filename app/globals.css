@@ -487,3 +487,26 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .row-action-btn:hover{color:var(--accent);}
 .row-action-danger:hover{color:var(--loss);}
 .actions-col-header{min-width:70px;}
+
+
+.unclassified-tag{color:var(--loss); font-weight:600;}
+
+.strategy-header-row{display:flex; align-items:center; gap:10px;}
+.strategy-menu-wrap{position:relative;}
+.strategy-menu-btn{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
+    color:var(--muted); width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.strategy-menu-btn:hover{color:var(--text); border-color:var(--accent);}
+.strategy-menu-dropdown{
+    position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
+    border:1px solid var(--line); border-radius:9px; min-width:180px; z-index:50;
+    box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden;
+}
+.strategy-menu-item{padding:10px 14px; font-size:13px; color:var(--text); cursor:pointer;}
+.strategy-menu-item:hover{background:var(--panel-2);}
+.strategy-menu-item-danger{color:var(--loss);}
+.strategy-rename-form{display:flex; gap:8px; margin-top:2px; align-items:center;}
+.strategy-rename-form input{max-width:280px;}
+.unclassified-note{font-size:12.5px; color:var(--muted); margin-top:-14px; margin-bottom:20px;}
+.unclassified-note a{color:var(--accent); text-decoration:none; font-weight:600;}

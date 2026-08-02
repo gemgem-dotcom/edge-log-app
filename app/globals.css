@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root{
-  --bg: #0a0c0f;
+    --bg: #0a111b;
   --panel: #12151a;
   --panel-2: #171b21;
   --line: #23272f;
@@ -436,7 +436,7 @@ table{min-width:640px;}
 }
 .back-btn:hover{border-color:var(--accent); color:var(--accent);}
 
-.account-wrap{max-width:900px; margin:0 auto; padding:32px 24px 60px;}
+.account-wrap{padding:32px 40px 60px;}
 
 .field.half{grid-column:span 3;}
 

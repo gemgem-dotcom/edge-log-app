@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ArrowLeft, LogOut, Shield, Monitor, Sun, Moon, Download, Copy, Check } from 'lucide-react'
 import { supabase } from '../../../lib/supabaseClient'
 
-const GMT_OFFSETS = [-12, -11, -10, -9.5, -9, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2, -1, 0, 1, 2, 3, 3.5, 4, 4.5, 5, 5.5, 5.75, 6, 6.5, 7, 8, 8.75, 9, 9.5, 10, 10.5, 11, 12, 12.75, 13, 14].map((h) => {
+const UTC_OFFSETS = [-12, -11, -10, -9.5, -9, -8, -7, -6, -5, -4.5, -4, -3.5, -3, -2, -1, 0, 1, 2, 3, 3.5, 4, 4.5, 5, 5.5, 5.75, 6, 6.5, 7, 8, 8.75, 9, 9.5, 10, 10.5, 11, 12, 12.75, 13, 14].map((h) => {
   const sign = h >= 0 ? '+' : '-'
   const abs = Math.abs(h)
   const hh = Math.floor(abs)
   const mm = Math.round((abs - hh) * 60)
-  const label = `GMT${sign}${hh}${mm ? ':' + String(mm).padStart(2, '0') : ''}`
+  const label = `UTC${sign}${hh}${mm ? ':' + String(mm).padStart(2, '0') : ''}`
   return { value: String(h), label }
 })
 
@@ -80,11 +80,11 @@ async function loadData() {
   setEmail(user.email)
   setFullName(user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : '')
 const savedTz = user.user_metadata?.timezone
-  if (savedTz !== undefined && savedTz !== null && GMT_OFFSETS.some((o) => o.value === String(savedTz))) {
+  if (savedTz !== undefined && savedTz !== null && UTC_OFFSETS.some((o) => o.value === String(savedTz))) {
     setTimezone(String(savedTz))
   } else {
     const browserOffset = -(new Date().getTimezoneOffset()) / 60
-    const nearest = GMT_OFFSETS.reduce((best, o) =>
+    const nearest = UTC_OFFSETS.reduce((best, o) =>
       Math.abs(parseFloat(o.value) - browserOffset) < Math.abs(parseFloat(best.value) - browserOffset) ? o : best
       )
     setTimezone(nearest.value)
@@ -520,11 +520,11 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   <div className="field wide" style={{ marginTop: '14px' }}>
     <label>Timezone</label>
 <select value={timezone} onChange={(e) => handleTimezoneChange(e.target.value)}>
-{GMT_OFFSETS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+{UTC_OFFSETS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                  </select>
                  </div>
                  <p className="account-fine-print">
-                 Set this to the GMT offset your trade times are logged in. It keeps the sign-in times above consistent with the
+                 Set this to the UTC offset your trade times are logged in. It keeps the sign-in times above consistent with the
     timezone you use for your trade log, rather than defaulting to your browser's local time.
   </p>
 </div>

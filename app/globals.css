@@ -473,3 +473,9 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 
 .account-topbar-left{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}
+
+
+.sidebar-strategy-add{color:var(--accent); font-weight:600; cursor:pointer;}
+.sidebar-strategy-add-form{display:flex; gap:6px; padding:6px 12px 6px 30px;}
+.sidebar-strategy-add-form input{padding:6px 8px; font-size:12.5px;}
+.sidebar-strategy-add-form button{padding:6px 10px; font-size:12px;}

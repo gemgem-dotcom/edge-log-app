@@ -18,7 +18,23 @@ export default function NewTradePage({ params }) {
   const [multiExit, setMultiExit] = useState(false)
   const [exitLegs, setExitLegs] = useState([{ price: '', time: '' }])
   const [screenshotFile, setScreenshotFile] = useState(null)
+  const [screenshotPreview, setScreenshotPreview] = useState(null)
+  const [expandedPreview, setExpandedPreview] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  function handleScreenshotChange(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setScreenshotFile(file)
+    setScreenshotPreview(URL.createObjectURL(file))
+  }
+  function handleRemoveScreenshot() {
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+    setScreenshotFile(null)
+    setScreenshotPreview(null)
+  }
 
   useEffect(() => {
     loadStrategies()
@@ -92,7 +108,10 @@ export default function NewTradePage({ params }) {
       const filePath = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`
       const { error: uploadError } = await supabase.storage.from('screenshots').upload(filePath, screenshotFile)
       if (uploadError) {
-        alert('Screenshot upload failed: ' + uploadError.message)
+        const msg = uploadError.message?.includes('Bucket not found')
+          ? 'Screenshot upload failed: the "screenshots" storage bucket doesn\'t exist yet in Supabase. Run the storage setup SQL (storage-setup.sql) or create it manually under Storage → New bucket → "screenshots" → Public.'
+          : 'Screenshot upload failed: ' + uploadError.message
+        alert(msg)
         setSaving(false)
         return
       }
@@ -152,7 +171,7 @@ export default function NewTradePage({ params }) {
           </div>
           <div className="field wide">
             <label>Date</label>
-            <input name="trade_date" type="date" required />
+            <input name="trade_date" type="date" max={todayStr} required />
           </div>
           <div className="field wide">
             <label>Time (entry, to the second)</label>
@@ -275,7 +294,26 @@ export default function NewTradePage({ params }) {
           </div>
           <div className="field wide">
             <label>Screenshot (optional)</label>
-            <input type="file" accept="image/*" onChange={(e) => setScreenshotFile(e.target.files[0] || null)} />
+            {screenshotPreview ? (
+              <div className="screenshot-preview-wrap">
+                <img
+                  src={screenshotPreview}
+                  alt="Screenshot preview"
+                  className="screenshot-preview-thumb"
+                  onClick={() => setExpandedPreview(true)}
+                />
+                <button
+                  type="button"
+                  className="screenshot-remove-btn"
+                  onClick={handleRemoveScreenshot}
+                  aria-label="Remove screenshot"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <input type="file" accept="image/*" onChange={handleScreenshotChange} />
+            )}
           </div>
           <div className="field full">
             <label>Why did you take it?</label>
@@ -287,6 +325,15 @@ export default function NewTradePage({ params }) {
           </div>
         </form>
       </div>
+
+      {expandedPreview && screenshotPreview && (
+        <div className="modal-overlay" onClick={() => setExpandedPreview(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-close" onClick={() => setExpandedPreview(false)}>✕</div>
+            <img src={screenshotPreview} alt="Screenshot full view" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

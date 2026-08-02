@@ -100,6 +100,10 @@ function updateLeg(index, field, value) {
 
 async function handleSubmit(e) {
   e.preventDefault()
+  if (!strategyId) {
+    alert('Select a strategy before saving — trades can no longer be left unclassified.')
+    return
+  }
   setSaving(true)
   const form = e.target
 
@@ -178,7 +182,7 @@ if (loading) return <div className="page-loading">Loading…</div>
   </div>
 <div className="field wide">
   <label>Date</label>
-<input name="trade_date" type="date" defaultValue={trade.trade_date} required />
+<input name="trade_date" type="date" max={new Date().toISOString().split('T')[0]} defaultValue={trade.trade_date} required />
   </div>
 <div className="field wide">
   <label>Time (entry, to the second)</label>
@@ -256,7 +260,7 @@ Multiple exits?
 <div className="field wide">
   <label>Strategy</label>
 <select value={strategyId} onChange={(e) => setStrategyId(e.target.value)}>
-<option value="">Unclassified</option>
+{strategyId === '' && <option value="">Select a strategy…</option>}
 {strategies.map((s) => (
   <option key={s.id} value={s.id}>{s.name}</option>
 ))}

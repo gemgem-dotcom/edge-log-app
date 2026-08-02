@@ -510,3 +510,42 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .strategy-rename-form input{max-width:280px;}
 .unclassified-note{font-size:12.5px; color:var(--muted); margin-top:-14px; margin-bottom:20px;}
 .unclassified-note a{color:var(--accent); text-decoration:none; font-weight:600;}
+
+/* ---------- Light theme ---------- */
+:root[data-theme="light"]{
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-2: #eef0f3;
+  --line: #dde1e6;
+  --text: #14161a;
+  --muted: #676d78;
+}
+:root[data-theme="light"] .modal-overlay{background:rgba(20,22,26,.55);}
+:root[data-theme="light"] .instrument-dropdown,
+:root[data-theme="light"] .strategy-menu-dropdown{box-shadow:0 8px 24px rgba(20,22,26,.15);}
+
+/* ---------- 2FA ---------- */
+.mfa-status-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
+.mfa-status-enabled{font-size:14.5px; font-weight:700; color:var(--win); margin-bottom:4px;}
+.mfa-enroll-block{display:flex; flex-direction:column; gap:4px;}
+.mfa-qr-wrap{background:#fff; padding:16px; border-radius:10px; width:fit-content; margin:10px 0;}
+.mfa-qr-wrap svg{display:block; width:160px; height:160px;}
+.mfa-secret-row{display:flex; align-items:center; gap:12px; margin-top:4px;}
+.mfa-secret-row .del{display:flex; align-items:center; gap:4px;}
+
+/* ---------- Account fine print ---------- */
+.account-fine-print{font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:14px;}
+
+/* ---------- Screenshot preview (log new trade) ---------- */
+.screenshot-preview-wrap{position:relative; width:fit-content;}
+.screenshot-preview-thumb{
+  width:64px; height:64px; object-fit:cover; border-radius:7px; border:1px solid var(--line);
+  cursor:pointer; display:block;
+}
+.screenshot-preview-thumb:hover{border-color:var(--accent);}
+.screenshot-remove-btn{
+  position:absolute; top:-8px; right:-8px; width:20px; height:20px; border-radius:50%;
+  background:var(--loss); color:#fff; border:2px solid var(--panel); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:11px; line-height:1; padding:0;
+}
+.screenshot-remove-btn:hover{filter:brightness(1.15);}

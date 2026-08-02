@@ -101,3 +101,27 @@ create policy "Users manage exit legs on their own trades"
   on exit_legs for all
   using (exists (select 1 from trades where trades.id = exit_legs.trade_id and trades.user_id = auth.uid()))
   with check (exists (select 1 from trades where trades.id = exit_legs.trade_id and trades.user_id = auth.uid()));
+
+-- ---------- LOGIN EVENTS ----------
+-- A lightweight sign-in history log, inserted from the login page on
+-- every successful sign-in. Note: this is a history log, not a live
+-- session/device manager — Supabase's client SDK doesn't expose
+-- per-device session revocation, only "sign out others" / "sign out
+-- everywhere" (both implemented in the account page via scope options
+-- on supabase.auth.signOut()).
+create table login_events (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  user_agent text,
+  created_at timestamptz default now()
+);
+
+alter table login_events enable row level security;
+
+create policy "Users see their own login events"
+  on login_events for select
+  using (auth.uid() = user_id);
+
+create policy "Users insert their own login events"
+  on login_events for insert
+  with check (auth.uid() = user_id);

@@ -47,8 +47,8 @@ const [currentPassword, setCurrentPassword] = useState('')
 const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
-  // Two-factor authentication
-  const [mfaFactors, setMfaFactors] = useState([])
+// Two-factor authentication
+const [mfaFactors, setMfaFactors] = useState([])
   const [enrolling, setEnrolling] = useState(false)
   const [enrollQr, setEnrollQr] = useState(null)
   const [enrollSecret, setEnrollSecret] = useState(null)
@@ -58,17 +58,18 @@ const [deleting, setDeleting] = useState(false)
   const [mfaBusy, setMfaBusy] = useState(false)
   const [secretCopied, setSecretCopied] = useState(false)
 
-  // Sign-in history / sessions
-  const [loginEvents, setLoginEvents] = useState([])
+// Sign-in history / sessions
+const [loginEvents, setLoginEvents] = useState([])
+  const [showAllEvents, setShowAllEvents] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
   const [sessionMessage, setSessionMessage] = useState('')
 
-  // Preferences
-  const [theme, setTheme] = useState('dark')
+// Preferences
+const [theme, setTheme] = useState('dark')
   const [timezone, setTimezone] = useState('0')
 
-  // Data export
-  const [exporting, setExporting] = useState(false)
+// Data export
+const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
 
 useEffect(() => {
@@ -79,18 +80,18 @@ async function loadData() {
   const { data: { user } } = await supabase.auth.getUser()
   setEmail(user.email)
   setFullName(user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : '')
-const savedTz = user.user_metadata?.timezone
+  const savedTz = user.user_metadata?.timezone
   if (savedTz !== undefined && savedTz !== null && UTC_OFFSETS.some((o) => o.value === String(savedTz))) {
     setTimezone(String(savedTz))
   } else {
     const browserOffset = -(new Date().getTimezoneOffset()) / 60
     const nearest = UTC_OFFSETS.reduce((best, o) =>
       Math.abs(parseFloat(o.value) - browserOffset) < Math.abs(parseFloat(best.value) - browserOffset) ? o : best
-      )
+                                       )
     setTimezone(nearest.value)
   }
 
-  // Theme — read from localStorage (matches the inline script in layout.js
+  // Theme - read from localStorage (matches the inline script in layout.js
   // that prevents a flash of the wrong theme on page load).
   const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
   setTheme(storedTheme || 'dark')
@@ -99,11 +100,11 @@ const savedTz = user.user_metadata?.timezone
   setMfaFactors(factorsData?.totp || [])
 
   const { data: events } = await supabase
-    .from('login_events')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(10)
+  .from('login_events')
+  .select('*')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false })
+  .limit(20)
   setLoginEvents(events || [])
 
   setLoading(false)
@@ -167,10 +168,10 @@ async function handleEnroll2FA() {
   setMfaError('')
   setMfaBusy(true)
   const { data: existing } = await supabase.auth.mfa.listFactors()
-    const stale = (existing?.totp || []).filter((f) => f.status !== 'verified')
-      for (const f of stale) {
-        await supabase.auth.mfa.unenroll({ factorId: f.id })
-      }
+  const stale = (existing?.totp || []).filter((f) => f.status !== 'verified')
+  for (const f of stale) {
+    await supabase.auth.mfa.unenroll({ factorId: f.id })
+  }
   const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
   setMfaBusy(false)
   if (error) {
@@ -203,7 +204,7 @@ async function handleVerify2FA() {
   })
   setMfaBusy(false)
   if (verifyError) {
-    setMfaError('Incorrect code — try again.')
+    setMfaError('Incorrect code - try again.')
     return
   }
   setEnrolling(false)
@@ -277,10 +278,10 @@ async function handleDownloadCsv() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: trades, error } = await supabase
-    .from('trades')
-    .select('*, instruments(symbol), strategies(name)')
-    .eq('user_id', user.id)
-    .order('trade_date', { ascending: true })
+  .from('trades')
+  .select('*, instruments(symbol), strategies(name)')
+  .eq('user_id', user.id)
+  .order('trade_date', { ascending: true })
 
   setExporting(false)
   if (error) {
@@ -288,7 +289,7 @@ async function handleDownloadCsv() {
     return
   }
   if (!trades || trades.length === 0) {
-    setExportError('No trades logged yet — nothing to export.')
+    setExportError('No trades logged yet - nothing to export.')
     return
   }
 
@@ -296,13 +297,13 @@ async function handleDownloadCsv() {
     'instrument', 'strategy', 'trade_date', 'trade_time', 'direction', 'entry', 'stop',
     'target', 'exit_price', 'exit_time', 'multi_exit', 'r_multiple', 'in_plan',
     'contracts', 'reasoning',
-  ]
+    ]
   const rows = trades.map((t) => [
     t.instruments?.symbol || '', t.strategies?.name || 'Unclassified', t.trade_date, t.trade_time,
     t.direction, t.entry, t.stop, t.target ?? '', t.exit_price ?? '', t.exit_time ?? '',
     t.multi_exit, t.r_multiple, t.in_plan, t.contracts ?? '',
     (t.reasoning || '').replace(/"/g, '""'),
-  ])
+    ])
   const csv = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n')
 
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -341,7 +342,9 @@ async function handleDeleteAccount() {
   router.push('/login')
 }
 
-if (loading) return <div className="page-loading">Loading…</div>
+if (loading) return <div className="page-loading">Loading...</div>
+
+const visibleEvents = showAllEvents ? loginEvents : loginEvents.slice(0, 5)
 
 return (
   <div>
@@ -377,6 +380,7 @@ onBlur={handleNameBlur}
   </div>
 
 <div className="section-heading">Security</div>
+<p className="onboard-note" style={{ marginTop: '-8px' }}>Manage your account security and keep your data safe.</p>
 <div className="panel">
   <div className="panel-title">Password</div>
 <form onSubmit={(e) => e.preventDefault()}>
@@ -428,142 +432,155 @@ onChange={(e) => setConfirmPassword(e.target.value)}
 
   <div className="submit-row">
     <button type="button" onClick={handleUpdatePassword} disabled={passwordSaving}>
-  {passwordSaving ? 'Updating…' : 'Update password'}
+  {passwordSaving ? 'Updating...' : 'Update password'}
   </button>
     </div>
     </form>
-    </div>
 
-<div className="panel">
-  <div className="panel-title"><Shield size={15} style={{ marginRight: '8px', verticalAlign: '-3px' }} />Two-factor authentication</div>
-  {mfaFactors.length > 0 && !enrolling ? (
-    <div className="mfa-status-row">
-      <div>
-        <div className="mfa-status-enabled">Enabled</div>
-        <div className="danger-row-note">Your account requires a code from your authenticator app at login.</div>
-      </div>
-      <button className="btn-danger-outline" onClick={() => handleDisable2FA(mfaFactors[0].id)} disabled={mfaBusy}>
-        {mfaBusy ? 'Working…' : 'Turn off 2FA'}
-      </button>
-    </div>
-  ) : enrolling ? (
-    <div className="mfa-enroll-block">
-      <p className="onboard-note">Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.</p>
-      {enrollQr && (
-        <div className="mfa-qr-wrap">
-        <img src={enrollQr} alt="2FA QR code" />
-        </div>
-      )}
-      <div className="mfa-secret-row">
-        <span className="trade-id-cell">{enrollSecret}</span>
-<span className="del" onClick={handleCopySecret}>
-          {secretCopied ? <><Check size={12} style={{ verticalAlign: '-2px' }} /> copied</> : <><Copy size={12} style={{ verticalAlign: '-2px' }} /> copy</>}
-        </span>
-      </div>
-      <div className="field wide" style={{ marginTop: '14px' }}>
-            <label>6-digit code</label>
-        <input type="text" maxLength={6} value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="123456" />
-      </div>
-      {mfaError && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}
-      <div className="submit-row" style={{ gap: '10px' }}>
-        <button type="button" className="btn-danger-outline" onClick={handleCancelEnroll}>Cancel</button>
-        <button type="button" onClick={handleVerify2FA} disabled={mfaBusy}>{mfaBusy ? 'Verifying…' : 'Verify & enable'}</button>
-      </div>
-    </div>
-  ) : (
-    <div className="mfa-status-row">
-      <div>
-        <div className="danger-row-title">Not enabled</div>
-        <div className="danger-row-note">Add an extra layer of security beyond your password.</div>
-      </div>
-      <button onClick={handleEnroll2FA} disabled={mfaBusy}>{mfaBusy ? 'Starting…' : 'Set up 2FA'}</button>
-    </div>
-  )}
-  {mfaError && !enrolling && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}
-</div>
+ <div className="panel-divider" />
 
-<div className="panel">
-  <div className="panel-title"><Monitor size={15} style={{ marginRight: '8px', verticalAlign: '-3px' }} />Sessions</div>
-  <div className="submit-row" style={{ justifyContent: 'flex-start', gap: '10px', marginBottom: '16px' }}>
-    <button type="button" onClick={handleSignOutOthers} disabled={sessionBusy}>Log out of all other devices</button>
-    <button type="button" className="btn-danger-outline" onClick={handleSignOutEverywhere}>Log out everywhere</button>
+    <div className="panel-title"><Shield size={15} style={{ marginRight: '8px', verticalAlign: '-3px' }} />Two-factor authentication</div>
+ {mfaFactors.length > 0 && !enrolling ? (
+   <div className="mfa-status-row">
+   <div>
+   <div className="mfa-status-enabled">Enabled</div>
+   <div className="danger-row-note">Your account requires a code from your authenticator app at login.</div>
+   </div>
+   <button className="btn-danger-outline" onClick={() => handleDisable2FA(mfaFactors[0].id)} disabled={mfaBusy}>
+ {mfaBusy ? 'Working...' : 'Turn off 2FA'}
+</button>
   </div>
-  {sessionMessage && <div className="account-msg account-msg-success" style={{ marginBottom: '14px' }}>{sessionMessage}</div>}
-  <div className="detail-sublabel" style={{ marginBottom: '8px' }}>Recent sign-ins</div>
-  {loginEvents.length === 0 ? (
-    <div className="empty" style={{ padding: '14px' }}>No sign-in history yet.</div>
-  ) : (
-    <table>
-      <thead><tr><th>When</th><th>Browser / device</th></tr></thead>
-      <tbody>
-        {loginEvents.map((ev) => (
-          <tr key={ev.id}>
-            <td>{formatInTz(ev.created_at, timezone)}</td>
-            <td className="tag-cell">{ev.user_agent || 'Unknown'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )}
-  <p className="account-fine-print">
-    This list shows recent sign-ins to your account, not currently-open sessions on other devices — Supabase doesn't expose
-    live per-device session data. "Log out everywhere" is real and immediate; the history above is for your awareness.
+) : enrolling ? (
+  <div className="mfa-enroll-block">
+  <p className="onboard-note">Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.</p>
+{enrollQr && (
+  <div className="mfa-qr-wrap">
+  <img src={enrollQr} alt="2FA QR code" />
+  </div>
+ )}
+<div className="mfa-secret-row">
+  <span className="trade-id-cell">{enrollSecret}</span>
+<span className="del" onClick={handleCopySecret}>
+{secretCopied ? <><Check size={12} style={{ verticalAlign: '-2px' }} /> copied</> : <><Copy size={12} style={{ verticalAlign: '-2px' }} /> copy</>}
+  </span>
+  </div>
+<div className="field wide" style={{ marginTop: '14px' }}>
+<label>6-digit code</label>
+<input type="text" maxLength={6} value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="123456" />
+  </div>
+                                                               {mfaError && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}
+<div className="submit-row" style={{ gap: '10px' }}>
+<button type="button" className="btn-danger-outline" onClick={handleCancelEnroll}>Cancel</button>
+<button type="button" onClick={handleVerify2FA} disabled={mfaBusy}>{mfaBusy ? 'Verifying...' : 'Verify & enable'}</button>
+                                                                 </div>
+                                                                 </div>
+) : (
+  <div className="mfa-status-row">
+  <div>
+  <div className="danger-row-title">Not enabled</div>
+<div className="danger-row-note">Add an extra layer of security beyond your password.</div>
+  </div>
+<button onClick={handleEnroll2FA} disabled={mfaBusy}>{mfaBusy ? 'Starting...' : 'Set up 2FA'}</button>
+  </div>
+)}
+{mfaError && !enrolling && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}
+
+<div className="panel-divider" />
+
+  <div className="panel-title"><Monitor size={15} style={{ marginRight: '8px', verticalAlign: '-3px' }} />Recent sign-ins</div>
+  <p className="onboard-note" style={{ marginTop: '-8px' }}>These are devices that have recently signed in to your account.</p>
+{loginEvents.length === 0 ? (
+  <div className="empty" style={{ padding: '14px' }}>No sign-in history yet.</div>
+) : (
+  <>
+  <table>
+  <thead><tr><th>Device</th><th>Location</th><th>Date &amp; time</th><th>IP address</th></tr></thead>
+  <tbody>
+{visibleEvents.map((ev) => (
+  <tr key={ev.id}>
+  <td>{ev.device || 'Unknown device'}</td>
+                   <td className="tag-cell">{ev.location || 'Unknown location'}</td>
+                   <td>{formatInTz(ev.created_at, timezone)}</td>
+<td className="tag-cell">{ev.ip_address || '-'}</td>
+  </tr>
+))}
+  </tbody>
+  </table>
+{loginEvents.length > 5 && (
+  <div className="panel-link-row">
+  <span className="panel-link" style={{ cursor: 'pointer' }} onClick={() => setShowAllEvents(!showAllEvents)}>
+{showAllEvents ? 'Show fewer' : `Show all ${loginEvents.length} sign-ins`}
+</span>
+  </div>
+)}
+</>
+)}
+
+<div className="submit-row" style={{ justifyContent: 'flex-start', gap: '10px', marginTop: '16px' }}>
+<button type="button" onClick={handleSignOutOthers} disabled={sessionBusy}>Log out of all other devices</button>
+<button type="button" className="btn-danger-outline" onClick={handleSignOutEverywhere}>Log out everywhere</button>
+  </div>
+{sessionMessage && <div className="account-msg account-msg-success">{sessionMessage}</div>}
+ <p className="account-fine-print">
+  This list shows recent sign-ins to your account, not currently-open sessions on other devices - Supabase doesn't expose
+  live per-device session data. "Log out everywhere" is real and immediate; the history above is for your awareness.
   </p>
-</div>
+  </div>
 
 <div className="section-heading" style={{ marginTop: '8px' }}>Preferences</div>
+<p className="onboard-note" style={{ marginTop: '-8px' }}>Customize your experience and default settings.</p>
 <div className="panel">
   <div className="field wide">
-    <label>Theme</label>
-    <div className="dir-toggle">
-      <div className={`dir-btn ${theme === 'dark' ? 'active-long' : ''}`} onClick={() => handleThemeChange('dark')}>
-        <Moon size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Dark
-      </div>
-      <div className={`dir-btn ${theme === 'light' ? 'active-long' : ''}`} onClick={() => handleThemeChange('light')}>
-        <Sun size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Light
-      </div>
-    </div>
+  <label>Theme</label>
+<div className="dir-toggle">
+  <div className={`dir-btn ${theme === 'dark' ? 'active-long' : ''}`} onClick={() => handleThemeChange('dark')}>
+<Moon size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Dark
   </div>
-  <div className="field wide" style={{ marginTop: '14px' }}>
-    <label>Timezone</label>
+<div className={`dir-btn ${theme === 'light' ? 'active-long' : ''}`} onClick={() => handleThemeChange('light')}>
+<Sun size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Light
+  </div>
+  </div>
+  </div>
+<div className="field wide" style={{ marginTop: '14px' }}>
+<label>Timezone</label>
 <select value={timezone} onChange={(e) => handleTimezoneChange(e.target.value)}>
 {UTC_OFFSETS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                 </select>
-                 </div>
-                 <p className="account-fine-print">
-                 Set this to the UTC offset your trade times are logged in. It keeps the sign-in times above consistent with the
-    timezone you use for your trade log, rather than defaulting to your browser's local time.
+  </select>
+  </div>
+<p className="account-fine-print">
+  Set this to the UTC offset your trade times are logged in. It keeps the sign-in times above consistent with the
+timezone you use for your trade log, rather than defaulting to your browser's local time.
   </p>
-</div>
+  </div>
 
 <div className="section-heading" style={{ marginTop: '8px' }}>Data</div>
 <div className="panel">
   <div className="danger-row">
-    <div>
-      <div className="danger-row-title">Download my journal</div>
-      <div className="danger-row-note">Every trade you've logged, across every instrument and strategy, as a CSV file.</div>
-    </div>
-    <button onClick={handleDownloadCsv} disabled={exporting}>
-      <Download size={14} style={{ marginRight: '6px', verticalAlign: '-2px' }} />{exporting ? 'Preparing…' : 'Download CSV'}
-    </button>
+  <div>
+  <div className="danger-row-title">Download my journal</div>
+<div className="danger-row-note">Every trade you've logged, across every instrument and strategy, as a CSV file.</div>
   </div>
-  {exportError && <div className="account-msg account-msg-error" style={{ marginTop: '14px' }}>{exportError}</div>}
-</div>
+<button onClick={handleDownloadCsv} disabled={exporting}>
+  <Download size={14} style={{ marginRight: '6px', verticalAlign: '-2px' }} />{exporting ? 'Preparing...' : 'Download CSV'}
+  </button>
+  </div>
+{exportError && <div className="account-msg account-msg-error" style={{ marginTop: '14px' }}>{exportError}</div>}
+  </div>
 
- <div className="panel danger-panel">
-    <div className="panel-title">Danger zone</div>
-  <div className="danger-row">
-    <div>
-    <div className="danger-row-title">Delete your account</div>
-  <div className="danger-row-note">This action cannot be undone.</div>
-    </div>
-  <button className="btn-danger-outline" onClick={handleDeleteAccount} disabled={deleting}>
-  {deleting ? 'Deleting…' : 'Delete account'}
- </button>
-   </div>
- {deleteError && <div className="account-msg account-msg-error" style={{ marginTop: '14px' }}>{deleteError}</div>}
-   </div>
-   </div>
-   </div>
+  <div className="panel danger-panel">
+  <div className="panel-title">Danger zone</div>
+<div className="danger-row">
+  <div>
+  <div className="danger-row-title">Delete your account</div>
+<div className="danger-row-note">This action cannot be undone.</div>
+  </div>
+<button className="btn-danger-outline" onClick={handleDeleteAccount} disabled={deleting}>
+{deleting ? 'Deleting...' : 'Delete account'}
+</button>
+  </div>
+{deleteError && <div className="account-msg account-msg-error" style={{ marginTop: '14px' }}>{deleteError}</div>}
+  </div>
+  </div>
+  </div>
 )
 }

@@ -119,10 +119,10 @@ export default function CalendarPage({ params }) {
         <>
           <div className="section-heading">Trades on {selectedDate}</div>
           <div className="panel">
-            <TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} />
+            <TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true}  symbol={symbol}/>
           </div>
         </>
-      )}
+       )}
     </div>
   )
 }

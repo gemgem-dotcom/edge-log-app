@@ -450,11 +450,12 @@ onChange={(e) => setConfirmPassword(e.target.value)}
     <div className="mfa-enroll-block">
       <p className="onboard-note">Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.</p>
       {enrollQr && (
-        <div className="mfa-qr-wrap" dangerouslySetInnerHTML={{ __html: enrollQr }} />
+        <div className="mfa-qr-wrap">
+        <img src={enrollQr} alt="2FA QR code" />
+        </div>
       )}
       <div className="mfa-secret-row">
         <span className="trade-id-cell">{enrollSecret}</span>
-        <span className="del" onClick={handleCopySecret}>
           {secretCopied ? <><Check size={12} style={{ verticalAlign: '-2px' }} /> copied</> : <><Copy size={12} style={{ verticalAlign: '-2px' }} /> copy</>}
         </span>
       </div>

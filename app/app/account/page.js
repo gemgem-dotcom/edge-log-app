@@ -360,8 +360,9 @@ return (
   <h1 className="page-title">Account Settings</h1>
   <p className="page-subtitle">Manage your account and preferences.</p>
 
+<div className="section-heading">Profile</div>
+<p className="onboard-note" style={{ marginTop: '-8px' }}>Manage your personal information.</p>
 <div className="panel">
-  <div className="panel-title">Profile</div>
   <form onSubmit={(e) => e.preventDefault()}>
 <div className="field half">
   <label>Full name</label>

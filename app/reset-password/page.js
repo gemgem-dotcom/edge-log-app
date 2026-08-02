@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
+import { validatePassword } from '../../lib/validatePassword'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -30,8 +31,9 @@ useEffect(() => {
 async function handleSubmit(e) {
   e.preventDefault()
   setError('')
-  if (password.length < 6) {
-    setError('Password must be at least 6 characters.')
+  const passwordRuleError = validatePassword(password)
+  if (passwordRuleError) {
+    setError(passwordRuleError)
     return
   }
   if (password !== confirmPassword) {
@@ -67,12 +69,15 @@ return (
 <form onSubmit={handleSubmit}>
   <div className="field full">
   <label>New password</label>
+<span className="field-hint">8-15 characters. Letters, numbers, and standard special characters only.</span>
 <div className="password-field">
   <input
 type={showPassword ? 'text' : 'password'}
 placeholder="Enter your new password"
 value={password}
 onChange={(e) => setPassword(e.target.value)}
+minLength={8}
+maxLength={15}
 required
 />
   <button type="button" className="eye-btn" onClick={() => setShowPassword(!showPassword)}>
@@ -86,7 +91,8 @@ required
  type={showPassword ? 'text' : 'password'}
 placeholder="Confirm your new password"
 value={confirmPassword}
-  onChange={(e) => setConfirmPassword(e.target.value)}
+onChange={(e) => setConfirmPassword(e.target.value)}
+maxLength={15}
 required
 />
   </div>

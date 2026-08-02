@@ -456,11 +456,12 @@ onChange={(e) => setConfirmPassword(e.target.value)}
       )}
       <div className="mfa-secret-row">
         <span className="trade-id-cell">{enrollSecret}</span>
+<span className="del" onClick={handleCopySecret}>
           {secretCopied ? <><Check size={12} style={{ verticalAlign: '-2px' }} /> copied</> : <><Copy size={12} style={{ verticalAlign: '-2px' }} /> copy</>}
         </span>
       </div>
       <div className="field wide" style={{ marginTop: '14px' }}>
-        <label>6-digit code</label>
+            <label>6-digit code</label>
         <input type="text" maxLength={6} value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="123456" />
       </div>
       {mfaError && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}

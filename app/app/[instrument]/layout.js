@@ -46,18 +46,17 @@ export default function InstrumentLayout({ children, params }) {
   async function loadData() {
         const { data: { user } } = await supabase.auth.getUser()
 
-      // Auto sign-out of all devices on the 1st of every calendar month (opt-in, set in Account Settings)
-      if (user?.user_metadata?.auto_logout_monthly) {
-          const now = new Date()
-          const monthKey = `${now.getFullYear()}-${now.getMonth()}`
-          if (now.getDate() === 1 && user.user_metadata.last_monthly_logout !== monthKey) {
-              await supabase.auth.updateUser({ data: { last_monthly_logout: monthKey } })
-              await supabase.auth.signOut({ scope: 'global' })
-              router.push('/login')
-              return
-          }
-      }
-        const { data: instrumentData } = await supabase
+      // Security: automatically sign out after 30 days since last sign-in
+                  if (user?.last_sign_in_at) {
+                              const daysSinceSignIn = (Date.now() - new Date(user.last_sign_in_at).getTime()) / 86400000
+                                          if (daysSinceSignIn >= 30) {
+                                                        await supabase.auth.signOut({ scope: 'global' })
+                                                                      router.push('/login')
+                                                                                    return
+                                          }
+                  }
+  }
+      const { data: instrumentData } = await supabase
           .from('instruments')
           .select('*')
           .eq('user_id', user.id)

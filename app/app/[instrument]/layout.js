@@ -4,16 +4,15 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
     LayoutGrid, TrendingUp, List, Calendar, Lightbulb,
-    Settings, User, ChevronDown, ChevronUp, Plus,
+Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
-import { supabase } from '../../../lib/supabaseClient'
+    import { supabase } from '../../../lib/supabaseClient'
 import { strategyColor } from '../../../lib/strategyColor'
 
 export default function InstrumentLayout({ children, params }) {
     const router = useRouter()
     const pathname = usePathname()
     const currentSymbol = params.instrument
-
   const [instruments, setInstruments] = useState([])
     const [strategies, setStrategies] = useState([])
     const [currentInstrumentId, setCurrentInstrumentId] = useState(null)
@@ -23,7 +22,19 @@ export default function InstrumentLayout({ children, params }) {
     const [newSymbol, setNewSymbol] = useState('')
     const [addingStrategy, setAddingStrategy] = useState(false)
     const [newStrategyName, setNewStrategyName] = useState('')
+        const [theme, setTheme] = useState('dark')
 
+        useEffect(() => {
+                    const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
+                    setTheme(storedTheme || 'dark')
+        }, [])
+
+        function handleThemeToggle() {
+                    const newTheme = theme === 'dark' ? 'light' : 'dark'
+                    setTheme(newTheme)
+                    localStorage.setItem('edgelog-theme', newTheme)
+                    document.documentElement.setAttribute('data-theme', newTheme)
+        }
   useEffect(() => {
         if (window.innerWidth <= 900) setStrategiesExpanded(false)
   }, [])
@@ -125,6 +136,9 @@ export default function InstrumentLayout({ children, params }) {
             </a>
 
         <div className="shell-topbar-right">
+                              <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
+              </button>
                       <a href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></a>
             </div>
             </header>

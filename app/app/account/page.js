@@ -555,7 +555,7 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   {editingDeviceId === ev.id ? (
     <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
    <input type="text" value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={ev.device || 'Unknown device'} style={{ padding: '4px 8px', fontSize: '13px', width: '140px' }} autoFocus />
-  <span className="del" onClick={() => handleSaveNickname(ev.id)}>Save</span>
+  <span className="del save-link" onClick={() => handleSaveNickname(ev.id)}>Save</span>
   <span className="del" onClick={() => { setEditingDeviceId(null); setNicknameInput('') }}>Cancel</span>
   </span>
   ) : (

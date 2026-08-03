@@ -378,7 +378,7 @@ return (
   <div>
   <div className="account-topbar">
   <div className="account-topbar-left">
-  <div className="shell-logo"><img src="/edgelog-logo.png" alt="EdgeLog" /></div>
+  <div className="shell-logo">Edge<span>Log</span></div>
   <a href="/app" className="back-btn"><ArrowLeft size={16} /> Back to dashboard</a>
   </div>
   <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>

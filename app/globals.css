@@ -577,3 +577,25 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
     --text: #e7e6e2;
     --muted: #7d8590;
 }
+
+
+/* Logo image sizing */
+.shell-logo img{height:20px; display:block;}
+.auth-logo img{height:40px; display:block;}
+.title img{height:18px; display:block;}
+
+/* Theme toggle active state - blue, matches accent buttons (kept separate from the win/loss direction toggle) */
+.dir-btn.active-theme{background:rgba(59,167,255,.15); color:var(--accent);}
+
+/* Confirm modal (e.g. delete account) */
+.confirm-modal-overlay{
+    position:fixed; inset:0; background:rgba(6,7,9,.85); backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center; z-index:200; padding:20px;
+}
+.confirm-modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:24px; max-width:420px; width:100%;
+}
+.confirm-modal h2{font-size:18px; font-weight:800; margin-bottom:12px;}
+.confirm-modal p{font-size:13.5px; color:var(--muted); margin-bottom:16px; line-height:1.5;}
+.confirm-modal .submit-row{margin-top:18px; gap:10px;}

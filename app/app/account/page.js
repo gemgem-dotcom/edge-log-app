@@ -73,7 +73,6 @@ const [loginEvents, setLoginEvents] = useState([])
 // Preferences
 const [theme, setTheme] = useState('dark')
   const [timezone, setTimezone] = useState('0')
-  const [autoLogoutMonthly, setAutoLogoutMonthly] = useState(false)
 
 // Data export
 const [exporting, setExporting] = useState(false)
@@ -102,7 +101,6 @@ async function loadData() {
   // that prevents a flash of the wrong theme on page load).
   const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
   setTheme(storedTheme || 'dark')
-  setAutoLogoutMonthly(!!user.user_metadata?.auto_logout_monthly)
 
   const { data: factorsData } = await supabase.auth.mfa.listFactors()
   setMfaFactors(factorsData?.totp || [])
@@ -294,11 +292,6 @@ async function handleTimezoneChange(newTz) {
   await supabase.auth.updateUser({ data: { timezone: newTz } })
 }
 
-  async function handleAutoLogoutMonthlyChange(value) {
-    setAutoLogoutMonthly(value)
-    await supabase.auth.updateUser({ data: { auto_logout_monthly: value } })
-  }
-
 async function handleDownloadCsv() {
   setExportError('')
   setExporting(true)
@@ -436,14 +429,6 @@ onBlur={handleNameBlur}
 <p className="account-fine-print">
   Set this to the UTC offset your trade times are logged in.
   </p>
-  <div className="field wide" style={{ marginTop: '14px' }}>
-  <label>Auto sign-out</label>
-  <div className="dir-toggle">
-  <div className={`dir-btn ${!autoLogoutMonthly ? 'active-theme' : ''}`} onClick={() => handleAutoLogoutMonthlyChange(false)}>Off</div>
-  <div className={`dir-btn ${autoLogoutMonthly ? 'active-theme' : ''}`} onClick={() => handleAutoLogoutMonthlyChange(true)}>On</div>
-  </div>
-  <p className="account-fine-print">Automatically log out of all devices on the 1st of every calendar month, as an extra safety measure. This takes effect the next time you open EdgeLog on or after the 1st.</p>
-  </div>
   </div>
 
 <div className="section-heading">Security</div>

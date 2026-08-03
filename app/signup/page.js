@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
+import { validatePassword } from '../../lib/validatePassword'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -16,6 +17,12 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
     setMessage('')
+    const passwordRuleError = validatePassword(password)
+      if (passwordRuleError) {
+        setError(passwordRuleError)
+          setLoading(false)
+            return
+      }
     setLoading(true)
     const { data, error } = await supabase.auth.signUp({ email, password })
     setLoading(false)
@@ -42,7 +49,7 @@ export default function SignupPage() {
           </div>
           <div className="field full">
             <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} maxLength={15} />
           </div>
           {error && <div className="auth-error">{error}</div>}
           {message && <div className="auth-message">{message}</div>}

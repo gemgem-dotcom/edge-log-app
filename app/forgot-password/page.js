@@ -28,7 +28,7 @@ async function handleSubmit(e) {
 return (
   <div className="auth-wrap">
   <div className="auth-card">
-  <div className="auth-logo">Edge<span>Log</span></div>
+  <div className="auth-logo"><img src="/edgelog-logo.png" alt="EdgeLog" /></div>
 {sent ? (
   <>
   <h1 className="auth-welcome">Check your email</h1>

@@ -98,7 +98,7 @@ export default function InstrumentLayout({ children, params }) {
   return (
         <div className="shell">
           <header className="shell-topbar">
-            <div className="shell-logo">Edge<span>Log</span></div>
+            <div className="shell-logo"><img src="/edgelog-logo.png" alt="EdgeLog" /></div>
 
             <div className="instrument-switcher">
               <button className="instrument-btn" onClick={() => setSwitcherOpen(!switcherOpen)}>

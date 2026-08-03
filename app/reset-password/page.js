@@ -69,7 +69,6 @@ return (
 <form onSubmit={handleSubmit}>
   <div className="field full">
   <label>New password</label>
-<span className="field-hint">8-15 characters. Letters, numbers, and standard special characters only.</span>
 <div className="password-field">
   <input
 type={showPassword ? 'text' : 'password'}

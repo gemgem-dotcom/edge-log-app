@@ -49,7 +49,7 @@ export default function SignupPage() {
           </div>
           <div className="field full">
             <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} maxLength={15} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={15} />
           </div>
           {error && <div className="auth-error">{error}</div>}
           {message && <div className="auth-message">{message}</div>}

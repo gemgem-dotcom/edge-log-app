@@ -491,21 +491,20 @@ onChange={(e) => setConfirmPassword(e.target.value)}
 <div className="panel-divider" />
 
                 <div className="panel-title">Recent sign-ins</div>
-  <p className="onboard-note" style={{ marginTop: '-8px' }}>These are devices that have recently signed in to your account.</p>
+  <p className="onboard-note" style={{ marginTop: '-8px' }}>These are devices that have recently signed in to your account. If you don't recognize any of these devices, we recommend logging out of all devices and changing your password.</p>
 {loginEvents.length === 0 ? (
   <div className="empty" style={{ padding: '14px' }}>No sign-in history yet.</div>
 ) : (
   <>
   <table>
-  <thead><tr><th>Device</th><th>Location</th><th>Date &amp; time</th><th>IP address</th></tr></thead>
+  <thead><tr><th>Device</th><th>Location</th><th>Date &amp; time</th></tr></thead>
   <tbody>
 {visibleEvents.map((ev) => (
   <tr key={ev.id}>
   <td>{ev.device || 'Unknown device'}</td>
                    <td className="tag-cell">{ev.location || 'Unknown location'}</td>
                    <td>{formatInTz(ev.created_at, timezone)}</td>
-<td className="tag-cell">{ev.ip_address || '-'}</td>
-  </tr>
+</tr>
 ))}
   </tbody>
   </table>
@@ -524,10 +523,6 @@ onChange={(e) => setConfirmPassword(e.target.value)}
 <button type="button" className="btn-danger-outline" onClick={handleSignOutEverywhere}>Log out everywhere</button>
   </div>
 {sessionMessage && <div className="account-msg account-msg-success">{sessionMessage}</div>}
- <p className="account-fine-print">
-  This list shows recent sign-ins to your account, not currently-open sessions on other devices - Supabase doesn't expose
-  live per-device session data. "Log out everywhere" is real and immediate; the history above is for your awareness.
-  </p>
   </div>
 
                     <div className="section-heading" style={{ marginTop: '8px' }}>General</div>

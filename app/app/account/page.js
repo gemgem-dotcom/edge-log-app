@@ -409,7 +409,6 @@ onChange={(e) => setCurrentPassword(e.target.value)}
 placeholder="Enter new password"
 value={newPassword}
 onChange={(e) => setNewPassword(e.target.value)}
-  minLength={8}
     maxLength={15}
 />
   <button type="button" className="eye-btn" onClick={() => setShowNew(!showNew)}>

@@ -2,7 +2,7 @@
 
 :root{
     --bg: #0a111b;
-  --panel: #12151a;
+  --panel: #141d30;
   --panel-2: #171b21;
   --line: #23272f;
   --text: #e7e6e2;
@@ -572,7 +572,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 /* ---------- Auth pages always dark ---------- */
 :root[data-theme="light"] .auth-wrap{
     --bg: #0a111b;
-    --panel: #12151a;
+    --panel: #141d30;
     --panel-2: #171b21;
     --line: #23272f;
     --text: #e7e6e2;

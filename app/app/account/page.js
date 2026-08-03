@@ -403,9 +403,10 @@ onChange={(e) => setCurrentPassword(e.target.value)}
   </div>
  <div className="field wide">
   <label>New password</label>
-  div className="password-field">
+  <div className="password-field">
   <input
  type={showNew ? 'text' : 'password'}
+placeholder="Enter new password"
 value={newPassword}
 onChange={(e) => setNewPassword(e.target.value)}
   minLength={8}

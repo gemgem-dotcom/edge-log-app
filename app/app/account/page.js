@@ -363,7 +363,6 @@ return (
   <p className="page-subtitle">Manage your account and preferences.</p>
 
 <div className="section-heading">Profile</div>
-<p className="onboard-note" style={{ marginTop: '-8px' }}>Manage your personal information.</p>
 <div className="panel">
   <form onSubmit={(e) => e.preventDefault()}>
 <div className="field half">
@@ -383,7 +382,6 @@ onBlur={handleNameBlur}
   </div>
 
 <div className="section-heading">Security</div>
-<p className="onboard-note" style={{ marginTop: '-8px' }}>Manage your account security and keep your data safe.</p>
 <div className="panel">
   <div className="panel-title">Password</div>
 <form onSubmit={(e) => e.preventDefault()}>
@@ -532,8 +530,7 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   </p>
   </div>
 
-                    <div className="section-heading" style={{ marginTop: '8px' }}>Preferences</div>
-                    <p className="onboard-note" style={{ marginTop: '-8px' }}>Customize your experience and default settings.</p>
+                    <div className="section-heading" style={{ marginTop: '8px' }}>General</div>
                   <div className="panel">
   <div className="field wide">
   <label>Theme</label>
@@ -553,8 +550,7 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   </select>
   </div>
 <p className="account-fine-print">
-  Set this to the UTC offset your trade times are logged in. It keeps the sign-in times above consistent with the
-timezone you use for your trade log, rather than defaulting to your browser's local time.
+  Set this to the UTC offset your trade times are logged in.
   </p>
   </div>
 

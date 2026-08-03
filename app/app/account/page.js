@@ -47,6 +47,9 @@ const [currentPassword, setCurrentPassword] = useState('')
 
 const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [showDeletePassword, setShowDeletePassword] = useState(false)
 
 // Two-factor authentication
 const [mfaFactors, setMfaFactors] = useState([])
@@ -70,6 +73,7 @@ const [loginEvents, setLoginEvents] = useState([])
 // Preferences
 const [theme, setTheme] = useState('dark')
   const [timezone, setTimezone] = useState('0')
+  const [autoLogoutMonthly, setAutoLogoutMonthly] = useState(false)
 
 // Data export
 const [exporting, setExporting] = useState(false)
@@ -98,6 +102,7 @@ async function loadData() {
   // that prevents a flash of the wrong theme on page load).
   const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
   setTheme(storedTheme || 'dark')
+  setAutoLogoutMonthly(!!user.user_metadata?.auto_logout_monthly)
 
   const { data: factorsData } = await supabase.auth.mfa.listFactors()
   setMfaFactors(factorsData?.totp || [])
@@ -289,6 +294,11 @@ async function handleTimezoneChange(newTz) {
   await supabase.auth.updateUser({ data: { timezone: newTz } })
 }
 
+  async function handleAutoLogoutMonthlyChange(value) {
+    setAutoLogoutMonthly(value)
+    await supabase.auth.updateUser({ data: { auto_logout_monthly: value } })
+  }
+
 async function handleDownloadCsv() {
   setExportError('')
   setExporting(true)
@@ -334,9 +344,17 @@ async function handleDownloadCsv() {
 
 async function handleDeleteAccount() {
   setDeleteError('')
-  const sure = confirm('Are you sure you want to permanently delete your account? This will erase every instrument, strategy, and trade you have logged, and cannot be undone.')
-  if (!sure) return
-
+    
+  if (!deletePassword) {
+    setDeleteError('Enter your password to confirm.')
+      return
+  }
+  
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: deletePassword })
+    if (signInError) {
+      setDeleteError('Incorrect password.')
+        return
+    }
   setDeleting(true)
 
   const { data: { session } } = await supabase.auth.getSession()
@@ -367,7 +385,7 @@ return (
   <div>
   <div className="account-topbar">
   <div className="account-topbar-left">
-  <div className="shell-logo">Edge<span>Log</span></div>
+  <div className="shell-logo"><img src="/edgelog-logo.png" alt="EdgeLog" /></div>
   <a href="/app" className="back-btn"><ArrowLeft size={16} /> Back to dashboard</a>
   </div>
   <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
@@ -394,6 +412,30 @@ onBlur={handleNameBlur}
 <input type="email" value={email} disabled />
   </div>
   </form>
+  </div>
+
+                    <div className="section-heading" style={{ marginTop: '8px' }}>General</div>
+                  <div className="panel">
+  <div className="field wide">
+  <label>Theme</label>
+<div className="dir-toggle">
+  <div className={`dir-btn ${theme === 'dark' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('dark')}>
+<Moon size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Dark
+  </div>
+<div className={`dir-btn ${theme === 'light' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('light')}>
+<Sun size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Light
+  </div>
+  </div>
+  </div>
+<div className="field wide" style={{ marginTop: '14px' }}>
+<label>Timezone</label>
+<select value={timezone} onChange={(e) => handleTimezoneChange(e.target.value)}>
+{UTC_OFFSETS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+  </select>
+  </div>
+<p className="account-fine-print">
+  Set this to the UTC offset your trade times are logged in.
+  </p>
   </div>
 
 <div className="section-heading">Security</div>
@@ -553,30 +595,6 @@ onChange={(e) => setConfirmPassword(e.target.value)}
 {sessionMessage && <div className="account-msg account-msg-success">{sessionMessage}</div>}
   </div>
 
-                    <div className="section-heading" style={{ marginTop: '8px' }}>General</div>
-                  <div className="panel">
-  <div className="field wide">
-  <label>Theme</label>
-<div className="dir-toggle">
-  <div className={`dir-btn ${theme === 'dark' ? 'active-long' : ''}`} onClick={() => handleThemeChange('dark')}>
-<Moon size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Dark
-  </div>
-<div className={`dir-btn ${theme === 'light' ? 'active-long' : ''}`} onClick={() => handleThemeChange('light')}>
-<Sun size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Light
-  </div>
-  </div>
-  </div>
-<div className="field wide" style={{ marginTop: '14px' }}>
-<label>Timezone</label>
-<select value={timezone} onChange={(e) => handleTimezoneChange(e.target.value)}>
-{UTC_OFFSETS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-  </select>
-  </div>
-<p className="account-fine-print">
-  Set this to the UTC offset your trade times are logged in.
-  </p>
-  </div>
-
                     <div className="section-heading" style={{ marginTop: '8px' }}>Data</div>
                 <div className="panel">
   <div className="danger-row">
@@ -598,13 +616,40 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   <div className="danger-row-title">Delete your account</div>
 <div className="danger-row-note">This action cannot be undone.</div>
   </div>
-<button className="btn-danger-outline" onClick={handleDeleteAccount} disabled={deleting}>
+<button className="btn-danger-outline" onClick={() => { setDeletePassword(''); setDeleteError(''); setShowDeleteModal(true) }} disabled={deleting}>
 {deleting ? 'Deleting...' : 'Delete account'}
 </button>
   </div>
-{deleteError && <div className="account-msg account-msg-error" style={{ marginTop: '14px' }}>{deleteError}</div>}
   </div>
   </div>
+
+{showDeleteModal && (
+  <div className="confirm-modal-overlay" onClick={() => setShowDeleteModal(false)}>
+  <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+  <h2>Delete Account</h2>
+  <p>This action is permanent and cannot be undone. All of your trading journal, strategies, performance data, and account information will be permanently deleted.</p>
+  <p style={{ marginBottom: '6px' }}>Enter your password to confirm.</p>
+  <div className="password-field">
+  <input
+  type={showDeletePassword ? 'text' : 'password'}
+placeholder="Enter your password"
+  value={deletePassword}
+    onChange={(e) => setDeletePassword(e.target.value)}
+      />
+      <button type="button" className="eye-btn" onClick={() => setShowDeletePassword(!showDeletePassword)}>
+{showDeletePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+  </button>
+  </div>
+ {deleteError && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{deleteError}</div>}
+   <div className="submit-row">
+   <button type="button" className="btn-danger-outline" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+  <button type="button" className="btn-danger-outline" onClick={handleDeleteAccount} disabled={deleting}>
+{deleting ? 'Deleting...' : 'Delete account'}
+</button>
+  </div>
+  </div>
+  </div>
+  )}
   </div>
 )
 }

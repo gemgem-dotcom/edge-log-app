@@ -55,7 +55,6 @@ export default function InstrumentLayout({ children, params }) {
                                                                                     return
                                           }
                   }
-  }
       const { data: instrumentData } = await supabase
           .from('instruments')
           .select('*')

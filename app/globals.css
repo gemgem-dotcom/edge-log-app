@@ -510,10 +510,10 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .strategy-header-row{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
-    background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
-        color:var(--muted); width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+            background:none; border:1px solid transparent; border-radius:7px;
+    color:var(--muted); width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
-.strategy-menu-btn:hover{color:var(--text); border-color:var(--accent);}
+.strategy-menu-btn:hover{background:var(--panel-2); color:var(--text);}
 .strategy-menu-dropdown{
     position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
     border:1px solid var(--line); border-radius:9px; min-width:180px; z-index:50;

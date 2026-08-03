@@ -76,7 +76,7 @@ export default function AppHome() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="title"><img src="/edgelog-logo.png" alt="EdgeLog" /></div>
+        <div className="title">Edge<span>Log</span></div>
         <h1>Set up your journal</h1>
         <p className="onboard-note">
           Add the first instrument you trade, and the first strategy you want to track under it.

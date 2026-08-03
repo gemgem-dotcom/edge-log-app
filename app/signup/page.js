@@ -40,7 +40,7 @@ export default function SignupPage() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="title"><img src="/edgelog-logo.png" alt="EdgeLog" /></div>
+        <div className="title">Edge<span>Log</span></div>
         <h1>Create your account</h1>
         <form onSubmit={handleSubmit}>
           <div className="field full">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, ArrowLeft, LogOut, Sun, Moon, Download, Copy, Check } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, LogOut, Sun, Moon, Download, Copy, Check, Pencil } from 'lucide-react'
 import { supabase } from '../../../lib/supabaseClient'
 import { validatePassword } from '../../../lib/validatePassword'
 
@@ -64,6 +64,8 @@ const [loginEvents, setLoginEvents] = useState([])
   const [showAllEvents, setShowAllEvents] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
   const [sessionMessage, setSessionMessage] = useState('')
+  const [editingDeviceId, setEditingDeviceId] = useState(null)
+  const [nicknameInput, setNicknameInput] = useState('')
 
 // Preferences
 const [theme, setTheme] = useState('dark')
@@ -263,7 +265,20 @@ async function handleSignOutEverywhere() {
   router.push('/login')
 }
 
-function handleThemeChange(newTheme) {
+async function handleSaveNickname(eventId) {
+  const trimmed = nicknameInput.trim()
+    const { error } = await supabase
+      .from('login_events')
+      .update({ device_nickname: trimmed || null })
+      .eq('id', eventId)
+      if (!error) {
+        setLoginEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, device_nickname: trimmed || null } : ev)))
+      }
+  setEditingDeviceId(null)
+    setNicknameInput('')
+}
+  
+  function handleThemeChange(newTheme) {
   setTheme(newTheme)
   localStorage.setItem('edgelog-theme', newTheme)
   document.documentElement.setAttribute('data-theme', newTheme)
@@ -501,7 +516,20 @@ onChange={(e) => setConfirmPassword(e.target.value)}
   <tbody>
 {visibleEvents.map((ev) => (
   <tr key={ev.id}>
-  <td>{ev.device || 'Unknown device'}</td>
+  <td>
+  {editingDeviceId === ev.id ? (
+    <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+   <input type="text" value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={ev.device || 'Unknown device'} style={{ padding: '4px 8px', fontSize: '13px', width: '140px' }} autoFocus />
+  <span className="del" onClick={() => handleSaveNickname(ev.id)}>Save</span>
+  <span className="del" onClick={() => { setEditingDeviceId(null); setNicknameInput('') }}>Cancel</span>
+  </span>
+  ) : (
+    <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+    {ev.device_nickname || ev.device || 'Unknown device'}
+<Pencil size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => { setEditingDeviceId(ev.id); setNicknameInput(ev.device_nickname || '') }} />
+  </span>
+  )}
+</td>
                    <td className="tag-cell">{ev.location || 'Unknown location'}</td>
                    <td>{formatInTz(ev.created_at, timezone)}</td>
 </tr>

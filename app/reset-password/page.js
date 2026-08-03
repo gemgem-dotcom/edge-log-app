@@ -75,7 +75,6 @@ type={showPassword ? 'text' : 'password'}
 placeholder="Enter your new password"
 value={password}
 onChange={(e) => setPassword(e.target.value)}
-minLength={8}
 maxLength={15}
 required
 />

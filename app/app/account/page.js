@@ -436,6 +436,14 @@ onBlur={handleNameBlur}
 <p className="account-fine-print">
   Set this to the UTC offset your trade times are logged in.
   </p>
+  <div className="field wide" style={{ marginTop: '14px' }}>
+  <label>Auto sign-out</label>
+  <div className="dir-toggle">
+  <div className={`dir-btn ${!autoLogoutMonthly ? 'active-theme' : ''}`} onClick={() => handleAutoLogoutMonthlyChange(false)}>Off</div>
+  <div className={`dir-btn ${autoLogoutMonthly ? 'active-theme' : ''}`} onClick={() => handleAutoLogoutMonthlyChange(true)}>On</div>
+  </div>
+  <p className="account-fine-print">Automatically log out of all devices on the 1st of every calendar month, as an extra safety measure. This takes effect the next time you open EdgeLog on or after the 1st.</p>
+  </div>
   </div>
 
 <div className="section-heading">Security</div>

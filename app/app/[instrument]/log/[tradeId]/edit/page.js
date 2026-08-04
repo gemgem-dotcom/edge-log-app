@@ -136,6 +136,7 @@ async function handleSubmit(e) {
     in_plan: form.in_plan.value === 'yes',
     reasoning: form.reasoning.value.trim(),
     contracts: form.contracts.value ? parseInt(form.contracts.value) : null,
+    pnl: form.pnl.value ? parseFloat(form.pnl.value) : null,
     screenshot_url,
   }
 
@@ -196,7 +197,7 @@ if (loading) return <div className="page-loading">Loading…</div>
   </div>
   </div>
 
-<div className="field wide">
+  <div className="field wide">
   <label>Entry price</label>
 <input name="entry" type="number" step="0.01" defaultValue={trade.entry} required />
   </div>
@@ -220,7 +221,7 @@ Multiple exits?
   <div className="field full">
   <label>Exit legs</label>
 {exitLegs.map((leg, i) => (
-  <div key={i} className="exit-leg-row">
+<div key={i} className="exit-leg-row">
   <input
               type="number" step="0.01" placeholder="Exit price"
  value={leg.price} onChange={(e) => updateLeg(i, 'price', e.target.value)}
@@ -238,7 +239,7 @@ Multiple exits?
   </div>
 ) : (
   <>
-  <div className="field wide">
+<div className="field wide">
   <label>Exit price</label>
 <input name="exit_price" type="number" step="0.01" defaultValue={trade.exit_price ?? ''} />
   </div>
@@ -261,10 +262,10 @@ Multiple exits?
   <label>Strategy</label>
 <select value={strategyId} onChange={(e) => setStrategyId(e.target.value)}>
 {strategyId === '' && <option value="">Select a strategy…</option>}
-{strategies.map((s) => (
-  <option key={s.id} value={s.id}>{s.name}</option>
-))}
-  </select>
+ {strategies.map((s) => (
+   <option key={s.id} value={s.id}>{s.name}</option>
+ ))}
+</select>
   </div>
 <div className="field wide" style={{ justifyContent: 'flex-end' }}>
 {addingStrategy ? (
@@ -299,6 +300,10 @@ value={newStrategyName} onChange={(e) => setNewStrategyName(e.target.value)}
 <div className="field wide">
   <label>Contracts traded (optional)</label>
 <input name="contracts" type="number" step="1" defaultValue={trade.contracts ?? ''} />
+  </div>
+<div className="field wide">
+  <label>$ Profit/Loss (optional)</label>
+<input name="pnl" type="number" step="0.01" defaultValue={trade.pnl ?? ''} placeholder="e.g. 245.50 or -120" />
   </div>
 <div className="field wide">
   <label>Screenshot (optional)</label>

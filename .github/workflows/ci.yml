@@ -1,0 +1,40 @@
+# Build check
+#
+# Runs a full production build of the app on every push and every pull
+# request. If the build fails, GitHub puts a red X on the commit, so a
+# broken change gets caught before it can reach the live site.
+#
+# The Supabase values below are throwaway placeholders. The build only
+# needs them to exist so the Supabase client can be constructed; nothing
+# during a build talks to the real database.
+
+name: Build check
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build

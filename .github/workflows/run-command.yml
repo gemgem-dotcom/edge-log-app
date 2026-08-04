@@ -14,6 +14,10 @@
 #
 # There is no lint option yet because the project has no ESLint config and
 # no lint script in package.json. Adding those is a separate job.
+#
+# YAML gotcha worth remembering: an unquoted value cannot contain a colon
+# followed by a space, so an echo of "Running: x" breaks the whole file.
+# Keep colons out of echo text, or wrap the command in quotes.
 
 name: Run a command
 
@@ -54,7 +58,7 @@ jobs:
           node-version: '20'
 
       - name: Say what was chosen
-        run: echo "Running: ${{ github.event.inputs.command }} on branch $GITHUB_REF_NAME"
+        run: echo "Running ${{ github.event.inputs.command }} on branch $GITHUB_REF_NAME"
 
       - name: Install dependencies
         run: npm install

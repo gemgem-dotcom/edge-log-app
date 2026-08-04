@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
-    LayoutGrid, TrendingUp, List, Calendar, Lightbulb,
+    LayoutGrid, TrendingUp, List, Lightbulb,
 Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
     import { supabase } from '../../../lib/supabaseClient'
@@ -196,9 +196,6 @@ export default function InstrumentLayout({ children, params }) {
 
           <a href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
             <List size={17} /> Trades
-            </a>
-          <a href={`/app/${currentSymbol}/calendar`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/calendar`) ? 'sidebar-item-active' : ''}`}>
-            <Calendar size={17} /> Calendar
             </a>
           <a href={`/app/${currentSymbol}/insights`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/insights`) ? 'sidebar-item-active' : ''}`}>
             <Lightbulb size={17} /> Insights

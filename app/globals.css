@@ -595,3 +595,53 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .confirm-modal h2{font-size:18px; font-weight:800; margin-bottom:12px;}
 .confirm-modal p{font-size:13.5px; color:var(--muted); margin-bottom:16px; line-height:1.5;}
 .confirm-modal .submit-row{margin-top:18px; gap:10px;}
+
+
+/* ---------- Monthly P&L (calendar on Overview) ---------- */
+.calendar-toolbar{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    flex-wrap:wrap; margin-bottom:18px;
+}
+.calendar-strategy-filter{
+    width:auto; background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
+    color:var(--text); padding:8px 12px; font-size:12.5px; font-family:'Inter',sans-serif;
+}
+.calendar-month-nav{display:flex; align-items:center; gap:12px;}
+
+.stats-5{grid-template-columns:repeat(5,1fr);}
+.stat-subvalue{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; margin-top:2px;}
+.stat-gauge{display:flex; flex-direction:column;}
+
+.gauge-wrap{display:flex; flex-direction:column; align-items:center; margin-top:2px;}
+.gauge-arc-wrap{position:relative; width:100%; max-width:132px;}
+.gauge-svg{display:block; width:100%; height:auto;}
+.gauge-center-text{
+    position:absolute; top:44%; left:0; right:0; text-align:center;
+    font-family:'JetBrains Mono',monospace; font-size:17px; font-weight:700; color:var(--text);
+}
+.gauge-legend{display:flex; gap:12px; margin-top:2px;}
+.gauge-legend-item{
+    display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--muted);
+    font-family:'JetBrains Mono',monospace;
+}
+.gauge-dot{width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0;}
+
+.calendar-grid-8{grid-template-columns:repeat(7,1fr) 1.15fr;}
+.calendar-week-row{margin-bottom:6px;}
+.calendar-cell-outside{opacity:.45;}
+.calendar-cell-win{border-color:rgba(51,193,122,.4); background:rgba(51,193,122,.07);}
+.calendar-cell-loss{border-color:rgba(225,92,92,.4); background:rgba(225,92,92,.07);}
+.calendar-cell-weekly{background:var(--panel); justify-content:center;}
+.calendar-day-subpnl{font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600;}
+
+@media (max-width:1100px){
+    .stats-5{grid-template-columns:repeat(3,1fr);}
+}
+@media (max-width:640px){
+    .calendar-toolbar{flex-direction:column; align-items:stretch;}
+    .calendar-month-nav{justify-content:space-between;}
+    .stats-5{grid-template-columns:repeat(2,1fr);}
+    .calendar-grid-8{grid-template-columns:repeat(7,1fr);}
+    .calendar-cell-weekly{display:none;}
+    .calendar-day-subpnl{display:none;}
+}

@@ -225,7 +225,7 @@ table{min-width:640px;}
 .instrument-divider{height:1px; background:var(--line); margin:4px 0;}
 .instrument-add{color:var(--accent); font-weight:600;}
 .instrument-add-form{display:flex; gap:6px; padding:8px 10px;}
-.instrument-add-form input{padding:6px 8px; font-size:12.5px;}
+.instrument-add-form input, .instrument-add-form select{padding:6px 8px; font-size:12.5px;}
 .instrument-add-form button{padding:6px 12px; font-size:12px;}
 
 /* ---------- Page layout ---------- */

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
+import { INSTRUMENT_CATALOG, catalogEntryFor } from '../../lib/instrumentCatalog'
 
 export default function AppHome() {
   const router = useRouter()
@@ -42,11 +43,16 @@ export default function AppHome() {
     setSaving(true)
 
     const { data: { user } } = await supabase.auth.getUser()
-    const cleanSymbol = symbol.trim().toUpperCase()
+    const catalogEntry = catalogEntryFor(symbol)
 
     const { data: instrument, error: instrError } = await supabase
       .from('instruments')
-      .insert([{ user_id: user.id, symbol: cleanSymbol }])
+      .insert([{
+        user_id: user.id,
+        symbol,
+        data_symbol: catalogEntry?.data_symbol || symbol,
+        display_name: catalogEntry?.display_name || null,
+      }])
       .select()
       .single()
 
@@ -66,7 +72,7 @@ export default function AppHome() {
       return
     }
 
-    router.replace(`/app/${cleanSymbol}/dashboard`)
+    router.replace(`/app/${symbol}/dashboard`)
   }
 
   if (loading) {
@@ -85,13 +91,12 @@ export default function AppHome() {
         <form onSubmit={handleOnboard}>
           <div className="field full">
             <label>Instrument</label>
-            <input
-              type="text"
-              placeholder="e.g. NQ"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              required
-            />
+            <select value={symbol} onChange={(e) => setSymbol(e.target.value)} required>
+              <option value="">Select instrument…</option>
+              {INSTRUMENT_CATALOG.map((i) => (
+                <option key={i.symbol} value={i.symbol}>{i.symbol} — {i.display_name}</option>
+              ))}
+            </select>
           </div>
           <div className="field full">
             <label>Your first strategy name</label>

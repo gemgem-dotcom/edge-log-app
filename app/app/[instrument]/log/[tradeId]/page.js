@@ -54,8 +54,8 @@ export default function TradeDetailPage({ params }) {
           <div><label>Entry time</label><div>{trade.trade_time}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{trade.entry}</div></div>
-          <div><label>Stop price</label><div>{trade.stop}</div></div>
-          <div><label>Target (TP)</label><div>{trade.target ?? '—'}</div></div>
+          <div><label>Stop price</label><div>{trade.stop}{trade.stop_distance != null ? ` (${trade.stop_distance} ${trade.distance_unit || 'points'})` : ''}</div></div>
+          <div><label>Target (TP)</label><div>{trade.target ?? '—'}{trade.target_distance != null ? ` (${trade.target_distance} ${trade.distance_unit || 'points'})` : ''}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price ?? '—'}</div></div>
           <div><label>Exit time</label><div>{trade.exit_time ?? '—'}</div></div>
           <div><label>Result</label><div><span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple}R</span></div></div>

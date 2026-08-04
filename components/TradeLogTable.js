@@ -125,8 +125,8 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
                       <div className="detail-grid" style={{ padding: '16px 4px' }}>
                         <div><label>Entry time</label><div>{t.trade_time}</div></div>
                         <div><label>Entry price</label><div>{t.entry}</div></div>
-                        <div><label>Stop price</label><div>{t.stop}</div></div>
-                        <div><label>Target (TP)</label><div>{t.target ?? '—'}</div></div>
+                        <div><label>Stop price</label><div>{t.stop}{t.stop_distance != null ? ` (${t.stop_distance} ${t.distance_unit || 'points'})` : ''}</div></div>
+                        <div><label>Target (TP)</label><div>{t.target ?? '—'}{t.target_distance != null ? ` (${t.target_distance} ${t.distance_unit || 'points'})` : ''}</div></div>
                         <div><label>Exit price</label><div>{t.exit_price ?? '—'}</div></div>
                         <div><label>Exit time</label><div>{t.exit_time ?? '—'}</div></div>
                         <div><label>In-plan</label><div>{t.in_plan ? 'Yes' : 'No — off-plan'}</div></div>

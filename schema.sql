@@ -146,3 +146,25 @@ begin
       unique (user_id, device_key);
   end if;
 end $$;
+
+-- Fixed instrument catalog (see lib/instrumentCatalog.js). data_symbol is
+-- what mini/micro contracts share with their full-size counterpart (e.g.
+-- MNQ and NQ both carry data_symbol 'NQ'), since they track identical
+-- price movement — future market-data lookups should key off this, not
+-- the display symbol. Existing rows are best-effort backfilled to their
+-- own symbol; fix any mini/micro ones by hand if you had them already.
+alter table instruments add column if not exists data_symbol text;
+update instruments set data_symbol = symbol where data_symbol is null;
+
+-- Stop/target are entered in the UI as a distance (points/ticks) from
+-- entry; `stop`/`target` keep storing the absolute price as before (used
+-- for R-multiple math and future market-data matching), while these new
+-- columns keep the raw distance the trader typed and which unit it was in.
+alter table trades add column if not exists stop_distance numeric;
+alter table trades add column if not exists target_distance numeric;
+alter table trades add column if not exists distance_unit text default 'points';
+
+-- Backfill distances for trades logged before this feature existed, so
+-- editing an old trade shows a sensible distance instead of blank.
+update trades set stop_distance = abs(stop - entry) where stop_distance is null;
+update trades set target_distance = abs(target - entry) where target_distance is null and target is not null;

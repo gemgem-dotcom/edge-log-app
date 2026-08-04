@@ -125,3 +125,43 @@ create policy "Users see their own login events"
 create policy "Users insert their own login events"
   on login_events for insert
   with check (auth.uid() = user_id);
+
+-- ============================================================
+-- CHANGES SINCE v1
+--
+-- Everything below was added after the original schema above, and is
+-- written so the whole file stays safe to re-run from top to bottom.
+-- Whenever a column or constraint is added by hand in the Supabase SQL
+-- editor, add it here in the same pull request — otherwise this file
+-- drifts away from the real database and rebuilding from it silently
+-- loses features.
+-- ============================================================
+
+-- Optional dollar profit/loss per trade. Shown next to R on the log/edit
+-- forms, the trade detail page, and the Monthly P&L calendar on Overview.
+-- Nullable on purpose: trades logged in R only still work.
+alter table trades add column if not exists pnl numeric;
+
+-- The sign-in history became one row per device instead of one row per
+-- sign-in, with an editable friendly name.
+alter table login_events add column if not exists device text;
+alter table login_events add column if not exists device_key text;
+alter table login_events add column if not exists device_nickname text;
+alter table login_events add column if not exists ip_address text;
+alter table login_events add column if not exists location text;
+
+-- Required by the upsert in app/api/record-login/route.js, which uses
+-- onConflict: 'user_id,device_key'. Guarded so re-running is harmless.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.login_events'::regclass
+      and contype = 'u'
+      and conname = 'login_events_user_id_device_key_key'
+  ) then
+    alter table login_events
+      add constraint login_events_user_id_device_key_key
+      unique (user_id, device_key);
+  end if;
+end $$;

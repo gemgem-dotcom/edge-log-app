@@ -3,6 +3,9 @@
 This version adds accounts, multiple instruments, per-instrument strategies, and multi-exit trades.
 If you're upgrading from the earlier single-page version, **this replaces that schema** — see step 1.
 
+Before changing the code, read `NOTES.md` — it covers the branch/pull-request
+workflow, project layout, UI conventions and known gotchas.
+
 ## 1. Reset the database
 
 In Supabase **SQL Editor**, if you have an old `trades` table from before, drop it first:
@@ -27,8 +30,15 @@ go to **Authentication → Settings** and turn off "Confirm email," or just chec
 
 ## 4. Environment variables
 
-Same as before — copy `.env.local.example` to `.env.local` and fill in your Supabase URL and anon key
-from **Project Settings → API**.
+Copy `.env.local.example` to `.env.local` and fill in the three values:
+
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from **Project Settings → API**.
+- `SUPABASE_SERVICE_ROLE_KEY` — also on that page, under "service_role". This one is
+  **server only**: it bypasses Row Level Security, so never rename it with a
+  `NEXT_PUBLIC_` prefix. The two routes in `app/api/` (recording sign-ins, deleting an
+  account) are the only things that use it.
+
+All three also need to be added in Vercel under **Project Settings → Environment Variables**.
 
 ## 5. Run it
 
@@ -42,11 +52,12 @@ adding your first instrument and first strategy before reaching the dashboard.
 
 ## 6. Deploy
 
-Same as before: push to GitHub, import into Vercel, add the two environment variables there too, deploy.
+Same as before: push to GitHub, import into Vercel, add the three environment variables there too, deploy.
 
 ## What's new in this version
 
-- **New sidebar layout** — Overview, expandable Strategies list (color-coded), Trades, Calendar and Insights (placeholders for now)
+- **New sidebar layout** — Overview, expandable Strategies list (color-coded), Trades and Insights (Insights is a placeholder for now)
+- **Monthly P&L calendar** — lives on the Overview page under Strategy performance, with monthly stats, a weekly column, and a strategy filter
 - **Aggregate dashboard stats** — Total Trades, Win Rate, Avg R, Expectancy, Profit Factor, Total PnL
 - **Strategy performance table** — one scannable table instead of a card per strategy, click any row to jump to that strategy's filtered log
 - **New dependency**: `lucide-react` (icons) — if you're updating an existing local copy, run `npm install` again after pulling these changes, or the icons won't resolve.

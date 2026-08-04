@@ -43,7 +43,9 @@ lib/
   strategyColor.js                 strategy colour assignment
   validatePassword.js              signup password rules
   instrumentCatalog.js             fixed instrument list + data_symbol mapping (mini/micro → shared symbol)
-  tradeMath.js                     stop/target distance → price, R-multiple calc
+  tradeMath.js                     stop/target distance → price, R-multiple and R:R calc
+  tradeForm.js                     trade-form validation + currency parse/format
+  useClickOutside.js               close a dropdown on outside click / Escape
 schema.sql                         database tables + row level security
 storage-setup.sql                  screenshots storage bucket
 ```

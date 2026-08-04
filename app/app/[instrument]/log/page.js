@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
+import { hasResult } from '../../../../lib/tradeMath'
 import TradeLogTable from '../../../../components/TradeLogTable'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 function resultOf(t) {
+  if (!hasResult(t)) return 'open'
   if (t.r_multiple > 0) return 'win'
   if (t.r_multiple < 0) return 'loss'
   return 'breakeven'
@@ -92,6 +94,7 @@ return (
 <option value="win">Win</option>
 <option value="loss">Loss</option>
 <option value="breakeven">Breakeven</option>
+<option value="open">Open (no exit)</option>
   </select>
 <select value={filterDay} onChange={(e) => setFilterDay(e.target.value)}>
 <option value="all">All days</option>

@@ -35,33 +35,10 @@ const wins = trades.filter((t) => t.r_multiple > 0)
   const wr = wins.length / n
   const expectancy = wr * avgWin + (1 - wr) * avgLoss
 
-const multiExitTrades = trades.filter((t) => t.multi_exit)
-  let legsByTrade = {}
-    if (multiExitTrades.length > 0) {
-      const { data: legs } = await supabase
-      .from('exit_legs')
-      .select('*')
-      .in('trade_id', multiExitTrades.map((t) => t.id))
-      legsByTrade = (legs || []).reduce((acc, leg) => {
-        acc[leg.trade_id] = acc[leg.trade_id] || []
-          acc[leg.trade_id].push(leg)
-        return acc
-      }, {})
-    }
-
 const durations = []
   for (const t of trades) {
-    let endTime = null
-    if (t.multi_exit) {
-      const legs = legsByTrade[t.id] || []
-        if (legs.length > 0) {
-          endTime = legs.reduce((latest, l) => (timeToMinutes(l.exit_time) > timeToMinutes(latest) ? l.exit_time : latest), legs[0].exit_time)
-        }
-    } else {
-      endTime = t.exit_time
-    }
-    if (endTime) {
-      let diff = timeToMinutes(endTime) - timeToMinutes(t.trade_time)
+    if (t.exit_time) {
+      let diff = timeToMinutes(t.exit_time) - timeToMinutes(t.trade_time)
       if (diff < 0) diff += 24 * 60
       durations.push(diff)
     }

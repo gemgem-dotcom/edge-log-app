@@ -21,13 +21,6 @@ if (userError || !userData || !userData.user) {
 
 const userId = userData.user.id
 
-const { data: trades } = await admin.from('trades').select('id').eq('user_id', userId)
-  const tradeIds = (trades || []).map((t) => t.id)
-
-if (tradeIds.length > 0) {
-  await admin.from('exit_legs').delete().in('trade_id', tradeIds)
-}
-
 await admin.from('trades').delete().eq('user_id', userId)
   await admin.from('strategies').delete().eq('user_id', userId)
   await admin.from('instruments').delete().eq('user_id', userId)

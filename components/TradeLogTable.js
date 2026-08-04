@@ -20,7 +20,6 @@ function fmtDuration(mins) {
 export default function TradeLogTable({ trades, strategyNameById, showStrategyColumn = false, showDurationColumn = false, symbol }) {
       const [rows, setRows] = useState(trades)
       const [expandedId, setExpandedId] = useState(null)
-      const [exitLegsByTrade, setExitLegsByTrade] = useState({})
       const [previewUrl, setPreviewUrl] = useState(null)
       const [durationByTrade, setDurationByTrade] = useState({})
 
@@ -34,33 +33,10 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
   }, [trades, showDurationColumn])
 
   async function loadDurations() {
-          const multiExitTrades = trades.filter((t) => t.multi_exit)
-          let legsByTrade = {}
-                  if (multiExitTrades.length > 0) {
-                            const { data: legs } = await supabase
-                              .from('exit_legs')
-                              .select('*')
-                              .in('trade_id', multiExitTrades.map((t) => t.id))
-                            legsByTrade = (legs || []).reduce((acc, leg) => {
-                                        acc[leg.trade_id] = acc[leg.trade_id] || []
-                                                    acc[leg.trade_id].push(leg)
-                                        return acc
-                            }, {})
-                  }
-
         const result = {}
                 for (const t of trades) {
-                          let endTime = null
-                          if (t.multi_exit) {
-                                      const legs = legsByTrade[t.id] || []
-                                                  if (legs.length > 0) {
-                                                                endTime = legs.reduce((latest, l) => (timeToMinutes(l.exit_time) > timeToMinutes(latest) ? l.exit_time : latest), legs[0].exit_time)
-                                                  }
-                          } else {
-                                      endTime = t.exit_time
-                          }
-                          if (endTime) {
-                                      let diff = timeToMinutes(endTime) - timeToMinutes(t.trade_time)
+                          if (t.exit_time) {
+                                      let diff = timeToMinutes(t.exit_time) - timeToMinutes(t.trade_time)
                                       if (diff < 0) diff += 24 * 60
                                       result[t.id] = diff
                           }
@@ -68,20 +44,12 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
           setDurationByTrade(result)
   }
 
-  async function toggleExpand(trade) {
+  function toggleExpand(trade) {
           if (expandedId === trade.id) {
                     setExpandedId(null)
                     return
           }
           setExpandedId(trade.id)
-          if (trade.multi_exit && !exitLegsByTrade[trade.id]) {
-                    const { data } = await supabase
-                      .from('exit_legs')
-                      .select('*')
-                      .eq('trade_id', trade.id)
-                      .order('exit_time', { ascending: true })
-                    setExitLegsByTrade((prev) => ({ ...prev, [trade.id]: data || [] }))
-          }
   }
 
   async function handleDelete(e, trade) {
@@ -159,29 +127,11 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
                         <div><label>Entry price</label><div>{t.entry}</div></div>
                         <div><label>Stop price</label><div>{t.stop}</div></div>
                         <div><label>Target (TP)</label><div>{t.target ?? '—'}</div></div>
-{!t.multi_exit && (
-                              <>
-                                <div><label>Exit price</label><div>{t.exit_price ?? '—'}</div></div>
-                             <div><label>Exit time</label><div>{t.exit_time ?? '—'}</div></div>
-    </>
-                         )}
+                        <div><label>Exit price</label><div>{t.exit_price ?? '—'}</div></div>
+                        <div><label>Exit time</label><div>{t.exit_time ?? '—'}</div></div>
                         <div><label>In-plan</label><div>{t.in_plan ? 'Yes' : 'No — off-plan'}</div></div>
                         <div><label>Contracts</label><div>{t.contracts ?? '—'}</div></div>
                             </div>
-
-{t.multi_exit && (
-                            <div style={{ marginTop: '6px' }}>
-                          <label className="detail-sublabel">Exit legs</label>
-                          <table>
-                                <thead><tr><th>#</th><th>Exit price</th><th>Exit time</th></tr></thead>
-                            <tbody>
-{(exitLegsByTrade[t.id] || []).map((leg, i) => (
-                                    <tr key={leg.id}><td>{i + 1}</td><td>{leg.exit_price}</td><td>{leg.exit_time}</td></tr>
-                                  ))}
-</tbody>
-    </table>
-    </div>
-                      )}
 
 {t.reasoning && (
                             <div style={{ marginTop: '12px' }}>

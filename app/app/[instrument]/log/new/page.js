@@ -15,8 +15,6 @@ const [instrumentId, setInstrumentId] = useState(null)
   const [newStrategyName, setNewStrategyName] = useState('')
 
 const [direction, setDirection] = useState('long')
-  const [multiExit, setMultiExit] = useState(false)
-  const [exitLegs, setExitLegs] = useState([{ price: '', time: '' }])
   const [screenshotFile, setScreenshotFile] = useState(null)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
   const [expandedPreview, setExpandedPreview] = useState(false)
@@ -80,18 +78,6 @@ async function handleAddStrategy(e) {
   }
 }
 
-function updateLeg(index, field, value) {
-  const updated = [...exitLegs]
-  updated[index][field] = value
-  setExitLegs(updated)
-}
-  function addLeg() {
-    setExitLegs([...exitLegs, { price: '', time: '' }])
-  }
-  function removeLeg(index) {
-    setExitLegs(exitLegs.filter((_, i) => i !== index))
-  }
-
 async function handleSubmit(e) {
   e.preventDefault()
   if (!strategyId) {
@@ -129,9 +115,8 @@ async function handleSubmit(e) {
     entry: parseFloat(form.entry.value),
     stop: parseFloat(form.stop.value),
     target: form.target.value ? parseFloat(form.target.value) : null,
-    multi_exit: multiExit,
-    exit_price: multiExit ? null : (form.exit_price.value ? parseFloat(form.exit_price.value) : null),
-    exit_time: multiExit ? null : (form.exit_time.value || null),
+    exit_price: form.exit_price.value ? parseFloat(form.exit_price.value) : null,
+    exit_time: form.exit_time.value || null,
     r_multiple: parseFloat(form.r_multiple.value),
     in_plan: form.in_plan.value === 'yes',
     reasoning: form.reasoning.value.trim(),
@@ -140,21 +125,12 @@ async function handleSubmit(e) {
     screenshot_url,
   }
 
-  const { data: insertedTrade, error } = await supabase.from('trades').insert([newTrade]).select().single()
+  const { error } = await supabase.from('trades').insert([newTrade])
 
   if (error) {
     alert('Could not save trade: ' + error.message)
     setSaving(false)
     return
-  }
-
-  if (multiExit) {
-    const legsToInsert = exitLegs
-    .filter((l) => l.price && l.time)
-    .map((l) => ({ trade_id: insertedTrade.id, exit_price: parseFloat(l.price), exit_time: l.time }))
-    if (legsToInsert.length > 0) {
-      await supabase.from('exit_legs').insert(legsToInsert)
-    }
   }
 
   router.push(`/app/${symbol}/log`)
@@ -199,36 +175,7 @@ return (
 <input name="target" type="number" step="0.01" />
   </div>
 
-<div className="field full">
-  <label className="checkbox-label">
-  <input type="checkbox" checked={multiExit} onChange={(e) => setMultiExit(e.target.checked)} />
-Multiple exits?
-  </label>
-  </div>
-
-{multiExit ? (
-  <div className="field full">
-  <label>Exit legs</label>
-{exitLegs.map((leg, i) => (
-  <div key={i} className="exit-leg-row">
-  <input
-              type="number" step="0.01" placeholder="Exit price"
- value={leg.price} onChange={(e) => updateLeg(i, 'price', e.target.value)}
- />
-  <input
- type="time" step="1"
- value={leg.time} onChange={(e) => updateLeg(i, 'time', e.target.value)}
-/>
-{exitLegs.length > 1 && (
-  <span className="del" onClick={() => removeLeg(i)}>remove</span>
-)}
-</div>
-))}
-<span className="del" style={{ color: 'var(--accent)' }} onClick={addLeg}>+ add another exit leg</span>
-  </div>
-) : (
-  <>
-  <div className="field wide">
+<div className="field wide">
   <label>Exit price</label>
 <input name="exit_price" type="number" step="0.01" />
   </div>
@@ -236,8 +183,6 @@ Multiple exits?
   <label>Exit time</label>
 <input name="exit_time" type="time" step="1" />
   </div>
-  </>
-  )}
 
 <div className="field wide">
     <label>R multiple result</label>

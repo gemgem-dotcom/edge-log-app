@@ -1,0 +1,93 @@
+# Run a command
+#
+# A stand-in for a terminal. Open the Actions tab, choose "Run a command"
+# in the left-hand list, pick something from the dropdown and click "Run
+# workflow", then read the log.
+#
+# Everything runs on a throwaway machine that is destroyed when the run
+# finishes, using placeholder Supabase values. Nothing here can reach the
+# live site or the real database.
+#
+# The list of commands is fixed on purpose. A workflow that ran whatever
+# text it was handed would become a security hole if this repository's
+# access ever changed.
+#
+# There is no lint option yet because the project has no ESLint config and
+# no lint script in package.json. Adding those is a separate job.
+
+name: Run a command
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'What to run'
+        required: true
+        default: build
+        type: choice
+        options:
+          - build
+          - list-dependencies
+          - check-outdated
+          - check-vulnerabilities
+          - write-lockfile
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-value
+      SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-value
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Say what was chosen
+        run: echo "Running: ${{ github.event.inputs.command }} on branch $GITHUB_REF_NAME"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Production build
+        if: github.event.inputs.command == 'build'
+        run: npm run build
+
+      - name: List installed dependencies
+        if: github.event.inputs.command == 'list-dependencies'
+        run: npm ls --depth=1 || true
+
+      - name: Check for outdated packages
+        if: github.event.inputs.command == 'check-outdated'
+        run: npm outdated || echo 'Nothing is outdated.'
+
+      - name: Check for known vulnerabilities
+        if: github.event.inputs.command == 'check-vulnerabilities'
+        run: npm audit || true
+
+      - name: Write package-lock.json back to this branch
+        if: github.event.inputs.command == 'write-lockfile'
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            echo 'Refusing to push to main. Re-run this on a branch instead.'
+            exit 1
+          fi
+          if [ -z "$(git status --porcelain package-lock.json)" ]; then
+            echo 'package-lock.json is already committed and unchanged.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'Add package-lock.json so every build uses identical dependency versions'
+          git push

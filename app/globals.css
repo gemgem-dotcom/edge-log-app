@@ -645,3 +645,5 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
     .calendar-cell-weekly{display:none;}
     .calendar-day-subpnl{display:none;}
 }
+
+.calendar-nav-btn svg{width:18px; height:18px; flex-shrink:0;}

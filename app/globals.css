@@ -254,13 +254,6 @@ table{min-width:640px;}
 /* ---------- Misc form helpers ---------- */
 .inline-form{display:flex; gap:10px;}
 .inline-form input{flex:1;}
-.checkbox-label{
-  display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text);
-  text-transform:none; letter-spacing:0; cursor:pointer;
-}
-.checkbox-label input{width:auto;}
-.exit-leg-row{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
-.exit-leg-row input{flex:1;}
 .clickable-row{cursor:pointer;}
 .clickable-row:hover td{background:var(--panel-2);}
 

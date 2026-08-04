@@ -57,11 +57,9 @@ create table trades (
   entry numeric not null,
   stop numeric not null,
   target numeric,                 -- planned TP price
-  exit_price numeric,              -- single-exit trades
+  exit_price numeric,
   exit_time time,
 
-  -- Multi-exit support
-  multi_exit boolean default false,
   r_multiple numeric not null,
 
   -- Behavioral: drives discipline stats, not used to locate the setup
@@ -84,23 +82,6 @@ create policy "Users manage their own trades"
 
 create index trades_user_instrument_idx on trades(user_id, instrument_id);
 create index trades_strategy_idx on trades(strategy_id);
-
--- ---------- EXIT LEGS ----------
--- Only populated when a trade has multi_exit = true.
-create table exit_legs (
-  id uuid default gen_random_uuid() primary key,
-  trade_id uuid references trades(id) on delete cascade not null,
-  exit_price numeric not null,
-  exit_time time not null,
-  created_at timestamptz default now()
-);
-
-alter table exit_legs enable row level security;
-
-create policy "Users manage exit legs on their own trades"
-  on exit_legs for all
-  using (exists (select 1 from trades where trades.id = exit_legs.trade_id and trades.user_id = auth.uid()))
-  with check (exists (select 1 from trades where trades.id = exit_legs.trade_id and trades.user_id = auth.uid()));
 
 -- ---------- LOGIN EVENTS ----------
 -- A lightweight sign-in history log, inserted from the login page on

@@ -1,6 +1,6 @@
 # EdgeLog — Setup Guide (v1)
 
-This version adds accounts, multiple instruments, per-instrument strategies, and multi-exit trades.
+This version adds accounts, multiple instruments, and per-instrument strategies.
 If you're upgrading from the earlier single-page version, **this replaces that schema** — see step 1.
 
 Before changing the code, read `NOTES.md` — it covers the branch/pull-request
@@ -15,7 +15,7 @@ drop table if exists trades cascade;
 ```
 
 Then paste in the entire contents of `schema.sql` (included in this project) and run it. This creates
-four tables — `instruments`, `strategies`, `trades`, `exit_legs` — each with Row Level Security enabled,
+three tables — `instruments`, `strategies`, `trades` — each with Row Level Security enabled,
 so every user can only ever see and edit their own data.
 
 ## 2. Confirm email auth is on
@@ -69,8 +69,7 @@ Same as before: push to GitHub, import into Vercel, add the three environment va
 - **Strategy Manager** — add, rename, archive strategies per instrument
 - **Per-strategy dashboard** — win rate, avg R, expectancy, avg time in trade, per strategy
 - **Trade log with strategy tabs** — logs never mix across strategies
-- **Trade detail page** — full technical fields, exit legs, screenshot, reasoning
-- **Multi-exit trades** — log multiple exit legs (price + exact time) per trade
+- **Trade detail page** — full technical fields, screenshot, reasoning
 - **Seconds-precision timestamps** — entry/exit time inputs now support HH:MM:SS
 
 ## Known limitation to test on your device

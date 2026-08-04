@@ -18,8 +18,6 @@ const [loading, setLoading] = useState(true)
   const [newStrategyName, setNewStrategyName] = useState('')
 
 const [direction, setDirection] = useState('long')
-  const [multiExit, setMultiExit] = useState(false)
-  const [exitLegs, setExitLegs] = useState([{ price: '', time: '' }])
   const [screenshotFile, setScreenshotFile] = useState(null)
   const [existingScreenshotUrl, setExistingScreenshotUrl] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -36,7 +34,6 @@ async function loadAll() {
   setInstrumentId(t.instrument_id)
   setStrategyId(t.strategy_id || '')
   setDirection(t.direction)
-  setMultiExit(t.multi_exit)
   setExistingScreenshotUrl(t.screenshot_url)
 
   const { data: stratData } = await supabase
@@ -46,17 +43,6 @@ async function loadAll() {
   .eq('archived', false)
   .order('created_at', { ascending: true })
   setStrategies(stratData || [])
-
-  if (t.multi_exit) {
-    const { data: legs } = await supabase
-    .from('exit_legs')
-    .select('*')
-    .eq('trade_id', tradeId)
-    .order('exit_time', { ascending: true })
-    if (legs && legs.length > 0) {
-      setExitLegs(legs.map((l) => ({ price: String(l.exit_price), time: l.exit_time })))
-    }
-  }
 
   setLoading(false)
 }
@@ -85,18 +71,6 @@ async function handleAddStrategy(e) {
     alert(error.message)
   }
 }
-
-function updateLeg(index, field, value) {
-  const updated = [...exitLegs]
-  updated[index][field] = value
-  setExitLegs(updated)
-}
-  function addLeg() {
-    setExitLegs([...exitLegs, { price: '', time: '' }])
-  }
-  function removeLeg(index) {
-    setExitLegs(exitLegs.filter((_, i) => i !== index))
-  }
 
 async function handleSubmit(e) {
   e.preventDefault()
@@ -129,9 +103,8 @@ async function handleSubmit(e) {
     entry: parseFloat(form.entry.value),
     stop: parseFloat(form.stop.value),
     target: form.target.value ? parseFloat(form.target.value) : null,
-    multi_exit: multiExit,
-    exit_price: multiExit ? null : (form.exit_price.value ? parseFloat(form.exit_price.value) : null),
-    exit_time: multiExit ? null : (form.exit_time.value || null),
+    exit_price: form.exit_price.value ? parseFloat(form.exit_price.value) : null,
+    exit_time: form.exit_time.value || null,
     r_multiple: parseFloat(form.r_multiple.value),
     in_plan: form.in_plan.value === 'yes',
     reasoning: form.reasoning.value.trim(),
@@ -146,16 +119,6 @@ async function handleSubmit(e) {
     alert('Could not save trade: ' + error.message)
     setSaving(false)
     return
-  }
-
-  await supabase.from('exit_legs').delete().eq('trade_id', tradeId)
-  if (multiExit) {
-    const legsToInsert = exitLegs
-    .filter((l) => l.price && l.time)
-    .map((l) => ({ trade_id: tradeId, exit_price: parseFloat(l.price), exit_time: l.time }))
-    if (legsToInsert.length > 0) {
-      await supabase.from('exit_legs').insert(legsToInsert)
-    }
   }
 
   router.push(`/app/${symbol}/log`)
@@ -210,35 +173,6 @@ if (loading) return <div className="page-loading">Loading…</div>
 <input name="target" type="number" step="0.01" defaultValue={trade.target ?? ''} />
   </div>
 
-<div className="field full">
-  <label className="checkbox-label">
-  <input type="checkbox" checked={multiExit} onChange={(e) => setMultiExit(e.target.checked)} />
-Multiple exits?
-  </label>
-  </div>
-
-{multiExit ? (
-  <div className="field full">
-  <label>Exit legs</label>
-{exitLegs.map((leg, i) => (
-<div key={i} className="exit-leg-row">
-  <input
-              type="number" step="0.01" placeholder="Exit price"
- value={leg.price} onChange={(e) => updateLeg(i, 'price', e.target.value)}
- />
-  <input
- type="time" step="1"
- value={leg.time} onChange={(e) => updateLeg(i, 'time', e.target.value)}
-/>
-{exitLegs.length > 1 && (
-  <span className="del" onClick={() => removeLeg(i)}>remove</span>
-)}
-</div>
-))}
-<span className="del" style={{ color: 'var(--accent)' }} onClick={addLeg}>+ add another exit leg</span>
-  </div>
-) : (
-  <>
 <div className="field wide">
   <label>Exit price</label>
 <input name="exit_price" type="number" step="0.01" defaultValue={trade.exit_price ?? ''} />
@@ -247,8 +181,6 @@ Multiple exits?
   <label>Exit time</label>
 <input name="exit_time" type="time" step="1" defaultValue={trade.exit_time ?? ''} />
   </div>
-  </>
-)}
 
 <div className="field wide">
   <label>R multiple result</label>

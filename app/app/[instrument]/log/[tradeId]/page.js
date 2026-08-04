@@ -12,7 +12,6 @@ export default function TradeDetailPage({ params }) {
   const [loading, setLoading] = useState(true)
   const [trade, setTrade] = useState(null)
   const [strategyName, setStrategyName] = useState('')
-  const [exitLegs, setExitLegs] = useState([])
   const [previewUrl, setPreviewUrl] = useState(null)
 
   useEffect(() => {
@@ -28,14 +27,6 @@ export default function TradeDetailPage({ params }) {
     const { data: s } = await supabase.from('strategies').select('name').eq('id', t.strategy_id).single()
     setStrategyName(s?.name || '—')
 
-    if (t.multi_exit) {
-      const { data: legs } = await supabase
-        .from('exit_legs')
-        .select('*')
-        .eq('trade_id', tradeId)
-        .order('exit_time', { ascending: true })
-      setExitLegs(legs || [])
-    }
     setLoading(false)
   }
 
@@ -65,28 +56,10 @@ export default function TradeDetailPage({ params }) {
           <div><label>Entry price</label><div>{trade.entry}</div></div>
           <div><label>Stop price</label><div>{trade.stop}</div></div>
           <div><label>Target (TP)</label><div>{trade.target ?? '—'}</div></div>
-          {!trade.multi_exit && (
-            <>
-              <div><label>Exit price</label><div>{trade.exit_price ?? '—'}</div></div>
-              <div><label>Exit time</label><div>{trade.exit_time ?? '—'}</div></div>
-            </>
-          )}
+          <div><label>Exit price</label><div>{trade.exit_price ?? '—'}</div></div>
+          <div><label>Exit time</label><div>{trade.exit_time ?? '—'}</div></div>
           <div><label>Result</label><div><span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple}R</span></div></div>
         </div>
-
-        {trade.multi_exit && (
-          <>
-            <div className="section-label" style={{ marginTop: '18px' }}>Exit legs</div>
-            <table>
-              <thead><tr><th>#</th><th>Exit price</th><th>Exit time</th></tr></thead>
-              <tbody>
-                {exitLegs.map((leg, i) => (
-                  <tr key={leg.id}><td>{i + 1}</td><td>{leg.exit_price}</td><td>{leg.exit_time}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
       </div>
 
       <div className="panel">

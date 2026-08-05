@@ -4,13 +4,17 @@ import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '../../../../lib/supabaseClient'
 import { strategyColor } from '../../../../lib/strategyColor'
+import { hasResult } from '../../../../lib/tradeMath'
 import TradeLogTable from '../../../../components/TradeLogTable'
 import WinRateGauge from '../../../../components/WinRateGauge'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
 
-function computeStats(trades) {
+function computeStats(allTrades) {
+  // Open trades (no exit price, so no R yet) can't be scored — leaving them
+  // in would count them as breakeven and drag every average down.
+  const trades = allTrades.filter(hasResult)
   const n = trades.length
   if (n === 0) return { n, winRate: null, avgR: null, expectancy: null, totalPnl: null, profitFactor: null }
 
@@ -35,7 +39,8 @@ function hasDollar(t) {
   return t.pnl !== null && t.pnl !== undefined
 }
 
-function computeMonthStats(trades) {
+function computeMonthStats(allTrades) {
+  const trades = allTrades.filter(hasResult)
   const n = trades.length
   if (n === 0) return { n, winRate: null, avgR: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, breakeven: 0, losses: 0 }
 
@@ -92,12 +97,13 @@ function buildCalendarWeeks(year, month, tradesByDate) {
     const dateStr = toDateStr(y, m, d)
     const dayTrades = tradesByDate[dateStr] || []
       const withD = dayTrades.filter(hasDollar)
+      const closed = dayTrades.filter(hasResult)
     return {
       dateStr,
       dayNum: d,
       outside,
       count: dayTrades.length,
-      sumR: dayTrades.reduce((s, t) => s + t.r_multiple, 0),
+      sumR: closed.reduce((s, t) => s + t.r_multiple, 0),
       sumD: withD.reduce((s, t) => s + t.pnl, 0),
       hasD: withD.length > 0,
     }

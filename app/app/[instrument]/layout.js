@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
     LayoutGrid, TrendingUp, List, Lightbulb,
@@ -9,6 +9,7 @@ Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
     import { supabase } from '../../../lib/supabaseClient'
 import { strategyColor } from '../../../lib/strategyColor'
 import { INSTRUMENT_CATALOG, catalogEntryFor } from '../../../lib/instrumentCatalog'
+import { useClickOutside } from '../../../lib/useClickOutside'
 
 export default function InstrumentLayout({ children, params }) {
     const router = useRouter()
@@ -18,6 +19,11 @@ export default function InstrumentLayout({ children, params }) {
     const [strategies, setStrategies] = useState([])
     const [currentInstrumentId, setCurrentInstrumentId] = useState(null)
     const [switcherOpen, setSwitcherOpen] = useState(false)
+    const closeSwitcher = useCallback(() => {
+                setSwitcherOpen(false)
+                setAddingInstrument(false)
+    }, [])
+    const switcherRef = useClickOutside(switcherOpen, closeSwitcher)
     const [strategiesExpanded, setStrategiesExpanded] = useState(true)
     const [addingInstrument, setAddingInstrument] = useState(false)
     const [newSymbol, setNewSymbol] = useState('')
@@ -120,7 +126,7 @@ export default function InstrumentLayout({ children, params }) {
           <header className="shell-topbar">
             <div className="shell-logo">Edge<span>Log</span></div>
 
-            <div className="instrument-switcher">
+            <div className="instrument-switcher" ref={switcherRef}>
               <button className="instrument-btn" onClick={() => setSwitcherOpen(!switcherOpen)}>
 {currentSymbol} <ChevronDown size={14} />
   </button>

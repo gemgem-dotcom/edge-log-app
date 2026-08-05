@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../../../lib/supabaseClient'
+import { hasResult, calcRiskReward } from '../../../../../lib/tradeMath'
 
 export default function TradeDetailPage({ params }) {
   const symbol = params.instrument
@@ -39,7 +40,10 @@ export default function TradeDetailPage({ params }) {
   if (loading) return <div className="page-loading">Loading…</div>
   if (!trade) return <div className="page-container"><div className="empty">Trade not found.</div></div>
 
-  const rClass = trade.r_multiple > 0 ? 'r-pos' : trade.r_multiple < 0 ? 'r-neg' : 'r-zero'
+  const closed = hasResult(trade)
+  const rClass = !closed ? 'r-zero' : trade.r_multiple > 0 ? 'r-pos' : trade.r_multiple < 0 ? 'r-neg' : 'r-zero'
+  const shots = trade.screenshot_urls?.length ? trade.screenshot_urls : (trade.screenshot_url ? [trade.screenshot_url] : [])
+  const riskReward = calcRiskReward(trade.target_distance, trade.stop_distance)
 
   return (
     <div className="page-container">
@@ -54,11 +58,12 @@ export default function TradeDetailPage({ params }) {
           <div><label>Entry time</label><div>{trade.trade_time}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{trade.entry}</div></div>
-          <div><label>Stop price</label><div>{trade.stop}{trade.stop_distance != null ? ` (${trade.stop_distance} ${trade.distance_unit || 'points'})` : ''}</div></div>
-          <div><label>Target (TP)</label><div>{trade.target ?? '—'}{trade.target_distance != null ? ` (${trade.target_distance} ${trade.distance_unit || 'points'})` : ''}</div></div>
+          <div><label>Stop loss</label><div>{trade.stop}{trade.stop_distance != null ? ` (${trade.stop_distance} pts)` : ''}</div></div>
+          <div><label>Take profit</label><div>{trade.target ?? '—'}{trade.target_distance != null ? ` (${trade.target_distance} pts)` : ''}</div></div>
+          <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toFixed(2)}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price ?? '—'}</div></div>
           <div><label>Exit time</label><div>{trade.exit_time ?? '—'}</div></div>
-          <div><label>Result</label><div><span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple}R</span></div></div>
+          <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
         </div>
       </div>
 
@@ -66,13 +71,6 @@ export default function TradeDetailPage({ params }) {
         <div className="section-label">Strategy</div>
         <div className="detail-grid">
           <div><label>Model</label><div>{strategyName}</div></div>
-        </div>
-      </div>
-
-      <div className="panel">
-        <div className="section-label">Behavioral</div>
-        <div className="detail-grid">
-          <div><label>In-plan</label><div>{trade.in_plan ? 'Yes' : <span style={{ color: 'var(--loss)' }}>No — off-plan</span>}</div></div>
         </div>
       </div>
 
@@ -85,15 +83,18 @@ export default function TradeDetailPage({ params }) {
           <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Reasoning</label>
           <p style={{ marginTop: '6px', lineHeight: 1.5 }}>{trade.reasoning || '—'}</p>
         </div>
-        {trade.screenshot_url && (
-          <div style={{ marginTop: '14px' }}>
-            <img
-              src={trade.screenshot_url}
-              alt="Trade screenshot"
-              className="thumb"
-              style={{ width: '80px', height: '80px' }}
-              onClick={() => setPreviewUrl(trade.screenshot_url)}
-            />
+        {shots.length > 0 && (
+          <div className="screenshot-grid" style={{ marginTop: '14px' }}>
+            {shots.map((url, i) => (
+              <img
+                key={url}
+                src={url}
+                alt={`Trade screenshot ${i + 1}`}
+                className="thumb"
+                style={{ width: '80px', height: '80px' }}
+                onClick={() => setPreviewUrl(url)}
+              />
+            ))}
           </div>
         )}
       </div>

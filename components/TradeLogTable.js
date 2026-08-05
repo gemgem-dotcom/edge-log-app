@@ -3,6 +3,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+import { hasResult } from '../lib/tradeMath'
 
 function timeToMinutes(t) {
       const [h, m] = t.split(':').map(Number)
@@ -84,7 +85,9 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
          </thead>
               <tbody>
      {rows.map((t) => {
-                     const rClass = t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
+                     const closed = hasResult(t)
+                     const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
+                     const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
                      const isExpanded = expandedId === t.id
                      return (
                                        <Fragment key={t.id}>
@@ -97,7 +100,7 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
                       <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>
 {t.direction.toUpperCase()}
 </td>
-                  <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple}R</span></td>
+                  <td>{closed ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple}R</span> : <span className="r-pill r-open">Open</span>}</td>
 {showDurationColumn && <td>{fmtDuration(durationByTrade[t.id])}</td>}
                   <td className="row-actions">
                         <span className="row-actions-inner">
@@ -125,11 +128,10 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
                       <div className="detail-grid" style={{ padding: '16px 4px' }}>
                         <div><label>Entry time</label><div>{t.trade_time}</div></div>
                         <div><label>Entry price</label><div>{t.entry}</div></div>
-                        <div><label>Stop price</label><div>{t.stop}{t.stop_distance != null ? ` (${t.stop_distance} ${t.distance_unit || 'points'})` : ''}</div></div>
-                        <div><label>Target (TP)</label><div>{t.target ?? '—'}{t.target_distance != null ? ` (${t.target_distance} ${t.distance_unit || 'points'})` : ''}</div></div>
+                        <div><label>Stop loss</label><div>{t.stop}{t.stop_distance != null ? ` (${t.stop_distance} pts)` : ''}</div></div>
+                        <div><label>Take profit</label><div>{t.target ?? '—'}{t.target_distance != null ? ` (${t.target_distance} pts)` : ''}</div></div>
                         <div><label>Exit price</label><div>{t.exit_price ?? '—'}</div></div>
                         <div><label>Exit time</label><div>{t.exit_time ?? '—'}</div></div>
-                        <div><label>In-plan</label><div>{t.in_plan ? 'Yes' : 'No — off-plan'}</div></div>
                         <div><label>Contracts</label><div>{t.contracts ?? '—'}</div></div>
                             </div>
 
@@ -140,15 +142,18 @@ export default function TradeLogTable({ trades, strategyNameById, showStrategyCo
     </div>
                       )}
 
-{t.screenshot_url && (
-                            <div style={{ marginTop: '12px' }}>
+{shots.length > 0 && (
+                            <div className="screenshot-grid" style={{ marginTop: '12px' }}>
+{shots.map((url, i) => (
                           <img
-                            src={t.screenshot_url}
-                            alt="Trade screenshot"
+                            key={url}
+                            src={url}
+                            alt={`Trade screenshot ${i + 1}`}
                             className="thumb"
                             style={{ width: '70px', height: '70px' }}
-                            onClick={(e) => { e.stopPropagation(); setPreviewUrl(t.screenshot_url) }}
+                            onClick={(e) => { e.stopPropagation(); setPreviewUrl(url) }}
                           />
+                                ))}
                               </div>
                       )}
 </td>

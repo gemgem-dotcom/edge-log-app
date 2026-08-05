@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical } from 'lucide-react'
 import { supabase } from '../../../../../lib/supabaseClient'
+import { hasResult } from '../../../../../lib/tradeMath'
+import { useClickOutside } from '../../../../../lib/useClickOutside'
 import TradeLogTable from '../../../../../components/TradeLogTable'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -14,15 +16,19 @@ function timeToMinutes(t) {
 }
 
 function resultOf(t) {
+  if (!hasResult(t)) return 'open'
   if (t.r_multiple > 0) return 'win'
   if (t.r_multiple < 0) return 'loss'
   return 'breakeven'
 }
 
-async function computeStrategyStats(trades) {
+async function computeStrategyStats(allTrades) {
+  // Duration is measured over every trade that has an exit time, but the R
+  // stats only make sense for trades that actually have a result.
+  const trades = allTrades.filter(hasResult)
   const n = trades.length
   if (n === 0) {
-    return { n, winRate: null, avgR: null, expectancy: null, totalPnl: null, avgDuration: null }
+    return { n, winRate: null, avgR: null, expectancy: null, totalPnl: null, avgDuration: computeAvgDuration(allTrades) }
   }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
@@ -35,7 +41,11 @@ const wins = trades.filter((t) => t.r_multiple > 0)
   const wr = wins.length / n
   const expectancy = wr * avgWin + (1 - wr) * avgLoss
 
-const durations = []
+return { n, winRate, avgR, expectancy, totalPnl, avgDuration: computeAvgDuration(allTrades) }
+}
+
+function computeAvgDuration(trades) {
+  const durations = []
   for (const t of trades) {
     if (t.exit_time) {
       let diff = timeToMinutes(t.exit_time) - timeToMinutes(t.trade_time)
@@ -43,9 +53,7 @@ const durations = []
       durations.push(diff)
     }
   }
-  const avgDuration = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null
-
-return { n, winRate, avgR, expectancy, totalPnl, avgDuration }
+  return durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null
 }
 
 function fmtR(val) {
@@ -75,6 +83,7 @@ const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState(null)
 
 const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useClickOutside(menuOpen, useCallback(() => setMenuOpen(false), []))
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [savingRename, setSavingRename] = useState(false)
@@ -160,7 +169,7 @@ return (
   <div className="page-container">
   <div className="strategy-header-row">
   <h1 className="page-title" style={{ marginBottom: 0 }}>{strategy.name}</h1>
-<div className="strategy-menu-wrap">
+<div className="strategy-menu-wrap" ref={menuRef}>
   <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
 <MoreVertical size={17} />
   </div>
@@ -238,6 +247,7 @@ return (
 <option value="win">Win</option>
 <option value="loss">Loss</option>
 <option value="breakeven">Breakeven</option>
+<option value="open">Open (no exit)</option>
   </select>
 <select value={filterDay} onChange={(e) => setFilterDay(e.target.value)}>
 <option value="all">All days</option>

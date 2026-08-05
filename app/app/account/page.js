@@ -315,14 +315,14 @@ async function handleDownloadCsv() {
 
   const headers = [
     'instrument', 'data_symbol', 'strategy', 'trade_date', 'trade_time', 'direction', 'entry', 'stop',
-    'stop_distance', 'target', 'target_distance', 'distance_unit', 'exit_price', 'exit_time', 'r_multiple', 'in_plan',
-    'contracts', 'reasoning',
+    'stop_distance', 'target', 'target_distance', 'exit_price', 'exit_time', 'r_multiple',
+    'contracts', 'pnl', 'reasoning',
     ]
   const rows = trades.map((t) => [
     t.instruments?.symbol || '', t.instruments?.data_symbol || '', t.strategies?.name || 'Unclassified', t.trade_date, t.trade_time,
-    t.direction, t.entry, t.stop, t.stop_distance ?? '', t.target ?? '', t.target_distance ?? '', t.distance_unit ?? '',
+    t.direction, t.entry, t.stop, t.stop_distance ?? '', t.target ?? '', t.target_distance ?? '',
     t.exit_price ?? '', t.exit_time ?? '',
-    t.r_multiple, t.in_plan, t.contracts ?? '',
+    t.r_multiple ?? '', t.contracts ?? '', t.pnl ?? '',
     (t.reasoning || '').replace(/"/g, '""'),
     ])
   const csv = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n')

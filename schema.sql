@@ -156,10 +156,16 @@ end $$;
 alter table instruments add column if not exists data_symbol text;
 update instruments set data_symbol = symbol where data_symbol is null;
 
--- Stop/target are entered in the UI as a distance (points/ticks) from
--- entry; `stop`/`target` keep storing the absolute price as before (used
--- for R-multiple math and future market-data matching), while these new
--- columns keep the raw distance the trader typed and which unit it was in.
+-- Stop/target are entered in the UI as a distance in points from entry;
+-- `stop`/`target` keep storing the absolute price as before (used for
+-- R-multiple math and future market-data matching), while these columns
+-- keep the raw distance the trader typed.
+--
+-- distance_unit is vestigial: the platform now treats a "point" as a raw
+-- decimal price difference for every instrument, with no per-instrument
+-- tick multiplier and no unit picker on the form, so every row is
+-- 'points'. Kept (rather than dropped) because the column may already
+-- exist, and it is harmless.
 alter table trades add column if not exists stop_distance numeric;
 alter table trades add column if not exists target_distance numeric;
 alter table trades add column if not exists distance_unit text default 'points';
@@ -168,3 +174,17 @@ alter table trades add column if not exists distance_unit text default 'points';
 -- editing an old trade shows a sensible distance instead of blank.
 update trades set stop_distance = abs(stop - entry) where stop_distance is null;
 update trades set target_distance = abs(target - entry) where target_distance is null and target is not null;
+
+-- Exit price/time moved to the optional "Trade Execution" section of the
+-- logging form, so a trade can now be saved before it has been closed.
+-- r_multiple is derived from the exit price, which means an open trade has
+-- no R yet and the column has to accept null. Stats treat null as "no
+-- result" and exclude the trade rather than scoring it as breakeven.
+alter table trades alter column r_multiple drop not null;
+
+-- Screenshots went from one image per trade to many. screenshot_url is
+-- kept so older trades keep rendering; new writes populate the array.
+alter table trades add column if not exists screenshot_urls text[];
+update trades
+  set screenshot_urls = array[screenshot_url]
+  where screenshot_urls is null and screenshot_url is not null;

@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical } from 'lucide-react'
-import { supabase } from '../../../../../lib/supabaseClient'
-import { hasResult } from '../../../../../lib/tradeMath'
-import { useClickOutside } from '../../../../../lib/useClickOutside'
-import TradeLogTable from '../../../../../components/TradeLogTable'
+import { supabase } from '@/lib/supabaseClient'
+import { hasResult } from '@/lib/tradeMath'
+import { useClickOutside } from '@/lib/useClickOutside'
+import TradeLogTable from '@/components/TradeLogTable'
 
 function timeToMinutes(t) {
   const [h, m] = t.split(':').map(Number)

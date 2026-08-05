@@ -6,10 +6,10 @@ import {
     LayoutGrid, TrendingUp, List, Lightbulb,
 Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
-    import { supabase } from '../../../lib/supabaseClient'
-import { strategyColor } from '../../../lib/strategyColor'
-import { INSTRUMENT_CATALOG, catalogEntryFor } from '../../../lib/instrumentCatalog'
-import { useClickOutside } from '../../../lib/useClickOutside'
+    import { supabase } from '@/lib/supabaseClient'
+import { strategyColor } from '@/lib/strategyColor'
+import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
+import { useClickOutside } from '@/lib/useClickOutside'
 
 export default function InstrumentLayout({ children, params }) {
     const router = useRouter()

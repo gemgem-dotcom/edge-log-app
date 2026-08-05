@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '../../../../../../lib/supabaseClient'
-import { uploadScreenshots } from '../../../../../../lib/screenshots'
-import TradeForm from '../../../../../../components/TradeForm'
+import { supabase } from '@/lib/supabaseClient'
+import { uploadScreenshots } from '@/lib/screenshots'
+import TradeForm from '@/components/TradeForm'
 
 export default function EditTradePage({ params }) {
   const symbol = params.instrument

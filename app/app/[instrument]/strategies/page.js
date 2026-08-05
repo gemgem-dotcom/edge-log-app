@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../../lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function StrategiesPage({ params }) {
   const symbol = params.instrument

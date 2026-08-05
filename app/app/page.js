@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '../../lib/supabaseClient'
-import { INSTRUMENT_CATALOG, catalogEntryFor } from '../../lib/instrumentCatalog'
+import { supabase } from '@/lib/supabaseClient'
+import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
 
 export default function AppHome() {
   const router = useRouter()

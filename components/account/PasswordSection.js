@@ -7,7 +7,7 @@ import { validatePassword } from '@/lib/validatePassword'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and fields — no .panel wrapper of its own.
-export default function PasswordSection({ email }) {
+export default function PasswordSection({ email, hasPassword }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -22,8 +22,12 @@ export default function PasswordSection({ email }) {
     setPasswordError('')
     setPasswordSuccess('')
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (hasPassword && (!currentPassword || !newPassword || !confirmPassword)) {
       setPasswordError('Fill in all three password fields.')
+      return
+    }
+    if (!hasPassword && (!newPassword || !confirmPassword)) {
+      setPasswordError('Fill in both password fields.')
       return
     }
     const passwordRuleError = validatePassword(newPassword)
@@ -38,15 +42,20 @@ export default function PasswordSection({ email }) {
 
     setPasswordSaving(true)
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: currentPassword,
-    })
+    // Google-only accounts have no password to re-check, and the user is
+    // already authenticated via their current session - go straight to
+    // setting one. Email/password accounts still re-confirm first.
+    if (hasPassword) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      })
 
-    if (signInError) {
-      setPasswordError('Current password is incorrect.')
-      setPasswordSaving(false)
-      return
+      if (signInError) {
+        setPasswordError('Current password is incorrect.')
+        setPasswordSaving(false)
+        return
+      }
     }
 
     const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
@@ -58,7 +67,7 @@ export default function PasswordSection({ email }) {
       return
     }
 
-    setPasswordSuccess('Password updated.')
+    setPasswordSuccess(hasPassword ? 'Password updated.' : 'Password set. You can now log in with your email and this password, or continue using Google.')
     setCurrentPassword('')
     setNewPassword('')
     setConfirmPassword('')
@@ -66,22 +75,29 @@ export default function PasswordSection({ email }) {
 
   return (
     <>
-      <div className="panel-title">Password</div>
+      <div className="panel-title">{hasPassword ? 'Password' : 'Set a password'}</div>
+      {!hasPassword && (
+        <p className="onboard-note">
+          You signed in with Google, so there's no password on this account yet. Set one below to also be able to log in with your email.
+        </p>
+      )}
       <form onSubmit={(e) => e.preventDefault()}>
-        <div className="field wide">
-          <label>Current password</label>
-          <div className="password-field">
-            <input
-              type={showCurrent ? 'text' : 'password'}
-              placeholder="Enter current password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-            />
-            <button type="button" className="eye-btn" onClick={() => setShowCurrent(!showCurrent)}>
-              {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+        {hasPassword && (
+          <div className="field wide">
+            <label>Current password</label>
+            <div className="password-field">
+              <input
+                type={showCurrent ? 'text' : 'password'}
+                placeholder="Enter current password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+              <button type="button" className="eye-btn" onClick={() => setShowCurrent(!showCurrent)}>
+                {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
         <div className="field wide">
           <label>New password</label>
           <div className="password-field">
@@ -118,7 +134,7 @@ export default function PasswordSection({ email }) {
 
         <div className="submit-row">
           <button type="button" onClick={handleUpdatePassword} disabled={passwordSaving}>
-            {passwordSaving ? 'Updating...' : 'Update password'}
+            {passwordSaving ? (hasPassword ? 'Updating...' : 'Setting...') : (hasPassword ? 'Update password' : 'Set password')}
           </button>
         </div>
       </form>

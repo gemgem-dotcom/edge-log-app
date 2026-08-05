@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -13,6 +13,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+// If app/auth/callback/page.js sent us back here after a failed Google
+// sign-in, it's on the URL as ?error=oauth&message=... - show it the same
+// way a failed password attempt would be shown.
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('error')) {
+    setError(params.get('message') || 'Something went wrong signing in with Google. Please try again.')
+  }
+}, [])
 
 // Two-factor step - only shown if the account has 2FA enabled
 const [step, setStep] = useState('password') // 'password' | 'mfa'

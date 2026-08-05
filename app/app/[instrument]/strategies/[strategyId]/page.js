@@ -4,14 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult } from '@/lib/tradeMath'
+import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
 import TradeLogTable from '@/components/TradeLogTable'
-
-function timeToMinutes(t) {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
 
 async function computeStrategyStats(allTrades) {
   // Duration is measured over every trade that has an exit time, but the R
@@ -36,14 +31,7 @@ return { n, winRate, avgR, expectancy, totalPnl, avgDuration: computeAvgDuration
 }
 
 function computeAvgDuration(trades) {
-  const durations = []
-  for (const t of trades) {
-    if (t.exit_time) {
-      let diff = timeToMinutes(t.exit_time) - timeToMinutes(t.trade_time)
-      if (diff < 0) diff += 24 * 60
-      durations.push(diff)
-    }
-  }
+  const durations = trades.map(tradeDurationMinutes).filter((d) => d !== null)
   return durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null
 }
 
@@ -55,14 +43,6 @@ function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
   return val > 0 ? 'pos' : val < 0 ? 'neg' : 'neu'
 }
-function fmtDuration(mins) {
-  if (mins === null) return '—'
-  if (mins < 60) return `${mins}m`
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return `${h}h ${m}m`
-}
-
 export default function StrategyDetailPage({ params }) {
   const symbol = params.instrument
   const strategyId = params.strategyId
@@ -79,6 +59,7 @@ const [menuOpen, setMenuOpen] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [savingRename, setSavingRename] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
 useEffect(() => {
   loadData()
@@ -123,11 +104,6 @@ async function handleRename(e) {
 }
 
 async function handleDeleteStrategy() {
-  setMenuOpen(false)
-  const ok = confirm(
-    `Delete "${strategy.name}"? Trades logged under this strategy will NOT be deleted — they'll be reclassified as Unclassified in the trade log and won't count toward any stats until reassigned to a strategy. This cannot be undone.`
-    )
-  if (!ok) return
   setDeleting(true)
   await supabase.from('trades').update({ strategy_id: null }).eq('strategy_id', strategyId)
   const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
@@ -153,8 +129,8 @@ return (
 {menuOpen && (
   <div className="strategy-menu-dropdown">
   <div className="strategy-menu-item" onClick={openRename}>Rename strategy</div>
- <div className="strategy-menu-item strategy-menu-item-danger" onClick={handleDeleteStrategy}>
-{deleting ? 'Deleting…' : 'Delete strategy'}
+ <div className="strategy-menu-item strategy-menu-item-danger" onClick={() => { setMenuOpen(false); setShowDeleteModal(true) }}>
+Delete strategy
 </div>
   </div>
 )}
@@ -170,7 +146,7 @@ return (
  onChange={(e) => setRenameValue(e.target.value)}
  />
    <button type="submit" disabled={savingRename}>{savingRename ? 'Saving…' : 'Save'}</button>
-<span className="del" onClick={() => setRenaming(false)}>cancel</span>
+<span className="del" onClick={() => setRenaming(false)}>Cancel</span>
   </form>
 )}
 
@@ -195,12 +171,12 @@ return (
 <div className={`stat-value ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
   </div>
 <div className="stat">
-  <div className="stat-label">PnL (R)</div>
+  <div className="stat-label">P&amp;L (R)</div>
 <div className={`stat-value ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
   </div>
 <div className="stat">
   <div className="stat-label">Avg trade duration</div>
-<div className="stat-value neu">{fmtDuration(stats.avgDuration)}</div>
+<div className="stat-value neu">{formatDuration(stats.avgDuration)}</div>
   </div>
 <div className="stat">
   <div className="stat-label">Avg MFE</div>
@@ -214,8 +190,23 @@ return (
 
 <div className="section-heading">Trade log — {strategy.name}</div>
 <div className="panel">
-  <TradeLogTable trades={trades} showStrategyColumn={false} showDurationColumn={true} showFilters={true} symbol={symbol} />
+  <TradeLogTable trades={trades} showStrategyColumn={false} showFilters={true} symbol={symbol} />
   </div>
+
+{showDeleteModal && (
+  <div className="confirm-modal-overlay" onClick={() => setShowDeleteModal(false)}>
+  <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+  <h2>Delete &quot;{strategy.name}&quot;?</h2>
+  <p>This will remove the strategy only. Any trades assigned to it will be reclassified as Unassigned and won&apos;t contribute to your statistics until reassigned to a strategy.</p>
+  <div className="submit-row">
+  <button type="button" className="btn-accent-outline" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+  <button type="button" className="btn-danger-outline" onClick={handleDeleteStrategy} disabled={deleting}>
+{deleting ? 'Deleting…' : 'Delete strategy'}
+</button>
+  </div>
+  </div>
+  </div>
+)}
   </div>
 )
 }

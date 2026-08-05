@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult, calcRiskReward } from '@/lib/tradeMath'
+import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 
 export default function TradeDetailPage({ params }) {
   const symbol = params.instrument
@@ -62,7 +62,10 @@ export default function TradeDetailPage({ params }) {
           <div><label>Take profit</label><div>{trade.target ?? '—'}{trade.target_distance != null ? ` (${trade.target_distance} pts)` : ''}</div></div>
           <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toFixed(2)}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price ?? '—'}</div></div>
-          <div><label>Exit time</label><div>{trade.exit_time ?? '—'}</div></div>
+          <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(trade))}</div></div>
+          {/* No data source until Phase 2 captures excursions. */}
+          <div><label>MFE</label><div>—</div></div>
+          <div><label>MAE</label><div>—</div></div>
           <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
         </div>
       </div>

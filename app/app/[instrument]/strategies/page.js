@@ -122,7 +122,7 @@ export default function StrategiesPage({ params }) {
                     {editingId === s.id ? (
                       <>
                         <span className="del" onClick={() => handleRename(s.id)}>save</span>
-                        <span className="del" onClick={() => setEditingId(null)}>cancel</span>
+                        <span className="del" onClick={() => setEditingId(null)}>Cancel</span>
                       </>
                     ) : (
                       <>

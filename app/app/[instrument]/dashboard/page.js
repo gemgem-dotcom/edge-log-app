@@ -221,7 +221,7 @@ return (
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">
-  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unclassified</span> — not counted below until reassigned. <a href={`/app/${symbol}/log?strategy=unclassified`}>View in Trades log</a>
+  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unassigned</span> — not counted below until reassigned. <a href={`/app/${symbol}/log?strategy=unclassified`}>View in Trades log</a>
     </p>
    )}
 
@@ -248,7 +248,7 @@ return (
 <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
   </div>
 <div className="stat">
-  <div className="stat-label">Total PnL</div>
+  <div className="stat-label">Total P&amp;L</div>
 <div className={`stat-value ${colorClass(overall.totalPnl)}`}>{fmtR(overall.totalPnl)}</div>
   </div>
   </div>
@@ -262,7 +262,7 @@ return (
   <thead>
   <tr>
   <th>Strategy</th><th>Trades</th><th>Win rate</th><th>Avg R</th>
-  <th>Expectancy</th><th>Total PnL</th><th>Profit factor</th>
+  <th>Expectancy</th><th>Total P&amp;L</th><th>Profit factor</th>
   </tr>
   </thead>
 <tbody>

@@ -3,7 +3,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { Pencil, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
-import { hasResult } from '../lib/tradeMath'
+import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
 import ColumnFilter from './ColumnFilter'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
@@ -13,19 +13,6 @@ const UNCLASSIFIED = 'unclassified'
 // Full week: futures sessions open Sunday evening, and a stray Saturday date
 // should still render a day name rather than blank.
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
-function timeToMinutes(t) {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-function fmtDuration(mins) {
-  if (mins === null || mins === undefined) return '—'
-  if (mins < 60) return `${mins}m`
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return `${h}h ${m}m`
-}
 
 function fmtPnl(value) {
   if (value === null || value === undefined) return '—'
@@ -49,7 +36,6 @@ export default function TradeLogTable({
   strategies = [],
   strategyNameById,
   showStrategyColumn = false,
-  showDurationColumn = false,
   // The dashboard's calendar-day table opts out of these so it keeps the
   // exact column set it had before.
   showDayColumn = true,
@@ -60,7 +46,6 @@ export default function TradeLogTable({
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
-  const [durationByTrade, setDurationByTrade] = useState({})
 
   // Filters open from a chevron on each column heading. Day and Strategy
   // take any combination of values; an empty array means unfiltered.
@@ -72,19 +57,6 @@ export default function TradeLogTable({
   useEffect(() => {
     setRows(trades)
   }, [trades])
-
-  useEffect(() => {
-    if (!showDurationColumn) return
-    const result = {}
-    for (const t of rows) {
-      if (t.exit_time) {
-        let diff = timeToMinutes(t.exit_time) - timeToMinutes(t.trade_time)
-        if (diff < 0) diff += 24 * 60
-        result[t.id] = diff
-      }
-    }
-    setDurationByTrade(result)
-  }, [rows, showDurationColumn])
 
   // Support deep links like /log?strategy=<id> from the dashboard table.
   useEffect(() => {
@@ -131,14 +103,14 @@ export default function TradeLogTable({
   const present = (fn) => new Set(rows.map(fn))
   const dayOptions = DAY_NAMES.map((d) => ({ value: d, label: d }))
   // Every strategy the user has created, plus any a trade still points at
-  // (an archived one, say) and Unclassified when some trade has no strategy.
+  // (an archived one, say) and Unassigned when some trade has no strategy.
   const strategyKeys = [
     ...strategies.map((s) => s.id),
     ...[...present(strategyKey)].filter((key) => !strategies.some((s) => s.id === key)),
   ]
   const strategyOptions = strategyKeys.map((key) => ({
     value: key,
-    label: key === UNCLASSIFIED ? 'Unclassified' : (strategyNameById?.(key) || '—'),
+    label: key === UNCLASSIFIED ? 'Unassigned' : (strategyNameById?.(key) || '—'),
   }))
   const directionOptions = [
     { value: 'all', label: 'All' },
@@ -157,7 +129,7 @@ export default function TradeLogTable({
     })),
     ...filterStrategies.map((s) => ({
       key: `strategy-${s}`,
-      label: `Strategy: ${s === UNCLASSIFIED ? 'Unclassified' : (strategyNameById?.(s) || '—')}`,
+      label: `Strategy: ${s === UNCLASSIFIED ? 'Unassigned' : (strategyNameById?.(s) || '—')}`,
       clear: () => setFilterStrategies((prev) => prev.filter((v) => v !== s)),
     })),
     ...(filterDirection !== 'all' ? [{
@@ -181,7 +153,6 @@ export default function TradeLogTable({
     + (showDayColumn ? 1 : 0)
     + (showPnlColumn ? 1 : 0)
     + (showStrategyColumn ? 1 : 0)
-    + (showDurationColumn ? 1 : 0)
 
   return (
     <div id="tableWrap">
@@ -234,7 +205,6 @@ export default function TradeLogTable({
               )}
             </th>
             {showPnlColumn && <th>P&amp;L</th>}
-            {showDurationColumn && <th>Time in Trade</th>}
             <th className="actions-col-header"></th>
           </tr>
         </thead>
@@ -257,7 +227,7 @@ export default function TradeLogTable({
                   <td>{t.trade_date}</td>
                   {showDayColumn && <td>{dayOf(t)}</td>}
                   {showStrategyColumn && (
-                    <td>{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
+                    <td>{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unassigned</span>}</td>
                   )}
                   <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>
                     {t.direction.toUpperCase()}
@@ -270,7 +240,6 @@ export default function TradeLogTable({
                   {showPnlColumn && (
                     <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtPnl(t.pnl)}</td>
                   )}
-                  {showDurationColumn && <td>{fmtDuration(durationByTrade[t.id])}</td>}
                   <td className="row-actions">
                     <span className="row-actions-inner">
                       <a
@@ -300,8 +269,11 @@ export default function TradeLogTable({
                         <div><label>Stop loss</label><div>{t.stop}{t.stop_distance != null ? ` (${t.stop_distance} pts)` : ''}</div></div>
                         <div><label>Take profit</label><div>{t.target ?? '—'}{t.target_distance != null ? ` (${t.target_distance} pts)` : ''}</div></div>
                         <div><label>Exit price</label><div>{t.exit_price ?? '—'}</div></div>
-                        <div><label>Exit time</label><div>{t.exit_time ?? '—'}</div></div>
+                        <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(t))}</div></div>
                         <div><label>Contracts</label><div>{t.contracts ?? '—'}</div></div>
+                        {/* No data source until Phase 2 captures excursions. */}
+                        <div><label>MFE</label><div>—</div></div>
+                        <div><label>MAE</label><div>—</div></div>
                       </div>
 
                       {t.reasoning && (

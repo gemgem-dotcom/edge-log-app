@@ -175,11 +175,17 @@ alter table trades add column if not exists distance_unit text default 'points';
 update trades set stop_distance = abs(stop - entry) where stop_distance is null;
 update trades set target_distance = abs(target - entry) where target_distance is null and target is not null;
 
--- Exit price/time moved to the optional "Trade Execution" section of the
--- logging form, so a trade can now be saved before it has been closed.
--- r_multiple is derived from the exit price, which means an open trade has
--- no R yet and the column has to accept null. Stats treat null as "no
--- result" and exclude the trade rather than scoring it as breakeven.
+-- r_multiple is derived from the exit price. Exit price is mandatory on the
+-- logging form, so every trade saved through the app has an R — but the
+-- column stays nullable because rows created while exit price was briefly
+-- optional may already hold null, and re-adding the constraint would fail
+-- against them. Stats still treat null as "no result" and exclude the
+-- trade rather than scoring it as breakeven.
+--
+-- To tighten this later, first confirm there is nothing to trip over:
+--   select count(*) from trades where r_multiple is null;
+-- and only if that returns 0:
+--   alter table trades alter column r_multiple set not null;
 alter table trades alter column r_multiple drop not null;
 
 -- Screenshots went from one image per trade to many. screenshot_url is

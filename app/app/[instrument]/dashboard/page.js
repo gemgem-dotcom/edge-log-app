@@ -393,7 +393,7 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
 {selectedDate && (
   <>
   <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
-<TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} symbol={symbol} />
+<TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} />
   </>
 )}
 </div>

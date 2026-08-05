@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
-import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency } from '../lib/tradeForm'
+import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, todayDateString } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import FieldTooltip from './FieldTooltip'
 
@@ -65,7 +65,7 @@ export default function TradeForm({
 
   const [saving, setSaving] = useState(false)
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayDateString()
   const riskReward = calcRiskReward(
     parseFloat(setup.target_distance),
     parseFloat(setup.stop_distance),

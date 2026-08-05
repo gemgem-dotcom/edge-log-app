@@ -26,6 +26,7 @@ export default function AccountPage() {
   const [timezone, setTimezone] = useState('0')
   const [mfaFactors, setMfaFactors] = useState([])
   const [loginEvents, setLoginEvents] = useState([])
+  const [hasPassword, setHasPassword] = useState(true)
 
   useEffect(() => {
     loadData()
@@ -35,6 +36,12 @@ export default function AccountPage() {
     const { data: { user } } = await supabase.auth.getUser()
     setEmail(user.email)
     setFullName(user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : '')
+
+    // A Google-only account has an identity for 'google' but none for
+    // 'email', so signInWithPassword has nothing to check it against -
+    // the password-confirmation flows in PasswordSection and
+    // DangerZoneSection both branch on this.
+    setHasPassword((user.identities || []).some((identity) => identity.provider === 'email'))
 
     const savedTz = user.user_metadata?.timezone
     if (savedTz !== undefined && savedTz !== null && UTC_OFFSETS.some((o) => o.value === String(savedTz))) {
@@ -97,7 +104,7 @@ export default function AccountPage() {
 
         <div className="section-heading">Security</div>
         <div className="panel">
-          <PasswordSection email={email} />
+          <PasswordSection email={email} hasPassword={hasPassword} />
           <div className="panel-divider" />
           <TwoFactorSection initialFactors={mfaFactors} />
           <div className="panel-divider" />
@@ -106,7 +113,7 @@ export default function AccountPage() {
 
         <DataExportSection />
 
-        <DangerZoneSection email={email} />
+        <DangerZoneSection email={email} hasPassword={hasPassword} />
       </div>
     </div>
   )

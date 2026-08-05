@@ -34,7 +34,7 @@ app/
   layout.js                   root layout
   page.js                     login
   signup/, forgot-password/, reset-password/
-  auth/callback/page.js       finishes Google/Apple sign-in (client component - see below)
+  auth/callback/page.js       finishes Google sign-in (client component - see below)
   api/record-login/route.js   sign-in history (server only)
   api/delete-account/route.js deletes a user and their data (server only)
   app/page.js                 first-run instrument + strategy setup
@@ -54,7 +54,7 @@ components/
   ColumnFilter.js             chevron filter menu used by the table headers
   FieldTooltip.js             "?" tooltip beside a form label
   PageLoading.js               shared full-page loading screen (animated bars)
-  OAuthIcons.js                Google/Apple marks for the login/signup buttons
+  OAuthIcons.js                Google mark for the login/signup buttons
   WinRateGauge.js
   account/                    one component per account-settings concern
 lib/

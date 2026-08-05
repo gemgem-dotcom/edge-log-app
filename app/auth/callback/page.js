@@ -1,6 +1,6 @@
 'use client'
 
-// Google/Apple sign-in redirects the browser back here once the provider
+// Google sign-in redirects the browser back here once the provider
 // has approved the login. supabaseClient.js uses the browser-only
 // supabase-js client (no @supabase/ssr), so the PKCE code verifier it
 // stored before the redirect only exists in this browser's localStorage —

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { GoogleIcon, AppleIcon } from '@/components/OAuthIcons'
+import { GoogleIcon } from '@/components/OAuthIcons'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -142,9 +142,6 @@ required
  <div className="auth-oauth-row">
    <button type="button" className="auth-oauth-btn" onClick={() => handleOAuth('google')}>
      <GoogleIcon size={16} /> Google
-   </button>
-   <button type="button" className="auth-oauth-btn" onClick={() => handleOAuth('apple')}>
-     <AppleIcon size={16} /> Apple
    </button>
  </div>
 

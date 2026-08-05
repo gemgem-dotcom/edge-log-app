@@ -18,16 +18,16 @@
    413  Expandable trade rows
    421  Calendar
    458  Account settings page
-   546  Light theme
-   559  2FA
-   568  Account fine print
-   571  Screenshot preview (log new trade)
-   588  Auth pages always dark
-   616  Monthly P&L (calendar on Overview)
-   667  Trade form: sections, validation, currency, screenshots
-   702  Field tooltips
-   728  In-header column filters (trade log table)
-   760  Active filter chips
+   556  Light theme
+   569  2FA
+   578  Account fine print
+   581  Screenshot preview (log new trade)
+   598  Auth pages always dark
+   626  Monthly P&L (calendar on Overview)
+   677  Trade form: sections, validation, currency, screenshots
+   712  Field tooltips
+   738  In-header column filters (trade log table)
+   770  Active filter chips
    ============================================================ */
 
 :root{
@@ -492,6 +492,13 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
   padding:10px 20px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;
 }
 .btn-danger-outline:hover{background:rgba(225,92,92,.1);}
+/* Same shape as the danger button, in the accent colour — for the safe
+   choice in a confirm modal, so red is reserved for the destructive one. */
+.btn-accent-outline{
+  background:transparent; border:1px solid var(--accent); color:var(--accent);
+  padding:10px 20px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;
+}
+.btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none;}
 
 .account-msg{border-radius:7px; padding:9px 12px; font-size:12.5px; margin-top:12px;}
 .account-msg-error{background:rgba(225,92,92,.12); border:1px solid var(--loss); color:var(--loss);}
@@ -524,6 +531,9 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .unclassified-tag{color:var(--loss); font-weight:600;}
 
 .strategy-header-row{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
+/* h1 carries a global margin-top:4px, which the flex row centres along with
+   the text and leaves the menu button sitting high next to the name. */
+.strategy-header-row h1{margin-top:0;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
             background:none; border:1px solid transparent; border-radius:7px;

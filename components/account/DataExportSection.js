@@ -36,7 +36,7 @@ export default function DataExportSection() {
     }
 
     const rows = trades.map((t) => [
-      t.instruments?.symbol || '', t.instruments?.data_symbol || '', t.strategies?.name || 'Unclassified', t.trade_date, t.trade_time,
+      t.instruments?.symbol || '', t.instruments?.data_symbol || '', t.strategies?.name || 'Unassigned', t.trade_date, t.trade_time,
       t.direction, t.entry, t.stop, t.stop_distance ?? '', t.target ?? '', t.target_distance ?? '',
       t.exit_price ?? '', t.exit_time ?? '',
       t.r_multiple ?? '', t.contracts ?? '', t.pnl ?? '',

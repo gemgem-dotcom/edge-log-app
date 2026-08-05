@@ -84,7 +84,7 @@ export default function DangerZoneSection({ email }) {
             </div>
             {deleteError && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{deleteError}</div>}
             <div className="submit-row">
-              <button type="button" className="btn-danger-outline" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              <button type="button" className="btn-accent-outline" onClick={() => setShowDeleteModal(false)}>Cancel</button>
               <button type="button" className="btn-danger-outline" onClick={handleDeleteAccount} disabled={deleting}>
                 {deleting ? 'Deleting...' : 'Delete account'}
               </button>

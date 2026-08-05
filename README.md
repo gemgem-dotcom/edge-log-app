@@ -24,6 +24,27 @@ In Supabase: **Authentication → Providers** → make sure **Email** is enabled
 By default new accounts also require email confirmation — if you want to skip that while testing solo,
 go to **Authentication → Settings** and turn off "Confirm email," or just check your inbox after signing up.
 
+## 2b. Google / Apple sign-in (optional)
+
+The login and signup pages have "Continue with Google" / "Continue with Apple" buttons, but they
+won't work until you do the following **in your own accounts** — none of this can be done from the code:
+
+1. **Google**: create an OAuth client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   (type "Web application"). Add `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
+   as an authorized redirect URI. Copy the Client ID and Client Secret.
+2. **Apple**: create a Services ID and a Sign in with Apple key in the
+   [Apple Developer portal](https://developer.apple.com/account/resources/identifiers/list/serviceId).
+   Apple requires the same `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback` as the
+   return URL. This one needs a generated client secret (a signed JWT) — Supabase's
+   [Apple provider guide](https://supabase.com/docs/guides/auth/social-login/auth-apple) walks through it.
+3. In Supabase: **Authentication → Providers**, enable **Google** and **Apple**, and paste in the
+   credentials from steps 1–2.
+4. Add your production and local URLs (e.g. `http://localhost:3000/**`, `https://your-app.vercel.app/**`)
+   under **Authentication → URL Configuration → Redirect URLs**, or the provider will reject the
+   callback after sign-in.
+
+Skip all of this and the buttons will just show a Supabase error — email/password sign-in is unaffected either way.
+
 ## 3. Storage bucket (same as before — skip if already set up)
 
 **Storage** → **New bucket** → name it exactly `screenshots` → toggle **Public bucket** ON → **Create bucket**.

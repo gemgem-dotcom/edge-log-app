@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import TradeForm from '@/components/TradeForm'
+import PageLoading from '@/components/PageLoading'
 
 export default function EditTradePage({ params }) {
   const symbol = params.instrument
@@ -70,7 +71,7 @@ export default function EditTradePage({ params }) {
     router.push(`/app/${symbol}/log`)
   }
 
-  if (loading) return <div className="page-loading">Loading…</div>
+  if (loading) return <PageLoading />
   if (!trade) return <div className="page-container"><div className="empty">Trade not found.</div></div>
 
   // Trades logged before distances existed only stored absolute prices, so

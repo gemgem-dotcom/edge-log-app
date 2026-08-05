@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
 import TradeLogTable from '@/components/TradeLogTable'
+import PageLoading from '@/components/PageLoading'
 
 async function computeStrategyStats(allTrades) {
   // Duration is measured over every trade that has an exit time, but the R
@@ -115,7 +116,7 @@ async function handleDeleteStrategy() {
   window.location.href = `/app/${symbol}/dashboard`
 }
 
-if (loading) return <div className="page-loading">Loading…</div>
+if (loading) return <PageLoading />
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
 return (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import PageLoading from '@/components/PageLoading'
 
 export default function StrategiesPage({ params }) {
   const symbol = params.instrument
@@ -74,7 +75,7 @@ export default function StrategiesPage({ params }) {
     loadStrategies()
   }
 
-  if (loading) return <div className="page-loading">Loading…</div>
+  if (loading) return <PageLoading />
 
   return (
     <div className="page-container">

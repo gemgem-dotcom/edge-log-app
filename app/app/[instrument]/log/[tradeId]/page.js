@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import PageLoading from '@/components/PageLoading'
 
 export default function TradeDetailPage({ params }) {
   const symbol = params.instrument
@@ -37,7 +38,7 @@ export default function TradeDetailPage({ params }) {
     router.push(`/app/${symbol}/log`)
   }
 
-  if (loading) return <div className="page-loading">Loading…</div>
+  if (loading) return <PageLoading />
   if (!trade) return <div className="page-container"><div className="empty">Trade not found.</div></div>
 
   const closed = hasResult(trade)

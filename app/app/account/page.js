@@ -12,6 +12,7 @@ import TwoFactorSection from '@/components/account/TwoFactorSection'
 import SignInHistorySection from '@/components/account/SignInHistorySection'
 import DataExportSection from '@/components/account/DataExportSection'
 import DangerZoneSection from '@/components/account/DangerZoneSection'
+import PageLoading from '@/components/PageLoading'
 
 // Loads the account data once and hands it to the sections, each of which
 // owns the state for its own concern. Timezone is the exception: it lives
@@ -70,7 +71,7 @@ export default function AccountPage() {
     router.push('/login')
   }
 
-  if (loading) return <div className="page-loading">Loading...</div>
+  if (loading) return <PageLoading />
 
   return (
     <div>

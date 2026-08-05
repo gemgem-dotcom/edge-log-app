@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import PageLoading from '@/components/PageLoading'
 
 export default function AppLayout({ children }) {
   const router = useRouter()
@@ -31,7 +32,7 @@ export default function AppLayout({ children }) {
   }, [router])
 
   if (!checked) {
-    return <div className="page-loading">Loading…</div>
+    return <PageLoading />
   }
 
   return <>{children}</>

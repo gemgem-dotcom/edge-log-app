@@ -3,8 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../../../../lib/supabaseClient'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward } from '../../../../../../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../../../../../../lib/tradeMath'
 import { isBlank, validateSetup, parseCurrency, formatCurrency } from '../../../../../../lib/tradeForm'
+import { pointValueFor } from '../../../../../../lib/instrumentCatalog'
+import FieldTooltip from '../../../../../../components/FieldTooltip'
+
+const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
 export default function EditTradePage({ params }) {
   const symbol = params.instrument
@@ -29,7 +33,17 @@ export default function EditTradePage({ params }) {
   })
   const [errors, setErrors] = useState({})
 
+  // Trade execution — controlled so P&L can auto-fill from exit price and
+  // contracts as they change.
+  const [execution, setExecution] = useState({
+    contracts: '',
+    exit_time: '',
+    exit_price: '',
+  })
   const [pnlInput, setPnlInput] = useState('')
+  // A P&L already stored on the trade counts as manual, so reopening a trade
+  // never silently recalculates a figure the trader entered themselves.
+  const [pnlManual, setPnlManual] = useState(false)
   // Screenshots already saved on this trade, as plain URLs.
   const [existingScreenshots, setExistingScreenshots] = useState([])
   // Newly picked files not yet uploaded.
@@ -38,12 +52,35 @@ export default function EditTradePage({ params }) {
 
   const [saving, setSaving] = useState(false)
 
-  const riskReward = calcRiskReward(parseFloat(setup.target_distance), parseFloat(setup.stop_distance))
+  const riskReward = calcRiskReward(
+    parseFloat(setup.target_distance),
+    parseFloat(setup.stop_distance),
+    direction,
+    parseFloat(setup.entry),
+  )
 
   function updateSetup(field, value) {
     setSetup((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
   }
+
+  function updateExecution(field, value) {
+    setExecution((prev) => ({ ...prev, [field]: value }))
+  }
+
+  // Auto-fill $ P&L once entry, exit price and contracts are all present,
+  // unless the trader has typed their own figure.
+  useEffect(() => {
+    if (loading || pnlManual) return
+    const computed = calcProfitLoss(
+      direction,
+      parseFloat(setup.entry),
+      parseFloat(execution.exit_price),
+      parseFloat(execution.contracts),
+      pointValueFor(symbol),
+    )
+    setPnlInput(computed === null ? '' : formatCurrency(computed))
+  }, [loading, pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, symbol])
 
   useEffect(() => {
     loadAll()
@@ -76,7 +113,14 @@ export default function EditTradePage({ params }) {
       target_distance: t.target_distance ?? (t.target != null ? Math.abs(t.target - t.entry) : ''),
       stop_distance: t.stop_distance ?? (t.stop != null ? Math.abs(t.stop - t.entry) : ''),
     })
-    setPnlInput(t.pnl === null || t.pnl === undefined ? '' : formatCurrency(t.pnl))
+    setExecution({
+      contracts: t.contracts ?? '',
+      exit_time: t.exit_time ?? '',
+      exit_price: t.exit_price ?? '',
+    })
+    const storedPnl = t.pnl === null || t.pnl === undefined
+    setPnlInput(storedPnl ? '' : formatCurrency(t.pnl))
+    setPnlManual(!storedPnl)
     setExistingScreenshots(t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : []))
 
     const { data: stratData } = await supabase
@@ -143,6 +187,12 @@ export default function EditTradePage({ params }) {
     setPnlInput(parsed === null ? '' : String(parsed))
   }
 
+  function handlePnlChange(value) {
+    setPnlInput(value)
+    // Clearing the field hands control back to the auto-calculation.
+    setPnlManual(!isBlank(value))
+  }
+
   function handlePnlBlur() {
     const parsed = parseCurrency(pnlInput)
     setPnlInput(parsed === null ? '' : formatCurrency(parsed))
@@ -178,7 +228,7 @@ export default function EditTradePage({ params }) {
     const entry = parseFloat(setup.entry)
     const stopDistance = parseFloat(setup.stop_distance)
     const targetDistance = parseFloat(setup.target_distance)
-    const exitPrice = isBlank(form.exit_price.value) ? null : parseFloat(form.exit_price.value)
+    const exitPrice = isBlank(execution.exit_price) ? null : parseFloat(execution.exit_price)
 
     const stopPrice = calcStopPrice(direction, entry, stopDistance)
     const targetPrice = calcTargetPrice(direction, entry, targetDistance)
@@ -195,10 +245,10 @@ export default function EditTradePage({ params }) {
       stop_distance: stopDistance,
       target_distance: targetDistance,
       exit_price: exitPrice,
-      exit_time: form.exit_time.value || null,
+      exit_time: execution.exit_time || null,
       r_multiple: rMultiple,
       reasoning: form.reasoning.value.trim(),
-      contracts: form.contracts.value ? parseInt(form.contracts.value) : null,
+      contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       pnl: parseCurrency(pnlInput),
       screenshot_urls,
       screenshot_url: screenshot_urls[0] || null,
@@ -297,7 +347,7 @@ export default function EditTradePage({ params }) {
           </div>
 
           <div className="field wide">
-            <label>Take Profit (in points)</label>
+            <label>Take Profit (in points) <FieldTooltip text={DISTANCE_HINT} /></label>
             <input
               type="number" step="0.01" min="0"
               value={setup.target_distance} onChange={(e) => updateSetup('target_distance', e.target.value)}
@@ -305,7 +355,7 @@ export default function EditTradePage({ params }) {
             {errors.target_distance && <span className="field-error">{errors.target_distance}</span>}
           </div>
           <div className="field wide">
-            <label>Stop Loss (in points)</label>
+            <label>Stop Loss (in points) <FieldTooltip text={DISTANCE_HINT} /></label>
             <input
               type="number" step="0.01" min="0"
               value={setup.stop_distance} onChange={(e) => updateSetup('stop_distance', e.target.value)}
@@ -314,7 +364,7 @@ export default function EditTradePage({ params }) {
           </div>
           <div className="field wide">
             <label>Risk-to-Reward ratio</label>
-            <input type="text" readOnly tabIndex={-1} className="readonly-field" value={riskReward === null ? '—' : `1 : ${riskReward.toFixed(2)}`} />
+            <input type="text" readOnly tabIndex={-1} className="readonly-field" value={riskReward === null ? '—' : riskReward.toFixed(2)} />
           </div>
 
           <div className="field full section-label">
@@ -326,15 +376,24 @@ export default function EditTradePage({ params }) {
 
           <div className="field wide">
             <label>Contracts</label>
-            <input name="contracts" type="number" step="1" defaultValue={trade.contracts ?? ''} />
+            <input
+              type="number" step="1"
+              value={execution.contracts} onChange={(e) => updateExecution('contracts', e.target.value)}
+            />
           </div>
           <div className="field wide">
             <label>Actual exit time</label>
-            <input name="exit_time" type="time" step="1" defaultValue={trade.exit_time ?? ''} />
+            <input
+              type="time" step="1"
+              value={execution.exit_time} onChange={(e) => updateExecution('exit_time', e.target.value)}
+            />
           </div>
           <div className="field wide">
             <label>Actual exit price</label>
-            <input name="exit_price" type="number" step="0.01" defaultValue={trade.exit_price ?? ''} />
+            <input
+              type="number" step="0.01"
+              value={execution.exit_price} onChange={(e) => updateExecution('exit_price', e.target.value)}
+            />
           </div>
           <div className="field wide">
             <label>$ Profit or Loss</label>
@@ -343,7 +402,7 @@ export default function EditTradePage({ params }) {
               <input
                 type="text" inputMode="decimal" placeholder="0.00"
                 value={pnlInput}
-                onChange={(e) => setPnlInput(e.target.value)}
+                onChange={(e) => handlePnlChange(e.target.value)}
                 onFocus={handlePnlFocus}
                 onBlur={handlePnlBlur}
               />

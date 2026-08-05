@@ -60,7 +60,7 @@ export default function TradeDetailPage({ params }) {
           <div><label>Entry price</label><div>{trade.entry}</div></div>
           <div><label>Stop loss</label><div>{trade.stop}{trade.stop_distance != null ? ` (${trade.stop_distance} pts)` : ''}</div></div>
           <div><label>Take profit</label><div>{trade.target ?? '—'}{trade.target_distance != null ? ` (${trade.target_distance} pts)` : ''}</div></div>
-          <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : `1 : ${riskReward.toFixed(2)}`}</div></div>
+          <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toFixed(2)}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price ?? '—'}</div></div>
           <div><label>Exit time</label><div>{trade.exit_time ?? '—'}</div></div>
           <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple}R</span> : <span className="r-pill r-open">Open</span>}</div></div>

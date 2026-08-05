@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../../../lib/supabaseClient'
+import { calcStopPrice, calcTargetPrice, calcRMultiple } from '../../../../../lib/tradeMath'
 
 export default function NewTradePage({ params }) {
   const symbol = params.instrument
@@ -105,6 +106,22 @@ async function handleSubmit(e) {
     screenshot_url = urlData.publicUrl
   }
 
+  const entry = parseFloat(form.entry.value)
+  const stopDistance = parseFloat(form.stop_distance.value)
+  const targetDistance = form.target_distance.value ? parseFloat(form.target_distance.value) : null
+  const distanceUnit = form.distance_unit.value
+  const exitPrice = parseFloat(form.exit_price.value)
+
+  const stopPrice = calcStopPrice(direction, entry, stopDistance)
+  const targetPrice = calcTargetPrice(direction, entry, targetDistance)
+  const rMultiple = calcRMultiple(direction, entry, stopPrice, exitPrice)
+
+  if (rMultiple === null) {
+    alert('Stop distance cannot be zero — R-multiple would be undefined.')
+    setSaving(false)
+    return
+  }
+
   const newTrade = {
     user_id: user.id,
     instrument_id: instrumentId,
@@ -112,12 +129,15 @@ async function handleSubmit(e) {
     trade_date: form.trade_date.value,
     trade_time: form.trade_time.value,
     direction,
-    entry: parseFloat(form.entry.value),
-    stop: parseFloat(form.stop.value),
-    target: form.target.value ? parseFloat(form.target.value) : null,
-    exit_price: form.exit_price.value ? parseFloat(form.exit_price.value) : null,
+    entry,
+    stop: stopPrice,
+    target: targetPrice,
+    stop_distance: stopDistance,
+    target_distance: targetDistance,
+    distance_unit: distanceUnit,
+    exit_price: exitPrice,
     exit_time: form.exit_time.value || null,
-    r_multiple: parseFloat(form.r_multiple.value),
+    r_multiple: rMultiple,
     in_plan: form.in_plan.value === 'yes',
     reasoning: form.reasoning.value.trim(),
     contracts: form.contracts.value ? parseInt(form.contracts.value) : null,
@@ -167,27 +187,29 @@ return (
 <input name="entry" type="number" step="0.01" required />
   </div>
 <div className="field wide">
-  <label>Stop price</label>
-<input name="stop" type="number" step="0.01" required />
+  <label>Distance unit</label>
+<select name="distance_unit" defaultValue="points">
+  <option value="points">Points</option>
+  <option value="ticks">Ticks</option>
+</select>
   </div>
 <div className="field wide">
-  <label>Target (TP) price</label>
-<input name="target" type="number" step="0.01" />
+  <label>Stop distance (from entry)</label>
+<input name="stop_distance" type="number" step="0.01" min="0.01" required />
+  </div>
+<div className="field wide">
+  <label>Target distance (from entry, optional)</label>
+<input name="target_distance" type="number" step="0.01" min="0" />
   </div>
 
 <div className="field wide">
   <label>Exit price</label>
-<input name="exit_price" type="number" step="0.01" />
+<input name="exit_price" type="number" step="0.01" required />
   </div>
 <div className="field wide">
   <label>Exit time</label>
 <input name="exit_time" type="time" step="1" />
   </div>
-
-<div className="field wide">
-    <label>R multiple result</label>
-<input name="r_multiple" type="number" step="0.01" placeholder="2.4 or -1" required />
-    </div>
 
 <div className="field full section-label">
     Strategy — which model this trade belongs to

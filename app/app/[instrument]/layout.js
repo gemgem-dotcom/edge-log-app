@@ -8,6 +8,7 @@ Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
     import { supabase } from '../../../lib/supabaseClient'
 import { strategyColor } from '../../../lib/strategyColor'
+import { INSTRUMENT_CATALOG, catalogEntryFor } from '../../../lib/instrumentCatalog'
 
 export default function InstrumentLayout({ children, params }) {
     const router = useRouter()
@@ -77,13 +78,22 @@ export default function InstrumentLayout({ children, params }) {
 
   async function handleAddInstrument(e) {
         e.preventDefault()
+        if (!newSymbol) return
         const { data: { user } } = await supabase.auth.getUser()
-        const clean = newSymbol.trim().toUpperCase()
-        const { error } = await supabase.from('instruments').insert([{ user_id: user.id, symbol: clean }])
+        const catalogEntry = catalogEntryFor(newSymbol)
+        const { error } = await supabase.from('instruments').insert([{
+          user_id: user.id,
+          symbol: newSymbol,
+          data_symbol: catalogEntry?.data_symbol || newSymbol,
+          display_name: catalogEntry?.display_name || null,
+        }])
         if (!error) {
+                const addedSymbol = newSymbol
                 setNewSymbol('')
                 setAddingInstrument(false)
-                router.push(`/app/${clean}/dashboard`)
+                router.push(`/app/${addedSymbol}/dashboard`)
+        } else {
+                alert(error.message)
         }
   }
 
@@ -129,7 +139,14 @@ export default function InstrumentLayout({ children, params }) {
               <div className="instrument-divider" />
               {addingInstrument ? (
                                 <form onSubmit={handleAddInstrument} className="instrument-add-form">
-                                  <input autoFocus type="text" placeholder="e.g. ES" value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} />
+                                  <select autoFocus value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} required>
+                                    <option value="">Select instrument…</option>
+                                    {INSTRUMENT_CATALOG
+                                      .filter((i) => !instruments.some((existing) => existing.symbol === i.symbol))
+                                      .map((i) => (
+                                        <option key={i.symbol} value={i.symbol}>{i.symbol} — {i.display_name}</option>
+                                      ))}
+                                  </select>
                                   <button type="submit">Add</button>
                 </form>
                               ) : (

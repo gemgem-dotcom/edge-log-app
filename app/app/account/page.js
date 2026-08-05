@@ -299,7 +299,7 @@ async function handleDownloadCsv() {
 
   const { data: trades, error } = await supabase
   .from('trades')
-  .select('*, instruments(symbol), strategies(name)')
+  .select('*, instruments(symbol, data_symbol), strategies(name)')
   .eq('user_id', user.id)
   .order('trade_date', { ascending: true })
 
@@ -314,13 +314,14 @@ async function handleDownloadCsv() {
   }
 
   const headers = [
-    'instrument', 'strategy', 'trade_date', 'trade_time', 'direction', 'entry', 'stop',
-    'target', 'exit_price', 'exit_time', 'r_multiple', 'in_plan',
+    'instrument', 'data_symbol', 'strategy', 'trade_date', 'trade_time', 'direction', 'entry', 'stop',
+    'stop_distance', 'target', 'target_distance', 'distance_unit', 'exit_price', 'exit_time', 'r_multiple', 'in_plan',
     'contracts', 'reasoning',
     ]
   const rows = trades.map((t) => [
-    t.instruments?.symbol || '', t.strategies?.name || 'Unclassified', t.trade_date, t.trade_time,
-    t.direction, t.entry, t.stop, t.target ?? '', t.exit_price ?? '', t.exit_time ?? '',
+    t.instruments?.symbol || '', t.instruments?.data_symbol || '', t.strategies?.name || 'Unclassified', t.trade_date, t.trade_time,
+    t.direction, t.entry, t.stop, t.stop_distance ?? '', t.target ?? '', t.target_distance ?? '', t.distance_unit ?? '',
+    t.exit_price ?? '', t.exit_time ?? '',
     t.r_multiple, t.in_plan, t.contracts ?? '',
     (t.reasoning || '').replace(/"/g, '""'),
     ])

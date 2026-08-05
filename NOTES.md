@@ -42,6 +42,8 @@ lib/
   supabaseClient.js                the one browser Supabase client
   strategyColor.js                 strategy colour assignment
   validatePassword.js              signup password rules
+  instrumentCatalog.js             fixed instrument list + data_symbol mapping (mini/micro → shared symbol)
+  tradeMath.js                     stop/target distance → price, R-multiple calc
 schema.sql                         database tables + row level security
 storage-setup.sql                  screenshots storage bucket
 ```

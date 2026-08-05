@@ -38,10 +38,18 @@ export default function DangerZoneSection({ email }) {
       headers: { Authorization: 'Bearer ' + token },
     })
 
-    const result = await res.json()
+    // A non-JSON body (a gateway error page, say) would otherwise throw here
+    // and leave the button stuck on "Deleting...".
+    const result = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      setDeleteError(result.error || 'Could not delete account.')
+      // Only a non-empty string is usable as a message. Anything else — an
+      // object, an empty string, nothing at all — would render as "{}" or a
+      // blank error, which is what made this failure look silent.
+      const message = typeof result?.error === 'string' && result.error.trim()
+        ? result.error
+        : 'Something went wrong deleting your account. Please try again or contact support.'
+      setDeleteError(message)
       setDeleting(false)
       return
     }

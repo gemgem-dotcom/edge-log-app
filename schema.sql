@@ -194,3 +194,24 @@ alter table trades add column if not exists screenshot_urls text[];
 update trades
   set screenshot_urls = array[screenshot_url]
   where screenshot_urls is null and screenshot_url is not null;
+
+-- login_events.user_id referenced auth.users with no cascade, so any row
+-- here hard-blocked deleting the account — Supabase's deleteUser surfaced
+-- that as an empty error, which read as a silent failure. The API route
+-- clears the table explicitly; this cascade is the backstop for the next
+-- table someone forgets. Guarded on confdeltype so re-running is a no-op
+-- ('c' is cascade).
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.login_events'::regclass
+      and conname = 'login_events_user_id_fkey'
+      and confdeltype <> 'c'
+  ) then
+    alter table login_events drop constraint login_events_user_id_fkey;
+    alter table login_events
+      add constraint login_events_user_id_fkey
+      foreign key (user_id) references auth.users(id) on delete cascade;
+  end if;
+end $$;

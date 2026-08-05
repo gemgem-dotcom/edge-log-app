@@ -190,7 +190,7 @@ Delete strategy
 
 <div className="section-heading">Trade log — {strategy.name}</div>
 <div className="panel">
-  <TradeLogTable trades={trades} showStrategyColumn={false} showDurationColumn={true} showFilters={true} symbol={symbol} />
+  <TradeLogTable trades={trades} showStrategyColumn={false} showFilters={true} symbol={symbol} />
   </div>
 
 {showDeleteModal && (

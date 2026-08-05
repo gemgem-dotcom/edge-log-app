@@ -36,7 +36,6 @@ export default function TradeLogTable({
   strategies = [],
   strategyNameById,
   showStrategyColumn = false,
-  showDurationColumn = false,
   // The dashboard's calendar-day table opts out of these so it keeps the
   // exact column set it had before.
   showDayColumn = true,
@@ -154,7 +153,6 @@ export default function TradeLogTable({
     + (showDayColumn ? 1 : 0)
     + (showPnlColumn ? 1 : 0)
     + (showStrategyColumn ? 1 : 0)
-    + (showDurationColumn ? 1 : 0)
 
   return (
     <div id="tableWrap">
@@ -207,7 +205,6 @@ export default function TradeLogTable({
               )}
             </th>
             {showPnlColumn && <th>P&amp;L</th>}
-            {showDurationColumn && <th>Time in Trade</th>}
             <th className="actions-col-header"></th>
           </tr>
         </thead>
@@ -243,7 +240,6 @@ export default function TradeLogTable({
                   {showPnlColumn && (
                     <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtPnl(t.pnl)}</td>
                   )}
-                  {showDurationColumn && <td>{formatDuration(tradeDurationMinutes(t))}</td>}
                   <td className="row-actions">
                     <span className="row-actions-inner">
                       <a

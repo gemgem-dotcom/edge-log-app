@@ -1,0 +1,100 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Pencil } from 'lucide-react'
+import { supabase } from '@/lib/supabaseClient'
+import { formatInTz } from '@/lib/timezone'
+
+// Rendered inside the shared Security panel, so it contributes only its own
+// title and body — no .panel wrapper of its own.
+export default function SignInHistorySection({ initialEvents, timezone }) {
+  const router = useRouter()
+  const [loginEvents, setLoginEvents] = useState(initialEvents)
+  const [showAllEvents, setShowAllEvents] = useState(false)
+  const [sessionBusy, setSessionBusy] = useState(false)
+  const [sessionMessage, setSessionMessage] = useState('')
+  const [editingDeviceId, setEditingDeviceId] = useState(null)
+  const [nicknameInput, setNicknameInput] = useState('')
+
+  async function handleSignOutOthers() {
+    setSessionMessage('')
+    setSessionBusy(true)
+    const { error } = await supabase.auth.signOut({ scope: 'others' })
+    setSessionBusy(false)
+    setSessionMessage(error ? error.message : 'Signed out of all other devices.')
+  }
+
+  async function handleSignOutEverywhere() {
+    const sure = confirm('Sign out of every device, including this one? You will need to log in again.')
+    if (!sure) return
+    await supabase.auth.signOut({ scope: 'global' })
+    router.push('/login')
+  }
+
+  async function handleSaveNickname(eventId) {
+    const trimmed = nicknameInput.trim()
+    const { error } = await supabase
+      .from('login_events')
+      .update({ device_nickname: trimmed || null })
+      .eq('id', eventId)
+    if (!error) {
+      setLoginEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, device_nickname: trimmed || null } : ev)))
+    }
+    setEditingDeviceId(null)
+    setNicknameInput('')
+  }
+
+  const visibleEvents = showAllEvents ? loginEvents : loginEvents.slice(0, 5)
+
+  return (
+    <>
+      <div className="panel-title">Recent sign-ins</div>
+      <p className="onboard-note" style={{ marginTop: '-8px' }}>These are devices that have recently signed in to your account. If you don&apos;t recognize any of these devices, we recommend logging out of all devices and changing your password.</p>
+      {loginEvents.length === 0 ? (
+        <div className="empty" style={{ padding: '14px' }}>No sign-in history yet.</div>
+      ) : (
+        <>
+          <table>
+            <thead><tr><th>Device</th><th>Location</th><th>Date &amp; time</th></tr></thead>
+            <tbody>
+              {visibleEvents.map((ev) => (
+                <tr key={ev.id}>
+                  <td>
+                    {editingDeviceId === ev.id ? (
+                      <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                        <input type="text" value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={ev.device || 'Unknown device'} style={{ padding: '4px 8px', fontSize: '13px', width: '140px' }} autoFocus />
+                        <span className="del save-link" onClick={() => handleSaveNickname(ev.id)}>Save</span>
+                        <span className="del" onClick={() => { setEditingDeviceId(null); setNicknameInput('') }}>Cancel</span>
+                      </span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                        {ev.device_nickname || ev.device || 'Unknown device'}
+                        <Pencil size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => { setEditingDeviceId(ev.id); setNicknameInput(ev.device_nickname || '') }} />
+                      </span>
+                    )}
+                  </td>
+                  <td className="tag-cell">{ev.location || 'Unknown location'}</td>
+                  <td>{formatInTz(ev.created_at, timezone)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {loginEvents.length > 5 && (
+            <div className="panel-link-row">
+              <span className="panel-link" style={{ cursor: 'pointer' }} onClick={() => setShowAllEvents(!showAllEvents)}>
+                {showAllEvents ? 'Show fewer' : `Show all ${loginEvents.length} sign-ins`}
+              </span>
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="submit-row" style={{ justifyContent: 'flex-start', gap: '10px', marginTop: '16px' }}>
+        <button type="button" onClick={handleSignOutOthers} disabled={sessionBusy}>Log out of all other devices</button>
+        <button type="button" className="btn-danger-outline" onClick={handleSignOutEverywhere}>Log out everywhere</button>
+      </div>
+      {sessionMessage && <div className="account-msg account-msg-success">{sessionMessage}</div>}
+    </>
+  )
+}

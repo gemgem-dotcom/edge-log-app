@@ -1,5 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 
+/* ============================================================
+   TABLE OF CONTENTS
+   Line numbers shift whenever this file is edited — update this
+   block in the same change that adds or moves a section.
+   ------------------------------------------------------------
+     1–185  Base: reset, typography, forms, tables, thumbnails,
+            modals, and the mobile breakpoints for all of them
+   186  Auth pages
+   223  Top nav
+   238  Instrument switcher
+   261  Page layout
+   276  Tabs
+   284  Misc form helpers
+   290  Detail view
+   305  Shell layout (sidebar + topbar)
+   413  Expandable trade rows
+   421  Calendar
+   458  Account settings page
+   546  Light theme
+   559  2FA
+   568  Account fine print
+   571  Screenshot preview (log new trade)
+   588  Auth pages always dark
+   616  Monthly P&L (calendar on Overview)
+   667  Trade form: sections, validation, currency, screenshots
+   702  Field tooltips
+   728  In-header column filters (trade log table)
+   760  Active filter chips
+   ============================================================ */
+
 :root{
     --bg: #0a111b;
   --panel: #141d30;

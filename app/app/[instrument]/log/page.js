@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../../lib/supabaseClient'
-import TradeLogTable from '../../../../components/TradeLogTable'
+import { supabase } from '@/lib/supabaseClient'
+import TradeLogTable from '@/components/TradeLogTable'
 
 export default function LogPage({ params }) {
   const symbol = params.instrument

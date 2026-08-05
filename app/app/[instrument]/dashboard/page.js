@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { supabase } from '../../../../lib/supabaseClient'
-import { strategyColor } from '../../../../lib/strategyColor'
-import { hasResult } from '../../../../lib/tradeMath'
-import TradeLogTable from '../../../../components/TradeLogTable'
-import WinRateGauge from '../../../../components/WinRateGauge'
+import { supabase } from '@/lib/supabaseClient'
+import { strategyColor } from '@/lib/strategyColor'
+import { hasResult } from '@/lib/tradeMath'
+import TradeLogTable from '@/components/TradeLogTable'
+import WinRateGauge from '@/components/WinRateGauge'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']

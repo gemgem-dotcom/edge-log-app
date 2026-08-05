@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '../../../../../lib/supabaseClient'
-import { hasResult, calcRiskReward } from '../../../../../lib/tradeMath'
+import { supabase } from '@/lib/supabaseClient'
+import { hasResult, calcRiskReward } from '@/lib/tradeMath'
 
 export default function TradeDetailPage({ params }) {
   const symbol = params.instrument

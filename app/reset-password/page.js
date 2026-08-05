@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
-import { supabase } from '../../lib/supabaseClient'
-import { validatePassword } from '../../lib/validatePassword'
+import { supabase } from '@/lib/supabaseClient'
+import { validatePassword } from '@/lib/validatePassword'
 
 export default function ResetPasswordPage() {
   const router = useRouter()

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '../../lib/supabaseClient'
-import { validatePassword } from '../../lib/validatePassword'
+import { supabase } from '@/lib/supabaseClient'
+import { validatePassword } from '@/lib/validatePassword'
 
 export default function SignupPage() {
   const router = useRouter()

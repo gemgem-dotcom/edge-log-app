@@ -338,11 +338,11 @@ table{min-width:640px;}
 
 .perf-table{width:100%;}
 .perf-table th{font-size:10.5px;}
-/* Must stay a real table cell — display:flex here drops it out of the
-   table's column-width algorithm, so the body column no longer matches the
-   header and the vertical dividers stop lining up. The dot is laid out
-   inline instead. */
-.strategy-name-cell{font-family:'Inter',sans-serif; font-weight:600; color:var(--text);}
+/* Carries no font or colour of its own so the strategy name matches every
+   other cell in the row. Must also stay a real table cell — display:flex
+   here drops it out of the table's column-width algorithm, so the body
+   column stops matching the header and the vertical dividers misalign.
+   The dot is laid out inline for the same reason. */
 .strategy-name-cell .strategy-dot{margin-right:10px; vertical-align:middle;}
 
 .simple-page-wrap{max-width:800px; margin:0 auto; padding:32px 24px 60px;}

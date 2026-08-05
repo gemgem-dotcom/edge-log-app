@@ -125,12 +125,11 @@ export default function TradeLogTable({
     return <div className="empty">No trades match this view yet.</div>
   }
 
-  // Day, Direction and Result only offer values that actually occur, so no
-  // choice there can empty the table. Strategy is the exception below.
+  // Each filter offers its full set of values rather than only the ones the
+  // current trades happen to use, so the options stay put as trades come and
+  // go. Picking a value with no matches simply yields an empty table.
   const present = (fn) => new Set(rows.map(fn))
-  const dayOptions = DAY_NAMES
-    .filter((d) => present(dayOf).has(d))
-    .map((d) => ({ value: d, label: d }))
+  const dayOptions = DAY_NAMES.map((d) => ({ value: d, label: d }))
   // Every strategy the user has created, plus any a trade still points at
   // (an archived one, say) and Unclassified when some trade has no strategy.
   const strategyKeys = [
@@ -143,11 +142,11 @@ export default function TradeLogTable({
   }))
   const directionOptions = [
     { value: 'all', label: 'All' },
-    ...[...present((t) => t.direction)].map((d) => ({ value: d, label: DIRECTION_LABELS[d] || d })),
+    ...['long', 'short'].map((d) => ({ value: d, label: DIRECTION_LABELS[d] })),
   ]
   const resultOptions = [
     { value: 'all', label: 'All' },
-    ...[...present(resultOf)].map((r) => ({ value: r, label: RESULT_LABELS[r] || r })),
+    ...['breakeven', 'loss', 'win'].map((r) => ({ value: r, label: RESULT_LABELS[r] })),
   ]
 
   // One chip per selected value, whichever column it came from.
@@ -258,7 +257,7 @@ export default function TradeLogTable({
                   <td>{t.trade_date}</td>
                   {showDayColumn && <td>{dayOf(t)}</td>}
                   {showStrategyColumn && (
-                    <td className="tag-cell">{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
+                    <td>{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
                   )}
                   <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>
                     {t.direction.toUpperCase()}

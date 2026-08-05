@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../../../lib/supabaseClient'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../../../../../lib/tradeMath'
-import { isBlank, validateSetup, parseCurrency, formatCurrency } from '../../../../../lib/tradeForm'
+import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency } from '../../../../../lib/tradeForm'
 import { pointValueFor } from '../../../../../lib/instrumentCatalog'
 import FieldTooltip from '../../../../../components/FieldTooltip'
 
@@ -71,6 +71,7 @@ export default function NewTradePage({ params }) {
 
   function updateExecution(field, value) {
     setExecution((prev) => ({ ...prev, [field]: value }))
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
   }
 
   function updateSetup(field, value) {
@@ -170,7 +171,10 @@ export default function NewTradePage({ params }) {
   async function handleSubmit(e) {
     e.preventDefault()
 
-    const foundErrors = validateSetup({ ...setup, direction, strategyId })
+    const foundErrors = {
+      ...validateSetup({ ...setup, direction, strategyId }),
+      ...validateExecution(execution),
+    }
     if (Object.keys(foundErrors).length > 0) {
       setErrors(foundErrors)
       return
@@ -201,7 +205,7 @@ export default function NewTradePage({ params }) {
     const entry = parseFloat(setup.entry)
     const stopDistance = parseFloat(setup.stop_distance)
     const targetDistance = parseFloat(setup.target_distance)
-    const exitPrice = isBlank(execution.exit_price) ? null : parseFloat(execution.exit_price)
+    const exitPrice = parseFloat(execution.exit_price)
 
     const stopPrice = calcStopPrice(direction, entry, stopDistance)
     const targetPrice = calcTargetPrice(direction, entry, targetDistance)
@@ -364,6 +368,7 @@ export default function NewTradePage({ params }) {
               type="number" step="0.01"
               value={execution.exit_price} onChange={(e) => updateExecution('exit_price', e.target.value)}
             />
+            {errors.exit_price && <span className="field-error">{errors.exit_price}</span>}
           </div>
           <div className="field wide">
             <label>$ Profit or Loss</label>

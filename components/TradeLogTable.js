@@ -45,6 +45,10 @@ export default function TradeLogTable({
   strategyNameById,
   showStrategyColumn = false,
   showDurationColumn = false,
+  // The dashboard's calendar-day table opts out of these so it keeps the
+  // exact column set it had before.
+  showDayColumn = true,
+  showPnlColumn = true,
   showFilters = false,
   symbol,
 }) {
@@ -115,7 +119,11 @@ export default function TradeLogTable({
     return <div className="empty">No trades match this view yet.</div>
   }
 
-  const colCount = 6 + (showStrategyColumn ? 1 : 0) + (showDurationColumn ? 1 : 0)
+  const colCount = 4
+    + (showDayColumn ? 1 : 0)
+    + (showPnlColumn ? 1 : 0)
+    + (showStrategyColumn ? 1 : 0)
+    + (showDurationColumn ? 1 : 0)
   const unclassifiedCount = rows.filter((t) => !t.strategy_id).length
 
   return (
@@ -127,15 +135,17 @@ export default function TradeLogTable({
         <thead>
           <tr>
             <th>Date</th>
-            <th>
-              Day
-              {showFilters && (
-                <select className="th-filter" value={filterDay} onChange={(e) => setFilterDay(e.target.value)}>
-                  <option value="all">All</option>
-                  {DAY_NAMES.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              )}
-            </th>
+            {showDayColumn && (
+              <th>
+                Day
+                {showFilters && (
+                  <select className="th-filter" value={filterDay} onChange={(e) => setFilterDay(e.target.value)}>
+                    <option value="all">All</option>
+                    {DAY_NAMES.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                )}
+              </th>
+            )}
             {showStrategyColumn && (
               <th>
                 Strategy
@@ -169,7 +179,7 @@ export default function TradeLogTable({
                 </select>
               )}
             </th>
-            <th>P&amp;L</th>
+            {showPnlColumn && <th>P&amp;L</th>}
             {showDurationColumn && <th>Time in Trade</th>}
             <th className="actions-col-header"></th>
           </tr>
@@ -191,7 +201,7 @@ export default function TradeLogTable({
               <Fragment key={t.id}>
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
                   <td>{t.trade_date}</td>
-                  <td>{dayOf(t)}</td>
+                  {showDayColumn && <td>{dayOf(t)}</td>}
                   {showStrategyColumn && (
                     <td className="tag-cell">{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
                   )}
@@ -203,7 +213,9 @@ export default function TradeLogTable({
                       ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toFixed(2)}R</span>
                       : <span className="r-pill r-open">Open</span>}
                   </td>
-                  <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtPnl(t.pnl)}</td>
+                  {showPnlColumn && (
+                    <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtPnl(t.pnl)}</td>
+                  )}
                   {showDurationColumn && <td>{fmtDuration(durationByTrade[t.id])}</td>}
                   <td className="row-actions">
                     <span className="row-actions-inner">

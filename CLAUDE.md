@@ -34,6 +34,7 @@ app/
   layout.js                   root layout
   page.js                     login
   signup/, forgot-password/, reset-password/
+  auth/callback/page.js       finishes Google sign-in (client component - see below)
   api/record-login/route.js   sign-in history (server only)
   api/delete-account/route.js deletes a user and their data (server only)
   app/page.js                 first-run instrument + strategy setup
@@ -52,10 +53,12 @@ components/
   TradeLogTable.js            the trade table, owns its own column filters
   ColumnFilter.js             chevron filter menu used by the table headers
   FieldTooltip.js             "?" tooltip beside a form label
+  PageLoading.js               shared full-page loading screen (animated bars)
+  OAuthIcons.js                Google mark for the login/signup buttons
   WinRateGauge.js
   account/                    one component per account-settings concern
 lib/
-  supabaseClient.js           the one browser Supabase client
+  supabaseClient.js           the one browser Supabase client (flowType: 'pkce' for OAuth)
   instrumentCatalog.js        the 12 supported instruments, data_symbol, point_value
   tradeMath.js                distance → price, R-multiple, R:R, $ P&L
   tradeForm.js                trade-form validation + currency parse/format

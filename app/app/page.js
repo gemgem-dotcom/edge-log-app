@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
+import PageLoading from '@/components/PageLoading'
 
 export default function AppHome() {
   const router = useRouter()
@@ -76,7 +77,7 @@ export default function AppHome() {
   }
 
   if (loading) {
-    return <div className="page-loading">Loading…</div>
+    return <PageLoading />
   }
 
   return (

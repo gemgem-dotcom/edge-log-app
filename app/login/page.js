@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { GoogleIcon } from '@/components/OAuthIcons'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -60,6 +61,15 @@ async function handlePasswordSubmit(e) {
 
   await recordLoginEvent()
   router.push('/app')
+}
+
+async function handleOAuth(provider) {
+  setError('')
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
+  })
+  if (error) setError(error.message)
 }
 
 async function handleMfaSubmit(e) {
@@ -127,6 +137,14 @@ required
 {loading ? 'Logging in...' : 'Log in'}
   </button>
     </form>
+
+ <div className="auth-divider"><span>or continue with</span></div>
+ <div className="auth-oauth-row">
+   <button type="button" className="auth-oauth-btn" onClick={() => handleOAuth('google')}>
+     <GoogleIcon size={16} /> Google
+   </button>
+ </div>
+
  <div className="auth-switch">
     Don't have an account? <a href="/signup">Sign up</a>
     </div>

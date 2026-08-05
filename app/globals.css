@@ -8,26 +8,26 @@
      1–185  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
    186  Auth pages
-   223  Top nav
-   238  Instrument switcher
-   261  Page layout
-   276  Tabs
-   284  Misc form helpers
-   290  Detail view
-   305  Shell layout (sidebar + topbar)
-   413  Expandable trade rows
-   421  Calendar
-   458  Account settings page
-   556  Light theme
-   569  2FA
-   578  Account fine print
-   581  Screenshot preview (log new trade)
-   598  Auth pages always dark
-   626  Monthly P&L (calendar on Overview)
-   677  Trade form: sections, validation, currency, screenshots
-   712  Field tooltips
-   738  In-header column filters (trade log table)
-   770  Active filter chips
+   235  Top nav
+   250  Instrument switcher
+   274  Page layout
+   305  Tabs
+   313  Misc form helpers
+   319  Detail view
+   334  Shell layout (sidebar + topbar)
+   442  Expandable trade rows
+   450  Calendar
+   487  Account settings page
+   585  Light theme
+   598  2FA
+   607  Account fine print
+   610  Screenshot preview (log new trade)
+   627  Auth pages always dark
+   655  Monthly P&L (calendar on Overview)
+   706  Trade form: sections, validation, currency, screenshots
+   741  Field tooltips
+   767  In-header column filters (trade log table)
+   799  Active filter chips
    ============================================================ */
 
 :root{
@@ -215,6 +215,18 @@ table{min-width:640px;}
         border-radius:7px; padding:9px 12px; font-size:12.5px;
 }
 .auth-submit{width:100%; padding:14px 0; margin-top:4px; font-size:15px;}
+.auth-divider{
+        display:flex; align-items:center; gap:12px; margin:20px 0 16px; color:var(--muted);
+        font-size:12px; text-transform:uppercase; letter-spacing:.06em;
+}
+.auth-divider::before, .auth-divider::after{content:''; flex:1; height:1px; background:var(--line);}
+.auth-oauth-row{display:flex; gap:10px;}
+.auth-oauth-btn{
+        flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+        background:var(--panel-2); color:var(--text); border:1px solid var(--line);
+        border-radius:7px; padding:11px 0; font-size:13px; font-weight:600; font-family:'Inter',sans-serif;
+}
+.auth-oauth-btn:hover{filter:none; border-color:var(--accent);}
 .auth-switch{margin-top:22px; text-align:center; font-size:13.5px; color:var(--muted);}
 .auth-switch a{color:var(--accent); text-decoration:none;}
 .onboard-note{font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:18px;}
@@ -244,7 +256,7 @@ table{min-width:640px;}
 }
 .instrument-dropdown{
   position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
-  border:1px solid var(--line); border-radius:9px; min-width:160px; z-index:50;
+  border:1px solid var(--line); border-radius:9px; min-width:220px; z-index:50;
   box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden;
 }
 .instrument-option{
@@ -254,16 +266,32 @@ table{min-width:640px;}
 .instrument-option-active{color:var(--accent);}
 .instrument-divider{height:1px; background:var(--line); margin:4px 0;}
 .instrument-add{color:var(--accent); font-weight:600;}
-.instrument-add-form{display:flex; gap:6px; padding:8px 10px;}
-.instrument-add-form input, .instrument-add-form select{padding:6px 8px; font-size:12.5px;}
-.instrument-add-form button{padding:6px 12px; font-size:12px;}
+.instrument-add-form{display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:8px 10px;}
+.instrument-add-form input, .instrument-add-form select{padding:6px 8px; font-size:12.5px; width:100%;}
+.instrument-add-form button{padding:6px 12px; font-size:12px; align-self:flex-end;}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
 .page-title{font-size:22px; font-weight:800; margin-bottom:20px; letter-spacing:-.01em;}
 .page-loading{
-  min-height:100vh; display:flex; align-items:center; justify-content:center;
-  color:var(--muted); font-size:14px;
+  min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; background:var(--bg);
+}
+.page-loading-bars{display:flex; align-items:center; gap:5px; height:28px;}
+.page-loading-bars span{
+  display:block; width:4px; height:12px; border-radius:99px; background:var(--accent);
+  animation:page-loading-pulse 1s ease-in-out infinite;
+}
+.page-loading-label{
+  font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.08em;
+}
+@keyframes page-loading-pulse{
+  0%, 100%{transform:scaleY(1);}
+  50%{transform:scaleY(2.3);}
+}
+@media (prefers-reduced-motion:reduce){
+  .page-loading-bars span{animation:none;}
 }
 .panel-link-row{margin-top:12px;}
 .panel-link{color:var(--accent); font-size:12.5px; text-decoration:none; font-weight:600;}

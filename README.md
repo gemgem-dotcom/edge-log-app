@@ -24,6 +24,22 @@ In Supabase: **Authentication → Providers** → make sure **Email** is enabled
 By default new accounts also require email confirmation — if you want to skip that while testing solo,
 go to **Authentication → Settings** and turn off "Confirm email," or just check your inbox after signing up.
 
+## 2b. Google sign-in (optional)
+
+The login and signup pages have a "Continue with Google" button, but it won't work until you do
+the following **in your own accounts** — none of this can be done from the code:
+
+1. Create an OAuth client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   (type "Web application"). Add `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
+   as an authorized redirect URI. Copy the Client ID and Client Secret.
+2. In Supabase: **Authentication → Providers**, enable **Google**, and paste in the credentials
+   from step 1.
+3. Add your production and local URLs (e.g. `http://localhost:3000/**`, `https://your-app.vercel.app/**`)
+   under **Authentication → URL Configuration → Redirect URLs**, or the provider will reject the
+   callback after sign-in.
+
+Skip this and the button will just show a Supabase error — email/password sign-in is unaffected either way.
+
 ## 3. Storage bucket (same as before — skip if already set up)
 
 **Storage** → **New bucket** → name it exactly `screenshots` → toggle **Public bucket** ON → **Create bucket**.

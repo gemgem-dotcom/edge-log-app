@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import TradeLogTable from '@/components/TradeLogTable'
+import PageLoading from '@/components/PageLoading'
 
 export default function LogPage({ params }) {
   const symbol = params.instrument
@@ -34,7 +35,7 @@ async function loadData() {
   setLoading(false)
 }
 
-if (loading) return <div className="page-loading">Loading…</div>
+if (loading) return <PageLoading />
 
 const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 

@@ -4,7 +4,8 @@ A trading journal: log futures trades against named strategies, and see win rate
 R-multiple and P&L statistics per instrument and per strategy.
 
 Next.js 14 App Router (JavaScript, no TypeScript) + Supabase (Postgres, auth,
-storage), deployed on Vercel.
+storage), deployed on Vercel. Imports use the `@/` alias for anything more than
+one directory away — see `jsconfig.json`.
 
 `NOTES.md` is the full working-notes file — read it for anything below that needs
 more detail. `README.md` is the first-time setup guide.
@@ -47,15 +48,19 @@ app/
     strategies/               strategy manager + per-strategy pages
     insights/                 placeholder
 components/
+  TradeForm.js                the whole trade form, shared by new + edit pages
   TradeLogTable.js            the trade table, owns its own column filters
   ColumnFilter.js             chevron filter menu used by the table headers
   FieldTooltip.js             "?" tooltip beside a form label
   WinRateGauge.js
+  account/                    one component per account-settings concern
 lib/
   supabaseClient.js           the one browser Supabase client
   instrumentCatalog.js        the 12 supported instruments, data_symbol, point_value
   tradeMath.js                distance → price, R-multiple, R:R, $ P&L
   tradeForm.js                trade-form validation + currency parse/format
+  screenshots.js              uploads screenshots, throws so callers word errors
+  timezone.js                 UTC offset list + timestamp formatting
   useClickOutside.js          close a menu on outside click / Escape
   strategyColor.js            strategy colour assignment
   validatePassword.js         signup password rules

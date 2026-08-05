@@ -27,7 +27,8 @@ app/
   api/record-login/route.js        writes/updates the sign-in history (server only)
   api/delete-account/route.js      deletes a user and their data (server only)
   app/page.js                      first-run instrument setup
-  app/account/page.js              account settings, devices, auto sign-out
+  app/account/page.js              account settings shell; each concern is a
+                                   component under components/account/
   app/[instrument]/
     layout.js                      app shell + sidebar nav + instrument switcher
     dashboard/page.js              Overview: stats, strategy performance, Monthly P&L
@@ -37,7 +38,8 @@ app/
     log/[tradeId]/edit/page.js     edit a trade
     strategies/                    strategy manager + per-strategy pages
     insights/                      placeholder
-components/                        shared UI (TradeLogTable, WinRateGauge, ...)
+components/                        shared UI (TradeForm, TradeLogTable, ...)
+  account/                         one component per account-settings concern
 lib/
   supabaseClient.js                the one browser Supabase client
   strategyColor.js                 strategy colour assignment
@@ -45,7 +47,10 @@ lib/
   instrumentCatalog.js             fixed instrument list + data_symbol mapping (mini/micro → shared symbol)
   tradeMath.js                     stop/target distance → price, R-multiple and R:R calc
   tradeForm.js                     trade-form validation + currency parse/format
+  screenshots.js                   screenshot upload, throws so callers word their own errors
+  timezone.js                      UTC offset list + timestamp formatting
   useClickOutside.js               close a dropdown on outside click / Escape
+jsconfig.json                      the @/ import alias
 schema.sql                         database tables + row level security
 storage-setup.sql                  screenshots storage bucket
 ```

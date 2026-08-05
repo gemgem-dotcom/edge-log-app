@@ -1,9 +1,14 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult } from '../lib/tradeMath'
+import ColumnFilter from './ColumnFilter'
+
+const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
+const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
+const UNCLASSIFIED = 'unclassified'
 
 // Full week: futures sessions open Sunday evening, and a stray Saturday date
 // should still render a day name rather than blank.
@@ -57,11 +62,12 @@ export default function TradeLogTable({
   const [previewUrl, setPreviewUrl] = useState(null)
   const [durationByTrade, setDurationByTrade] = useState({})
 
-  // Filters live in the column headers rather than a separate bar above.
-  const [filterStrategy, setFilterStrategy] = useState('all')
+  // Filters open from a chevron on each column heading. Day and Strategy
+  // take any combination of values; an empty array means unfiltered.
+  const [filterDays, setFilterDays] = useState([])
+  const [filterStrategies, setFilterStrategies] = useState([])
   const [filterDirection, setFilterDirection] = useState('all')
   const [filterResult, setFilterResult] = useState('all')
-  const [filterDay, setFilterDay] = useState('all')
 
   useEffect(() => {
     setRows(trades)
@@ -84,7 +90,7 @@ export default function TradeLogTable({
   useEffect(() => {
     if (!showFilters || !showStrategyColumn) return
     const initial = new URLSearchParams(window.location.search).get('strategy')
-    if (initial) setFilterStrategy(initial)
+    if (initial) setFilterStrategies([initial])
   }, [showFilters, showStrategyColumn])
 
   function toggleExpand(trade) {
@@ -103,14 +109,14 @@ export default function TradeLogTable({
     }
   }
 
+  const strategyKey = (t) => t.strategy_id || UNCLASSIFIED
+
   const visible = showFilters
     ? rows.filter((t) => {
-        if (filterStrategy === 'unclassified') {
-          if (t.strategy_id) return false
-        } else if (filterStrategy !== 'all' && t.strategy_id !== filterStrategy) return false
+        if (filterDays.length > 0 && !filterDays.includes(dayOf(t))) return false
+        if (filterStrategies.length > 0 && !filterStrategies.includes(strategyKey(t))) return false
         if (filterDirection !== 'all' && t.direction !== filterDirection) return false
         if (filterResult !== 'all' && resultOf(t) !== filterResult) return false
-        if (filterDay !== 'all' && dayOf(t) !== filterDay) return false
         return true
       })
     : rows
@@ -119,15 +125,79 @@ export default function TradeLogTable({
     return <div className="empty">No trades match this view yet.</div>
   }
 
+  // Each filter offers its full set of values rather than only the ones the
+  // current trades happen to use, so the options stay put as trades come and
+  // go. Picking a value with no matches simply yields an empty table.
+  const present = (fn) => new Set(rows.map(fn))
+  const dayOptions = DAY_NAMES.map((d) => ({ value: d, label: d }))
+  // Every strategy the user has created, plus any a trade still points at
+  // (an archived one, say) and Unclassified when some trade has no strategy.
+  const strategyKeys = [
+    ...strategies.map((s) => s.id),
+    ...[...present(strategyKey)].filter((key) => !strategies.some((s) => s.id === key)),
+  ]
+  const strategyOptions = strategyKeys.map((key) => ({
+    value: key,
+    label: key === UNCLASSIFIED ? 'Unclassified' : (strategyNameById?.(key) || '—'),
+  }))
+  const directionOptions = [
+    { value: 'all', label: 'All' },
+    ...['long', 'short'].map((d) => ({ value: d, label: DIRECTION_LABELS[d] })),
+  ]
+  const resultOptions = [
+    { value: 'all', label: 'All' },
+    ...['breakeven', 'loss', 'win'].map((r) => ({ value: r, label: RESULT_LABELS[r] })),
+  ]
+
+  // One chip per selected value, whichever column it came from.
+  const chips = [
+    ...filterDays.map((d) => ({
+      key: `day-${d}`, label: `Day: ${d}`,
+      clear: () => setFilterDays((prev) => prev.filter((v) => v !== d)),
+    })),
+    ...filterStrategies.map((s) => ({
+      key: `strategy-${s}`,
+      label: `Strategy: ${s === UNCLASSIFIED ? 'Unclassified' : (strategyNameById?.(s) || '—')}`,
+      clear: () => setFilterStrategies((prev) => prev.filter((v) => v !== s)),
+    })),
+    ...(filterDirection !== 'all' ? [{
+      key: 'direction', label: `Direction: ${DIRECTION_LABELS[filterDirection] || filterDirection}`,
+      clear: () => setFilterDirection('all'),
+    }] : []),
+    ...(filterResult !== 'all' ? [{
+      key: 'result', label: `Result: ${RESULT_LABELS[filterResult] || filterResult}`,
+      clear: () => setFilterResult('all'),
+    }] : []),
+  ]
+
+  function clearAllFilters() {
+    setFilterDays([])
+    setFilterStrategies([])
+    setFilterDirection('all')
+    setFilterResult('all')
+  }
+
   const colCount = 4
     + (showDayColumn ? 1 : 0)
     + (showPnlColumn ? 1 : 0)
     + (showStrategyColumn ? 1 : 0)
     + (showDurationColumn ? 1 : 0)
-  const unclassifiedCount = rows.filter((t) => !t.strategy_id).length
 
   return (
     <div id="tableWrap">
+      {showFilters && chips.length > 0 && (
+        <div className="active-filters">
+          {chips.map((chip) => (
+            <span key={chip.key} className="filter-chip">
+              {chip.label}
+              <button type="button" onClick={chip.clear} aria-label={`Remove filter ${chip.label}`}>
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+          <span className="filter-clear-all" onClick={clearAllFilters}>Clear all</span>
+        </div>
+      )}
       {showFilters && (
         <div className="table-count">{visible.length} of {rows.length} trades</div>
       )}
@@ -137,46 +207,30 @@ export default function TradeLogTable({
             <th>Date</th>
             {showDayColumn && (
               <th>
-                Day
+                <span className="th-label">Day</span>
                 {showFilters && (
-                  <select className="th-filter" value={filterDay} onChange={(e) => setFilterDay(e.target.value)}>
-                    <option value="all">All</option>
-                    {DAY_NAMES.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  <ColumnFilter mode="multi" options={dayOptions} value={filterDays} onChange={setFilterDays} />
                 )}
               </th>
             )}
             {showStrategyColumn && (
               <th>
-                Strategy
+                <span className="th-label">Strategy</span>
                 {showFilters && (
-                  <select className="th-filter" value={filterStrategy} onChange={(e) => setFilterStrategy(e.target.value)}>
-                    <option value="all">All</option>
-                    {strategies.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    {unclassifiedCount > 0 && <option value="unclassified">Unclassified</option>}
-                  </select>
+                  <ColumnFilter mode="multi" options={strategyOptions} value={filterStrategies} onChange={setFilterStrategies} />
                 )}
               </th>
             )}
             <th>
-              Direction
+              <span className="th-label">Direction</span>
               {showFilters && (
-                <select className="th-filter" value={filterDirection} onChange={(e) => setFilterDirection(e.target.value)}>
-                  <option value="all">All</option>
-                  <option value="long">Long</option>
-                  <option value="short">Short</option>
-                </select>
+                <ColumnFilter mode="single" options={directionOptions} value={filterDirection} onChange={setFilterDirection} />
               )}
             </th>
             <th>
-              Result
+              <span className="th-label">Result</span>
               {showFilters && (
-                <select className="th-filter" value={filterResult} onChange={(e) => setFilterResult(e.target.value)}>
-                  <option value="all">All</option>
-                  <option value="win">Win</option>
-                  <option value="loss">Loss</option>
-                  <option value="breakeven">Breakeven</option>
-                </select>
+                <ColumnFilter mode="single" options={resultOptions} value={filterResult} onChange={setFilterResult} />
               )}
             </th>
             {showPnlColumn && <th>P&amp;L</th>}
@@ -203,7 +257,7 @@ export default function TradeLogTable({
                   <td>{t.trade_date}</td>
                   {showDayColumn && <td>{dayOf(t)}</td>}
                   {showStrategyColumn && (
-                    <td className="tag-cell">{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
+                    <td>{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unclassified</span>}</td>
                   )}
                   <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>
                     {t.direction.toUpperCase()}

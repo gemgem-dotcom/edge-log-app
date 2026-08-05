@@ -338,7 +338,12 @@ table{min-width:640px;}
 
 .perf-table{width:100%;}
 .perf-table th{font-size:10.5px;}
-.strategy-name-cell{display:flex; align-items:center; gap:10px; font-family:'Inter',sans-serif; font-weight:600; color:var(--text);}
+/* Carries no font or colour of its own so the strategy name matches every
+   other cell in the row. Must also stay a real table cell — display:flex
+   here drops it out of the table's column-width algorithm, so the body
+   column stops matching the header and the vertical dividers misalign.
+   The dot is laid out inline for the same reason. */
+.strategy-name-cell .strategy-dot{margin-right:10px; vertical-align:middle;}
 
 .simple-page-wrap{max-width:800px; margin:0 auto; padding:32px 24px 60px;}
 
@@ -691,17 +696,56 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 }
 
 /* ---------- In-header column filters (trade log table) ---------- */
-/* The filter controls live in the column headers rather than a bar above
-   the table, so each dropdown sits directly under the heading it filters. */
-.th-filter{
-  display:block; width:100%; margin-top:5px;
-  background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
-  color:var(--text); padding:4px 6px;
-  font-family:'Inter',sans-serif; font-size:11px; font-weight:400;
-  text-transform:none; letter-spacing:0; cursor:pointer;
+/* A chevron beside the heading opens that column's filter. The heading text
+   itself is inert — no sorting, no click target. */
+.th-label{vertical-align:middle;}
+.col-filter{position:relative; display:inline-flex; vertical-align:middle; margin-left:5px;}
+.col-filter-btn{
+  width:16px; height:16px; padding:0; border-radius:4px;
+  background:transparent; color:var(--muted);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
-.th-filter:hover{border-color:var(--accent);}
-th:has(.th-filter){min-width:110px; vertical-align:top;}
+.col-filter-btn:hover{background:var(--panel-2); color:var(--text); filter:none;}
+.col-filter-btn-active{color:var(--accent);}
+.col-filter-btn svg{width:13px; height:13px; flex-shrink:0;}
+
+/* Fixed rather than absolute, so the table's horizontal scroll container
+   can't clip it. ColumnFilter closes the menu on scroll to keep it anchored. */
+.col-filter-menu{
+  position:fixed; z-index:60; min-width:170px; max-height:280px; overflow-y:auto;
+  background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45); padding:4px;
+}
+.col-filter-option{
+  display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:6px;
+  font-family:'Inter',sans-serif; font-size:12.5px; font-weight:400;
+  text-transform:none; letter-spacing:0; color:var(--text); cursor:pointer;
+}
+.col-filter-option:hover{background:var(--panel-2);}
+.col-filter-option-selected{color:var(--accent);}
+.col-filter-option input[type="checkbox"]{width:auto; margin:0; cursor:pointer;}
+.col-filter-actions{display:flex; justify-content:flex-end; padding:6px 5px 3px; border-top:1px solid var(--line); margin-top:4px;}
+.col-filter-actions button{padding:5px 14px; font-size:12px;}
+
+/* ---------- Active filter chips ---------- */
+.active-filters{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:12px;}
+.filter-chip{
+  display:inline-flex; align-items:center; gap:6px; padding:4px 6px 4px 10px;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:99px;
+  font-family:'Inter',sans-serif; font-size:11.5px; color:var(--text);
+}
+.filter-chip button{
+  width:15px; height:15px; padding:0; border-radius:50%;
+  background:transparent; color:var(--muted);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.filter-chip button:hover{background:var(--line); color:var(--loss); filter:none;}
+.filter-chip button svg{width:11px; height:11px; flex-shrink:0;}
+.filter-clear-all{
+  font-family:'Inter',sans-serif; font-size:11.5px; color:var(--accent);
+  cursor:pointer; margin-left:2px;
+}
+.filter-clear-all:hover{text-decoration:underline;}
 
 .table-count{font-size:12px; color:var(--muted); text-align:right; margin-bottom:10px;}
 

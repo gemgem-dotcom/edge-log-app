@@ -8,18 +8,9 @@ import { hasResult } from '../../../../../lib/tradeMath'
 import { useClickOutside } from '../../../../../lib/useClickOutside'
 import TradeLogTable from '../../../../../components/TradeLogTable'
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-
 function timeToMinutes(t) {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
-}
-
-function resultOf(t) {
-  if (!hasResult(t)) return 'open'
-  if (t.r_multiple > 0) return 'win'
-  if (t.r_multiple < 0) return 'loss'
-  return 'breakeven'
 }
 
 async function computeStrategyStats(allTrades) {
@@ -89,10 +80,6 @@ const [menuOpen, setMenuOpen] = useState(false)
   const [savingRename, setSavingRename] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-const [filterDirection, setFilterDirection] = useState('all')
-  const [filterResult, setFilterResult] = useState('all')
-  const [filterDay, setFilterDay] = useState('all')
-
 useEffect(() => {
   loadData()
 }, [strategyId])
@@ -154,16 +141,6 @@ async function handleDeleteStrategy() {
 
 if (loading) return <div className="page-loading">Loading…</div>
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
-
-    const visible = trades.filter((t) => {
-    if (filterDirection !== 'all' && t.direction !== filterDirection) return false
-    if (filterResult !== 'all' && resultOf(t) !== filterResult) return false
-    if (filterDay !== 'all') {
-      const day = new Date(t.trade_date + 'T00:00:00').getDay()
-      if (DAYS[day] !== filterDay) return false
-    }
-    return true
-  })
 
 return (
   <div className="page-container">
@@ -236,27 +213,8 @@ return (
   </div>
 
 <div className="section-heading">Trade log — {strategy.name}</div>
-<div className="filter-bar">
-  <select value={filterDirection} onChange={(e) => setFilterDirection(e.target.value)}>
-<option value="all">All directions</option>
-<option value="long">Long</option>
-<option value="short">Short</option>
-  </select>
-<select value={filterResult} onChange={(e) => setFilterResult(e.target.value)}>
-<option value="all">All results</option>
-<option value="win">Win</option>
-<option value="loss">Loss</option>
-<option value="breakeven">Breakeven</option>
-<option value="open">Open (no exit)</option>
-  </select>
-<select value={filterDay} onChange={(e) => setFilterDay(e.target.value)}>
-<option value="all">All days</option>
-{DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <span className="filter-count">{visible.length} of {trades.length} trades</span>
-  </div>
 <div className="panel">
-  <TradeLogTable trades={visible} showStrategyColumn={false} showDurationColumn={true} symbol={symbol} />
+  <TradeLogTable trades={trades} showStrategyColumn={false} showDurationColumn={true} showFilters={true} symbol={symbol} />
   </div>
   </div>
 )

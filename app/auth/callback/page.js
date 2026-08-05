@@ -1,14 +1,21 @@
 'use client'
 
-// Google sign-in redirects the browser back here once the provider
-// has approved the login. supabaseClient.js uses the browser-only
-// supabase-js client (no @supabase/ssr), so the PKCE code verifier it
-// stored before the redirect only exists in this browser's localStorage —
-// a server route handler has no access to it. Finishing the exchange has
-// to happen client-side, in the same browser that started it.
+// Google sign-in redirects the browser back here once the provider has
+// approved the login. supabaseClient.js's shared `supabase` client keeps
+// detectSessionInUrl on, because reset-password/page.js needs it to pick
+// up its own recovery link and fire PASSWORD_RECOVERY. But that same
+// auto-detection would also try to consume this page's ?code= on its
+// own, racing the explicit exchange below for the one-time PKCE
+// verifier in localStorage - whichever runs first deletes it, so the
+// other fails with "PKCE code verifier not found in storage." The code
+// exchange here therefore runs on its own page-local client with
+// detectSessionInUrl off, so nothing else on this page ever touches the
+// code param. It still shares the shared client's storage key, so the
+// session it saves is picked up by the rest of the app immediately.
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
+import { createClient } from '@supabase/supabase-js'
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabaseClient'
 import PageLoading from '@/components/PageLoading'
 
 const GENERIC_OAUTH_ERROR = 'Something went wrong signing in with Google. Please try again.'
@@ -35,7 +42,10 @@ export default function AuthCallbackPage() {
       }
 
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        const exchangeClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { flowType: 'pkce', detectSessionInUrl: false },
+        })
+        const { error } = await exchangeClient.auth.exchangeCodeForSession(code)
         if (error) {
           goToLoginWithError(router, error.message)
         } else {
@@ -45,8 +55,9 @@ export default function AuthCallbackPage() {
       }
 
       // No ?code= and no error param - either the provider used the
-      // implicit flow (tokens in the URL hash, already parsed by
-      // detectSessionInUrl by the time this runs) or something went wrong.
+      // implicit flow (tokens in the URL hash, already parsed by the
+      // shared client's own detectSessionInUrl by the time this runs) or
+      // something went wrong.
       const { data } = await supabase.auth.getSession()
       if (data?.session) {
         router.replace('/app')

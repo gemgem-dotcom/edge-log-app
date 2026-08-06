@@ -48,7 +48,7 @@ export default function TradeDetailPage({ params }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">← Back to log</a>
+      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
       <h1 className="page-title">Trade Detail</h1>
 
       <div className="panel">

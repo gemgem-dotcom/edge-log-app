@@ -12,7 +12,6 @@ const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool
 export const EMPTY_TRADE_FORM = {
   direction: 'long',
   strategyId: '',
-  reasoning: '',
   setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '' },
   execution: { contracts: '', exit_time: '', exit_price: '' },
   pnl: null,
@@ -186,7 +185,6 @@ export default function TradeForm({
     setErrors({})
     setSaving(true)
 
-    const form = e.target
     const entry = parseFloat(setup.entry)
     const stopDistance = parseFloat(setup.stop_distance)
     const targetDistance = parseFloat(setup.target_distance)
@@ -207,7 +205,6 @@ export default function TradeForm({
       exit_price: exitPrice,
       exit_time: execution.exit_time || null,
       r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
-      reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       pnl: parseCurrency(pnlInput),
     }
@@ -327,7 +324,7 @@ export default function TradeForm({
             />
           </div>
           <div className="field wide">
-            <label>Actual exit time</label>
+            <label>Actual exit time (to the second)</label>
             <input
               type="time" step="1"
               value={execution.exit_time} onChange={(e) => updateExecution('exit_time', e.target.value)}
@@ -397,18 +394,6 @@ export default function TradeForm({
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="field full section-label">
-            Trade Review
-            <span className="section-subtitle">
-              Review your trade, record your observations, and identify areas for improvement.
-            </span>
-          </div>
-
-          <div className="field full">
-            <label>Why did you take it?</label>
-            <textarea name="reasoning" defaultValue={initial.reasoning} />
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>

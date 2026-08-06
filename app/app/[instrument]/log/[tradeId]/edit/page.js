@@ -79,7 +79,6 @@ export default function EditTradePage({ params }) {
   const initial = {
     direction: trade.direction,
     strategyId: trade.strategy_id || '',
-    reasoning: trade.reasoning || '',
     setup: {
       trade_date: trade.trade_date || '',
       trade_time: trade.trade_time || '',
@@ -100,7 +99,7 @@ export default function EditTradePage({ params }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">← Back to log</a>
+      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
       <h1 className="page-title">{symbol} — Edit Trade</h1>
 
       <TradeForm

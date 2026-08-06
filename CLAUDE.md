@@ -59,6 +59,7 @@ components/
   account/                    one component per account-settings concern
 lib/
   supabaseClient.js           the one browser Supabase client (flowType: 'pkce' for OAuth)
+  supabaseConfig.js           raw url/anon key, no client - see app/auth/callback/page.js
   instrumentCatalog.js        the 12 supported instruments, data_symbol, point_value
   tradeMath.js                distance → price, R-multiple, R:R, $ P&L
   tradeForm.js                trade-form validation + currency parse/format

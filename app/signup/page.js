@@ -53,7 +53,6 @@ export default function SignupPage() {
       <div className="auth-card">
         <div className="auth-logo">Edge<span>Log</span></div>
         <h1 className="auth-welcome">Create your account</h1>
-        <p className="auth-subtitle">Start journaling your trades</p>
         <form onSubmit={handleSubmit}>
           <div className="field full">
             <label>Email</label>

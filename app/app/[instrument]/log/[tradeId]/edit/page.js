@@ -100,7 +100,7 @@ export default function EditTradePage({ params }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">← Back to log</a>
+      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
       <h1 className="page-title">{symbol} — Edit Trade</h1>
 
       <TradeForm

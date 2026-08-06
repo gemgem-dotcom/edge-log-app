@@ -8,26 +8,26 @@
      1–185  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
    186  Auth pages
-   235  Top nav
-   250  Instrument switcher
+   236  Top nav
+   251  Instrument switcher
    274  Page layout
-   305  Tabs
-   313  Misc form helpers
-   319  Detail view
-   334  Shell layout (sidebar + topbar)
-   442  Expandable trade rows
-   450  Calendar
-   487  Account settings page
-   585  Light theme
-   598  2FA
-   607  Account fine print
-   610  Screenshot preview (log new trade)
-   627  Auth pages always dark
-   655  Monthly P&L (calendar on Overview)
-   706  Trade form: sections, validation, currency, screenshots
-   741  Field tooltips
-   767  In-header column filters (trade log table)
-   799  Active filter chips
+   306  Tabs
+   314  Misc form helpers
+   320  Detail view
+   335  Shell layout (sidebar + topbar)
+   443  Expandable trade rows
+   451  Calendar
+   488  Account settings page
+   586  Light theme
+   599  2FA
+   608  Account fine print
+   611  Screenshot preview (log new trade)
+   628  Auth pages always dark
+   656  Monthly P&L (calendar on Overview)
+   707  Trade form: sections, validation, currency, screenshots
+   742  Field tooltips
+   769  In-header column filters (trade log table)
+   801  Active filter chips
    ============================================================ */
 
 :root{
@@ -57,7 +57,7 @@ body{
 }
 
 header{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:28px; flex-wrap:wrap; gap:16px;}
-.title{font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--text); font-weight:800;}
+.title{font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--text); font-weight:800; user-select:none; -webkit-user-drag:none;}
 .title span{color:var(--accent);}
 h1{font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:4px;}
 
@@ -195,6 +195,7 @@ table{min-width:640px;}
 .auth-logo{
         font-size:32px; font-weight:800; letter-spacing:.01em; text-transform:uppercase;
         text-align:center; margin-bottom:24px; color:var(--text);
+        user-select:none; -webkit-user-drag:none;
 }
 .auth-logo span{color:var(--accent); font-weight:400;}
 .auth-card h1{font-size:20px; margin-bottom:20px;}
@@ -272,7 +273,8 @@ table{min-width:640px;}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
-.page-title{font-size:22px; font-weight:800; margin-bottom:20px; letter-spacing:-.01em;}
+.page-title{font-size:26px; font-weight:400; margin-bottom:20px; letter-spacing:-.01em;}
+.page-title-symbol{font-weight:800;}
 .page-loading{
   min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:14px; background:var(--bg);
@@ -337,7 +339,7 @@ table{min-width:640px;}
   display:flex; align-items:center; gap:20px; padding:14px 24px;
   border-bottom:1px solid var(--line); flex-shrink:0;
 }
-.shell-logo{font-size:16px; font-weight:800; letter-spacing:.02em; text-transform:uppercase;}
+.shell-logo{font-size:16px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; user-select:none; -webkit-user-drag:none;}
 .shell-logo span{color:var(--accent); font-weight:400;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .icon-btn{
@@ -742,9 +744,17 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;
   background:var(--line); color:var(--muted);
-  font-size:9.5px; font-weight:700; line-height:1;
+  font-size:9.5px; font-weight:700; line-height:14px; text-align:center;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
+/* transform on .field-tooltip-btn itself would move the circle and the
+   glyph together as one rigid unit - it can't change the glyph's position
+   relative to its own circle, which is the actual problem: the "?" glyph's
+   ink isn't centered in its character box (heavier top, tail leaning
+   right), so box-model centering still reads as off even once the box
+   itself is centered. Nudging this inner span moves the glyph relative to
+   the (already-centered) circle instead. */
+.field-tooltip-glyph{display:block; transform:translate(0.1px, 1.4px);}
 .field-tooltip-btn:hover{background:var(--accent); color:#04121f; filter:none;}
 .field-tooltip-bubble{
   position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);

@@ -327,7 +327,7 @@ export default function TradeForm({
             />
           </div>
           <div className="field wide">
-            <label>Actual exit time</label>
+            <label>Actual exit time (to the second)</label>
             <input
               type="time" step="1"
               value={execution.exit_time} onChange={(e) => updateExecution('exit_time', e.target.value)}
@@ -407,8 +407,7 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
-            <label>Why did you take it?</label>
-            <textarea name="reasoning" defaultValue={initial.reasoning} />
+            <textarea name="reasoning" defaultValue={initial.reasoning} aria-label="Why did you take it?" />
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>

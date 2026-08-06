@@ -18,7 +18,7 @@ export default function FieldTooltip({ text }) {
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
-        ?
+        <span className="field-tooltip-glyph">?</span>
       </button>
       <span className={`field-tooltip-bubble ${open ? 'field-tooltip-bubble-open' : ''}`} role="tooltip">
         {text}

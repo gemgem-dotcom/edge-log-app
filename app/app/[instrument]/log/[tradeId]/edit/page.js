@@ -79,6 +79,7 @@ export default function EditTradePage({ params }) {
   const initial = {
     direction: trade.direction,
     strategyId: trade.strategy_id || '',
+    reasoning: trade.reasoning || '',
     setup: {
       trade_date: trade.trade_date || '',
       trade_time: trade.trade_time || '',

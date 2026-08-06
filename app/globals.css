@@ -273,7 +273,7 @@ table{min-width:640px;}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
-.page-title{font-size:26px; font-weight:600; margin-bottom:20px; letter-spacing:-.01em;}
+.page-title{font-size:26px; font-weight:400; margin-bottom:20px; letter-spacing:-.01em;}
 .page-title-symbol{font-weight:800;}
 .page-loading{
   min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -744,10 +744,17 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;
   background:var(--line); color:var(--muted);
-  font-size:9.5px; font-weight:700; line-height:1;
+  font-size:9.5px; font-weight:700; line-height:14px; text-align:center;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
-  transform:translateY(-0.5px);
 }
+/* transform on .field-tooltip-btn itself would move the circle and the
+   glyph together as one rigid unit - it can't change the glyph's position
+   relative to its own circle, which is the actual problem: the "?" glyph's
+   ink isn't centered in its character box (heavier top, tail leaning
+   right), so box-model centering still reads as off even once the box
+   itself is centered. Nudging this inner span moves the glyph relative to
+   the (already-centered) circle instead. */
+.field-tooltip-glyph{display:block; transform:translate(0.1px, 1.4px);}
 .field-tooltip-btn:hover{background:var(--accent); color:#04121f; filter:none;}
 .field-tooltip-bubble{
   position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);

@@ -151,7 +151,7 @@ Delete strategy
   </form>
 )}
 
-<p className="page-subtitle">{symbol} — strategy performance breakdown</p>
+<p className="page-subtitle">See how your strategy has performed</p>
 
 <div className="section-heading">Performance</div>
 <div className="stats stats-6">

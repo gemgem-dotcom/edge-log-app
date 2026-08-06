@@ -68,7 +68,7 @@ export default function NewTradePage({ params }) {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">{symbol} — Log New Trade</h1>
+      <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> LOG NEW TRADE</h1>
 
       <TradeForm
         symbol={symbol}

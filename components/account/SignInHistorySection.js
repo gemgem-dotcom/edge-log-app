@@ -16,6 +16,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
   const [sessionMessage, setSessionMessage] = useState('')
   const [editingDeviceId, setEditingDeviceId] = useState(null)
   const [nicknameInput, setNicknameInput] = useState('')
+  const [nicknameError, setNicknameError] = useState('')
 
   async function handleSignOutOthers() {
     setSessionMessage('')
@@ -33,13 +34,20 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
   }
 
   async function handleSaveNickname(eventId) {
+    setNicknameError('')
     const trimmed = nicknameInput.trim()
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('login_events')
       .update({ device_nickname: trimmed || null })
       .eq('id', eventId)
-    if (!error) {
+      .select()
+    // RLS silently blocking the write (no matching row updated) looks
+    // identical to success unless the returned rows are checked - without
+    // this, a blocked rename would show as saved.
+    if (!error && data && data.length > 0) {
       setLoginEvents((prev) => prev.map((ev) => (ev.id === eventId ? { ...ev, device_nickname: trimmed || null } : ev)))
+    } else {
+      setNicknameError('Could not save that nickname. Please try again.')
     }
     setEditingDeviceId(null)
     setNicknameInput('')
@@ -55,6 +63,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
         <div className="empty" style={{ padding: '14px' }}>No sign-in history yet.</div>
       ) : (
         <>
+          {nicknameError && <div className="account-msg account-msg-error">{nicknameError}</div>}
           <table>
             <thead><tr><th>Device</th><th>Location</th><th>Date &amp; time</th></tr></thead>
             <tbody>

@@ -217,7 +217,7 @@ const year = calCursor.year
 
 return (
   <div className="page-container">
-  <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> Dashboard</h1>
+  <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
   <p className="page-subtitle">Your performance overview for {symbol} futures.</p>
 
   {unclassifiedCount > 0 && (

@@ -41,7 +41,7 @@ const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
 return (
   <div className="page-container">
-  <h1 className="page-title">{symbol} — Trades</h1>
+  <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> TRADES</h1>
   <p className="page-subtitle">All trades logged for {symbol}, across every strategy.</p>
 
 <div className="panel">

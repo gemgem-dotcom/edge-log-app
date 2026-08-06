@@ -215,3 +215,23 @@ begin
       foreign key (user_id) references auth.users(id) on delete cascade;
   end if;
 end $$;
+
+-- login_events had select/insert policies but no update policy, so
+-- renaming a device in the account page's sign-in history table was
+-- silently blocked by RLS - the UI showed it as saved anyway, since the
+-- update call wasn't checked for whether it actually touched a row.
+-- Guarded on pg_policies so re-running is a no-op.
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'login_events'
+      and policyname = 'Users update their own login events'
+  ) then
+    create policy "Users update their own login events"
+      on login_events for update
+      using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;

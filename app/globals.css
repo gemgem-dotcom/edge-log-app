@@ -31,7 +31,7 @@
    ============================================================ */
 
 :root{
-    --bg: #050505;
+    --bg: #0a111b;
   --panel: #141d30;
   --panel-2: #0b1428;
   --line: #23272f;
@@ -189,7 +189,7 @@ table{min-width:640px;}
         background: radial-gradient(ellipse 1200px 900px at 50% 0%, #1b3f70 0%, #102850 20%, #0a1830 42%, #060a13 68%, #030407 100%);
 }
 .auth-card{
-        background:#050505; border:1px solid var(--line); border-radius:14px; color:var(--text);
+        background:#0a111b; border:1px solid var(--line); border-radius:14px; color:var(--text);
         padding:40px 44px; width:100%; max-width:440px;
 }
 .auth-logo{
@@ -627,7 +627,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 /* ---------- Auth pages always dark ---------- */
 :root[data-theme="light"] .auth-wrap{
-    --bg: #050505;
+    --bg: #0a111b;
     --panel: #141d30;
     --panel-2: #0b1428;
     --line: #23272f;

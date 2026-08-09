@@ -33,7 +33,7 @@
 :root{
     --bg: #050505;
   --panel: #101010;
-  --panel-2: #0b1428;
+  --panel-2: #252525;
   --line: #23272f;
   --text: #e7e6e2;
   --muted: #7d8590;
@@ -629,7 +629,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 :root[data-theme="light"] .auth-wrap{
     --bg: #050505;
     --panel: #101010;
-    --panel-2: #0b1428;
+    --panel-2: #252525;
     --line: #23272f;
     --text: #e7e6e2;
     --muted: #7d8590;

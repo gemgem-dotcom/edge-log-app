@@ -82,7 +82,7 @@ Database edits should be additive (`add column`, `add constraint`). Avoid `drop`
 
 - Section titles are `<h2 className="section-heading">` and sit **above** the card
   they describe (see Overview → "Strategy performance", "Monthly P&L").
-- Cards/panels use `.panel`. Dark-mode card background is `#141d30`.
+- Cards/panels use `.panel`. Dark-mode card background is `#101010`.
 - Inline SVG icons need an explicit size in CSS or they collapse to 0px wide.
   See `.theme-toggle-btn svg` and `.calendar-nav-btn svg` for the pattern.
 - Numbers: dollars come from the optional `trades.pnl` column, R multiples from

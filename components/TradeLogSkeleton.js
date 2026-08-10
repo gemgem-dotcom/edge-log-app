@@ -6,6 +6,7 @@ export default function TradeLogSkeleton({ rows = 8 }) {
       <div className="skel skel-title" />
       <div className="skel skel-subtitle" />
       <div className="panel">
+        <div className="table-scroll">
         <table>
           <thead>
             <tr>
@@ -27,6 +28,7 @@ export default function TradeLogSkeleton({ rows = 8 }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

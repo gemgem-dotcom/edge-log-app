@@ -374,9 +374,10 @@ winRate={monthStats.winRate}
 </div>
   </div>
 
+<div className="calendar-scroll">
 <div className="calendar-grid calendar-grid-8 calendar-weekday-row">
-{CAL_HEADINGS.map((h) => (
-  <div key={h} className="calendar-weekday">{h}</div>
+{CAL_HEADINGS.map((h, hi) => (
+  <div key={h} className={`calendar-weekday ${hi === 7 ? 'calendar-weekday-weekly' : ''}`}>{h}</div>
                   ))}
 </div>
 
@@ -411,6 +412,7 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
   </div>
   </div>
 ))}
+</div>
 
 {selectedDate && (
   <>

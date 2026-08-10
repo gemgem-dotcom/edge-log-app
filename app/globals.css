@@ -504,6 +504,8 @@ table{min-width:640px;}
 
 .account-wrap{padding:32px 230px 60px;}
 
+.signin-table-wrap{overflow-x:auto;}
+
 input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-allowed;}
 
 .password-field{position:relative;}
@@ -699,9 +701,20 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
     .calendar-toolbar{flex-direction:column; align-items:stretch;}
     .calendar-month-nav{justify-content:space-between;}
     .stats-5{grid-template-columns:repeat(2,1fr);}
-    .calendar-grid-8{grid-template-columns:repeat(7,1fr);}
-    .calendar-cell-weekly{display:none;}
+    .calendar-grid-8{grid-template-columns:repeat(7,1fr); gap:4px;}
+    .calendar-cell-weekly, .calendar-weekday-weekly{display:none;}
     .calendar-day-subpnl{display:none;}
+    .calendar-cell{min-height:44px; padding:3px; border-radius:6px;}
+    .calendar-date-num{font-size:10px;}
+    .calendar-day-pnl{font-size:9px; line-height:1.2; word-break:break-word;}
+    .calendar-weekday{font-size:9px; letter-spacing:0;}
+    /* Fallback: grid items default to a content-based min-width, so a
+       cell holding an unbreakable value like "-$1,240" can still force
+       the row wider than the viewport even after the shrink above.
+       Scrolling the grid horizontally in that case beats clipping or
+       pushing the whole panel out of the viewport. */
+    .calendar-scroll{overflow-x:auto;}
+    .calendar-cell, .calendar-weekday{min-width:0;}
 }
 
 .calendar-nav-btn svg{width:18px; height:18px; flex-shrink:0;}

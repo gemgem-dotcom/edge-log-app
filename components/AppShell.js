@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Layers, List, Settings, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react'
+import { TrendingUp, Settings, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react'
 import { strategyColor } from '@/lib/strategyColor'
 import InstrumentNav from '@/components/InstrumentNav'
 
@@ -34,7 +34,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
   return (
     <div className="shell">
       <header className="shell-topbar">
-        <div className="shell-logo">Edge<span>Log</span></div>
+        <div className="shell-logo"><TrendingUp size={18} /> Edge<span>Log</span></div>
         <InstrumentNav instruments={instruments} />
         <div className="shell-topbar-right">
           <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -47,11 +47,11 @@ export default function AppShell({ instruments, strategies = [], active, childre
       <div className="shell-body">
         <aside className="sidebar">
           <a href="/app" className={`sidebar-item ${active === 'overview' ? 'sidebar-item-active' : ''}`}>
-            <LayoutGrid size={17} /> Overview
+            Overview
           </a>
 
           <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
-            <span><Layers size={17} /> Strategies</span>
+            <span>Strategies</span>
             {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </div>
           {strategiesExpanded && (
@@ -73,7 +73,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
           )}
 
           <a href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
-            <List size={17} /> Trades
+            Trades
           </a>
         </aside>
 

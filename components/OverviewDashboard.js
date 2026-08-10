@@ -320,31 +320,37 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
           </div>
 
-          <div className="section-heading">Equity curve</div>
-          <div className="panel">
-            <div className="tabs">
-              {EQUITY_GROUPS.map((g) => (
-                <div
-                  key={g.value}
-                  className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
-                  onClick={() => setEquityGroup(g.value)}
-                >
-                  {g.label}
+          <div className="dashboard-split">
+            <div>
+              <div className="section-heading">Equity curve</div>
+              <div className="panel">
+                <div className="tabs">
+                  {EQUITY_GROUPS.map((g) => (
+                    <div
+                      key={g.value}
+                      className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
+                      onClick={() => setEquityGroup(g.value)}
+                    >
+                      {g.label}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <EquityCurveChart points={equityPoints} />
-            {equityPoints.length > 0 && (
-              <div className="equity-chart-labels">
-                <span>{equityPoints[0].key}</span>
-                <span>{equityPoints[equityPoints.length - 1].key}</span>
+                <EquityCurveChart points={equityPoints} />
+                {equityPoints.length > 0 && (
+                  <div className="equity-chart-labels">
+                    <span>{equityPoints[0].key}</span>
+                    <span>{equityPoints[equityPoints.length - 1].key}</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="section-heading">P&amp;L by instrument</div>
-          <div className="panel">
-            <PnlByInstrumentDonut segments={instrumentSegments} />
+            <div>
+              <div className="section-heading">P&amp;L by instrument</div>
+              <div className="panel">
+                <PnlByInstrumentDonut segments={instrumentSegments} />
+              </div>
+            </div>
           </div>
 
           <div className="section-heading">Monthly P&L</div>

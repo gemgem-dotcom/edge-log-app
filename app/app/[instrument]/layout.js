@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
-    LayoutGrid, TrendingUp, List, Lightbulb,
+    TrendingUp,
 Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
     import { supabase } from '@/lib/supabaseClient'
@@ -96,7 +96,7 @@ export default function InstrumentLayout({ children, params }) {
   return (
         <div className="shell">
           <header className="shell-topbar">
-            <div className="shell-logo">Edge<span>Log</span></div>
+            <div className="shell-logo"><TrendingUp size={18} /> Edge<span>Log</span></div>
 
             <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
@@ -115,11 +115,11 @@ export default function InstrumentLayout({ children, params }) {
       <div className="shell-body">
                     <aside className="sidebar">
                       <a href={`/app/${currentSymbol}/dashboard`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/dashboard`) ? 'sidebar-item-active' : ''}`}>
-            <LayoutGrid size={17} /> Overview
+            Overview
             </a>
 
           <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
-            <span><TrendingUp size={17} /> Strategies</span>
+            <span>Strategies</span>
 {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
 </div>
  {strategiesExpanded && (
@@ -159,10 +159,10 @@ export default function InstrumentLayout({ children, params }) {
           )}
 
           <a href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
-            <List size={17} /> Trades
+            Trades
             </a>
           <a href={`/app/${currentSymbol}/insights`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/insights`) ? 'sidebar-item-active' : ''}`}>
-            <Lightbulb size={17} /> Insights
+            Insights
             </a>
             </aside>
 

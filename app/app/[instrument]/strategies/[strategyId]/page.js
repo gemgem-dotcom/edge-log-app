@@ -161,7 +161,6 @@ return (
   <ErrorBanner message={formError} />
   <div className="strategy-header-row">
   <h1 className="page-title" style={{ marginBottom: 0 }}>{strategy.name}</h1>
-<a href={`/app/${symbol}/log/new`} className="new-trade-btn" style={{ marginLeft: 'auto' }}><Plus size={16} /> Log new trade</a>
 <div className="strategy-menu-wrap" ref={menuRef}>
   <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
 <MoreVertical size={17} />
@@ -175,6 +174,7 @@ Delete strategy
   </div>
 )}
 </div>
+<a href={`/app/${symbol}/log/new`} className="new-trade-btn" style={{ marginLeft: 'auto' }}><Plus size={16} /> Log new trade</a>
   </div>
 
 {renaming && (

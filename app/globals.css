@@ -77,7 +77,12 @@ h1{font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:4px;}
 .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:24px;}
 .panel-title{font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; margin-bottom:16px;}
 form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
-.field{display:flex; flex-direction:column; gap:6px;}
+/* Grid items default to min-width:auto, i.e. their content's intrinsic
+   minimum - which for a native date/time input can be wider than the
+   fr-unit track computes to on a narrow phone, pushing the field (and the
+   form) past the card's edge no matter what width:100% says. min-width:0
+   lets the track actually shrink the field to the space it's given. */
+.field{display:flex; flex-direction:column; gap:6px; min-width:0;}
 .field.wide{grid-column:span 2;}
 .field.full{grid-column:span 6;}
 .field.half{grid-column:span 3;}
@@ -87,7 +92,7 @@ form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 }
 .field.full.section-label:first-of-type{border-top:none; margin-top:0; padding-top:0;}
 label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
-input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%;}
+input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%; min-width:0;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
 input:focus, select:focus, textarea:focus{border-color:var(--accent);}
 

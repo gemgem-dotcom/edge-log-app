@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import StrategiesSkeleton from '@/components/StrategiesSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 import ErrorBanner from '@/components/ErrorBanner'
 
 export default function StrategiesPage({ params }) {
+  usePageTitle('Strategies')
   const symbol = params.instrument
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

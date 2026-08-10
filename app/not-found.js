@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { usePageTitle } from '@/lib/usePageTitle'
 
 export default function NotFound() {
+  usePageTitle('Page Not Found')
   const [href, setHref] = useState('/login')
   const [label, setLabel] = useState('Back to login')
 

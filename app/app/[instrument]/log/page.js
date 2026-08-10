@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
 export default function LogPage({ params }) {
+  usePageTitle('Trade Log')
   const symbol = params.instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
 

@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm from '@/components/TradeForm'
 import ErrorBanner from '@/components/ErrorBanner'
 
 export default function NewTradePage({ params }) {
+  usePageTitle('Log New Trade')
   const symbol = params.instrument
   const router = useRouter()
 

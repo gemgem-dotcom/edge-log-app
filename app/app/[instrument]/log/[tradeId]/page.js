@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 
 export default function TradeDetailPage({ params }) {
+  usePageTitle('Trade Detail')
   const symbol = params.instrument
   const tradeId = params.tradeId
   const router = useRouter()

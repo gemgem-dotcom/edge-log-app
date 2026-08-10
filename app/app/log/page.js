@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import AppShell from '@/components/AppShell'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
 export default function AllTradesPage() {
+  usePageTitle('Trade Log')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [instruments, setInstruments] = useState([])

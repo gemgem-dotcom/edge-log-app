@@ -5,33 +5,33 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–244  Base: reset, typography, forms, tables, thumbnails,
+     1–272  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   245  Auth pages
-   295  Top nav
-   310  Instrument nav (topbar pill row)
-   338  Page layout
-   378  Tabs
-   386  Misc form helpers
-   392  Detail view
-   407  Shell layout (sidebar + topbar)
-   527  Expandable trade rows
-   535  Calendar
-   572  Account settings page
-   669  Light theme
-   687  2FA
-   696  Account fine print
-   699  Screenshot preview (log new trade)
-   716  Auth pages always dark
-   744  Monthly P&L (calendar on Overview)
-   806  Trade form: sections, validation, currency, screenshots
-   841  Field tooltips
-   875  In-header column filters (trade log table)
-   907  Active filter chips
-   932  Empty states, error banners, skeleton loaders
-   983  Cross-instrument overview dashboard (/app)
-   1012  Not found / error boundary state pages
-   1025  Toast notifications
+   273  Auth pages
+   324  Top nav
+   339  Instrument nav (topbar pill row)
+   378  Page layout
+   419  Tabs
+   429  Misc form helpers
+   435  Detail view
+   450  Shell layout (sidebar + topbar)
+   575  Expandable trade rows
+   592  Calendar
+   629  Account settings page
+   731  Light theme
+   749  2FA
+   764  Account fine print
+   767  Screenshot preview (log new trade)
+   784  Auth pages always dark
+   812  Monthly P&L (calendar on Overview)
+   874  Trade form: sections, validation, currency, screenshots
+   909  Field tooltips
+   944  In-header column filters (trade log table)
+   978  Active filter chips
+   1009  Empty states, error banners, skeleton loaders
+   1060  Cross-instrument overview dashboard (/app)
+   1089  Not found / error boundary state pages
+   1102  Toast notifications
    ============================================================ */
 
 :root{
@@ -49,6 +49,20 @@
   --be: #d6b04c;
   --glass: rgba(255,255,255,0.045);
   --glass-border: rgba(255,255,255,0.09);
+
+  /* Spacing scale for new work going forward. The file predates this and is
+     full of one-off px values hand-tuned against specific type sizes and
+     alignments (button/input/table-cell padding, badge padding, icon
+     button dimensions) - those are left as-is rather than mechanically
+     snapped to this scale, since doing so app-wide risks visible density
+     regressions on every page without a full visual re-check. New rules
+     should pull from here instead of picking an arbitrary px value. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 body{
@@ -61,7 +75,7 @@ body{
 
 @media (min-width:1100px){
   .wrap{max-width:1080px;}
-  .stats{grid-template-columns:repeat(4,1fr); gap:14px;}
+  .stats{grid-template-columns:repeat(4,1fr); gap:var(--space-4);}
 }
 
 header{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:28px; flex-wrap:wrap; gap:16px;}
@@ -76,7 +90,7 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .progress-fill{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-bright)); transition:width .4s ease;}
 .progress-note{font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4;}
 
-.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:24px;}
+.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); margin-bottom:24px;}
 .stat{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px;}
 .stat-label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
 .stat-value{font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:600;}
@@ -137,13 +151,25 @@ input[type="time"]::-webkit-date-and-time-value{
 }
 input:focus, select:focus, textarea:focus{border-color:var(--accent);}
 
+/* Consistent keyboard-focus ring for every natively-focusable element -
+   :focus-visible only fires for keyboard/programmatic focus, not a mouse
+   click, so this doesn't add a ring to the existing hover/click styles. */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [tabindex]:focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px; border-radius:inherit;
+}
+
 .dir-toggle{display:flex; border:1px solid var(--line); border-radius:100px; overflow:hidden;}
-.dir-btn{flex:1; padding:9px 0; text-align:center; font-size:12.5px; font-weight:600; cursor:pointer; background:var(--panel-2); color:var(--muted); user-select:none;}
+.dir-btn{flex:1; padding:9px 0; text-align:center; font-size:12.5px; font-weight:600; cursor:pointer; background:var(--panel-2); color:var(--muted); user-select:none; transition:background-color .15s ease, color .15s ease;}
 .dir-btn.active-long{background:rgba(51,193,122,.15); color:var(--win);}
 .dir-btn.active-short{background:rgba(225,92,92,.15); color:var(--loss);}
+/* Only the inactive state gets a hover treatment - an active pill (long/
+   short/theme) keeps its own color under the cursor rather than flashing
+   the plain hover background. */
+.dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
 
 .submit-row{grid-column:span 6; display:flex; justify-content:flex-end; margin-top:4px;}
-button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif;}
+button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; transition:filter .15s ease, background-color .15s ease, opacity .15s ease;}
 button:hover{filter:brightness(1.08);}
 button:disabled{opacity:.5; cursor:not-allowed;}
 
@@ -156,7 +182,7 @@ tr:last-child td{border-bottom:none;}
 .r-neg{background:rgba(225,92,92,.14); color:var(--loss);}
 .r-zero{background:rgba(214,176,76,.14); color:var(--be);}
 .tag-cell{color:var(--muted); font-family:'Inter',sans-serif; font-size:12px;}
-.del{color:var(--muted); cursor:pointer; font-family:'Inter',sans-serif; font-size:12px;}
+.del{color:var(--muted); cursor:pointer; font-family:'Inter',sans-serif; font-size:12px; transition:color .15s ease;}
 .del:hover{color:var(--loss);}
 .empty{text-align:center; padding:40px 20px; color:var(--muted); font-family:'Inter',sans-serif; font-size:13px;}
 
@@ -202,7 +228,7 @@ table{min-width:640px;}
   .title{font-size:11px;}
   .progress-card{min-width:0; width:100%;}
 
-  .stats{grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;}
+  .stats{grid-template-columns:repeat(2,1fr); gap:var(--space-2); margin-bottom:16px;}
   .stat{padding:11px 12px;}
   .stat-value{font-size:17px;}
 
@@ -291,6 +317,7 @@ table{min-width:640px;}
 .auth-oauth-btn:hover{filter:none; border-color:var(--accent);}
 .auth-switch{margin-top:22px; text-align:center; font-size:13.5px; color:var(--muted);}
 .auth-switch a{color:var(--accent); text-decoration:none;}
+.auth-switch a:hover{text-decoration:underline;}
 .onboard-note{font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:18px;}
 .onboard-note{font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:18px;}
 
@@ -317,18 +344,29 @@ table{min-width:640px;}
 .instrument-nav-item{
   padding:7px 14px; border-radius:100px; font-size:13px; font-weight:600;
   color:var(--muted); text-decoration:none; white-space:nowrap;
+  transition:background-color .15s ease, color .15s ease;
 }
 .instrument-nav-item:hover{color:var(--text); background:var(--line);}
 .instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
 .instrument-nav-add-wrap{position:relative;}
 .instrument-nav-add{
-  display:inline-block; padding:7px 10px; color:var(--accent); font-size:12.5px;
-  font-weight:600; cursor:pointer; white-space:nowrap;
+  display:inline-block; padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
+  font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color .15s ease;
 }
+.instrument-nav-add:hover{background:var(--line);}
 .instrument-dropdown{
   position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
   border:1px solid var(--line); border-radius:9px; min-width:220px; z-index:50;
   box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden;
+  animation:dropdown-in .15s ease;
+}
+/* Shared entrance for every small popover menu (instrument nav, strategy
+   menu, column filter) - they're conditionally rendered, so there's no
+   "previous state" to transition from and an animation is the only way to
+   soften the mount. */
+@keyframes dropdown-in{
+  from{opacity:0; transform:translateY(-4px);}
+  to{opacity:1; transform:translateY(0);}
 }
 .instrument-add-form{display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:8px 10px;}
 .instrument-add-form input, .instrument-add-form select{padding:6px 8px; font-size:12.5px; width:100%;}
@@ -371,9 +409,10 @@ table{min-width:640px;}
 }
 .panel-link-row{margin-top:12px;}
 .panel-link{color:var(--accent); font-size:12.5px; text-decoration:none; font-weight:600;}
+.panel-link:hover{text-decoration:underline;}
 .back-link{
   display:inline-block; color:var(--muted); font-size:12.5px; text-decoration:none;
-  margin-bottom:14px;
+  margin-bottom:14px; transition:color .15s ease;
 }
 .back-link:hover{color:var(--text);}
 
@@ -382,8 +421,10 @@ table{min-width:640px;}
 .tab{
   padding:7px 14px; border-radius:99px; font-size:12.5px; font-weight:600;
   background:var(--panel); border:1px solid var(--line); color:var(--muted); cursor:pointer;
+  transition:background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 .tab-active{background:rgba(59,167,255,.14); border-color:var(--accent); color:var(--accent);}
+.tab:not(.tab-active):hover{border-color:var(--muted); color:var(--text);}
 
 /* ---------- Misc form helpers ---------- */
 .inline-form{display:flex; gap:10px;}
@@ -428,6 +469,7 @@ table{min-width:640px;}
 .icon-btn{
   width:36px; height:36px; border-radius:100px; display:flex; align-items:center; justify-content:center;
   color:var(--muted); text-decoration:none; border:1px solid transparent;
+  transition:background-color .15s ease, color .15s ease;
 }
 .icon-btn:hover{background:var(--panel-2); color:var(--text);}
 .icon-btn-profile{background:var(--panel-2); border:1px solid var(--line); border-radius:50%;}.theme-toggle-btn{background:none; border:none; cursor:pointer;} .theme-toggle-btn svg{width:19px; height:19px; flex-shrink:0;}
@@ -435,6 +477,7 @@ table{min-width:640px;}
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
   font-weight:700; font-size:13px; padding:9px 16px; border-radius:100px; text-decoration:none;
+  transition:filter .15s ease;
 }
 .new-trade-btn:hover{filter:brightness(1.08);}
 
@@ -447,6 +490,7 @@ table{min-width:640px;}
 .sidebar-item{
   display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:100px;
   color:var(--muted); text-decoration:none; font-size:13.5px; font-weight:600;
+  transition:background-color .15s ease, color .15s ease;
 }
 .sidebar-item:hover{background:var(--panel-2); color:var(--text);}
 .sidebar-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
@@ -454,6 +498,7 @@ table{min-width:640px;}
 .sidebar-section-header{
   display:flex; align-items:center; justify-content:space-between; padding:9px 12px;
   color:var(--muted); font-size:13.5px; font-weight:600; cursor:pointer; margin-top:4px;
+  transition:color .15s ease;
 }
 .sidebar-section-header span{display:flex; align-items:center; gap:10px;}
 .sidebar-section-header:hover{color:var(--text);}
@@ -462,6 +507,7 @@ table{min-width:640px;}
 .sidebar-substrategy{
   display:flex; align-items:center; gap:10px; padding:8px 12px 8px 30px;
   color:var(--muted); text-decoration:none; font-size:13px;
+  transition:background-color .15s ease, color .15s ease;
 }
 .sidebar-substrategy:hover{background:var(--panel-2); color:var(--text);}
 /* Shown next to each strategy name only on the aggregated Dashboard/Trades
@@ -529,6 +575,15 @@ table{min-width:640px;}
 /* ---------- Expandable trade rows ---------- */
 .trade-id-cell{font-family:'JetBrains Mono',monospace; color:var(--muted); font-size:11.5px;}
 .expand-row td{background:var(--panel-2); border-bottom:1px solid var(--line);}
+/* A <tr> can't smoothly animate height under table layout (and display:flex
+   on a <td> would break column alignment - see the gotcha above), so the
+   "expand" plays as a quick fade + settle on the cell's content instead of
+   an actual height/collapse transition. */
+.expand-row td > *{animation:expand-row-in .18s ease;}
+@keyframes expand-row-in{
+  from{opacity:0; transform:translateY(-4px);}
+  to{opacity:1; transform:translateY(0);}
+}
 .detail-sublabel{
   font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
 }
@@ -542,7 +597,7 @@ table{min-width:640px;}
 .calendar-nav-btn{
   background:var(--panel-2); border:1px solid var(--line); border-radius:100px;
   width:32px; height:32px; display:flex; align-items:center; justify-content:center;
-  color:var(--text); cursor:pointer;
+  color:var(--text); cursor:pointer; transition:border-color .15s ease, color .15s ease;
 }
 .calendar-nav-btn:hover{border-color:var(--accent); color:var(--accent);}
 
@@ -554,7 +609,7 @@ table{min-width:640px;}
 }
 .calendar-cell{
   min-height:76px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2);
-  padding:8px; display:flex; flex-direction:column; gap:2px;
+  padding:8px; display:flex; flex-direction:column; gap:2px; transition:border-color .15s ease;
 }
 .calendar-cell-empty{border:none; background:transparent;}
 .calendar-cell-has-trades{cursor:pointer;}
@@ -579,7 +634,7 @@ table{min-width:640px;}
 .back-btn{
   display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--line);
   color:var(--text); padding:9px 16px; border-radius:100px; font-weight:700; font-size:13px;
-  text-decoration:none;
+  text-decoration:none; transition:border-color .15s ease, color .15s ease;
 }
 .back-btn:hover{border-color:var(--accent); color:var(--accent);}
 
@@ -594,7 +649,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .eye-btn{
   position:absolute; right:8px; top:50%; transform:translateY(-50%);
   background:none; border:none; padding:4px; color:var(--muted); cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
+  display:flex; align-items:center; justify-content:center; transition:color .15s ease;
 }
 .eye-btn:hover{color:var(--text);}
 .field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px;}
@@ -606,6 +661,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .btn-danger-outline{
   background:transparent; border:1px solid var(--loss); color:var(--loss);
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
+  transition:background-color .15s ease;
 }
 .btn-danger-outline:hover{background:rgba(225,92,92,.1);}
 /* Same shape as the danger button, in the accent colour — for the safe
@@ -613,6 +669,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .btn-accent-outline{
   background:transparent; border:1px solid var(--accent); color:var(--accent);
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
+  transition:background-color .15s ease;
 }
 .btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none;}
 
@@ -629,7 +686,8 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .account-topbar-left{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}
 
 
-.sidebar-strategy-add{color:var(--accent); font-weight:600; cursor:pointer;}
+.sidebar-strategy-add{color:var(--accent); font-weight:600; cursor:pointer; transition:opacity .15s ease;}
+.sidebar-strategy-add:hover{opacity:.75;}
 .sidebar-strategy-add-form{display:flex; gap:6px; padding:6px 12px 6px 30px;}
 .sidebar-strategy-add-form input{padding:6px 8px; font-size:12.5px;}
 .sidebar-strategy-add-form button{padding:6px 10px; font-size:12px;}
@@ -637,7 +695,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 .row-actions{text-align:right; white-space:nowrap;}
 .row-actions-inner{display:inline-flex; gap:12px; align-items:center;}
-.row-action-btn{font-size:12px; color:var(--muted); cursor:pointer; text-decoration:none; font-family:'Inter',sans-serif; display:inline-flex; align-items:center; justify-content:center;}
+.row-action-btn{font-size:12px; color:var(--muted); cursor:pointer; text-decoration:none; font-family:'Inter',sans-serif; display:inline-flex; align-items:center; justify-content:center; transition:color .15s ease, opacity .15s ease;}
 .row-action-btn:hover{color:var(--accent);}
 .row-action-danger{color:var(--loss);}.row-action-danger:hover{opacity:.75;}
 .actions-col-header{min-width:70px;}
@@ -653,20 +711,22 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .strategy-menu-btn{
             background:none; border:1px solid transparent; border-radius:100px;
     color:var(--muted); width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition:background-color .15s ease, color .15s ease;
 }
 .strategy-menu-btn:hover{background:var(--panel-2); color:var(--text);}
 .strategy-menu-dropdown{
     position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
     border:1px solid var(--line); border-radius:9px; min-width:180px; z-index:50;
-    box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden; animation:dropdown-in .15s ease;
 }
-.strategy-menu-item{padding:10px 14px; font-size:13px; color:var(--text); cursor:pointer;}
+.strategy-menu-item{padding:10px 14px; font-size:13px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
 .strategy-menu-item:hover{background:var(--panel-2);}
 .strategy-menu-item-danger{color:var(--loss);}
 .strategy-rename-form{display:flex; gap:8px; margin-top:2px; align-items:center; margin-bottom:20px;}
 .strategy-rename-form input{max-width:280px;}
 .unclassified-note{font-size:12.5px; color:var(--muted); margin-top:-14px; margin-bottom:20px;}
 .unclassified-note a{color:var(--accent); text-decoration:none; font-weight:600;}
+.unclassified-note a:hover{text-decoration:underline;}
 
 /* ---------- Light theme ---------- */
 :root[data-theme="light"]{
@@ -694,6 +754,12 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .mfa-qr-wrap svg, .mfa-qr-wrap img{display:block; width:160px; height:160px;}
 .mfa-secret-row{display:flex; align-items:center; gap:12px; margin-top:4px;}
 .mfa-secret-row .del{display:flex; align-items:center; gap:4px;}
+
+/* Small inline "edit" affordance next to a value (e.g. a device nickname) -
+   muted and slightly faded until hovered, rather than full color, so it
+   doesn't compete with the value itself. */
+.icon-edit-btn{color:var(--muted); opacity:.6; cursor:pointer; transition:opacity .15s ease, color .15s ease;}
+.icon-edit-btn:hover{opacity:1; color:var(--accent);}
 
 /* ---------- Account fine print ---------- */
 .account-fine-print{font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:14px;}
@@ -847,6 +913,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
   background:var(--line); color:var(--muted);
   font-size:9.5px; font-weight:700; line-height:14px; text-align:center;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:background-color .15s ease, color .15s ease;
 }
 /* transform on .field-tooltip-btn itself would move the circle and the
    glyph together as one rigid unit - it can't change the glyph's position
@@ -883,6 +950,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
   width:16px; height:16px; padding:0; border-radius:100px;
   background:transparent; color:var(--muted);
   display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:background-color .15s ease, color .15s ease;
 }
 .col-filter-btn:hover{background:var(--panel-2); color:var(--text); filter:none;}
 .col-filter-btn-active{color:var(--accent);}
@@ -893,12 +961,13 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .col-filter-menu{
   position:fixed; z-index:60; min-width:170px; max-height:280px; overflow-y:auto;
   background:var(--panel); border:1px solid var(--line); border-radius:8px;
-  box-shadow:0 8px 24px rgba(0,0,0,.45); padding:4px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45); padding:4px; animation:dropdown-in .15s ease;
 }
 .col-filter-option{
   display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:6px;
   font-family:'Inter',sans-serif; font-size:12.5px; font-weight:400;
   text-transform:none; letter-spacing:0; color:var(--text); cursor:pointer;
+  transition:background-color .15s ease;
 }
 .col-filter-option:hover{background:var(--panel-2);}
 .col-filter-option-selected{color:var(--accent);}
@@ -912,11 +981,17 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
   display:inline-flex; align-items:center; gap:6px; padding:4px 6px 4px 10px;
   background:var(--panel-2); border:1px solid var(--line); border-radius:99px;
   font-family:'Inter',sans-serif; font-size:11.5px; color:var(--text);
+  animation:filter-chip-in .18s ease;
+}
+@keyframes filter-chip-in{
+  from{opacity:0; transform:scale(.9);}
+  to{opacity:1; transform:scale(1);}
 }
 .filter-chip button{
   width:15px; height:15px; padding:0; border-radius:50%;
   background:transparent; color:var(--muted);
   display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:background-color .15s ease, color .15s ease;
 }
 .filter-chip button:hover{background:var(--line); color:var(--loss); filter:none;}
 .filter-chip button svg{width:11px; height:11px; flex-shrink:0;}
@@ -1001,7 +1076,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
 .donut-svg{width:160px; height:160px; flex-shrink:0;}
-.donut-legend{display:flex; flex-direction:column; gap:9px; flex:1; min-width:180px;}
+.donut-legend{display:flex; flex-direction:column; gap:var(--space-2); flex:1; min-width:180px;}
 .donut-legend-item{display:flex; align-items:center; gap:8px; font-size:12.5px;}
 .donut-legend-symbol{font-weight:600; min-width:44px;}
 .donut-legend-value{margin-left:auto; font-family:'JetBrains Mono',monospace;}
@@ -1042,6 +1117,11 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 @keyframes toast-in{
   from{opacity:0; transform:translateY(8px);}
   to{opacity:1; transform:translateY(0);}
+}
+.toast-leaving{animation:toast-out .2s ease forwards;}
+@keyframes toast-out{
+  from{opacity:1; transform:translateY(0);}
+  to{opacity:0; transform:translateY(8px);}
 }
 @media (max-width:640px){
   .toast-stack{left:16px; right:16px; bottom:16px; max-width:none;}

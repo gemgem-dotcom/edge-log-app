@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { GoogleIcon } from '@/components/OAuthIcons'
+import { usePageTitle } from '@/lib/usePageTitle'
 
 export default function LoginPage() {
+  usePageTitle('Log In')
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

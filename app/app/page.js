@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
+import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 import AppShell from '@/components/AppShell'
 import OverviewDashboard from '@/components/OverviewDashboard'
@@ -104,6 +105,8 @@ export default function AppHome() {
 
     router.replace(`/app/${symbol}/dashboard`)
   }
+
+  usePageTitle(loading ? null : (instruments.length > 0 ? 'Overview' : (step === 'name' ? 'Welcome' : 'Set Up Your Journal')))
 
   if (loading) {
     return <PageLoading />

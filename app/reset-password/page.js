@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { validatePassword } from '@/lib/validatePassword'
+import { usePageTitle } from '@/lib/usePageTitle'
 
 export default function ResetPasswordPage() {
+  usePageTitle('Reset Password')
   const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')

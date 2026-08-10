@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm from '@/components/TradeForm'
 import PageLoading from '@/components/PageLoading'
 import PageError from '@/components/PageError'
 import ErrorBanner from '@/components/ErrorBanner'
 
 export default function EditTradePage({ params }) {
+  usePageTitle('Edit Trade')
   const symbol = params.instrument
   const tradeId = params.tradeId
   const router = useRouter()

@@ -7,7 +7,7 @@ import './globals.css'
 import ToastContainer from '@/components/ToastContainer'
 
 export const metadata = {
-  title: 'Edge Log',
+  title: 'EdgeLog',
   description: 'Discretionary trade journal',
 }
 

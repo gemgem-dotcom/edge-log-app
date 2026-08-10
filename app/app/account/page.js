@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, LogOut, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { UTC_OFFSETS } from '@/lib/timezone'
+import { usePageTitle } from '@/lib/usePageTitle'
 import ProfileSection from '@/components/account/ProfileSection'
 import PreferencesSection from '@/components/account/PreferencesSection'
 import PasswordSection from '@/components/account/PasswordSection'
@@ -18,6 +19,7 @@ import PageLoading from '@/components/PageLoading'
 // owns the state for its own concern. Timezone is the exception: it lives
 // here because the picker and the sign-in history both depend on it.
 export default function AccountPage() {
+  usePageTitle('Account Settings')
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')

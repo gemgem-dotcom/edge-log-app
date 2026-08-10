@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
@@ -79,6 +80,7 @@ const [loading, setLoading] = useState(true)
   const [strategy, setStrategy] = useState(null)
   const [trades, setTrades] = useState([])
   const [stats, setStats] = useState(null)
+  usePageTitle(strategy ? strategy.name : 'Strategy')
 
 const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useClickOutside(menuOpen, useCallback(() => setMenuOpen(false), []))

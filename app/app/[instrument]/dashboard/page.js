@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
@@ -158,6 +159,7 @@ const weeks = []
 }
 
 export default function DashboardPage({ params }) {
+  usePageTitle('Overview')
   const symbol = params.instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
   const [loading, setLoading] = useState(true)

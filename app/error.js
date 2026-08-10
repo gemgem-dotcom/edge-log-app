@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
+import { usePageTitle } from '@/lib/usePageTitle'
 
 // Root error boundary - catches any runtime error thrown while rendering a
 // page and shows this instead of Next.js's default broken-page screen.
 // Deliberately has no data fetching of its own (no auth check, no Supabase
 // calls) so it can't itself throw while trying to recover from an error.
 export default function Error({ error, reset }) {
+  usePageTitle('Something Went Wrong')
   useEffect(() => {
     console.error(error)
   }, [error])

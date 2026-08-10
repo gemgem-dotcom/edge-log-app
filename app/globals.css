@@ -566,8 +566,8 @@ table{min-width:640px;}
 
 /* ---------- Account settings page ---------- */
 .account-topbar{
-  display:flex; align-items:center; justify-content:space-between; padding:14px 24px;
-  border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
+  margin:16px 24px 20px; border-radius:100px; background:var(--panel); border:1px solid var(--line);
 }
 .back-btn{
   display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--line);
@@ -614,7 +614,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .account-msg-success{background:rgba(51,193,122,.12); border:1px solid var(--win); color:var(--win);}
 
 @media (max-width:640px){
-  .account-topbar{padding:12px 16px;}
+  .account-topbar{padding:12px 16px; margin:12px 12px 16px;}
   .account-wrap{padding:20px 16px 50px;}
 }
 

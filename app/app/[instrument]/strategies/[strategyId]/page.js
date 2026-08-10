@@ -172,7 +172,7 @@ Delete strategy
 <p className="page-subtitle">See how your strategy has performed.</p>
 
 <div className="section-heading">Performance</div>
-<div className="stats stats-6">
+<div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Total trades</div>
 <div className="stat-value neu">{stats.n}</div>
@@ -180,10 +180,6 @@ Delete strategy
   <div className="stat">
   <div className="stat-label">Win rate</div>
 <div className="stat-value neu">{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Avg R</div>
-<div className={`stat-value ${colorClass(stats.avgR)}`}>{fmtR(stats.avgR)}</div>
   </div>
 <div className="stat">
   <div className="stat-label">Expectancy</div>

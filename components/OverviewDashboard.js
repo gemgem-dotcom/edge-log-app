@@ -282,7 +282,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
       ) : (
         <>
           <div className="section-heading">Overview</div>
-          <div className="stats stats-6">
+          <div className="stats stats-5">
             <div className="stat">
               <div className="stat-label">Total P&amp;L</div>
               <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -308,10 +308,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
             <div className="stat">
               <div className="stat-label">Profit factor</div>
               <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
-            </div>
-            <div className="stat">
-              <div className="stat-label">Average R</div>
-              <div className={`stat-value ${colorClass(overall.avgR)}`}>{fmtR(overall.avgR)}</div>
             </div>
             <div className="stat">
               <div className="stat-label">Total trades</div>
@@ -373,7 +369,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </div>
             </div>
 
-            <div className="stats stats-5">
+            <div className="stats">
               <div className="stat">
                 <div className="stat-label">Monthly P&L</div>
                 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalPnl)}`}>
@@ -390,10 +386,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat stat-gauge">
                 <div className="stat-label">Win rate</div>
                 <WinRateGauge wins={monthStats.wins} breakeven={monthStats.breakeven} losses={monthStats.losses} winRate={monthStats.winRate} />
-              </div>
-              <div className="stat">
-                <div className="stat-label">Average R</div>
-                <div className={`stat-value ${colorClass(monthStats.avgR)}`}>{fmtR(monthStats.avgR)}</div>
               </div>
               <div className="stat">
                 <div className="stat-label">Expectancy</div>

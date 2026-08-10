@@ -407,13 +407,17 @@ table{min-width:640px;}
   margin:16px 24px 20px; border-radius:100px; background:var(--panel);
   border:1px solid var(--line); flex-shrink:0;
 }
+/* No `gap` here on purpose - flex gap lands between every child,
+   including the "Edge" text node and the "Log" span below, which would
+   print as "EDGE LOG" with a visible gap instead of one word. The icon
+   gets its own margin instead, so only it is offset from the text. */
 .shell-logo{
-  display:flex; align-items:center; gap:6px;
+  display:flex; align-items:center;
   font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; letter-spacing:.02em;
   text-transform:uppercase; user-select:none; -webkit-user-drag:none;
 }
 .shell-logo span{color:var(--accent); font-weight:800;}
-.shell-logo svg{width:18px; height:18px; flex-shrink:0; color:var(--accent);}
+.shell-logo svg{width:18px; height:18px; flex-shrink:0; color:var(--accent); margin-right:6px;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .icon-btn{
   width:36px; height:36px; border-radius:100px; display:flex; align-items:center; justify-content:center;

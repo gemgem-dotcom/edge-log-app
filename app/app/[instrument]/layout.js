@@ -96,7 +96,7 @@ export default function InstrumentLayout({ children, params }) {
   return (
         <div className="shell">
           <header className="shell-topbar">
-            <div className="shell-logo"><TrendingUp size={18} /> Edge<span>Log</span></div>
+            <div className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></div>
 
             <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 

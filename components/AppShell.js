@@ -34,7 +34,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
   return (
     <div className="shell">
       <header className="shell-topbar">
-        <div className="shell-logo"><TrendingUp size={18} /> Edge<span>Log</span></div>
+        <div className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></div>
         <InstrumentNav instruments={instruments} />
         <div className="shell-topbar-right">
           <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
 import TradeLogTable from '@/components/TradeLogTable'
-import PageLoading from '@/components/PageLoading'
+import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 import ErrorBanner from '@/components/ErrorBanner'
@@ -132,7 +132,7 @@ async function handleDeleteStrategy() {
   window.location.href = `/app/${symbol}/dashboard`
 }
 
-if (loading) return <PageLoading />
+if (loading) return <StrategyDetailSkeleton />
 if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={loadData} /></div>
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 

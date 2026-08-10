@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import PageLoading from '@/components/PageLoading'
+import StrategiesSkeleton from '@/components/StrategiesSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 import ErrorBanner from '@/components/ErrorBanner'
@@ -94,7 +94,7 @@ export default function StrategiesPage({ params }) {
     loadStrategies()
   }
 
-  if (loading) return <PageLoading />
+  if (loading) return <StrategiesSkeleton />
   if (error) return <div className="page-container"><PageError message={`Couldn't load your strategies — ${error}`} onRetry={loadStrategies} /></div>
 
   return (

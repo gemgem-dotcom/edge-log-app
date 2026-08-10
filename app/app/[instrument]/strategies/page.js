@@ -104,7 +104,7 @@ export default function StrategiesPage({ params }) {
   return (
     <div className="page-container">
       <div className="page-header-row">
-        <h1 className="page-title">{symbol} — Strategies</h1>
+        <h1 className="page-title">Strategies</h1>
         <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
       </div>
 

@@ -66,7 +66,7 @@ export default function AllTradesPage() {
   return (
     <AppShell instruments={instruments} strategies={strategies} active="trades">
       <div className="page-container">
-        <h1 className="page-title">TRADES</h1>
+        <h1 className="page-title">TRADE LOG</h1>
         <p className="page-subtitle">Every trade you've logged, across all instruments.</p>
 
         <div className="panel">

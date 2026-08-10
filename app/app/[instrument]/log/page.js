@@ -57,7 +57,7 @@ const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 return (
   <div className="page-container">
   <div className="page-header-row">
-    <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> TRADES</h1>
+    <h1 className="page-title">TRADE LOG</h1>
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
   <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>

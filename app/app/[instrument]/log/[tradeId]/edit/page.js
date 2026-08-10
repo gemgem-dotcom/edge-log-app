@@ -120,7 +120,7 @@ export default function EditTradePage({ params }) {
   return (
     <div className="page-container">
       <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
-      <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> EDIT TRADE</h1>
+      <h1 className="page-title">EDIT TRADE</h1>
 
       <ErrorBanner message={deleteError} />
 

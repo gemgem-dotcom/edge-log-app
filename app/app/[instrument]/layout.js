@@ -155,7 +155,7 @@ export default function InstrumentLayout({ children, params }) {
           )}
 
           <a href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
-            Trades
+            Trade Log
             </a>
           <a href={`/app/${currentSymbol}/insights`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/insights`) ? 'sidebar-item-active' : ''}`}>
             Insights

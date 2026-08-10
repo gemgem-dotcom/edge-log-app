@@ -248,7 +248,7 @@ return (
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">
-  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unassigned</span> — not counted below until reassigned. <a href={`/app/${symbol}/log?strategy=unclassified`}>View in Trades log</a>
+  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unassigned</span> — not counted below until reassigned. <a href={`/app/${symbol}/log?strategy=unclassified`}>View in Trade Log</a>
     </p>
    )}
 

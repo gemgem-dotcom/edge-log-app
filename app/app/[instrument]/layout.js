@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
     TrendingUp,
@@ -23,8 +23,7 @@ export default function InstrumentLayout({ children, params }) {
     const [newStrategyName, setNewStrategyName] = useState('')
     const [strategyAddError, setStrategyAddError] = useState(null)
         const [theme, setTheme] = useState('dark')
-    const mainAreaRef = useRef(null)
-    const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ scrollRef: mainAreaRef })
+    const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
 
         useEffect(() => {
                     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
@@ -166,7 +165,7 @@ export default function InstrumentLayout({ children, params }) {
             </a>
             </aside>
 
-        <main className="main-area" ref={mainAreaRef}>{children}</main>
+        <main className="main-area">{children}</main>
             </div>
             </div>
   )

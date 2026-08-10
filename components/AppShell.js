@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { TrendingUp, Settings, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react'
 import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
@@ -15,8 +15,7 @@ import InstrumentNav from '@/components/InstrumentNav'
 export default function AppShell({ instruments, strategies = [], active, children }) {
   const [theme, setTheme] = useState('dark')
   const [strategiesExpanded, setStrategiesExpanded] = useState(true)
-  const mainAreaRef = useRef(null)
-  const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ scrollRef: mainAreaRef })
+  const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
 
   useEffect(() => {
     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
@@ -81,7 +80,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
           </a>
         </aside>
 
-        <main className="main-area" ref={mainAreaRef}>{children}</main>
+        <main className="main-area">{children}</main>
       </div>
     </div>
   )

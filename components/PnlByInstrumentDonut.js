@@ -1,0 +1,64 @@
+'use client'
+
+function fmtD(val) {
+  if (val === null || val === undefined) return '—'
+  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2)
+}
+
+// segments: [{ symbol, value, color }]. Slice size is each instrument's
+// share of total trading magnitude (sum of |value|) rather than of the net
+// total, since a net total near zero (winners offsetting losers) would
+// otherwise make every slice size meaningless.
+export default function PnlByInstrumentDonut({ segments }) {
+  const totalAbs = segments.reduce((s, seg) => s + Math.abs(seg.value), 0)
+
+  if (totalAbs === 0) {
+    return <div className="empty">No dollar P&amp;L recorded yet.</div>
+  }
+
+  const cx = 90
+  const cy = 90
+  const r = 70
+  const strokeWidth = 26
+  const circumference = 2 * Math.PI * r
+
+  let offset = 0
+  const arcs = segments
+    .filter((seg) => seg.value !== 0)
+    .map((seg) => {
+      const dash = (Math.abs(seg.value) / totalAbs) * circumference
+      const arc = { ...seg, dasharray: `${dash} ${circumference - dash}`, dashoffset: -offset }
+      offset += dash
+      return arc
+    })
+
+  return (
+    <div className="donut-wrap">
+      <svg viewBox="0 0 180 180" className="donut-svg">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--line)" strokeWidth={strokeWidth} />
+        {arcs.map((arc) => (
+          <circle
+            key={arc.symbol}
+            cx={cx} cy={cy} r={r} fill="none"
+            stroke={arc.color} strokeWidth={strokeWidth}
+            strokeDasharray={arc.dasharray}
+            strokeDashoffset={arc.dashoffset}
+            transform={`rotate(-90 ${cx} ${cy})`}
+          />
+        ))}
+      </svg>
+      <div className="donut-legend">
+        {segments.map((seg) => (
+          <div className="donut-legend-item" key={seg.symbol}>
+            <span className="gauge-dot" style={{ background: seg.color }} />
+            <span className="donut-legend-symbol">{seg.symbol}</span>
+            <span className={`donut-legend-value ${seg.value > 0 ? 'pos' : seg.value < 0 ? 'neg' : 'neu'}`}>
+              {fmtD(seg.value)}
+            </span>
+            <span className="donut-legend-pct">{((seg.value / totalAbs) * 100).toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

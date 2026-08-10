@@ -663,10 +663,14 @@ table{min-width:640px;}
   display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel); border:1px solid var(--line);
 }
+/* min-height matches .icon-btn's fixed 36px (the tallest element in
+   .shell-topbar), so .account-topbar computes to the same height as the
+   rest of the app's topbar rather than shrinking to this button's own
+   (shorter) padding + line-height. */
 .back-btn{
   display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--line);
   color:var(--text); padding:9px 16px; border-radius:100px; font-weight:700; font-size:13px;
-  text-decoration:none; transition:border-color .15s ease, color .15s ease;
+  text-decoration:none; min-height:36px; transition:border-color .15s ease, color .15s ease;
 }
 .back-btn:hover{border-color:var(--accent); color:var(--accent);}
 
@@ -729,7 +733,10 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
      above, or that later, higher-position declaration wins the cascade
      tie over this identically-specific media-scoped one. */
   .account-topbar-left{display:contents;}
-  .account-topbar .shell-logo{flex-basis:100%;}
+  /* min-height matches .shell-topbar's row one, which is as tall as its
+     36px icon buttons - without it this bare-logo row is shorter, making
+     the whole two-row bar shorter than .shell-topbar's. */
+  .account-topbar .shell-logo{flex-basis:100%; min-height:36px;}
 }
 
 

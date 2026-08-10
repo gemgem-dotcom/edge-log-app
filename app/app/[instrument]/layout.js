@@ -27,8 +27,10 @@ export default function InstrumentLayout({ children, params }) {
     const [strategiesExpanded, setStrategiesExpanded] = useState(true)
     const [addingInstrument, setAddingInstrument] = useState(false)
     const [newSymbol, setNewSymbol] = useState('')
+    const [instrumentAddError, setInstrumentAddError] = useState(null)
     const [addingStrategy, setAddingStrategy] = useState(false)
     const [newStrategyName, setNewStrategyName] = useState('')
+    const [strategyAddError, setStrategyAddError] = useState(null)
         const [theme, setTheme] = useState('dark')
 
         useEffect(() => {
@@ -85,6 +87,7 @@ export default function InstrumentLayout({ children, params }) {
   async function handleAddInstrument(e) {
         e.preventDefault()
         if (!newSymbol) return
+        setInstrumentAddError(null)
         const { data: { user } } = await supabase.auth.getUser()
         const catalogEntry = catalogEntryFor(newSymbol)
         const { error } = await supabase.from('instruments').insert([{
@@ -99,13 +102,14 @@ export default function InstrumentLayout({ children, params }) {
                 setAddingInstrument(false)
                 router.push(`/app/${addedSymbol}/dashboard`)
         } else {
-                alert(error.message)
+                setInstrumentAddError(error.message)
         }
   }
 
   async function handleAddStrategy(e) {
         e.preventDefault()
         if (!newStrategyName.trim() || !currentInstrumentId) return
+        setStrategyAddError(null)
         const { data: { user } } = await supabase.auth.getUser()
         const { error } = await supabase
           .from('strategies')
@@ -115,7 +119,7 @@ export default function InstrumentLayout({ children, params }) {
                 setAddingStrategy(false)
                 loadData()
         } else {
-                alert(error.message)
+                setStrategyAddError(error.message)
         }
   }
 
@@ -154,6 +158,7 @@ export default function InstrumentLayout({ children, params }) {
                                       ))}
                                   </select>
                                   <button type="submit">Add</button>
+                                  {instrumentAddError && <span className="field-error">{instrumentAddError}</span>}
                 </form>
                               ) : (
                                 <div className="instrument-option instrument-add" onClick={() => setAddingInstrument(true)}>
@@ -199,6 +204,7 @@ export default function InstrumentLayout({ children, params }) {
 </a>
               ))}
 {addingStrategy ? (
+                  <>
                   <form onSubmit={handleAddStrategy} className="sidebar-strategy-add-form">
                     <input
                       autoFocus
@@ -209,6 +215,10 @@ export default function InstrumentLayout({ children, params }) {
                    />
                                          <button type="submit">Add</button>
                        </form>
+                  {strategyAddError && (
+                    <span className="field-error" style={{ display: 'block', padding: '0 12px 6px 30px' }}>{strategyAddError}</span>
+                  )}
+                  </>
                ) : (
                                  <div className="sidebar-substrategy sidebar-strategy-add" onClick={() => setAddingStrategy(true)}>
                                    <Plus size={14} /> Add new

@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import TradeForm from '@/components/TradeForm'
 import PageLoading from '@/components/PageLoading'
+import PageError from '@/components/PageError'
+import ErrorBanner from '@/components/ErrorBanner'
 
 export default function EditTradePage({ params }) {
   const symbol = params.instrument
@@ -13,6 +15,8 @@ export default function EditTradePage({ params }) {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
   const [trade, setTrade] = useState(null)
   const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
@@ -23,21 +27,29 @@ export default function EditTradePage({ params }) {
 
   async function loadAll() {
     setLoading(true)
-    const { data: t } = await supabase.from('trades').select('*').eq('id', tradeId).single()
-    if (!t) { setLoading(false); return }
-    setTrade(t)
-    setInstrumentId(t.instrument_id)
-    await loadStrategies(t.instrument_id)
-    setLoading(false)
+    setError(null)
+    try {
+      const { data: t, error: tradeError } = await supabase.from('trades').select('*').eq('id', tradeId).single()
+      if (tradeError) throw tradeError
+      if (!t) { setLoading(false); return }
+      setTrade(t)
+      setInstrumentId(t.instrument_id)
+      await loadStrategies(t.instrument_id)
+    } catch (err) {
+      setError(err.message || "Couldn't load this trade — something went wrong.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function loadStrategies(forInstrumentId) {
-    const { data } = await supabase
+    const { data, error: stratError } = await supabase
       .from('strategies')
       .select('*')
       .eq('instrument_id', forInstrumentId ?? instrumentId)
       .eq('archived', false)
       .order('created_at', { ascending: true })
+    if (stratError) throw stratError
     setStrategies(data || [])
   }
 
@@ -46,8 +58,7 @@ export default function EditTradePage({ params }) {
     try {
       uploaded = await uploadScreenshots(screenshots)
     } catch (uploadError) {
-      alert('Screenshot upload failed: ' + uploadError.message)
-      return false
+      return 'Screenshot upload failed: ' + uploadError.message
     }
     const screenshot_urls = [...existingScreenshots, ...uploaded]
 
@@ -58,8 +69,7 @@ export default function EditTradePage({ params }) {
     }).eq('id', tradeId)
 
     if (error) {
-      alert('Could not save trade: ' + error.message)
-      return false
+      return 'Could not save trade: ' + error.message
     }
 
     router.push(`/app/${symbol}/log`)
@@ -67,11 +77,17 @@ export default function EditTradePage({ params }) {
 
   async function handleDelete() {
     if (!confirm('Delete this trade? This cannot be undone.')) return
-    await supabase.from('trades').delete().eq('id', tradeId)
+    setDeleteError(null)
+    const { error } = await supabase.from('trades').delete().eq('id', tradeId)
+    if (error) {
+      setDeleteError(`Couldn't delete this trade — ${error.message}`)
+      return
+    }
     router.push(`/app/${symbol}/log`)
   }
 
   if (loading) return <PageLoading />
+  if (error) return <div className="page-container"><PageError message={`Couldn't load this trade — ${error}`} onRetry={loadAll} /></div>
   if (!trade) return <div className="page-container"><div className="empty">Trade not found.</div></div>
 
   // Trades logged before distances existed only stored absolute prices, so
@@ -102,6 +118,8 @@ export default function EditTradePage({ params }) {
     <div className="page-container">
       <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
       <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> EDIT TRADE</h1>
+
+      <ErrorBanner message={deleteError} />
 
       <TradeForm
         symbol={symbol}

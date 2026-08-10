@@ -3,10 +3,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import PageLoading from '@/components/PageLoading'
+import PageError from '@/components/PageError'
+import EmptyState from '@/components/EmptyState'
+import ErrorBanner from '@/components/ErrorBanner'
 
 export default function StrategiesPage({ params }) {
   const symbol = params.instrument
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [formError, setFormError] = useState(null)
   const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
   const [newName, setNewName] = useState('')
@@ -19,34 +24,42 @@ export default function StrategiesPage({ params }) {
 
   async function loadStrategies() {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: instrument } = await supabase
-      .from('instruments')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('symbol', symbol)
-      .single()
+    setError(null)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: instrument } = await supabase
+        .from('instruments')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('symbol', symbol)
+        .single()
 
-    if (!instrument) {
+      if (!instrument) {
+        setLoading(false)
+        return
+      }
+      setInstrumentId(instrument.id)
+
+      const { data, error: stratError } = await supabase
+        .from('strategies')
+        .select('*')
+        .eq('instrument_id', instrument.id)
+        .order('archived', { ascending: true })
+        .order('created_at', { ascending: true })
+      if (stratError) throw stratError
+
+      setStrategies(data || [])
+    } catch (err) {
+      setError(err.message || "Couldn't load your strategies — something went wrong.")
+    } finally {
       setLoading(false)
-      return
     }
-    setInstrumentId(instrument.id)
-
-    const { data } = await supabase
-      .from('strategies')
-      .select('*')
-      .eq('instrument_id', instrument.id)
-      .order('archived', { ascending: true })
-      .order('created_at', { ascending: true })
-
-    setStrategies(data || [])
-    setLoading(false)
   }
 
   async function handleAdd(e) {
     e.preventDefault()
     if (!newName.trim()) return
+    setFormError(null)
     const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase
       .from('strategies')
@@ -55,31 +68,40 @@ export default function StrategiesPage({ params }) {
       setNewName('')
       loadStrategies()
     } else {
-      alert(error.message)
+      setFormError(error.message)
     }
   }
 
   async function handleRename(id) {
     if (!editName.trim()) return
+    setFormError(null)
     const { error } = await supabase.from('strategies').update({ name: editName.trim() }).eq('id', id)
     if (!error) {
       setEditingId(null)
       loadStrategies()
     } else {
-      alert(error.message)
+      setFormError(error.message)
     }
   }
 
   async function toggleArchive(id, archived) {
-    await supabase.from('strategies').update({ archived: !archived }).eq('id', id)
+    setFormError(null)
+    const { error } = await supabase.from('strategies').update({ archived: !archived }).eq('id', id)
+    if (error) {
+      setFormError(error.message)
+      return
+    }
     loadStrategies()
   }
 
   if (loading) return <PageLoading />
+  if (error) return <div className="page-container"><PageError message={`Couldn't load your strategies — ${error}`} onRetry={loadStrategies} /></div>
 
   return (
     <div className="page-container">
       <h1 className="page-title">{symbol} — Strategies</h1>
+
+      <ErrorBanner message={formError} />
 
       <div className="panel">
         <div className="panel-title">Add a new strategy</div>
@@ -97,7 +119,10 @@ export default function StrategiesPage({ params }) {
       <div className="panel">
         <div className="panel-title">Your strategies for {symbol}</div>
         {strategies.length === 0 ? (
-          <div className="empty">No strategies yet.</div>
+          <EmptyState
+            title="No strategies yet"
+            message={`You haven't created any strategies for ${symbol} yet. Add one above to start tracking trades against it.`}
+          />
         ) : (
           <table>
             <thead>

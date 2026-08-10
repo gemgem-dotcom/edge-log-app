@@ -8,7 +8,9 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
-import PageLoading from '@/components/PageLoading'
+import DashboardSkeleton from '@/components/DashboardSkeleton'
+import EmptyState from '@/components/EmptyState'
+import PageError from '@/components/PageError'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
@@ -159,6 +161,7 @@ export default function DashboardPage({ params }) {
   const symbol = params.instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [strategies, setStrategies] = useState([])
   const [tradesByStrategy, setTradesByStrategy] = useState({})
   const [allTrades, setAllTrades] = useState([])
@@ -172,30 +175,39 @@ useEffect(() => {
 
 async function loadData() {
   setLoading(true)
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: instrument } = await supabase
-  .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).single()
-  if (!instrument) { setLoading(false); return }
+  setError(null)
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: instrument } = await supabase
+    .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).single()
+    if (!instrument) { setLoading(false); return }
 
-  const { data: stratData } = await supabase
-  .from('strategies').select('*').eq('instrument_id', instrument.id).eq('archived', false)
-  .order('created_at', { ascending: true })
+    const { data: stratData, error: stratError } = await supabase
+    .from('strategies').select('*').eq('instrument_id', instrument.id).eq('archived', false)
+    .order('created_at', { ascending: true })
+    if (stratError) throw stratError
 
-  const { data: tradeData } = await supabase
-  .from('trades').select('*').eq('instrument_id', instrument.id)
+    const { data: tradeData, error: tradeError } = await supabase
+    .from('trades').select('*').eq('instrument_id', instrument.id)
+    if (tradeError) throw tradeError
 
-  const grouped = {}
-    for (const s of stratData || []) {
-      grouped[s.id] = (tradeData || []).filter((t) => t.strategy_id === s.id)
-    }
+    const grouped = {}
+      for (const s of stratData || []) {
+        grouped[s.id] = (tradeData || []).filter((t) => t.strategy_id === s.id)
+      }
 
-  setStrategies(stratData || [])
-  setTradesByStrategy(grouped)
-  setAllTrades(tradeData || [])
-  setLoading(false)
+    setStrategies(stratData || [])
+    setTradesByStrategy(grouped)
+    setAllTrades(tradeData || [])
+  } catch (err) {
+    setError(err.message || "Couldn't load your dashboard — something went wrong.")
+  } finally {
+    setLoading(false)
+  }
 }
 
-if (loading) return <PageLoading />
+if (loading) return <DashboardSkeleton />
+if (error) return <div className="page-container"><PageError message={`Couldn't load your dashboard — ${error}`} onRetry={loadData} /></div>
 
 const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
@@ -237,6 +249,17 @@ return (
     </p>
    )}
 
+{allTrades.length === 0 ? (
+  <div className="panel">
+    <EmptyState
+      title="No trades yet"
+      message={`Log your first trade for ${displayName} to see your stats, strategy performance and P&L calendar here.`}
+      actionHref={`/app/${symbol}/log/new`}
+      actionLabel="Log new trade"
+    />
+  </div>
+) : (
+  <>
 <div className="section-heading">Overview</div>
   <div className="stats stats-6">
   <div className="stat">
@@ -421,6 +444,8 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
   </>
 )}
 </div>
+  </>
+)}
   </div>
 )
 }

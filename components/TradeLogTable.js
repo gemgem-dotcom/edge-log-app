@@ -5,6 +5,7 @@ import { Pencil, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
 import ColumnFilter from './ColumnFilter'
+import ErrorBanner from './ErrorBanner'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
@@ -42,10 +43,15 @@ export default function TradeLogTable({
   showPnlColumn = true,
   showFilters = false,
   symbol,
+  // Overrides the default "no trades at all" message below - callers pass
+  // a tailored EmptyState (with a page-appropriate call to action) instead
+  // of this component hardcoding one copy for every context it's reused in.
+  emptyState = null,
 }) {
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
 
   // Filters open from a chevron on each column heading. Day and Strategy
   // take any combination of values; an empty array means unfiltered.
@@ -72,12 +78,13 @@ export default function TradeLogTable({
   async function handleDelete(e, trade) {
     e.stopPropagation()
     if (!confirm('Delete this trade? This cannot be undone.')) return
+    setDeleteError(null)
     const { error } = await supabase.from('trades').delete().eq('id', trade.id)
     if (!error) {
       setRows((prev) => prev.filter((t) => t.id !== trade.id))
       if (expandedId === trade.id) setExpandedId(null)
     } else {
-      alert(error.message)
+      setDeleteError(`Couldn't delete that trade — ${error.message}`)
     }
   }
 
@@ -94,7 +101,7 @@ export default function TradeLogTable({
     : rows
 
   if (rows.length === 0) {
-    return <div className="empty">No trades match this view yet.</div>
+    return emptyState || <div className="empty">No trades match this view yet.</div>
   }
 
   // Each filter offers its full set of values rather than only the ones the
@@ -156,6 +163,7 @@ export default function TradeLogTable({
 
   return (
     <div id="tableWrap">
+      <ErrorBanner message={deleteError} />
       {showFilters && chips.length > 0 && (
         <div className="active-filters">
           {chips.map((chip) => (

@@ -396,7 +396,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
                 <div className={`stat-value ${colorClass(monthStats.avgR)}`}>{fmtR(monthStats.avgR)}</div>
               </div>
               <div className="stat">
-                <div className="stat-label">Trade expectancy</div>
+                <div className="stat-label">Expectancy</div>
                 <div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancy)}`}>
                   {monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancy)}
                 </div>

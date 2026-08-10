@@ -308,14 +308,10 @@ table{min-width:640px;}
 .nav-signout:hover{color:var(--loss);}
 
 /* ---------- Instrument nav (topbar pill row) ---------- */
-/* The whole row is one capsule (fits its content rather than stretching
-   the full topbar width), with each item a smaller pill inside it - see
-   the reference layout in the PR: logo on the plain topbar background,
-   then this capsule, then the theme/settings icons further right. */
-.instrument-nav{
-  display:inline-flex; align-items:center; gap:2px; flex-wrap:wrap; min-width:0;
-  background:var(--panel-2); border:1px solid var(--line); border-radius:100px; padding:5px;
-}
+/* The capsule shape lives on .shell-topbar itself (the whole nav bar is
+   the pill, logo/icons included) - this is just the row of items inside
+   it, each its own smaller pill on hover/active. */
+.instrument-nav{display:flex; align-items:center; gap:2px; flex-wrap:wrap; min-width:0;}
 .instrument-nav-item{
   padding:7px 14px; border-radius:100px; font-size:13px; font-weight:600;
   color:var(--muted); text-decoration:none; white-space:nowrap;
@@ -407,8 +403,9 @@ table{min-width:640px;}
 .shell{min-height:100vh; display:flex; flex-direction:column;}
 
 .shell-topbar{
-  display:flex; align-items:center; gap:20px; padding:14px 24px;
-  border-bottom:1px solid var(--line); flex-shrink:0;
+  display:flex; align-items:center; gap:20px; padding:12px 22px;
+  margin:16px 24px 20px; border-radius:100px; background:var(--panel);
+  border:1px solid var(--line); flex-shrink:0;
 }
 .shell-logo{
   display:flex; align-items:center; gap:6px;
@@ -513,7 +510,7 @@ table{min-width:640px;}
   .sidebar-divider{display:none;}
   .main-area{padding:20px 16px 50px;}
   .stats-6{grid-template-columns:repeat(2,1fr);}
-  .shell-topbar{padding:12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
+  .shell-topbar{padding:12px 16px; margin:12px 12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
   .new-trade-btn span{display:none;}
   .perf-table th:nth-child(5), .perf-table th:nth-child(6), .perf-table th:nth-child(7), .perf-table td:nth-child(5), .perf-table td:nth-child(6), .perf-table td:nth-child(7){display:none;}
   .perf-table{min-width:0; table-layout:fixed;} .perf-table th, .perf-table td{padding:6px 4px; font-size:10.5px; word-break:break-word;} .panel:has(.perf-table){overflow-x:auto;}
@@ -976,7 +973,12 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 }
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
-.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
+.dashboard-split > div{display:flex; flex-direction:column;}
+/* Equity curve's chart+tabs naturally run taller than the donut - stretch
+   both cards to the row's height and center the donut's content in the
+   extra space instead of leaving the shorter card visibly shorter. */
+.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:center;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}
 }

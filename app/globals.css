@@ -5,30 +5,31 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–243  Base: reset, typography, forms, tables, thumbnails,
+     1–244  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   244  Auth pages
-   296  Top nav
-   311  Instrument switcher
-   334  Page layout
-   369  Tabs
-   377  Misc form helpers
-   383  Detail view
-   398  Shell layout (sidebar + topbar)
-   506  Expandable trade rows
-   514  Calendar
-   551  Account settings page
-   648  Light theme
-   666  2FA
-   675  Account fine print
-   678  Screenshot preview (log new trade)
-   695  Auth pages always dark
-   723  Monthly P&L (calendar on Overview)
-   785  Trade form: sections, validation, currency, screenshots
-   820  Field tooltips
-   854  In-header column filters (trade log table)
-   886  Active filter chips
-   911  Empty states, error banners, skeleton loaders
+   245  Auth pages
+   295  Top nav
+   310  Instrument nav (topbar pill row)
+   335  Page layout
+   370  Tabs
+   378  Misc form helpers
+   384  Detail view
+   399  Shell layout (sidebar + topbar)
+   512  Expandable trade rows
+   520  Calendar
+   557  Account settings page
+   654  Light theme
+   672  2FA
+   681  Account fine print
+   684  Screenshot preview (log new trade)
+   701  Auth pages always dark
+   729  Monthly P&L (calendar on Overview)
+   791  Trade form: sections, validation, currency, screenshots
+   826  Field tooltips
+   860  In-header column filters (trade log table)
+   892  Active filter chips
+   917  Empty states, error banners, skeleton loaders
+   968  Cross-instrument overview dashboard (/app)
    ============================================================ */
 
 :root{
@@ -184,7 +185,7 @@ tr:last-child td{border-bottom:none;}
 }
 .modal-close:hover{color:var(--loss); border-color:var(--loss);}
 
-#tableWrap{
+#tableWrap, .table-scroll{
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
 }
@@ -306,31 +307,41 @@ table{min-width:640px;}
 .nav-link-active{color:var(--accent);}
 .nav-signout:hover{color:var(--loss);}
 
-/* ---------- Instrument switcher ---------- */
-.instrument-switcher{position:relative;}
-.instrument-btn{
-  background:var(--panel-2); border:1px solid var(--line); border-radius:100px;
-  color:var(--text); padding:7px 12px; font-family:'JetBrains Mono',monospace;
-  font-size:13px; font-weight:600; cursor:pointer;
+/* ---------- Instrument nav (topbar pill row) ---------- */
+/* The capsule shape lives on .shell-topbar itself (the whole nav bar is
+   the pill, logo/icons included) - this is just the row of items inside
+   it, each its own smaller pill on hover/active. */
+.instrument-nav{display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-width:0;}
+.instrument-nav-item{
+  padding:7px 14px; border-radius:100px; font-size:13px; font-weight:600;
+  color:var(--muted); text-decoration:none; white-space:nowrap;
+}
+.instrument-nav-item:hover{color:var(--text); background:var(--line);}
+.instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
+.instrument-nav-add-wrap{position:relative;}
+.instrument-nav-add{
+  display:inline-block; padding:7px 10px; color:var(--accent); font-size:12.5px;
+  font-weight:600; cursor:pointer; white-space:nowrap;
 }
 .instrument-dropdown{
   position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
   border:1px solid var(--line); border-radius:9px; min-width:220px; z-index:50;
   box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden;
 }
-.instrument-option{
-  padding:9px 14px; font-size:13px; color:var(--text); cursor:pointer; text-decoration:none; display:block;
-}
-.instrument-option:hover{background:var(--panel-2);}
-.instrument-option-active{color:var(--accent);}
-.instrument-divider{height:1px; background:var(--line); margin:4px 0;}
-.instrument-add{color:var(--accent); font-weight:600;}
 .instrument-add-form{display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:8px 10px;}
 .instrument-add-form input, .instrument-add-form select{padding:6px 8px; font-size:12.5px; width:100%;}
 .instrument-add-form button{padding:6px 12px; font-size:12px; align-self:flex-end;}
+@media (max-width:900px){
+  .instrument-nav{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
+/* Wraps a page's title (only - the subtitle, if any, is a sibling below
+   this row) and its header-level action button (e.g. "Log new trade") on
+   one row, vertically centered so the button's center lines up with the
+   title's center rather than its top. */
+.page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
    Archivo weight, and would visibly mismatch the 800 symbol beside it. */
@@ -397,11 +408,20 @@ table{min-width:640px;}
 .shell{min-height:100vh; display:flex; flex-direction:column;}
 
 .shell-topbar{
-  display:flex; align-items:center; gap:20px; padding:14px 24px;
-  border-bottom:1px solid var(--line); flex-shrink:0;
+  display:flex; align-items:center; gap:20px; padding:12px 22px;
+  margin:16px 24px 20px; border-radius:100px; background:var(--panel);
+  border:1px solid var(--line); flex-shrink:0;
 }
-.shell-logo{font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; user-select:none; -webkit-user-drag:none;}
-.shell-logo span{color:var(--accent); font-weight:800;}
+/* No `gap` here on purpose - flex gap lands between every child,
+   including the "Edge" text node and the "Log" span below, which would
+   print as "EDGE LOG" with a visible gap instead of one word. The icon
+   gets its own margin instead, so only it is offset from the text. */
+.shell-logo{
+  display:flex; align-items:center;
+  font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; letter-spacing:.02em;
+  text-transform:uppercase; user-select:none; -webkit-user-drag:none;
+}
+.shell-logo svg{width:18px; height:18px; flex-shrink:0; color:var(--accent); margin-right:6px;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .icon-btn{
   width:36px; height:36px; border-radius:100px; display:flex; align-items:center; justify-content:center;
@@ -420,7 +440,7 @@ table{min-width:640px;}
 
 .sidebar{
   width:230px; flex-shrink:0; border-right:1px solid var(--line);
-  padding:18px 12px; display:flex; flex-direction:column; gap:2px;
+  padding:18px 12px; margin-left:24px; display:flex; flex-direction:column; gap:2px;
 }
 .sidebar-item{
   display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:100px;
@@ -442,6 +462,11 @@ table{min-width:640px;}
   color:var(--muted); text-decoration:none; font-size:13px;
 }
 .sidebar-substrategy:hover{background:var(--panel-2); color:var(--text);}
+/* Shown next to each strategy name only on the aggregated Dashboard/Trades
+   sidebar, where the list spans every instrument and same-named
+   strategies on different instruments would otherwise be ambiguous. */
+.sidebar-substrategy-tag{margin-left:auto; color:var(--muted); font-size:11px; font-family:'JetBrains Mono',monospace;}
+.sidebar-substrategy-empty{padding:8px 12px 8px 30px; color:var(--muted); font-size:12.5px;}
 
 .sidebar-divider{height:1px; background:var(--line); margin:10px 4px;}
 
@@ -472,7 +497,7 @@ table{min-width:640px;}
   .shell-body{flex-direction:column;}
   .sidebar{
     width:100%; flex-direction:row; flex-wrap:wrap; border-right:none;
-    border-bottom:1px solid var(--line); padding:10px 14px; gap:20px;
+    border-bottom:1px solid var(--line); padding:10px 14px; margin-left:0; gap:20px;
     align-items:center; position:relative;
   }
   .sidebar-item{
@@ -480,12 +505,10 @@ table{min-width:640px;}
     border-bottom:2px solid transparent; font-size:13px;
   }
   .sidebar-item-active{color:var(--accent); border-bottom-color:var(--accent);}
-  .sidebar-item svg{display:none;}
   .sidebar-section-header{
     white-space:nowrap; padding:6px 0; margin-top:0; border-bottom:2px solid transparent; gap:4px;
     font-size:13px;
   }
-  .sidebar-section-header > span svg{display:none;}
   .sidebar-substrategies{
     display:flex; position:absolute; top:100%; left:14px; margin-top:0;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
@@ -495,7 +518,7 @@ table{min-width:640px;}
   .sidebar-divider{display:none;}
   .main-area{padding:20px 16px 50px;}
   .stats-6{grid-template-columns:repeat(2,1fr);}
-  .shell-topbar{padding:12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
+  .shell-topbar{padding:12px 16px; margin:12px 12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
   .new-trade-btn span{display:none;}
   .perf-table th:nth-child(5), .perf-table th:nth-child(6), .perf-table th:nth-child(7), .perf-table td:nth-child(5), .perf-table td:nth-child(6), .perf-table td:nth-child(7){display:none;}
   .perf-table{min-width:0; table-layout:fixed;} .perf-table th, .perf-table td{padding:6px 4px; font-size:10.5px; word-break:break-word;} .panel:has(.perf-table){overflow-x:auto;}
@@ -548,8 +571,8 @@ table{min-width:640px;}
 
 /* ---------- Account settings page ---------- */
 .account-topbar{
-  display:flex; align-items:center; justify-content:space-between; padding:14px 24px;
-  border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
+  margin:16px 24px 20px; border-radius:100px; background:var(--panel); border:1px solid var(--line);
 }
 .back-btn{
   display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--line);
@@ -596,7 +619,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .account-msg-success{background:rgba(51,193,122,.12); border:1px solid var(--win); color:var(--win);}
 
 @media (max-width:640px){
-  .account-topbar{padding:12px 16px;}
+  .account-topbar{padding:12px 16px; margin:12px 12px 16px;}
   .account-wrap{padding:20px 16px 50px;}
 }
 
@@ -955,4 +978,33 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .skel-calendar-cell{min-height:76px; border-radius:8px;}
 @media (max-width:640px){
   .skel-calendar-cell{min-height:44px;}
+}
+
+/* ---------- Cross-instrument overview dashboard (/app) ---------- */
+.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
+.dashboard-split > div{display:flex; flex-direction:column;}
+/* Equity curve's chart+tabs naturally run taller than the donut - stretch
+   both cards to the row's height and center the donut's content in the
+   extra space instead of leaving the shorter card visibly shorter. */
+.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:center;}
+@media (max-width:1100px){
+  .dashboard-split{grid-template-columns:1fr;}
+}
+.equity-chart-wrap{width:100%;}
+.equity-chart-svg{display:block; width:100%; height:180px;}
+.equity-chart-labels{
+  display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--muted); margin-top:6px;
+}
+
+.donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
+.donut-svg{width:160px; height:160px; flex-shrink:0;}
+.donut-legend{display:flex; flex-direction:column; gap:9px; flex:1; min-width:180px;}
+.donut-legend-item{display:flex; align-items:center; gap:8px; font-size:12.5px;}
+.donut-legend-symbol{font-weight:600; min-width:44px;}
+.donut-legend-value{margin-left:auto; font-family:'JetBrains Mono',monospace;}
+.donut-legend-pct{color:var(--muted); font-family:'JetBrains Mono',monospace; min-width:52px; text-align:right;}
+@media (max-width:640px){
+  .donut-wrap{flex-direction:column; align-items:center;}
+  .donut-legend{width:100%;}
 }

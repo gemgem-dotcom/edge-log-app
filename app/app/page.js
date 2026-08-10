@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
 import PageLoading from '@/components/PageLoading'
+import AppShell from '@/components/AppShell'
+import OverviewDashboard from '@/components/OverviewDashboard'
 
 export default function AppHome() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [instruments, setInstruments] = useState([])
+  const [strategies, setStrategies] = useState([])
 
   // Onboarding step - a user with zero instruments always lands here, which
   // also happens if an existing user later deletes all of theirs, not just
@@ -39,11 +42,19 @@ export default function AppHome() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: true })
 
+    setInstruments(data || [])
     if (!error && data && data.length > 0) {
-      router.replace(`/app/${data[0].symbol}/dashboard`)
+      const ids = data.map((i) => i.id)
+      const { data: stratData } = await supabase
+        .from('strategies')
+        .select('*')
+        .in('instrument_id', ids)
+        .eq('archived', false)
+        .order('created_at', { ascending: true })
+      setStrategies(stratData || [])
+      setLoading(false)
       return
     }
-    setInstruments(data || [])
     setStep(user.user_metadata?.full_name ? 'setup' : 'name')
     setLoading(false)
   }
@@ -96,6 +107,14 @@ export default function AppHome() {
 
   if (loading) {
     return <PageLoading />
+  }
+
+  if (instruments.length > 0) {
+    return (
+      <AppShell instruments={instruments} strategies={strategies} active="overview">
+        <OverviewDashboard instruments={instruments} strategies={strategies} />
+      </AppShell>
+    )
   }
 
   return (

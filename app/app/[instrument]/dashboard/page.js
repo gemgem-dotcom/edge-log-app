@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
@@ -240,7 +240,10 @@ const year = calCursor.year
 
 return (
   <div className="page-container">
-  <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
+  <div className="page-header-row">
+    <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
+    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+  </div>
   <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
 
   {unclassifiedCount > 0 && (
@@ -261,7 +264,7 @@ return (
 ) : (
   <>
 <div className="section-heading">Overview</div>
-  <div className="stats stats-6">
+  <div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -287,10 +290,6 @@ return (
   <div className="stat">
   <div className="stat-label">Win rate</div>
   <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Average R</div>
-<div className={`stat-value ${colorClass(overall.avgR)}`}>{fmtR(overall.avgR)}</div>
   </div>
   <div className="stat">
   <div className="stat-label">Total trades</div>
@@ -359,7 +358,7 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
   </div>
   </div>
 
-<div className="stats stats-5">
+<div className="stats">
   <div className="stat">
   <div className="stat-label">Monthly P&L</div>
 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalR)}`}>
@@ -383,11 +382,7 @@ winRate={monthStats.winRate}
 />
   </div>
 <div className="stat">
-  <div className="stat-label">Average R</div>
-<div className={`stat-value ${colorClass(monthStats.avgR)}`}>{fmtR(monthStats.avgR)}</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Trade expectancy</div>
+  <div className="stat-label">Expectancy</div>
 <div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancyR)}`}>
 {monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancyR)}
 </div>

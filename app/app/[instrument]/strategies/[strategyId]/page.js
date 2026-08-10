@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
@@ -12,13 +12,20 @@ import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 import ErrorBanner from '@/components/ErrorBanner'
 
+function hasDollar(t) {
+  return t.pnl !== null && t.pnl !== undefined
+}
+
 async function computeStrategyStats(allTrades) {
   // Duration is measured over every trade that has an exit time, but the R
   // stats only make sense for trades that actually have a result.
   const trades = allTrades.filter(hasResult)
   const n = trades.length
   if (n === 0) {
-    return { n, winRate: null, avgR: null, expectancy: null, totalPnl: null, avgDuration: computeAvgDuration(allTrades) }
+    return {
+      n, winRate: null, avgR: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
+      hasD: false, avgDuration: computeAvgDuration(allTrades),
+    }
   }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
@@ -31,7 +38,16 @@ const wins = trades.filter((t) => t.r_multiple > 0)
   const wr = wins.length / n
   const expectancy = wr * avgWin + (1 - wr) * avgLoss
 
-return { n, winRate, avgR, expectancy, totalPnl, avgDuration: computeAvgDuration(allTrades) }
+const withD = trades.filter(hasDollar)
+  const hasD = withD.length > 0
+  const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
+  const winsD = wins.filter(hasDollar)
+  const lossesD = losses.filter(hasDollar)
+  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
+  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
+  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+
+return { n, winRate, avgR, expectancy, expectancyD, totalPnl, totalD, hasD, avgDuration: computeAvgDuration(allTrades) }
 }
 
 function computeAvgDuration(trades) {
@@ -42,6 +58,10 @@ function computeAvgDuration(trades) {
 function fmtR(val) {
   if (val === null || val === undefined) return '—'
   return (val >= 0 ? '+' : '') + val.toFixed(2) + 'R'
+}
+function fmtD(val) {
+  if (val === null || val === undefined) return '—'
+  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2)
 }
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
@@ -154,6 +174,7 @@ Delete strategy
   </div>
 )}
 </div>
+<a href={`/app/${symbol}/log/new`} className="new-trade-btn" style={{ marginLeft: 'auto' }}><Plus size={16} /> Log new trade</a>
   </div>
 
 {renaming && (
@@ -172,7 +193,7 @@ Delete strategy
 <p className="page-subtitle">See how your strategy has performed.</p>
 
 <div className="section-heading">Performance</div>
-<div className="stats stats-6">
+<div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Total trades</div>
 <div className="stat-value neu">{stats.n}</div>
@@ -182,16 +203,22 @@ Delete strategy
 <div className="stat-value neu">{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}</div>
   </div>
 <div className="stat">
-  <div className="stat-label">Avg R</div>
-<div className={`stat-value ${colorClass(stats.avgR)}`}>{fmtR(stats.avgR)}</div>
-  </div>
-<div className="stat">
   <div className="stat-label">Expectancy</div>
-<div className={`stat-value ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+<div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
+{stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+</div>
+{stats.expectancyD !== null && (
+  <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+)}
   </div>
 <div className="stat">
-  <div className="stat-label">P&amp;L (R)</div>
-<div className={`stat-value ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+  <div className="stat-label">Total P&amp;L</div>
+<div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
+{stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+</div>
+{stats.hasD && (
+  <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+)}
   </div>
 <div className="stat">
   <div className="stat-label">Avg trade duration</div>

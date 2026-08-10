@@ -43,6 +43,12 @@ export default function TradeLogTable({
   showPnlColumn = true,
   showFilters = false,
   symbol,
+  // The all-instruments trades page has no single symbol - it shows an
+  // Instrument column instead and resolves each row's own symbol/color
+  // through these two functions rather than the fixed `symbol` prop above.
+  showInstrumentColumn = false,
+  instrumentSymbolFor = null,
+  instrumentColorFor = null,
   // Overrides the default "no trades at all" message below - callers pass
   // a tailored EmptyState (with a page-appropriate call to action) instead
   // of this component hardcoding one copy for every context it's reused in.
@@ -160,6 +166,7 @@ export default function TradeLogTable({
     + (showDayColumn ? 1 : 0)
     + (showPnlColumn ? 1 : 0)
     + (showStrategyColumn ? 1 : 0)
+    + (showInstrumentColumn ? 1 : 0)
 
   return (
     <div id="tableWrap">
@@ -184,6 +191,7 @@ export default function TradeLogTable({
         <thead>
           <tr>
             <th>Date</th>
+            {showInstrumentColumn && <th>Instrument</th>}
             {showDayColumn && (
               <th>
                 <span className="th-label">Day</span>
@@ -229,10 +237,17 @@ export default function TradeLogTable({
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
             const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
             const isExpanded = expandedId === t.id
+            const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
             return (
               <Fragment key={t.id}>
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
                   <td>{t.trade_date}</td>
+                  {showInstrumentColumn && (
+                    <td>
+                      <span className="strategy-dot" style={{ background: instrumentColorFor?.(t), marginRight: '8px', verticalAlign: 'middle' }} />
+                      {rowSymbol || '—'}
+                    </td>
+                  )}
                   {showDayColumn && <td>{dayOf(t)}</td>}
                   {showStrategyColumn && (
                     <td>{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unassigned</span>}</td>
@@ -251,7 +266,7 @@ export default function TradeLogTable({
                   <td className="row-actions">
                     <span className="row-actions-inner">
                       <a
-                        href={`/app/${symbol}/log/${t.id}/edit`}
+                        href={`/app/${rowSymbol}/log/${t.id}/edit`}
                         className="row-action-btn"
                         onClick={(e) => e.stopPropagation()}
                         title="Edit trade"

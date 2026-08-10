@@ -536,9 +536,10 @@ table{min-width:640px;}
   .page-subtitle{margin-top:8px;}
   /* Title and the ⋮ menu button stay on one line (menu belongs next to the
      name it acts on); only the "Log new trade" button - which has nowhere
-     left to go once the name eats the row - drops to its own line below. */
+     left to go once the name eats the row - drops to its own line below,
+     sized to its own content rather than stretched full-width. */
   .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
-  .strategy-header-row .new-trade-btn{margin-left:0 !important; flex-basis:100%;}
+  .strategy-header-row .new-trade-btn{margin-left:0 !important; flex-grow:0;}
 }
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);

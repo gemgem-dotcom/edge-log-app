@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
@@ -161,6 +161,7 @@ return (
   <ErrorBanner message={formError} />
   <div className="strategy-header-row">
   <h1 className="page-title" style={{ marginBottom: 0 }}>{strategy.name}</h1>
+<a href={`/app/${symbol}/log/new`} className="new-trade-btn" style={{ marginLeft: 'auto' }}><Plus size={16} /> Log new trade</a>
 <div className="strategy-menu-wrap" ref={menuRef}>
   <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
 <MoreVertical size={17} />

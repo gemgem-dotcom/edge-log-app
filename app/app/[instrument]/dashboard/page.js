@@ -241,12 +241,10 @@ const year = calCursor.year
 return (
   <div className="page-container">
   <div className="page-header-row">
-    <div>
-      <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
-      <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
-    </div>
+    <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
+  <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">

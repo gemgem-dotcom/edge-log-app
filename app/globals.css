@@ -311,7 +311,7 @@ table{min-width:640px;}
 /* The capsule shape lives on .shell-topbar itself (the whole nav bar is
    the pill, logo/icons included) - this is just the row of items inside
    it, each its own smaller pill on hover/active. */
-.instrument-nav{display:flex; align-items:center; gap:2px; flex-wrap:wrap; min-width:0;}
+.instrument-nav{display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-width:0;}
 .instrument-nav-item{
   padding:7px 14px; border-radius:100px; font-size:13px; font-weight:600;
   color:var(--muted); text-decoration:none; white-space:nowrap;
@@ -416,7 +416,6 @@ table{min-width:640px;}
   font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; letter-spacing:.02em;
   text-transform:uppercase; user-select:none; -webkit-user-drag:none;
 }
-.shell-logo span{color:var(--accent); font-weight:800;}
 .shell-logo svg{width:18px; height:18px; flex-shrink:0; color:var(--accent); margin-right:6px;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .icon-btn{

@@ -26,14 +26,13 @@ export default function EquityCurveChart({ points }) {
   const linePoints = points.map((p, i) => `${xFor(i)},${yFor(p.cumulative)}`).join(' ')
   const zeroY = yFor(0)
   const areaPoints = `${xFor(0)},${zeroY} ${linePoints} ${xFor(points.length - 1)},${zeroY}`
-  const lineColor = values[values.length - 1] >= 0 ? 'var(--win)' : 'var(--loss)'
 
   return (
     <div className="equity-chart-wrap">
       <svg viewBox={`0 0 ${width} ${height}`} className="equity-chart-svg" preserveAspectRatio="none">
         <line x1={padX} y1={zeroY} x2={width - padX} y2={zeroY} stroke="var(--line)" strokeWidth="1" />
-        <polygon points={areaPoints} fill={lineColor} opacity="0.12" />
-        <polyline points={linePoints} fill="none" stroke={lineColor} strokeWidth="2" />
+        <polygon points={areaPoints} fill="var(--accent)" opacity="0.12" />
+        <polyline points={linePoints} fill="none" stroke="var(--accent)" strokeWidth="2" />
       </svg>
     </div>
   )

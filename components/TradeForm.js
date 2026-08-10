@@ -6,6 +6,7 @@ import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProf
 import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, todayDateString } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import FieldTooltip from './FieldTooltip'
+import ErrorBanner from './ErrorBanner'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
@@ -49,6 +50,10 @@ export default function TradeForm({
   const [direction, setDirection] = useState(initial.direction)
   const [setup, setSetup] = useState(initial.setup)
   const [errors, setErrors] = useState({})
+  // Whole-form failure (save/upload) - distinct from the per-field errors
+  // above, which validation sets. Cleared at the start of every submit
+  // attempt so a stale banner never survives a retry.
+  const [formError, setFormError] = useState(null)
 
   // Trade execution — controlled so P&L can auto-fill from exit price and
   // contracts as they change.
@@ -116,6 +121,7 @@ export default function TradeForm({
   async function handleAddStrategy(e) {
     e.preventDefault()
     if (!newStrategyName.trim()) return
+    setFormError(null)
     const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase
       .from('strategies')
@@ -123,7 +129,7 @@ export default function TradeForm({
       .select()
       .single()
     if (error) {
-      alert(error.message)
+      setFormError(error.message)
       return
     }
     setNewStrategyName('')
@@ -184,6 +190,7 @@ export default function TradeForm({
       return
     }
     setErrors({})
+    setFormError(null)
     setSaving(true)
 
     const form = e.target
@@ -212,16 +219,26 @@ export default function TradeForm({
       pnl: parseCurrency(pnlInput),
     }
 
-    // The caller navigates away on success; returning false means it failed
-    // and the form should become editable again.
+    // The caller navigates away on success; returning an error message
+    // string means it failed and the form should become editable again,
+    // with that message shown instead of a native alert().
     const result = await onSubmit({ values, screenshots, existingScreenshots })
-    if (result === false) setSaving(false)
+    if (typeof result === 'string') {
+      setFormError(result)
+      setSaving(false)
+    }
   }
 
   return (
     <>
       <div className="panel">
         <form onSubmit={handleSubmit} noValidate>
+
+          {formError && (
+            <div className="field full">
+              <ErrorBanner message={formError} />
+            </div>
+          )}
 
           <div className="field full section-label">
             Trade Setup

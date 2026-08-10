@@ -8,6 +8,9 @@ import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath
 import { useClickOutside } from '@/lib/useClickOutside'
 import TradeLogTable from '@/components/TradeLogTable'
 import PageLoading from '@/components/PageLoading'
+import PageError from '@/components/PageError'
+import EmptyState from '@/components/EmptyState'
+import ErrorBanner from '@/components/ErrorBanner'
 
 async function computeStrategyStats(allTrades) {
   // Duration is measured over every trade that has an exit time, but the R
@@ -50,6 +53,8 @@ export default function StrategyDetailPage({ params }) {
   const router = useRouter()
 
 const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [formError, setFormError] = useState(null)
   const [strategy, setStrategy] = useState(null)
   const [trades, setTrades] = useState([])
   const [stats, setStats] = useState(null)
@@ -68,20 +73,28 @@ useEffect(() => {
 
 async function loadData() {
   setLoading(true)
-  const { data: s } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
-  setStrategy(s)
+  setError(null)
+  try {
+    const { data: s, error: stratError } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
+    if (stratError) throw stratError
+    setStrategy(s)
 
-  const { data: tradeData } = await supabase
-  .from('trades')
-  .select('*')
-  .eq('strategy_id', strategyId)
-  .order('trade_date', { ascending: false })
-  .order('trade_time', { ascending: false })
+    const { data: tradeData, error: tradeError } = await supabase
+    .from('trades')
+    .select('*')
+    .eq('strategy_id', strategyId)
+    .order('trade_date', { ascending: false })
+    .order('trade_time', { ascending: false })
+    if (tradeError) throw tradeError
 
-  setTrades(tradeData || [])
-  const computed = await computeStrategyStats(tradeData || [])
-  setStats(computed)
-  setLoading(false)
+    setTrades(tradeData || [])
+    const computed = await computeStrategyStats(tradeData || [])
+    setStats(computed)
+  } catch (err) {
+    setError(err.message || "Couldn't load this strategy — something went wrong.")
+  } finally {
+    setLoading(false)
+  }
 }
 
 function openRename() {
@@ -93,34 +106,39 @@ function openRename() {
 async function handleRename(e) {
   e.preventDefault()
   if (!renameValue.trim()) return
+  setFormError(null)
   setSavingRename(true)
   const { error } = await supabase.from('strategies').update({ name: renameValue.trim() }).eq('id', strategyId)
   if (!error) {
     setStrategy((prev) => ({ ...prev, name: renameValue.trim() }))
     setRenaming(false)
   } else {
-    alert(error.message)
+    setFormError(error.message)
   }
   setSavingRename(false)
 }
 
 async function handleDeleteStrategy() {
+  setFormError(null)
   setDeleting(true)
   await supabase.from('trades').update({ strategy_id: null }).eq('strategy_id', strategyId)
   const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
   if (error) {
-    alert(error.message)
+    setFormError(error.message)
     setDeleting(false)
+    setShowDeleteModal(false)
     return
   }
   window.location.href = `/app/${symbol}/dashboard`
 }
 
 if (loading) return <PageLoading />
+if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={loadData} /></div>
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
 return (
   <div className="page-container">
+  <ErrorBanner message={formError} />
   <div className="strategy-header-row">
   <h1 className="page-title" style={{ marginBottom: 0 }}>{strategy.name}</h1>
 <div className="strategy-menu-wrap" ref={menuRef}>
@@ -191,7 +209,20 @@ Delete strategy
 
 <div className="section-heading">Trade log — {strategy.name}</div>
 <div className="panel">
-  <TradeLogTable trades={trades} showStrategyColumn={false} showFilters={true} symbol={symbol} />
+  <TradeLogTable
+    trades={trades}
+    showStrategyColumn={false}
+    showFilters={true}
+    symbol={symbol}
+    emptyState={
+      <EmptyState
+        title="No trades yet"
+        message={`No trades have been logged against "${strategy.name}" yet.`}
+        actionHref={`/app/${symbol}/log/new`}
+        actionLabel="Log new trade"
+      />
+    }
+  />
   </div>
 
 {showDeleteModal && (

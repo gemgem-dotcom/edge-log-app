@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
+import { usePageTitle } from '@/lib/usePageTitle'
 
 export default function ForgotPasswordPage() {
+  usePageTitle('Forgot Password')
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)

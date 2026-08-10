@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { toast } from '@/lib/toast'
 
 export default function ProfileSection({ email, initialFullName }) {
   const [fullName, setFullName] = useState(initialFullName)
 
   async function handleNameBlur() {
-    await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
+    if (fullName.trim() === initialFullName) return
+    const { error } = await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
+    if (!error) toast.success('Name updated.')
   }
 
   return (

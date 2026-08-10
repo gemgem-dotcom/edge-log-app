@@ -80,7 +80,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
                     ) : (
                       <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
                         {ev.device_nickname || ev.device || 'Unknown device'}
-                        <Pencil size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => { setEditingDeviceId(ev.id); setNicknameInput(ev.device_nickname || '') }} />
+                        <Pencil size={12} className="icon-edit-btn" onClick={() => { setEditingDeviceId(ev.id); setNicknameInput(ev.device_nickname || '') }} />
                       </span>
                     )}
                   </td>

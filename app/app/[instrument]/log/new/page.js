@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
+import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm from '@/components/TradeForm'
 import ErrorBanner from '@/components/ErrorBanner'
 
 export default function NewTradePage({ params }) {
+  usePageTitle('Log New Trade')
   const symbol = params.instrument
   const router = useRouter()
 
@@ -69,12 +72,13 @@ export default function NewTradePage({ params }) {
       return 'Could not save trade: ' + error.message
     }
 
+    toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)
   }
 
   return (
     <div className="page-container">
-      <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> LOG NEW TRADE</h1>
+      <h1 className="page-title">LOG NEW TRADE</h1>
 
       <ErrorBanner message={strategiesError} />
 

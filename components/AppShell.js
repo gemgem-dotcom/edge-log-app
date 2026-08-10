@@ -73,7 +73,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
           )}
 
           <a href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
-            Trades
+            Trade Log
           </a>
         </aside>
 

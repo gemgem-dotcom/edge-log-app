@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import StrategiesSkeleton from '@/components/StrategiesSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 import ErrorBanner from '@/components/ErrorBanner'
 
 export default function StrategiesPage({ params }) {
+  usePageTitle('Strategies')
   const symbol = params.instrument
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -67,6 +70,7 @@ export default function StrategiesPage({ params }) {
       .insert([{ user_id: user.id, instrument_id: instrumentId, name: newName.trim() }])
     if (!error) {
       setNewName('')
+      toast.success('Strategy created.')
       loadStrategies()
     } else {
       setFormError(error.message)
@@ -79,6 +83,7 @@ export default function StrategiesPage({ params }) {
     const { error } = await supabase.from('strategies').update({ name: editName.trim() }).eq('id', id)
     if (!error) {
       setEditingId(null)
+      toast.success('Strategy renamed.')
       loadStrategies()
     } else {
       setFormError(error.message)
@@ -101,7 +106,7 @@ export default function StrategiesPage({ params }) {
   return (
     <div className="page-container">
       <div className="page-header-row">
-        <h1 className="page-title">{symbol} — Strategies</h1>
+        <h1 className="page-title">Strategies</h1>
         <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
       </div>
 

@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
 export default function LogPage({ params }) {
+  usePageTitle('Trade Log')
   const symbol = params.instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
 
@@ -57,7 +59,7 @@ const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 return (
   <div className="page-container">
   <div className="page-header-row">
-    <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> TRADES</h1>
+    <h1 className="page-title">TRADE LOG</h1>
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
   <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>

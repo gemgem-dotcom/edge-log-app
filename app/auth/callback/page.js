@@ -23,6 +23,7 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabaseConfig'
+import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 
 const GENERIC_OAUTH_ERROR = 'Something went wrong signing in with Google. Please try again.'
@@ -33,6 +34,7 @@ function goToLoginWithError(router, message) {
 }
 
 export default function AuthCallbackPage() {
+  usePageTitle('Signing In')
   const router = useRouter()
   const hasRun = useRef(false)
 

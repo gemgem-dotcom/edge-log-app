@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { toast } from '@/lib/toast'
 import { UTC_OFFSETS } from '@/lib/timezone'
 
 // Timezone is owned by the page rather than here, because the sign-in
@@ -18,7 +19,8 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
 
   async function handleTimezoneChange(newTz) {
     onTimezoneChange(newTz)
-    await supabase.auth.updateUser({ data: { timezone: newTz } })
+    const { error } = await supabase.auth.updateUser({ data: { timezone: newTz } })
+    if (!error) toast.success('Timezone updated.')
   }
 
   return (

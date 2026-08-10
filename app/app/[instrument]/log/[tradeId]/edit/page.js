@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
+import { toast } from '@/lib/toast'
+import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm from '@/components/TradeForm'
 import PageLoading from '@/components/PageLoading'
 import PageError from '@/components/PageError'
 import ErrorBanner from '@/components/ErrorBanner'
 
 export default function EditTradePage({ params }) {
+  usePageTitle('Edit Trade')
   const symbol = params.instrument
   const tradeId = params.tradeId
   const router = useRouter()
@@ -72,6 +75,7 @@ export default function EditTradePage({ params }) {
       return 'Could not save trade: ' + error.message
     }
 
+    toast.success('Trade updated.')
     router.push(`/app/${symbol}/log`)
   }
 
@@ -83,6 +87,7 @@ export default function EditTradePage({ params }) {
       setDeleteError(`Couldn't delete this trade — ${error.message}`)
       return
     }
+    toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
   }
 
@@ -117,7 +122,7 @@ export default function EditTradePage({ params }) {
   return (
     <div className="page-container">
       <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
-      <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> EDIT TRADE</h1>
+      <h1 className="page-title">EDIT TRADE</h1>
 
       <ErrorBanner message={deleteError} />
 

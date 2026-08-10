@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { toast } from '@/lib/toast'
 import StrategiesSkeleton from '@/components/StrategiesSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -67,6 +68,7 @@ export default function StrategiesPage({ params }) {
       .insert([{ user_id: user.id, instrument_id: instrumentId, name: newName.trim() }])
     if (!error) {
       setNewName('')
+      toast.success('Strategy created.')
       loadStrategies()
     } else {
       setFormError(error.message)
@@ -79,6 +81,7 @@ export default function StrategiesPage({ params }) {
     const { error } = await supabase.from('strategies').update({ name: editName.trim() }).eq('id', id)
     if (!error) {
       setEditingId(null)
+      toast.success('Strategy renamed.')
       loadStrategies()
     } else {
       setFormError(error.message)

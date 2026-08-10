@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
+import { toast } from '@/lib/toast'
 import TradeForm from '@/components/TradeForm'
 import PageLoading from '@/components/PageLoading'
 import PageError from '@/components/PageError'
@@ -72,6 +73,7 @@ export default function EditTradePage({ params }) {
       return 'Could not save trade: ' + error.message
     }
 
+    toast.success('Trade updated.')
     router.push(`/app/${symbol}/log`)
   }
 
@@ -83,6 +85,7 @@ export default function EditTradePage({ params }) {
       setDeleteError(`Couldn't delete this trade — ${error.message}`)
       return
     }
+    toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
   }
 

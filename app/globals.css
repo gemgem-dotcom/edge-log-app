@@ -10,26 +10,28 @@
    245  Auth pages
    295  Top nav
    310  Instrument nav (topbar pill row)
-   335  Page layout
-   370  Tabs
-   378  Misc form helpers
-   384  Detail view
-   399  Shell layout (sidebar + topbar)
-   512  Expandable trade rows
-   520  Calendar
-   557  Account settings page
-   654  Light theme
-   672  2FA
-   681  Account fine print
-   684  Screenshot preview (log new trade)
-   701  Auth pages always dark
-   729  Monthly P&L (calendar on Overview)
-   791  Trade form: sections, validation, currency, screenshots
-   826  Field tooltips
-   860  In-header column filters (trade log table)
-   892  Active filter chips
-   917  Empty states, error banners, skeleton loaders
-   968  Cross-instrument overview dashboard (/app)
+   338  Page layout
+   378  Tabs
+   386  Misc form helpers
+   392  Detail view
+   407  Shell layout (sidebar + topbar)
+   527  Expandable trade rows
+   535  Calendar
+   572  Account settings page
+   669  Light theme
+   687  2FA
+   696  Account fine print
+   699  Screenshot preview (log new trade)
+   716  Auth pages always dark
+   744  Monthly P&L (calendar on Overview)
+   806  Trade form: sections, validation, currency, screenshots
+   841  Field tooltips
+   875  In-header column filters (trade log table)
+   907  Active filter chips
+   932  Empty states, error banners, skeleton loaders
+   983  Cross-instrument overview dashboard (/app)
+   1012  Not found / error boundary state pages
+   1025  Toast notifications
    ============================================================ */
 
 :root{
@@ -1007,4 +1009,40 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 @media (max-width:640px){
   .donut-wrap{flex-direction:column; align-items:center;}
   .donut-legend{width:100%;}
+}
+
+/* ---------- Not found / error boundary state pages ---------- */
+.state-card{
+  background:#0a111b; border:1px solid var(--line); border-radius:24px; color:var(--text);
+  padding:48px 44px; width:100%; max-width:440px; text-align:center;
+}
+.state-code{
+  font-family:'Archivo',sans-serif; font-size:52px; font-weight:800; color:var(--accent);
+  letter-spacing:-.02em; margin-bottom:6px;
+}
+.state-title{font-family:'Archivo',sans-serif; font-size:20px; font-weight:700; margin-bottom:10px;}
+.state-message{color:var(--muted); font-size:14px; line-height:1.55; margin-bottom:28px;}
+.state-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+
+/* ---------- Toast notifications ---------- */
+.toast-stack{
+  position:fixed; bottom:24px; right:24px; z-index:1000;
+  display:flex; flex-direction:column; gap:10px; max-width:340px;
+}
+.toast{
+  display:flex; align-items:center; gap:10px; background:var(--panel); color:var(--text);
+  border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-size:13px;
+  font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.35); animation:toast-in .2s ease;
+}
+.toast svg{flex-shrink:0;}
+.toast-success{border-color:rgba(51,193,122,.4); color:var(--win);}
+.toast-success svg{color:var(--win);}
+.toast-error{border-color:rgba(225,92,92,.4); color:var(--loss);}
+.toast-error svg{color:var(--loss);}
+@keyframes toast-in{
+  from{opacity:0; transform:translateY(8px);}
+  to{opacity:1; transform:translateY(0);}
+}
+@media (max-width:640px){
+  .toast-stack{left:16px; right:16px; bottom:16px; max-width:none;}
 }

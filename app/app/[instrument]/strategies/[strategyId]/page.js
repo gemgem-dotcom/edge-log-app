@@ -6,6 +6,7 @@ import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
+import { toast } from '@/lib/toast'
 import TradeLogTable from '@/components/TradeLogTable'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
@@ -132,6 +133,7 @@ async function handleRename(e) {
   if (!error) {
     setStrategy((prev) => ({ ...prev, name: renameValue.trim() }))
     setRenaming(false)
+    toast.success('Strategy renamed.')
   } else {
     setFormError(error.message)
   }
@@ -149,7 +151,8 @@ async function handleDeleteStrategy() {
     setShowDeleteModal(false)
     return
   }
-  window.location.href = `/app/${symbol}/dashboard`
+  toast.success('Strategy deleted.')
+  router.push(`/app/${symbol}/dashboard`)
 }
 
 if (loading) return <StrategyDetailSkeleton />

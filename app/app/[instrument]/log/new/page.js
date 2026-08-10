@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
+import { toast } from '@/lib/toast'
 import TradeForm from '@/components/TradeForm'
 import ErrorBanner from '@/components/ErrorBanner'
 
@@ -69,6 +70,7 @@ export default function NewTradePage({ params }) {
       return 'Could not save trade: ' + error.message
     }
 
+    toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)
   }
 

@@ -4,6 +4,7 @@
 // add more pages later without repeating this boilerplate each time.
 
 import './globals.css'
+import ToastContainer from '@/components/ToastContainer'
 
 export const metadata = {
   title: 'Edge Log',
@@ -35,7 +36,10 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ToastContainer />
+      </body>
     </html>
   )
 }

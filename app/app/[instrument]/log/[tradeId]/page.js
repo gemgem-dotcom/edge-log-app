@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { toast } from '@/lib/toast'
 import PageLoading from '@/components/PageLoading'
 
 export default function TradeDetailPage({ params }) {
@@ -35,6 +36,7 @@ export default function TradeDetailPage({ params }) {
   async function handleDelete() {
     if (!confirm('Delete this trade? This cannot be undone.')) return
     await supabase.from('trades').delete().eq('id', tradeId)
+    toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
   }
 

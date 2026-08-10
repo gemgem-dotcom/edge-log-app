@@ -83,7 +83,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
                       </span>
                     )}
                   </td>
-                  <td className="tag-cell">{ev.location || 'Unknown location'}</td>
+                  <td>{ev.location || 'Unknown location'}</td>
                   <td>{formatInTz(ev.created_at, timezone)}</td>
                 </tr>
               ))}

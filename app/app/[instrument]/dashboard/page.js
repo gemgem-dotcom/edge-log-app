@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import TradeLogTable from '@/components/TradeLogTable'
@@ -17,7 +18,7 @@ function computeStats(allTrades) {
   // in would count them as breakeven and drag every average down.
   const trades = allTrades.filter(hasResult)
   const n = trades.length
-  if (n === 0) return { n, winRate: null, avgR: null, expectancy: null, totalPnl: null, profitFactor: null }
+  if (n === 0) return { n, winRate: null, avgR: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -33,7 +34,16 @@ const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
   const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
   const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
 
-return { n, winRate, avgR, expectancy, totalPnl, profitFactor }
+const withD = trades.filter(hasDollar)
+  const hasD = withD.length > 0
+  const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
+  const winsD = wins.filter(hasDollar)
+  const lossesD = losses.filter(hasDollar)
+  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
+  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
+  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+
+return { n, winRate, avgR, expectancy, totalPnl, profitFactor, totalD, hasD, expectancyD }
 }
 
 function hasDollar(t) {
@@ -147,6 +157,7 @@ const weeks = []
 
 export default function DashboardPage({ params }) {
   const symbol = params.instrument
+  const displayName = catalogEntryFor(symbol)?.display_name || symbol
   const [loading, setLoading] = useState(true)
   const [strategies, setStrategies] = useState([])
   const [tradesByStrategy, setTradesByStrategy] = useState({})
@@ -218,7 +229,7 @@ const year = calCursor.year
 return (
   <div className="page-container">
   <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
-  <p className="page-subtitle">Your performance overview for {symbol} futures.</p>
+  <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">
@@ -229,28 +240,38 @@ return (
 <div className="section-heading">Overview</div>
   <div className="stats stats-6">
   <div className="stat">
-  <div className="stat-label">Total trades</div>
-  <div className="stat-value neu">{overall.n}</div>
+  <div className="stat-label">Total P&amp;L</div>
+  <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
+  {overall.hasD ? fmtD(overall.totalD) : fmtR(overall.totalPnl)}
+  </div>
+  {overall.hasD && (
+  <div className={`stat-subvalue ${colorClass(overall.totalPnl)}`}>{fmtR(overall.totalPnl)}</div>
+  )}
+  </div>
+  <div className="stat">
+  <div className="stat-label">Expectancy</div>
+  <div className={`stat-value ${colorClass(overall.expectancyD !== null ? overall.expectancyD : overall.expectancy)}`}>
+  {overall.expectancyD !== null ? fmtD(overall.expectancyD) : fmtR(overall.expectancy)}
+  </div>
+  {overall.expectancyD !== null && (
+  <div className={`stat-subvalue ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
+  )}
+  </div>
+<div className="stat">
+  <div className="stat-label">Profit factor</div>
+<div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
   </div>
   <div className="stat">
   <div className="stat-label">Win rate</div>
   <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
   </div>
 <div className="stat">
-  <div className="stat-label">Avg R</div>
+  <div className="stat-label">Average R</div>
 <div className={`stat-value ${colorClass(overall.avgR)}`}>{fmtR(overall.avgR)}</div>
   </div>
-<div className="stat">
-  <div className="stat-label">Expectancy</div>
-<div className={`stat-value ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Profit factor</div>
-<div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Total P&amp;L</div>
-<div className={`stat-value ${colorClass(overall.totalPnl)}`}>{fmtR(overall.totalPnl)}</div>
+  <div className="stat">
+  <div className="stat-label">Total trades</div>
+  <div className="stat-value neu">{overall.n}</div>
   </div>
   </div>
 

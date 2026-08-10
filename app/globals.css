@@ -337,6 +337,11 @@ table{min-width:640px;}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
+/* Wraps a page's title(+subtitle) block and its header-level action button
+   (e.g. "Log new trade") on one row, button right-aligned and top-aligned
+   with the title. Per-instrument pages only - the title/subtitle keep
+   their own margins as if unwrapped. */
+.page-header-row{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
    Archivo weight, and would visibly mismatch the 800 symbol beside it. */

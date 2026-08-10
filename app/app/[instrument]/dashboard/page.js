@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
@@ -240,8 +240,13 @@ const year = calCursor.year
 
 return (
   <div className="page-container">
-  <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
-  <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
+  <div className="page-header-row">
+    <div>
+      <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
+      <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
+    </div>
+    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+  </div>
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">

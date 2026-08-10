@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import StrategiesSkeleton from '@/components/StrategiesSkeleton'
 import PageError from '@/components/PageError'
@@ -99,7 +100,10 @@ export default function StrategiesPage({ params }) {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">{symbol} — Strategies</h1>
+      <div className="page-header-row">
+        <h1 className="page-title">{symbol} — Strategies</h1>
+        <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+      </div>
 
       <ErrorBanner message={formError} />
 

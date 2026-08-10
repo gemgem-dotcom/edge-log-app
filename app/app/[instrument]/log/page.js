@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import TradeLogTable from '@/components/TradeLogTable'
@@ -55,8 +56,13 @@ const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
 return (
   <div className="page-container">
-  <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> TRADES</h1>
-  <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>
+  <div className="page-header-row">
+    <div>
+      <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> TRADES</h1>
+      <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>
+    </div>
+    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+  </div>
 
 <div className="panel">
   <TradeLogTable

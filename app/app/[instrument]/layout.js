@@ -100,10 +100,6 @@ export default function InstrumentLayout({ children, params }) {
 
             <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
-        <a href={`/app/${currentSymbol}/log/new`} className="new-trade-btn">
-                      <Plus size={16} /> Log new trade
-            </a>
-
         <div className="shell-topbar-right">
                               <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}

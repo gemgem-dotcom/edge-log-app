@@ -381,7 +381,15 @@ table{min-width:640px;}
    this row) and its header-level action button (e.g. "Log new trade") on
    one row, vertically centered so the button's center lines up with the
    title's center rather than its top. */
-.page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;}
+.page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;}
+/* .page-title's own margin-bottom is part of its flex-item margin box, so
+   left alone it inflates the row's height and the vertically-centered
+   button drifts down toward that dead space instead of the title text
+   (closer to where the subtitle below ends up). Moving the same 20px onto
+   the row itself keeps the row exactly as tall as its real content -
+   button centers on the title - while the gap before whatever follows
+   (a subtitle, or a panel on pages with no subtitle) stays unchanged. */
+.page-header-row .page-title{margin-bottom:0;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
    Archivo weight, and would visibly mismatch the 800 symbol beside it. */
@@ -711,6 +719,18 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 
 .account-topbar-left{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}
+@media (max-width:640px){
+  /* Promote the logo and "Back to dashboard" out of .account-topbar-left so
+     they become direct flex items of .account-topbar alongside "Log out" -
+     the logo gets its own full-width row, and the two pill buttons land
+     together on the row below, spread apart by the row's own
+     justify-content:space-between (matching the reference layout). Must
+     come after the unconditional .account-topbar-left{display:flex} rule
+     above, or that later, higher-position declaration wins the cascade
+     tie over this identically-specific media-scoped one. */
+  .account-topbar-left{display:contents;}
+  .account-topbar .shell-logo{flex-basis:100%;}
+}
 
 
 .sidebar-strategy-add{color:var(--accent); font-weight:600; cursor:pointer; transition:opacity .15s ease;}

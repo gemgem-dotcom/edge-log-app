@@ -184,10 +184,9 @@ function buildCalendarWeeks(year, month, tradesByDate) {
   return weeks
 }
 
-export default function OverviewDashboard({ instruments }) {
+export default function OverviewDashboard({ instruments, strategies }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [strategies, setStrategies] = useState([])
   const [allTrades, setAllTrades] = useState([])
   const [equityGroup, setEquityGroup] = useState('day')
   const [calInstrument, setCalInstrument] = useState('all')
@@ -206,16 +205,10 @@ export default function OverviewDashboard({ instruments }) {
     try {
       const ids = instruments.map((i) => i.id)
 
-      const { data: stratData, error: stratError } = await supabase
-        .from('strategies').select('*').in('instrument_id', ids).eq('archived', false)
-        .order('created_at', { ascending: true })
-      if (stratError) throw stratError
-
       const { data: tradeData, error: tradeError } = await supabase
         .from('trades').select('*').in('instrument_id', ids)
       if (tradeError) throw tradeError
 
-      setStrategies(stratData || [])
       setAllTrades(tradeData || [])
     } catch (err) {
       setError(err.message || "Couldn't load your dashboard — something went wrong.")
@@ -354,38 +347,6 @@ export default function OverviewDashboard({ instruments }) {
             <PnlByInstrumentDonut segments={instrumentSegments} />
           </div>
 
-          <div className="section-heading">Recent trades</div>
-          <div className="panel">
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>Time</th><th>Instrument</th><th>Strategy</th><th>R</th><th>P&amp;L</th></tr>
-                </thead>
-                <tbody>
-                  {recentTrades.map((t) => {
-                    const inst = instrumentById[t.instrument_id]
-                    const rClass = t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
-                    return (
-                      <tr key={t.id}>
-                        <td>{t.trade_date}{t.trade_time ? ` ${t.trade_time}` : ''}</td>
-                        <td>
-                          <span className="strategy-dot" style={{ background: inst?.color, marginRight: '8px', verticalAlign: 'middle' }} />
-                          {inst?.symbol || '—'}
-                        </td>
-                        <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
-                        <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toFixed(2)}R</span></td>
-                        <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="panel-link-row">
-              <a href={`/app/${firstInstrument.symbol}/log`} className="panel-link">View all trades →</a>
-            </div>
-          </div>
-
           <div className="section-heading">Monthly P&L</div>
           <div className="panel">
             <div className="calendar-toolbar">
@@ -510,6 +471,38 @@ export default function OverviewDashboard({ instruments }) {
                 </div>
               </>
             )}
+          </div>
+
+          <div className="section-heading">Recent trades</div>
+          <div className="panel">
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr><th>Time</th><th>Instrument</th><th>Strategy</th><th>R</th><th>P&amp;L</th></tr>
+                </thead>
+                <tbody>
+                  {recentTrades.map((t) => {
+                    const inst = instrumentById[t.instrument_id]
+                    const rClass = t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
+                    return (
+                      <tr key={t.id}>
+                        <td>{t.trade_date}{t.trade_time ? ` ${t.trade_time}` : ''}</td>
+                        <td>
+                          <span className="strategy-dot" style={{ background: inst?.color, marginRight: '8px', verticalAlign: 'middle' }} />
+                          {inst?.symbol || '—'}
+                        </td>
+                        <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
+                        <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toFixed(2)}R</span></td>
+                        <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="panel-link-row">
+              <a href="/app/log" className="panel-link">View all trades →</a>
+            </div>
           </div>
         </>
       )}

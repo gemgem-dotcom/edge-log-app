@@ -5,31 +5,31 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–243  Base: reset, typography, forms, tables, thumbnails,
+     1–244  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   244  Auth pages
-   296  Top nav
-   311  Instrument switcher
-   334  Page layout
-   369  Tabs
-   377  Misc form helpers
-   383  Detail view
-   398  Shell layout (sidebar + topbar)
-   506  Expandable trade rows
-   514  Calendar
-   551  Account settings page
-   648  Light theme
-   666  2FA
-   675  Account fine print
-   678  Screenshot preview (log new trade)
-   695  Auth pages always dark
-   723  Monthly P&L (calendar on Overview)
-   785  Trade form: sections, validation, currency, screenshots
-   820  Field tooltips
-   854  In-header column filters (trade log table)
-   886  Active filter chips
-   911  Empty states, error banners, skeleton loaders
-   961  Cross-instrument overview dashboard (/app)
+   245  Auth pages
+   295  Top nav
+   310  Instrument nav (topbar pill row)
+   335  Page layout
+   370  Tabs
+   378  Misc form helpers
+   384  Detail view
+   399  Shell layout (sidebar + topbar)
+   507  Expandable trade rows
+   515  Calendar
+   552  Account settings page
+   649  Light theme
+   667  2FA
+   676  Account fine print
+   679  Screenshot preview (log new trade)
+   696  Auth pages always dark
+   724  Monthly P&L (calendar on Overview)
+   786  Trade form: sections, validation, currency, screenshots
+   821  Field tooltips
+   855  In-header column filters (trade log table)
+   887  Active filter chips
+   912  Empty states, error banners, skeleton loaders
+   963  Cross-instrument overview dashboard (/app)
    ============================================================ */
 
 :root{
@@ -307,28 +307,30 @@ table{min-width:640px;}
 .nav-link-active{color:var(--accent);}
 .nav-signout:hover{color:var(--loss);}
 
-/* ---------- Instrument switcher ---------- */
-.instrument-switcher{position:relative;}
-.instrument-btn{
-  background:var(--panel-2); border:1px solid var(--line); border-radius:100px;
-  color:var(--text); padding:7px 12px; font-family:'JetBrains Mono',monospace;
-  font-size:13px; font-weight:600; cursor:pointer;
+/* ---------- Instrument nav (topbar pill row) ---------- */
+.instrument-nav{display:flex; align-items:center; gap:4px; flex-wrap:wrap; flex:1; min-width:0;}
+.instrument-nav-item{
+  padding:7px 14px; border-radius:100px; font-size:13px; font-weight:600;
+  color:var(--muted); text-decoration:none; white-space:nowrap;
+}
+.instrument-nav-item:hover{color:var(--text); background:var(--panel-2);}
+.instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
+.instrument-nav-add-wrap{position:relative;}
+.instrument-nav-add{
+  display:inline-block; padding:7px 10px; color:var(--accent); font-size:12.5px;
+  font-weight:600; cursor:pointer; white-space:nowrap;
 }
 .instrument-dropdown{
   position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
   border:1px solid var(--line); border-radius:9px; min-width:220px; z-index:50;
   box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden;
 }
-.instrument-option{
-  padding:9px 14px; font-size:13px; color:var(--text); cursor:pointer; text-decoration:none; display:block;
-}
-.instrument-option:hover{background:var(--panel-2);}
-.instrument-option-active{color:var(--accent);}
-.instrument-divider{height:1px; background:var(--line); margin:4px 0;}
-.instrument-add{color:var(--accent); font-weight:600;}
 .instrument-add-form{display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:8px 10px;}
 .instrument-add-form input, .instrument-add-form select{padding:6px 8px; font-size:12.5px; width:100%;}
 .instrument-add-form button{padding:6px 12px; font-size:12px; align-self:flex-end;}
+@media (max-width:900px){
+  .instrument-nav{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
@@ -443,6 +445,11 @@ table{min-width:640px;}
   color:var(--muted); text-decoration:none; font-size:13px;
 }
 .sidebar-substrategy:hover{background:var(--panel-2); color:var(--text);}
+/* Shown next to each strategy name only on the aggregated Dashboard/Trades
+   sidebar, where the list spans every instrument and same-named
+   strategies on different instruments would otherwise be ambiguous. */
+.sidebar-substrategy-tag{margin-left:auto; color:var(--muted); font-size:11px; font-family:'JetBrains Mono',monospace;}
+.sidebar-substrategy-empty{padding:8px 12px 8px 30px; color:var(--muted); font-size:12.5px;}
 
 .sidebar-divider{height:1px; background:var(--line); margin:10px 4px;}
 

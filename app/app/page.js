@@ -2,19 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { LayoutGrid, Layers, Settings, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
-import { strategyColor } from '@/lib/strategyColor'
 import PageLoading from '@/components/PageLoading'
+import AppShell from '@/components/AppShell'
 import OverviewDashboard from '@/components/OverviewDashboard'
 
 export default function AppHome() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [instruments, setInstruments] = useState([])
-  const [theme, setTheme] = useState('dark')
-  const [instrumentsExpanded, setInstrumentsExpanded] = useState(true)
+  const [strategies, setStrategies] = useState([])
 
   // Onboarding step - a user with zero instruments always lands here, which
   // also happens if an existing user later deletes all of theirs, not just
@@ -33,17 +31,7 @@ export default function AppHome() {
 
   useEffect(() => {
     loadInstruments()
-    const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
-    setTheme(storedTheme || 'dark')
-    if (window.innerWidth <= 900) setInstrumentsExpanded(false)
   }, [])
-
-  function handleThemeToggle() {
-    const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
-    localStorage.setItem('edgelog-theme', newTheme)
-    document.documentElement.setAttribute('data-theme', newTheme)
-  }
 
   async function loadInstruments() {
     setLoading(true)
@@ -56,6 +44,14 @@ export default function AppHome() {
 
     setInstruments(data || [])
     if (!error && data && data.length > 0) {
+      const ids = data.map((i) => i.id)
+      const { data: stratData } = await supabase
+        .from('strategies')
+        .select('*')
+        .in('instrument_id', ids)
+        .eq('archived', false)
+        .order('created_at', { ascending: true })
+      setStrategies(stratData || [])
       setLoading(false)
       return
     }
@@ -115,42 +111,9 @@ export default function AppHome() {
 
   if (instruments.length > 0) {
     return (
-      <div className="shell">
-        <header className="shell-topbar">
-          <div className="shell-logo">Edge<span>Log</span></div>
-          <div className="shell-topbar-right">
-            <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
-            </button>
-            <a href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></a>
-          </div>
-        </header>
-
-        <div className="shell-body">
-          <aside className="sidebar">
-            <a href="/app" className="sidebar-item sidebar-item-active"><LayoutGrid size={17} /> Overview</a>
-
-            <div className="sidebar-section-header" onClick={() => setInstrumentsExpanded(!instrumentsExpanded)}>
-              <span><Layers size={17} /> Instruments</span>
-              {instrumentsExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            </div>
-            {instrumentsExpanded && (
-              <div className="sidebar-substrategies">
-                {instruments.map((inst, i) => (
-                  <a key={inst.id} href={`/app/${inst.symbol}/dashboard`} className="sidebar-substrategy">
-                    <span className="strategy-dot" style={{ background: strategyColor(i) }} />
-                    {inst.symbol}
-                  </a>
-                ))}
-              </div>
-            )}
-          </aside>
-
-          <main className="main-area">
-            <OverviewDashboard instruments={instruments} />
-          </main>
-        </div>
-      </div>
+      <AppShell instruments={instruments} strategies={strategies} active="overview">
+        <OverviewDashboard instruments={instruments} strategies={strategies} />
+      </AppShell>
     )
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
     LayoutGrid, TrendingUp, List, Lightbulb,
@@ -8,8 +8,7 @@ Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
     import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
-import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
-import { useClickOutside } from '@/lib/useClickOutside'
+import InstrumentNav from '@/components/InstrumentNav'
 
 export default function InstrumentLayout({ children, params }) {
     const router = useRouter()
@@ -18,16 +17,7 @@ export default function InstrumentLayout({ children, params }) {
   const [instruments, setInstruments] = useState([])
     const [strategies, setStrategies] = useState([])
     const [currentInstrumentId, setCurrentInstrumentId] = useState(null)
-    const [switcherOpen, setSwitcherOpen] = useState(false)
-    const closeSwitcher = useCallback(() => {
-                setSwitcherOpen(false)
-                setAddingInstrument(false)
-    }, [])
-    const switcherRef = useClickOutside(switcherOpen, closeSwitcher)
     const [strategiesExpanded, setStrategiesExpanded] = useState(true)
-    const [addingInstrument, setAddingInstrument] = useState(false)
-    const [newSymbol, setNewSymbol] = useState('')
-    const [instrumentAddError, setInstrumentAddError] = useState(null)
     const [addingStrategy, setAddingStrategy] = useState(false)
     const [newStrategyName, setNewStrategyName] = useState('')
     const [strategyAddError, setStrategyAddError] = useState(null)
@@ -84,28 +74,6 @@ export default function InstrumentLayout({ children, params }) {
         }
   }
 
-  async function handleAddInstrument(e) {
-        e.preventDefault()
-        if (!newSymbol) return
-        setInstrumentAddError(null)
-        const { data: { user } } = await supabase.auth.getUser()
-        const catalogEntry = catalogEntryFor(newSymbol)
-        const { error } = await supabase.from('instruments').insert([{
-          user_id: user.id,
-          symbol: newSymbol,
-          data_symbol: catalogEntry?.data_symbol || newSymbol,
-          display_name: catalogEntry?.display_name || null,
-        }])
-        if (!error) {
-                const addedSymbol = newSymbol
-                setNewSymbol('')
-                setAddingInstrument(false)
-                router.push(`/app/${addedSymbol}/dashboard`)
-        } else {
-                setInstrumentAddError(error.message)
-        }
-  }
-
   async function handleAddStrategy(e) {
         e.preventDefault()
         if (!newStrategyName.trim() || !currentInstrumentId) return
@@ -130,44 +98,7 @@ export default function InstrumentLayout({ children, params }) {
           <header className="shell-topbar">
             <div className="shell-logo">Edge<span>Log</span></div>
 
-            <div className="instrument-switcher" ref={switcherRef}>
-              <button className="instrument-btn" onClick={() => setSwitcherOpen(!switcherOpen)}>
-{currentSymbol} <ChevronDown size={14} />
-  </button>
-{switcherOpen && (
-              <div className="instrument-dropdown">
-{instruments.map((inst) => (
-                  <a
-                                   key={inst.id}
-                  href={`/app/${inst.symbol}/dashboard`}
-                  className={`instrument-option ${inst.symbol === currentSymbol ? 'instrument-option-active' : ''}`}
-                  onClick={() => setSwitcherOpen(false)}
-                >
-{inst.symbol}
-</a>
-              ))}
-              <div className="instrument-divider" />
-              {addingInstrument ? (
-                                <form onSubmit={handleAddInstrument} className="instrument-add-form">
-                                  <select autoFocus value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} required>
-                                    <option value="">Select instrument…</option>
-                                    {INSTRUMENT_CATALOG
-                                      .filter((i) => !instruments.some((existing) => existing.symbol === i.symbol))
-                                      .map((i) => (
-                                        <option key={i.symbol} value={i.symbol}>{i.symbol} — {i.display_name}</option>
-                                      ))}
-                                  </select>
-                                  <button type="submit">Add</button>
-                                  {instrumentAddError && <span className="field-error">{instrumentAddError}</span>}
-                </form>
-                              ) : (
-                                <div className="instrument-option instrument-add" onClick={() => setAddingInstrument(true)}>
-                                  + Add instrument
-                </div>
-              )}
-</div>
-          )}
-</div>
+            <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
         <a href={`/app/${currentSymbol}/log/new`} className="new-trade-btn">
                       <Plus size={16} /> Log new trade

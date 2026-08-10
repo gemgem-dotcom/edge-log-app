@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
     TrendingUp,
@@ -8,6 +8,7 @@ Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
     import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
+import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import InstrumentNav from '@/components/InstrumentNav'
 
 export default function InstrumentLayout({ children, params }) {
@@ -22,6 +23,8 @@ export default function InstrumentLayout({ children, params }) {
     const [newStrategyName, setNewStrategyName] = useState('')
     const [strategyAddError, setStrategyAddError] = useState(null)
         const [theme, setTheme] = useState('dark')
+    const mainAreaRef = useRef(null)
+    const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ scrollRef: mainAreaRef })
 
         useEffect(() => {
                     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
@@ -95,8 +98,8 @@ export default function InstrumentLayout({ children, params }) {
 
   return (
         <div className="shell">
-          <header className="shell-topbar">
-            <div className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></div>
+          <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
+            <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
 
             <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
@@ -107,6 +110,7 @@ export default function InstrumentLayout({ children, params }) {
                       <a href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></a>
             </div>
             </header>
+      <div className="topbar-spacer" style={spacerStyle} />
 
       <div className="shell-body">
                     <aside className="sidebar">
@@ -162,7 +166,7 @@ export default function InstrumentLayout({ children, params }) {
             </a>
             </aside>
 
-        <main className="main-area">{children}</main>
+        <main className="main-area" ref={mainAreaRef}>{children}</main>
             </div>
             </div>
   )

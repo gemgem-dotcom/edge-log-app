@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { TrendingUp, Settings, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react'
 import { strategyColor } from '@/lib/strategyColor'
+import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import InstrumentNav from '@/components/InstrumentNav'
 
 // Shell for the two pages with no single instrument in view - the
@@ -14,6 +15,8 @@ import InstrumentNav from '@/components/InstrumentNav'
 export default function AppShell({ instruments, strategies = [], active, children }) {
   const [theme, setTheme] = useState('dark')
   const [strategiesExpanded, setStrategiesExpanded] = useState(true)
+  const mainAreaRef = useRef(null)
+  const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ scrollRef: mainAreaRef })
 
   useEffect(() => {
     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
@@ -33,8 +36,8 @@ export default function AppShell({ instruments, strategies = [], active, childre
 
   return (
     <div className="shell">
-      <header className="shell-topbar">
-        <div className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></div>
+      <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
+        <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
         <InstrumentNav instruments={instruments} />
         <div className="shell-topbar-right">
           <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -43,6 +46,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
           <a href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></a>
         </div>
       </header>
+      <div className="topbar-spacer" style={spacerStyle} />
 
       <div className="shell-body">
         <aside className="sidebar">
@@ -77,7 +81,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
           </a>
         </aside>
 
-        <main className="main-area">{children}</main>
+        <main className="main-area" ref={mainAreaRef}>{children}</main>
       </div>
     </div>
   )

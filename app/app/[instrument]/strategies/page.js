@@ -133,6 +133,7 @@ export default function StrategiesPage({ params }) {
             message={`You haven't created any strategies for ${symbol} yet. Add one above to start tracking trades against it.`}
           />
         ) : (
+          <div className="table-scroll">
           <table>
             <thead>
               <tr><th>Name</th><th>Status</th><th></th></tr>
@@ -172,6 +173,7 @@ export default function StrategiesPage({ params }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

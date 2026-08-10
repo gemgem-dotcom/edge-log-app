@@ -19,6 +19,7 @@ export default function StrategyDetailSkeleton() {
 
       <div className="section-heading">Trade log</div>
       <div className="panel">
+        <div className="table-scroll">
         <table>
           <thead>
             <tr>
@@ -39,6 +40,7 @@ export default function StrategyDetailSkeleton() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

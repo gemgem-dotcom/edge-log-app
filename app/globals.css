@@ -400,8 +400,11 @@ table{min-width:640px;}
   display:flex; align-items:center; gap:20px; padding:14px 24px;
   border-bottom:1px solid var(--line); flex-shrink:0;
 }
-.shell-logo{font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; user-select:none; -webkit-user-drag:none;}
-.shell-logo span{color:var(--accent); font-weight:800;}
+.shell-logo{
+  display:flex; align-items:center; gap:6px; color:var(--text);
+  font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; user-select:none; -webkit-user-drag:none;
+}
+.shell-logo svg{flex-shrink:0;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .icon-btn{
   width:36px; height:36px; border-radius:100px; display:flex; align-items:center; justify-content:center;

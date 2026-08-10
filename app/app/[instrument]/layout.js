@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
     LayoutGrid, TrendingUp, List, Lightbulb,
-Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
+Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun, ArrowUpRight,
 } from 'lucide-react'
     import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
@@ -128,7 +128,7 @@ export default function InstrumentLayout({ children, params }) {
   return (
         <div className="shell">
           <header className="shell-topbar">
-            <div className="shell-logo">Edge<span>Log</span></div>
+            <div className="shell-logo"><ArrowUpRight size={18} />Edge<span>Log</span></div>
 
             <div className="instrument-switcher" ref={switcherRef}>
               <button className="instrument-btn" onClick={() => setSwitcherOpen(!switcherOpen)}>

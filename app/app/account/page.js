@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, LogOut } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, LogOut } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { UTC_OFFSETS } from '@/lib/timezone'
 import ProfileSection from '@/components/account/ProfileSection'
@@ -84,7 +84,7 @@ export default function AccountPage() {
     <div>
       <div className="account-topbar">
         <div className="account-topbar-left">
-          <div className="shell-logo">Edge<span>Log</span></div>
+          <div className="shell-logo"><ArrowUpRight size={18} />Edge<span>Log</span></div>
           <a href="/app" className="back-btn"><ArrowLeft size={16} /> Back to dashboard</a>
         </div>
         <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>

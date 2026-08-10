@@ -64,6 +64,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
       ) : (
         <>
           {nicknameError && <div className="account-msg account-msg-error">{nicknameError}</div>}
+          <div className="signin-table-wrap">
           <table>
             <thead><tr><th>Device</th><th>Location</th><th>Date &amp; time</th></tr></thead>
             <tbody>
@@ -89,6 +90,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
               ))}
             </tbody>
           </table>
+          </div>
           {loginEvents.length > 5 && (
             <div className="panel-link-row">
               <span className="panel-link" style={{ cursor: 'pointer' }} onClick={() => setShowAllEvents(!showAllEvents)}>

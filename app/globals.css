@@ -49,6 +49,10 @@
   --be: #d6b04c;
   --glass: rgba(255,255,255,0.045);
   --glass-border: rgba(255,255,255,0.09);
+  /* Bare channel values (no baked-in alpha) so the pinned topbar can scale
+     its own transparency live via --topbar-glass-alpha, rather than being
+     stuck with --glass's fixed alpha. */
+  --glass-rgb: 255,255,255;
 
   /* Spacing scale for new work going forward. The file predates this and is
      full of one-off px values hand-tuned against specific type sizes and
@@ -457,11 +461,40 @@ table{min-width:640px;}
 
 /* ---------- Shell layout (sidebar + topbar) ---------- */
 .shell{min-height:100vh; display:flex; flex-direction:column;}
+/* .shell-topbar is always position:fixed (see its rule below) so it can
+   overlay content while pinned mid-scroll; this reserves the space it
+   would otherwise have occupied in flow, sized by useStickyTopbar to match
+   the topbar's real rendered height + margins. */
+.topbar-spacer{flex-shrink:0;}
 
+/* Always fixed (rather than only while scrolled) so there's a single
+   consistent positioning model - .topbar-spacer (rendered by whichever
+   page owns this bar) reserves the equivalent space in normal flow, and
+   the three states below are purely a transform/background swap:
+     docked  (default) - sits exactly where it always has, opaque panel bg.
+     hidden  - scrolled down past the top: slid fully off-screen.
+     pinned  - scrolled up without reaching the top: slid back to its
+               docked position, but glass/blurred since it's now overlaying
+               scrolled content rather than sitting above it in flow. */
 .shell-topbar{
   display:flex; align-items:center; gap:20px; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel);
   border:1px solid var(--line); flex-shrink:0;
+  position:fixed; top:0; left:0; right:0; z-index:90;
+  transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
+}
+.shell-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
+/* --topbar-glass-alpha is written directly by useStickyTopbar on every
+   scroll event (a plain number, no unit) - it climbs toward
+   MAX_GLASS_ALPHA the further from the top the pinned reveal happened, and
+   fades toward MIN_GLASS_ALPHA as the user keeps scrolling up into it, so
+   the bar visibly clears just before it docks solid at the true top. The
+   fallback covers the instant the class first applies, before that
+   scroll event's write has landed. */
+.shell-topbar.topbar-pinned{
+  background:rgba(var(--glass-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* No `gap` here on purpose - flex gap lands between every child,
    including the "Edge" text node and the "Log" span below, which would
@@ -472,6 +505,10 @@ table{min-width:640px;}
   font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; letter-spacing:.02em;
   text-transform:uppercase; user-select:none; -webkit-user-drag:none;
 }
+/* Clickable (goes to the all-instruments dashboard) but deliberately
+   undecorated - no hover/focus highlight like the buttons around it, it
+   should just act as a plain link back home. */
+a.shell-logo{color:inherit; text-decoration:none;}
 .shell-logo svg{width:18px; height:18px; flex-shrink:0; color:var(--accent); margin-right:6px;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .icon-btn{
@@ -659,9 +696,20 @@ table{min-width:640px;}
 
 
 /* ---------- Account settings page ---------- */
+/* Same fixed + docked/hidden/pinned scheme as .shell-topbar - see the
+   comment above that rule. This page scrolls the window rather than an
+   internal pane, but the visual behavior is identical. */
 .account-topbar{
   display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel); border:1px solid var(--line);
+  position:fixed; top:0; left:0; right:0; z-index:90;
+  transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
+}
+.account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
+.account-topbar.topbar-pinned{
+  background:rgba(var(--glass-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* min-height matches .icon-btn's fixed 36px (the tallest element in
    .shell-topbar), so .account-topbar computes to the same height as the
@@ -795,6 +843,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
      white panel, so the light theme gets its own dark-alpha equivalents. */
   --glass: rgba(20,22,26,0.04);
   --glass-border: rgba(20,22,26,0.08);
+  --glass-rgb: 20,22,26;
 }
 :root[data-theme="light"] .modal-overlay{background:rgba(20,22,26,.55);}
 :root[data-theme="light"] .instrument-dropdown,

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, LogOut, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { UTC_OFFSETS } from '@/lib/timezone'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import ProfileSection from '@/components/account/ProfileSection'
 import PreferencesSection from '@/components/account/PreferencesSection'
 import PasswordSection from '@/components/account/PasswordSection'
@@ -21,6 +22,9 @@ import PageLoading from '@/components/PageLoading'
 export default function AccountPage() {
   usePageTitle('Account Settings')
   const router = useRouter()
+  // No internal scroll pane on this page (unlike the app shell's
+  // .main-area) - the window itself scrolls, so omit scrollRef.
+  const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -84,13 +88,14 @@ export default function AccountPage() {
 
   return (
     <div>
-      <div className="account-topbar">
+      <div ref={topbarRef} className={`account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
         <div className="account-topbar-left">
-          <div className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></div>
+          <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
           <a href="/app" className="back-btn"><ArrowLeft size={16} /> Back to dashboard</a>
         </div>
         <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
       </div>
+      <div className="topbar-spacer" style={spacerStyle} />
 
       <div className="account-wrap">
         <h1 className="page-title">Account Settings</h1>

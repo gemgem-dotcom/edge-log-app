@@ -127,7 +127,7 @@ export default function InstrumentLayout({ children, params }) {
                    <a
                                    key={s.id}
                    href={`/app/${currentSymbol}/strategies/${s.id}`}
-                  className="sidebar-substrategy"
+                  className={`sidebar-substrategy ${isActive(`/app/${currentSymbol}/strategies/${s.id}`) ? 'sidebar-substrategy-active' : ''}`}
                 >
                                       <span className="strategy-dot" style={{ background: strategyColor(i) }} />
 {s.name}

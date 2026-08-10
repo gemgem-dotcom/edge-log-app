@@ -98,7 +98,7 @@ export default function AccountPage() {
       <div className="topbar-spacer" style={spacerStyle} />
 
       <div className="account-wrap">
-        <h1 className="page-title">Account Settings</h1>
+        <h1 className="page-title">ACCOUNT SETTINGS</h1>
         <p className="page-subtitle">Manage your account and preferences.</p>
 
         <ProfileSection email={email} initialFullName={fullName} />

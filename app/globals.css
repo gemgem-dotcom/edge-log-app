@@ -381,7 +381,15 @@ table{min-width:640px;}
    this row) and its header-level action button (e.g. "Log new trade") on
    one row, vertically centered so the button's center lines up with the
    title's center rather than its top. */
-.page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;}
+.page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;}
+/* .page-title's own margin-bottom is part of its flex-item margin box, so
+   left alone it inflates the row's height and the vertically-centered
+   button drifts down toward that dead space instead of the title text
+   (closer to where the subtitle below ends up). Moving the same 20px onto
+   the row itself keeps the row exactly as tall as its real content -
+   button centers on the title - while the gap before whatever follows
+   (a subtitle, or a panel on pages with no subtitle) stays unchanged. */
+.page-header-row .page-title{margin-bottom:0;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
    Archivo weight, and would visibly mismatch the 800 symbol beside it. */
@@ -477,7 +485,7 @@ table{min-width:640px;}
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
   font-weight:700; font-size:13px; padding:9px 16px; border-radius:100px; text-decoration:none;
-  transition:filter .15s ease;
+  white-space:nowrap; flex-shrink:0; transition:filter .15s ease;
 }
 .new-trade-btn:hover{filter:brightness(1.08);}
 
@@ -523,6 +531,24 @@ table{min-width:640px;}
 .main-area{flex:1; min-width:0; overflow-y:auto; overflow-x:hidden; padding:32px 40px 60px;}
 
 .page-subtitle{font-size:13.5px; color:var(--muted); margin-top:-14px; margin-bottom:24px;}
+@media (max-width:640px){
+  /* On desktop the header row (title + action button) is a single line and
+     .page-subtitle rides up under the title on a negative margin. Once the
+     title and button wrap onto separate lines (a long title, or a title
+     plus a header button with not enough room beside it), that same
+     negative margin instead pulls the subtitle up under the wrapped
+     button. Give the row breathing room between wrapped lines and let the
+     subtitle sit at its natural position instead. */
+  .page-header-row{row-gap:10px;}
+  .page-header-row .new-trade-btn{margin-left:0 !important;}
+  .page-subtitle{margin-top:8px;}
+  /* Title and the ⋮ menu button stay on one line (menu belongs next to the
+     name it acts on); only the "Log new trade" button - which has nowhere
+     left to go once the name eats the row - drops to its own line below,
+     sized to its own content rather than stretched full-width. */
+  .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
+  .strategy-header-row .new-trade-btn{margin-left:0 !important; flex-grow:0;}
+}
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
   font-weight:700; margin-bottom:12px; margin-top:8px;
@@ -566,7 +592,13 @@ table{min-width:640px;}
   .sidebar-divider{display:none;}
   .main-area{padding:20px 16px 50px;}
   .stats-6{grid-template-columns:repeat(2,1fr);}
-  .shell-topbar{padding:12px 16px; margin:12px 12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap;}
+  /* Un-pill the topbar once its content needs two lines - a 100px radius on
+     a two-row block reads as a stretched oval rather than a rounded
+     rectangle. Pin the logo and icon buttons to row one and push the
+     instrument pill row onto its own full-width row two (rather than
+     letting it wrap wherever it happens to run out of room, mid-row). */
+  .shell-topbar{padding:12px 16px; margin:12px 12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap; border-radius:24px;}
+  .shell-topbar .instrument-nav{order:3; flex-basis:100%;}
   .new-trade-btn span{display:none;}
   .perf-table th:nth-child(5), .perf-table th:nth-child(6), .perf-table th:nth-child(7), .perf-table td:nth-child(5), .perf-table td:nth-child(6), .perf-table td:nth-child(7){display:none;}
   .perf-table{min-width:0; table-layout:fixed;} .perf-table th, .perf-table td{padding:6px 4px; font-size:10.5px; word-break:break-word;} .panel:has(.perf-table){overflow-x:auto;}
@@ -631,10 +663,14 @@ table{min-width:640px;}
   display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel); border:1px solid var(--line);
 }
+/* min-height matches .icon-btn's fixed 36px (the tallest element in
+   .shell-topbar), so .account-topbar computes to the same height as the
+   rest of the app's topbar rather than shrinking to this button's own
+   (shorter) padding + line-height. */
 .back-btn{
   display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--line);
   color:var(--text); padding:9px 16px; border-radius:100px; font-weight:700; font-size:13px;
-  text-decoration:none; transition:border-color .15s ease, color .15s ease;
+  text-decoration:none; min-height:36px; transition:border-color .15s ease, color .15s ease;
 }
 .back-btn:hover{border-color:var(--accent); color:var(--accent);}
 
@@ -678,12 +714,30 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 .account-msg-success{background:rgba(51,193,122,.12); border:1px solid var(--win); color:var(--win);}
 
 @media (max-width:640px){
-  .account-topbar{padding:12px 16px; margin:12px 12px 16px;}
+  /* Same fix as .shell-topbar: once the logo/back-link/log-out group wraps
+     onto two lines, the 100px pill radius makes it read as a stretched
+     oval rather than a rounded rectangle. */
+  .account-topbar{padding:12px 16px; margin:12px 12px 16px; border-radius:24px; flex-wrap:wrap; row-gap:10px;}
   .account-wrap{padding:20px 16px 50px;}
 }
 
 
 .account-topbar-left{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}
+@media (max-width:640px){
+  /* Promote the logo and "Back to dashboard" out of .account-topbar-left so
+     they become direct flex items of .account-topbar alongside "Log out" -
+     the logo gets its own full-width row, and the two pill buttons land
+     together on the row below, spread apart by the row's own
+     justify-content:space-between (matching the reference layout). Must
+     come after the unconditional .account-topbar-left{display:flex} rule
+     above, or that later, higher-position declaration wins the cascade
+     tie over this identically-specific media-scoped one. */
+  .account-topbar-left{display:contents;}
+  /* min-height matches .shell-topbar's row one, which is as tall as its
+     36px icon buttons - without it this bare-logo row is shorter, making
+     the whole two-row bar shorter than .shell-topbar's. */
+  .account-topbar .shell-logo{flex-basis:100%; min-height:36px;}
+}
 
 
 .sidebar-strategy-add{color:var(--accent); font-weight:600; cursor:pointer; transition:opacity .15s ease;}

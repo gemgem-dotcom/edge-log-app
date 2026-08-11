@@ -97,6 +97,10 @@ export default function SignupPage() {
           Already have an account? <a href="/login">Log in</a>
         </div>
       </div>
+
+      <div className="auth-page-footer">
+        <span>© 2026 EdgeLog</span>
+      </div>
     </div>
   )
 }

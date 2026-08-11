@@ -1431,12 +1431,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; flex-direction:column; align-items:center; gap:14px;
   margin-top:32px; padding-top:24px; border-top:1px solid var(--line);
 }
-.account-legal-links{display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted);}
+.account-legal-links{display:flex; align-items:center; gap:10px; font-size:11.5px; color:var(--muted);}
 .account-legal-links a{color:var(--muted); text-decoration:none;}
 .account-legal-links a:hover{color:var(--accent); text-decoration:underline;}
 
 /* Shared by the account settings footer above and the Privacy/Terms
-   page footers below. */
-.copyright-line{font-size:11px; color:var(--muted-2);}
+   page footers below - same size and shade as every other footer's
+   fine print (auth pages included) rather than a dimmer one-off. */
+.copyright-line{font-size:11.5px; color:var(--muted);}
 
-.policy-footer{margin-top:24px; text-align:center;}
+/* Same "page is done" divider treatment as .account-legal - both follow
+   a bordered .panel card, so the same border-top + padding reads as the
+   closing footer rather than a stray line of text. */
+.policy-footer{margin-top:32px; padding-top:24px; border-top:1px solid var(--line); text-align:center;}

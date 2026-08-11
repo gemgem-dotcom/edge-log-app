@@ -75,6 +75,10 @@ export default function PrivacyPolicyPage({ searchParams }) {
           Questions about this policy: <a href="mailto:support@edgelog-journal.com">support@edgelog-journal.com</a>
         </p>
       </div>
+
+      <div className="policy-footer">
+        <span className="copyright-line">© 2026 EdgeLog</span>
+      </div>
     </div>
   )
 }

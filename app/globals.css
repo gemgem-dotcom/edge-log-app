@@ -1415,10 +1415,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    as "the page is done" instead of one more card in the same list as
    Data and Danger Zone above it. */
 .account-legal{
-  display:flex; flex-direction:column; align-items:center; gap:8px;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
   margin-top:32px; padding-top:24px; border-top:1px solid var(--line);
 }
 .account-legal-links{display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted);}
 .account-legal-links a{color:var(--muted); text-decoration:none;}
 .account-legal-links a:hover{color:var(--accent); text-decoration:underline;}
-.account-legal-copyright{font-size:11px; color:var(--muted-2);}
+
+/* Shared by the account settings footer above and the Privacy/Terms
+   page footers below. */
+.copyright-line{font-size:11px; color:var(--muted-2);}
+
+.policy-footer{margin-top:24px; text-align:center;}

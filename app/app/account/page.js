@@ -128,7 +128,7 @@ export default function AccountPage() {
             <span aria-hidden="true">·</span>
             <a href="/terms?from=account">Terms of Service</a>
           </div>
-          <div className="account-legal-copyright">© 2026 EdgeLog</div>
+          <div className="copyright-line">© 2026 EdgeLog</div>
         </div>
       </div>
     </div>

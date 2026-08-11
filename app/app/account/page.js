@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, LogOut, TrendingUp } from 'lucide-react'
+import { LogOut, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { UTC_OFFSETS } from '@/lib/timezone'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -91,7 +91,7 @@ export default function AccountPage() {
       <div ref={topbarRef} className={`account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
         <div className="account-topbar-left">
           <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
-          <a href="/app" className="back-btn"><ArrowLeft size={16} /> Back to dashboard</a>
+          <a href="/app" className="back-btn">Back to dashboard</a>
         </div>
         <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
       </div>

@@ -499,7 +499,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </table>
             </div>
             <div className="panel-link-row">
-              <a href="/app/log" className="panel-link">View all trades →</a>
+              <a href="/app/log" className="panel-link">View all trades</a>
             </div>
           </div>
         </>

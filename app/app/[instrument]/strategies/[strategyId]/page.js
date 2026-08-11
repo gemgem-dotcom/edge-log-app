@@ -163,6 +163,7 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
 
 return (
   <div className="page-container">
+  <a href={`/app/${symbol}/strategies`} className="back-link">Back to strategies</a>
   <ErrorBanner message={formError} />
   <div className="strategy-header-row">
   <h1 className="page-title" style={{ marginBottom: 0 }}>{strategy.name}</h1>

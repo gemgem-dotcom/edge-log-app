@@ -56,7 +56,7 @@ export default function NewTradePage({ params }) {
       screenshot_urls = await uploadScreenshots(screenshots)
     } catch (uploadError) {
       return uploadError.message?.includes('Bucket not found')
-        ? 'Screenshot upload failed: the "screenshots" storage bucket doesn\'t exist yet in Supabase. Run the storage setup SQL (storage-setup.sql) or create it manually under Storage → New bucket → "screenshots" → Public.'
+        ? 'Screenshot upload failed: the "screenshots" storage bucket doesn\'t exist yet in Supabase. Run the storage setup SQL (storage-setup.sql) or create it manually under Storage, New bucket, name it "screenshots", and make it Public.'
         : 'Screenshot upload failed: ' + uploadError.message
     }
 
@@ -78,6 +78,7 @@ export default function NewTradePage({ params }) {
 
   return (
     <div className="page-container">
+      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
       <h1 className="page-title">LOG NEW TRADE</h1>
 
       <ErrorBanner message={strategiesError} />

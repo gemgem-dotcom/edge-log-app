@@ -104,6 +104,10 @@ required
   </>
 )}
 </div>
+
+  <div className="auth-page-footer">
+    <span>© 2026 EdgeLog</span>
+  </div>
   </div>
 )
 }

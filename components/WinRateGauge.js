@@ -1,9 +1,12 @@
 'use client'
 
-export default function WinRateGauge({ wins = 0, breakeven = 0, losses = 0, winRate = null }) {
-    const total = wins + breakeven + losses
+// Breakeven trades are neither a win nor a loss, so they're left out of
+// this gauge entirely - both the arc and the legend show only wins vs
+// losses, matching the win rate percentage in the center (wins / (wins +
+// losses), computed the same way by each caller).
+export default function WinRateGauge({ wins = 0, losses = 0, winRate = null }) {
+    const total = wins + losses
     const winPct = total > 0 ? (wins / total) * 100 : 0
-    const bePct = total > 0 ? (breakeven / total) * 100 : 0
     const lossPct = total > 0 ? (losses / total) * 100 : 0
 
   const cx = 100
@@ -22,16 +25,10 @@ export default function WinRateGauge({ wins = 0, breakeven = 0, losses = 0, winR
                 strokeDasharray={`${winPct} 100`} strokeDashoffset="0"
             />
             )}
-{bePct > 0 && (
-              <path
-              d={arc} pathLength="100" fill="none" stroke="var(--be)" strokeWidth="15"
-              strokeDasharray={`${bePct} 100`} strokeDashoffset={`-${winPct}`}
-            />
-          )}
 {lossPct > 0 && (
               <path
                d={arc} pathLength="100" fill="none" stroke="var(--loss)" strokeWidth="15"
-               strokeDasharray={`${lossPct} 100`} strokeDashoffset={`-${winPct + bePct}`}
+               strokeDasharray={`${lossPct} 100`} strokeDashoffset={`-${winPct}`}
             />
           )}
 </svg>
@@ -42,9 +39,6 @@ export default function WinRateGauge({ wins = 0, breakeven = 0, losses = 0, winR
       <div className="gauge-legend">
           <span className="gauge-legend-item">
             <span className="gauge-dot" style={{ background: 'var(--win)' }} />{wins.toLocaleString('en-US')}
-  </span>
-        <span className="gauge-legend-item">
-            <span className="gauge-dot" style={{ background: 'var(--be)' }} />{breakeven.toLocaleString('en-US')}
   </span>
         <span className="gauge-legend-item">
             <span className="gauge-dot" style={{ background: 'var(--loss)' }} />{losses.toLocaleString('en-US')}

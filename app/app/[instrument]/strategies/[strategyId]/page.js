@@ -34,7 +34,11 @@ const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
   const avgR = totalPnl / n
-  const winRate = (wins.length / n) * 100
+  // Breakeven trades don't count as a win or a loss, so they're excluded
+  // from the denominator here rather than diluting the rate - wr below
+  // (which feeds expectancy, not the displayed win rate) is unrelated and
+  // deliberately left as wins/n.
+  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
   const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
   const wr = wins.length / n

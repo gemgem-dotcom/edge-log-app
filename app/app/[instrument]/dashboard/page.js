@@ -25,7 +25,11 @@ function computeStats(allTrades) {
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  const winRate = (wins.length / n) * 100
+  // Breakeven trades don't count as a win or a loss, so they're excluded
+  // from the denominator here rather than diluting the rate - wr below
+  // (which feeds expectancy, not the displayed win rate) is unrelated and
+  // deliberately left as wins/n.
+  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
   const avgR = totalPnl / n
   const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
@@ -56,12 +60,16 @@ function hasDollar(t) {
 function computeMonthStats(allTrades) {
   const trades = allTrades.filter(hasResult)
   const n = trades.length
-  if (n === 0) return { n, winRate: null, avgR: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, breakeven: 0, losses: 0 }
+  if (n === 0) return { n, winRate: null, avgR: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  const breakeven = trades.filter((t) => t.r_multiple === 0)
   const wr = wins.length / n
+  // Breakeven trades don't count as a win or a loss, so they're excluded
+  // from the denominator here rather than diluting the rate - wr above
+  // (which feeds expectancy, not the displayed win rate) is unrelated and
+  // deliberately left as wins/n.
+  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
 
 const totalR = trades.reduce((s, t) => s + t.r_multiple, 0)
   const avgR = totalR / n
@@ -78,7 +86,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate: wr * 100, avgR, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, breakeven: breakeven.length, losses: losses.length }
+return { n, winRate, avgR, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {
@@ -378,7 +386,6 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
   <div className="stat-label">Win rate</div>
 <WinRateGauge
 wins={monthStats.wins}
-breakeven={monthStats.breakeven}
 losses={monthStats.losses}
 winRate={monthStats.winRate}
 />

@@ -59,7 +59,7 @@ function hasDollar(t) {
 function computeMonthStats(allTrades) {
   const trades = allTrades.filter(hasResult)
   const n = trades.length
-  if (n === 0) return { n, winRate: null, avgR: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
+  if (n === 0) return { n, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -71,7 +71,6 @@ const wins = trades.filter((t) => t.r_multiple > 0)
   const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
 
 const totalR = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgR = totalR / n
   const avgWinR = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
   const avgLossR = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
   const expectancyR = wr * avgWinR + (1 - wr) * avgLossR
@@ -85,7 +84,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, avgR, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
+return { n, winRate, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {

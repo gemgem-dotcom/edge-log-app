@@ -58,7 +58,7 @@ function computeOverallStats(allTrades) {
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
   if (n === 0) {
     return {
-      n, tradingDays, winRate: null, avgR: null, expectancy: null, expectancyD: null,
+      n, tradingDays, winRate: null, expectancy: null, expectancyD: null,
       totalPnl: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0,
     }
   }
@@ -72,7 +72,6 @@ function computeOverallStats(allTrades) {
   // deliberately left as wins/n.
   const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgR = totalPnl / n
   const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
   const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
   const expectancy = wr * avgWin + (1 - wr) * avgLoss
@@ -91,7 +90,7 @@ function computeOverallStats(allTrades) {
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
   return {
-    n, tradingDays, winRate, avgR, expectancy, expectancyD, totalPnl, totalD, hasD,
+    n, tradingDays, winRate, expectancy, expectancyD, totalPnl, totalD, hasD,
     profitFactor, wins: wins.length, losses: losses.length,
   }
 }

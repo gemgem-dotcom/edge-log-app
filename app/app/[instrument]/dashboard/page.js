@@ -309,8 +309,8 @@ return (
   </div>
   </div>
   <div>
-  <div className="section-heading">P&amp;L by strategy</div>
   <div className="panel">
+  <div className="panel-title">P&amp;L by strategy</div>
   <PnlDonut segments={strategySegments} />
   </div>
   </div>

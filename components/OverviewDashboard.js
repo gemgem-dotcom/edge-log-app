@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import EquityCurveChart from '@/components/EquityCurveChart'
-import PnlByInstrumentDonut from '@/components/PnlByInstrumentDonut'
+import PnlDonut from '@/components/PnlDonut'
 import WinRateGauge from '@/components/WinRateGauge'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
@@ -233,7 +233,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
   const instrumentSegments = instruments.map((inst, i) => {
     const trades = allTrades.filter((t) => t.instrument_id === inst.id && hasResult(t) && hasDollar(t))
-    return { symbol: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
+    return { label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
   })
 
   const recentTrades = allTrades
@@ -321,8 +321,8 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
           <div className="dashboard-split">
             <div>
-              <div className="section-heading">Equity curve</div>
               <div className="panel">
+                <div className="stat-label dashboard-card-title">Equity curve</div>
                 <div className="tabs">
                   {EQUITY_GROUPS.map((g) => (
                     <div
@@ -345,9 +345,11 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
 
             <div>
-              <div className="section-heading">P&amp;L by instrument</div>
-              <div className="panel">
-                <PnlByInstrumentDonut segments={instrumentSegments} />
+              <div className="panel donut-card-lg">
+                <div className="stat-label dashboard-card-title">Cumulative P&amp;L by instrument</div>
+                <div className="donut-card-body">
+                  <PnlDonut segments={instrumentSegments} netSignOnly />
+                </div>
               </div>
             </div>
           </div>
@@ -385,6 +387,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat">
                 <div className="stat-label">Total trades</div>
                 <div className="stat-value neu">{monthStats.n}</div>
+                <div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
               </div>
               <div className="stat stat-gauge">
                 <div className="stat-label">Win rate</div>

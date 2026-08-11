@@ -9,6 +9,7 @@ import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
+import PnlDonut from '@/components/PnlDonut'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -59,7 +60,8 @@ function hasDollar(t) {
 function computeMonthStats(allTrades) {
   const trades = allTrades.filter(hasResult)
   const n = trades.length
-  if (n === 0) return { n, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
+  const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
+  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -84,7 +86,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
+return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {
@@ -221,6 +223,10 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
   const overall = computeStats(classifiedTrades)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
+  const strategySegments = strategies.map((s, i) => {
+    const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
+    return { label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
+  })
 
 const calTrades = calStrategy === 'all' ? allTrades : allTrades.filter((t) => t.strategy_id === calStrategy)
   const tradesByDate = {}
@@ -272,7 +278,9 @@ return (
 ) : (
   <>
 <div className="section-heading">Overview</div>
-  <div className="stats stats-5">
+  <div className="dashboard-split">
+  <div>
+  <div className="stats stats-2">
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -299,9 +307,13 @@ return (
   <div className="stat-label">Win rate</div>
   <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
   </div>
-  <div className="stat">
-  <div className="stat-label">Total trades</div>
-  <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
+  </div>
+  </div>
+  <div>
+  <div className="panel">
+  <div className="stat-label dashboard-card-title">Cumulative P&amp;L by strategy</div>
+  <PnlDonut segments={strategySegments} netSignOnly />
+  </div>
   </div>
   </div>
 
@@ -314,7 +326,7 @@ return (
   <thead>
   <tr>
   <th>Strategy</th><th>Trades</th><th>Win rate</th>
-  <th>Expectancy</th><th>Total P&amp;L</th><th>Profit factor</th>
+  <th>Expectancy</th><th>Profit factor</th>
   </tr>
   </thead>
 <tbody>
@@ -335,7 +347,6 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
 {stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
 </td>
 <td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
-<td className={colorClass(stats.totalPnl)}>{fmtR(stats.totalPnl)}</td>
 <td>{fmtPF(stats.profitFactor)}</td>
   </tr>
 )
@@ -378,6 +389,7 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
 <div className="stat">
   <div className="stat-label">Total trades</div>
 <div className="stat-value neu">{monthStats.n}</div>
+<div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
   </div>
 <div className="stat stat-gauge">
   <div className="stat-label">Win rate</div>

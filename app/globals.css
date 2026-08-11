@@ -1000,6 +1000,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .calendar-month-nav{display:flex; align-items:center; gap:12px;}
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
+.stats-2{grid-template-columns:repeat(2,1fr);}
+/* Strategy detail page: 8 cards, some with a stat-subvalue line (Total
+   P&L, Expectancy) and some without - min-height plus centering keeps
+   every card the same height regardless of which. */
+.strategy-perf-stats{grid-template-columns:repeat(4,1fr);}
+/* A fixed height (not min-height) so every card matches regardless of
+   which row it lands in - min-height only equalizes within a row, since
+   grid rows size to their own tallest card. */
+.strategy-perf-stats .stat{height:90px; display:flex; flex-direction:column; justify-content:center;}
 .stat-subvalue{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; margin-top:2px;}
 .stat-gauge{display:flex; flex-direction:column;}
 
@@ -1027,11 +1036,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 @media (max-width:1100px){
     .stats-5{grid-template-columns:repeat(3,1fr);}
+    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
 }
 @media (max-width:640px){
     .calendar-toolbar{flex-direction:column; align-items:stretch;}
     .calendar-month-nav{justify-content:space-between;}
     .stats-5{grid-template-columns:repeat(2,1fr);}
+    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
     .calendar-grid-8{grid-template-columns:repeat(7,1fr); gap:4px;}
     .calendar-cell-weekly, .calendar-weekday-weekly{display:none;}
     .calendar-day-subpnl{display:none;}
@@ -1254,9 +1265,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
 .dashboard-split > div{display:flex; flex-direction:column;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
-   both cards to the row's height and center the donut's content in the
-   extra space instead of leaving the shorter card visibly shorter. */
-.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:center;}
+   both cards to the row's height so the shorter one isn't visibly shorter.
+   flex-start (not center) so each card's title stays flush with the top
+   like every other card's, even when its own content doesn't fill the
+   row's full stretched height. */
+.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start;}
+/* Per-instrument Overview: the stat-card stack sits opposite a taller
+   panel (P&L by strategy) - grow the stack and its two rows to fill the
+   row's full stretched height instead of leaving blank space beneath it,
+   and center each stat's content in the taller card. */
+.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr);}
+.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:center;}
+.dashboard-card-title{margin-bottom:16px;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}
 }
@@ -1274,7 +1294,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .donut-legend-item{display:flex; align-items:center; gap:8px; font-size:12.5px;}
 .donut-legend-symbol{font-weight:600; min-width:44px;}
 .donut-legend-value{margin-left:auto; font-family:'JetBrains Mono',monospace;}
-.donut-legend-pct{color:var(--muted); font-family:'JetBrains Mono',monospace; min-width:52px; text-align:right;}
+/* P&L by instrument: rows whose sign is opposite the net total (so they
+   have no arc in the ring, per netSignOnly on PnlDonut) stay legible but
+   read as secondary next to the rows the ring actually represents. */
+.donut-legend-item-muted{opacity:.45;}
+/* All Instruments overview only - that card stretches to match the taller
+   equity curve card next to it, so the default 160px ring leaves a lot of
+   dead space at the bottom. The per-instrument dashboard's P&L-by-strategy
+   card doesn't get this - its panel is sized to its own content, not
+   stretched against a taller neighbor. A bigger ring plus a body wrapper
+   that grows to fill the leftover height and centers the donut+legend in
+   it (title stays flush top either way) uses the stretched space instead
+   of leaving it all as dead air below the content. */
+.donut-card-lg .donut-svg{width:230px; height:230px;}
+.donut-card-body{flex:1; display:flex; align-items:center;}
 @media (max-width:640px){
   .donut-wrap{flex-direction:column; align-items:center;}
   .donut-legend{width:100%;}

@@ -60,7 +60,8 @@ function hasDollar(t) {
 function computeMonthStats(allTrades) {
   const trades = allTrades.filter(hasResult)
   const n = trades.length
-  if (n === 0) return { n, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
+  const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
+  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -85,7 +86,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
+return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {
@@ -388,6 +389,7 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
 <div className="stat">
   <div className="stat-label">Total trades</div>
 <div className="stat-value neu">{monthStats.n}</div>
+<div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
   </div>
 <div className="stat stat-gauge">
   <div className="stat-label">Win rate</div>

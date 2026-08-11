@@ -385,6 +385,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat">
                 <div className="stat-label">Total trades</div>
                 <div className="stat-value neu">{monthStats.n}</div>
+                <div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
               </div>
               <div className="stat stat-gauge">
                 <div className="stat-label">Win rate</div>

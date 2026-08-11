@@ -345,7 +345,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
 
             <div>
-              <div className="section-heading">P&amp;L by instrument</div>
+              <div className="section-heading">Cumulative P&amp;L by instrument</div>
               <div className="panel">
                 <PnlDonut segments={instrumentSegments} netSignOnly />
               </div>

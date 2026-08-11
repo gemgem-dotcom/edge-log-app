@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { useConfirm } from '@/lib/useConfirm'
 import PageLoading from '@/components/PageLoading'
 
 // Plain thousands-grouped number, no sign/currency, no forced decimals -
@@ -26,6 +27,7 @@ export default function TradeDetailPage({ params }) {
   const [trade, setTrade] = useState(null)
   const [strategyName, setStrategyName] = useState('')
   const [previewUrl, setPreviewUrl] = useState(null)
+  const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
     loadTrade()
@@ -44,7 +46,8 @@ export default function TradeDetailPage({ params }) {
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this trade? This cannot be undone.')) return
+    const sure = await confirm({ title: 'Delete Trade', message: 'This action cannot be undone.', confirmLabel: 'Delete trade', danger: true })
+    if (!sure) return
     await supabase.from('trades').delete().eq('id', tradeId)
     toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
@@ -127,6 +130,7 @@ export default function TradeDetailPage({ params }) {
           </div>
         </div>
       )}
+      {confirmModal}
     </div>
   )
 }

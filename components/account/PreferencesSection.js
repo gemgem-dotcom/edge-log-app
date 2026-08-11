@@ -5,12 +5,14 @@ import { Sun, Moon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/lib/toast'
 import { UTC_OFFSETS, offsetLabel } from '@/lib/timezone'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Timezone is owned by the page rather than here, because the sign-in
 // history renders its timestamps in it and has to re-render on a change.
 export default function PreferencesSection({ initialTheme, timezone, onTimezoneChange }) {
   const [theme, setTheme] = useState(initialTheme)
   const [shiftingTz, setShiftingTz] = useState(false)
+  const { confirm, modal: confirmModal } = useConfirm()
 
   function handleThemeChange(newTheme) {
     setTheme(newTheme)
@@ -29,10 +31,13 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
   async function handleTimezoneChange(newTz) {
     const deltaHours = parseFloat(newTz) - parseFloat(timezone)
     if (deltaHours !== 0) {
-      const sure = confirm(
-        `Change your timezone to ${offsetLabel(newTz)}? Every trade time you've logged will shift by ` +
-        `${deltaHours > 0 ? '+' : ''}${deltaHours} hour${Math.abs(deltaHours) === 1 ? '' : 's'} to match.`
-      )
+      const sure = await confirm({
+        title: 'Change Timezone',
+        message:
+          `Change your timezone to ${offsetLabel(newTz)}? Every trade time you've logged will shift by ` +
+          `${deltaHours > 0 ? '+' : ''}${deltaHours} hour${Math.abs(deltaHours) === 1 ? '' : 's'} to match.`,
+        confirmLabel: 'Change timezone',
+      })
       if (!sure) return
     }
 
@@ -79,6 +84,7 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
           time you&apos;ve already logged to match the new offset.
         </p>
       </div>
+      {confirmModal}
     </>
   )
 }

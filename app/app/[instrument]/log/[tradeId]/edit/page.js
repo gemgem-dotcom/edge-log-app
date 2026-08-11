@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { useConfirm } from '@/lib/useConfirm'
 import TradeForm from '@/components/TradeForm'
 import PageLoading from '@/components/PageLoading'
 import PageError from '@/components/PageError'
@@ -23,6 +24,7 @@ export default function EditTradePage({ params }) {
   const [trade, setTrade] = useState(null)
   const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
+  const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
     loadAll()
@@ -80,7 +82,8 @@ export default function EditTradePage({ params }) {
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this trade? This cannot be undone.')) return
+    const sure = await confirm({ title: 'Delete Trade', message: 'This action cannot be undone.', confirmLabel: 'Delete trade', danger: true })
+    if (!sure) return
     setDeleteError(null)
     const { error } = await supabase.from('trades').delete().eq('id', tradeId)
     if (error) {
@@ -140,6 +143,7 @@ export default function EditTradePage({ params }) {
         }
         onSubmit={handleSubmit}
       />
+      {confirmModal}
     </div>
   )
 }

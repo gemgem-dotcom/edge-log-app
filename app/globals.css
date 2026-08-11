@@ -318,6 +318,7 @@ table{min-width:640px;}
 
 /* ---------- Auth pages ---------- */
 .auth-wrap{
+        position:relative;
         min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
         background: radial-gradient(ellipse 1200px 900px at 50% 0%, #1b3f70 0%, #102850 20%, #0a1830 42%, #060a13 68%, #030407 100%);
 }
@@ -1409,23 +1410,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .auth-legal{text-align:center; font-size:11.5px; color:var(--muted); line-height:1.5;}
 .auth-legal a{color:var(--accent); text-decoration:none;}
 .auth-legal a:hover{text-decoration:underline;}
-/* In the page footer (not signup's in-card consent line, which stays
-   accent-colored as an active consent moment) these are background-level
-   fine print, not another call to action - muted until hover. */
-.auth-page-footer .auth-legal a{color:var(--muted);}
-.auth-page-footer .auth-legal a:hover{color:var(--accent); text-decoration:underline;}
 
-/* .auth-wrap centers its child as a flex row, so the card and the footer
-   below need a shared column wrapper to stack instead of sitting
-   side by side. */
-/* Without a definite width here, .auth-card's own width:100% has nothing
-   to resolve against inside this shrink-to-fit flex column, and silently
-   collapses to its content's intrinsic width instead of the intended
-   440px card. */
-.auth-page{display:flex; flex-direction:column; align-items:center; width:100%; max-width:440px;}
-/* Sits below the card, not inside it - the login card is just the login
-   action, and this is a page-level footer next to it. */
-.auth-page-footer{margin-top:24px; display:flex; flex-direction:column; align-items:center; gap:10px;}
+/* Login page only - pinned to the bottom of .auth-wrap (which needs
+   position:relative for that) rather than sitting in normal flow below
+   the card, so the footer's presence never shifts the card off true
+   center the way an in-flow sibling would. */
+.auth-page-footer{
+  position:absolute; left:20px; right:20px; bottom:20px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  font-size:11.5px; color:var(--muted-2); flex-wrap:wrap;
+}
+.auth-page-footer a{color:var(--muted); text-decoration:none;}
+.auth-page-footer a:hover{color:var(--accent); text-decoration:underline;}
 
 /* A closing footer for the page, not another section - border-top +
    generous top padding (rather than a section-heading of its own) reads

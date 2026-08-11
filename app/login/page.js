@@ -114,7 +114,6 @@ async function handleMfaSubmit(e) {
 
 return (
   <div className="auth-wrap">
-  <div className="auth-page">
   <div className="auth-card">
   <div className="auth-logo">Edge<span>Log</span></div>
 
@@ -183,11 +182,11 @@ required
 )}
 </div>
   <div className="auth-page-footer">
-    <p className="auth-legal">
-      <a href="/privacy?from=login">Privacy Policy</a> · <a href="/terms?from=login">Terms of Service</a>
-    </p>
-    <div className="copyright-line">© 2026 EdgeLog</div>
-  </div>
+    <span>© 2026 EdgeLog</span>
+    <span aria-hidden="true">·</span>
+    <a href="/privacy?from=login">Privacy Policy</a>
+    <span aria-hidden="true">·</span>
+    <a href="/terms?from=login">Terms of Service</a>
   </div>
   </div>
 )

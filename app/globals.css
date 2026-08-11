@@ -184,11 +184,16 @@ input[type="time"]::-webkit-date-and-time-value{
 }
 input:focus, select:focus, textarea:focus{border-color:var(--accent);}
 
-/* Consistent keyboard-focus ring for every natively-focusable element -
+/* Consistent keyboard-focus ring for every natively-focusable element
+   that doesn't already have one - excludes input/select/textarea, which
+   the border-color rule above already covers. Everywhere else,
    :focus-visible only fires for keyboard/programmatic focus, not a mouse
-   click, so this doesn't add a ring to the existing hover/click styles. */
-a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
-textarea:focus-visible, [tabindex]:focus-visible{
+   click, so this doesn't add a ring to the existing hover/click styles -
+   but form fields are the spec-defined exception: :focus-visible fires on
+   them for a plain mouse click too, since they're text-editable, so
+   including them here stacked a second accent outline (offset 2px
+   outward) on top of the border above every time a field was clicked. */
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
   outline:2px solid var(--accent); outline-offset:2px; border-radius:inherit;
 }
 

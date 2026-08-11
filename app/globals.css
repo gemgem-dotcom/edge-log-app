@@ -1265,9 +1265,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
 .dashboard-split > div{display:flex; flex-direction:column;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
-   both cards to the row's height and center the donut's content in the
-   extra space instead of leaving the shorter card visibly shorter. */
-.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:center;}
+   both cards to the row's height so the shorter one isn't visibly shorter.
+   flex-start (not center) so each card's title stays flush with the top
+   like every other card's, even when its own content doesn't fill the
+   row's full stretched height. */
+.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start;}
 /* Per-instrument Overview: the stat-card stack sits opposite a taller
    panel (P&L by strategy) - grow the stack and its two rows to fill the
    row's full stretched height instead of leaving blank space beneath it,

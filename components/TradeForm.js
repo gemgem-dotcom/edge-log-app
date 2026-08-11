@@ -60,9 +60,23 @@ export default function TradeForm({
   const [execution, setExecution] = useState(initial.execution)
   const [pnlInput, setPnlInput] = useState(initial.pnl == null ? '' : formatCurrency(initial.pnl))
   // Once the trader edits P&L by hand the auto-fill stops overwriting it,
-  // until they clear the field again. A figure already stored on the trade
-  // counts as manual, so reopening it never silently recalculates.
-  const [pnlManual, setPnlManual] = useState(initial.pnl != null)
+  // until they clear the field again. A trade's stored P&L can't be told
+  // apart from a manual one just by being present - it's almost always
+  // there, whether it was auto-calculated or typed - so this instead
+  // recomputes what auto-fill would have produced from the trade's own
+  // stored inputs and only treats it as manual if that figure doesn't
+  // match. Otherwise editing Contracts/entry/exit on the edit page could
+  // never auto-update the way it does on the new-trade page.
+  const initialComputed = calcProfitLoss(
+    initial.direction,
+    parseFloat(initial.setup.entry),
+    parseFloat(initial.execution.exit_price),
+    parseFloat(initial.execution.contracts),
+    pointValueFor(symbol),
+  )
+  const [pnlManual, setPnlManual] = useState(
+    initial.pnl != null && (initialComputed === null || Math.abs(initialComputed - initial.pnl) > 0.005)
+  )
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])
@@ -111,11 +125,27 @@ export default function TradeForm({
   function updateSetup(field, value) {
     setSetup((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
+    // Entry price feeds the $ P&L calc - editing it is as much a signal to
+    // resume auto-fill as editing contracts/exit price below, on the edit
+    // page just as much as the new-trade page.
+    if (field === 'entry') setPnlManual(false)
   }
 
   function updateExecution(field, value) {
     setExecution((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
+    // Editing any input the $ P&L calc actually depends on re-enables
+    // auto-fill from that point on, even on the edit page where a stored
+    // figure otherwise counts as manual (see pnlManual's init above) -
+    // deliberately changing contracts or exit price is a clearer signal
+    // that the trader wants the total to follow than a value that just
+    // happens to still be sitting in the field from before.
+    if (field === 'contracts' || field === 'exit_price') setPnlManual(false)
+  }
+
+  function handleDirectionChange(value) {
+    setDirection(value)
+    setPnlManual(false)
   }
 
   async function handleAddStrategy(e) {
@@ -302,8 +332,8 @@ export default function TradeForm({
           <div className="field wide">
             <label>Direction</label>
             <div className="dir-toggle">
-              <div className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`} onClick={() => setDirection('long')}>Long</div>
-              <div className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`} onClick={() => setDirection('short')}>Short</div>
+              <div className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`} onClick={() => handleDirectionChange('long')}>Long</div>
+              <div className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`} onClick={() => handleDirectionChange('short')}>Short</div>
             </div>
             {errors.direction && <span className="field-error">{errors.direction}</span>}
           </div>
@@ -326,7 +356,7 @@ export default function TradeForm({
           </div>
           <div className="field wide">
             <label>Risk-to-Reward ratio</label>
-            <input type="text" readOnly tabIndex={-1} className="readonly-field" value={riskReward === null ? '—' : riskReward.toFixed(2)} />
+            <input type="text" readOnly tabIndex={-1} className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
           </div>
 
           <div className="field full section-label">

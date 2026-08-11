@@ -41,13 +41,13 @@ export default function WinRateGauge({ wins = 0, breakeven = 0, losses = 0, winR
   </div>
       <div className="gauge-legend">
           <span className="gauge-legend-item">
-            <span className="gauge-dot" style={{ background: 'var(--win)' }} />{wins}
+            <span className="gauge-dot" style={{ background: 'var(--win)' }} />{wins.toLocaleString('en-US')}
   </span>
         <span className="gauge-legend-item">
-            <span className="gauge-dot" style={{ background: 'var(--be)' }} />{breakeven}
+            <span className="gauge-dot" style={{ background: 'var(--be)' }} />{breakeven.toLocaleString('en-US')}
   </span>
         <span className="gauge-legend-item">
-            <span className="gauge-dot" style={{ background: 'var(--loss)' }} />{losses}
+            <span className="gauge-dot" style={{ background: 'var(--loss)' }} />{losses.toLocaleString('en-US')}
   </span>
   </div>
   </div>

@@ -26,16 +26,16 @@ function hasDollar(t) {
 
 function fmtR(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+' : '') + val.toFixed(2) + 'R'
+  return (val >= 0 ? '+' : '') + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R'
 }
 function fmtD(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2)
+  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function fmtPF(val) {
   if (val === null || val === undefined) return '—'
   if (val === Infinity) return '∞'
-  return val.toFixed(2)
+  return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
@@ -311,7 +311,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
             <div className="stat">
               <div className="stat-label">Total trades</div>
-              <div className="stat-value neu">{overall.n}</div>
+              <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
               <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
             </div>
           </div>
@@ -459,7 +459,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
                             </td>
                             <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
                             <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{t.direction.toUpperCase()}</td>
-                            <td>{closed ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toFixed(2)}R</span> : <span className="r-pill r-open">Open</span>}</td>
+                            <td>{closed ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</td>
                             <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
                           </tr>
                         )
@@ -490,7 +490,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
                           {inst?.symbol || '—'}
                         </td>
                         <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
-                        <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toFixed(2)}R</span></td>
+                        <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span></td>
                         <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
                       </tr>
                     )
@@ -499,7 +499,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </table>
             </div>
             <div className="panel-link-row">
-              <a href="/app/log" className="panel-link">View all trades →</a>
+              <a href="/app/log" className="panel-link">View all trades</a>
             </div>
           </div>
         </>

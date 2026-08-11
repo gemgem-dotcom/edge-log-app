@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
+
 function fmtD(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2)
+  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // segments: [{ symbol, value, color }]. Slice size is each instrument's
@@ -10,6 +12,7 @@ function fmtD(val) {
 // total, since a net total near zero (winners offsetting losers) would
 // otherwise make every slice size meaningless.
 export default function PnlByInstrumentDonut({ segments }) {
+  const [hovered, setHovered] = useState(null)
   const totalAbs = segments.reduce((s, seg) => s + Math.abs(seg.value), 0)
 
   if (totalAbs === 0) {
@@ -44,6 +47,9 @@ export default function PnlByInstrumentDonut({ segments }) {
             strokeDasharray={arc.dasharray}
             strokeDashoffset={arc.dashoffset}
             transform={`rotate(-90 ${cx} ${cy})`}
+            className="donut-arc"
+            onMouseMove={(e) => setHovered({ arc, x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setHovered(null)}
           />
         ))}
       </svg>
@@ -59,6 +65,15 @@ export default function PnlByInstrumentDonut({ segments }) {
           </div>
         ))}
       </div>
+      {hovered && (
+        <div className="chart-tooltip" style={{ left: hovered.x + 14, top: hovered.y - 10 }}>
+          <div className="chart-tooltip-title">{hovered.arc.symbol}</div>
+          <div className="chart-tooltip-row">{fmtD(hovered.arc.value)}</div>
+          <div className="chart-tooltip-row chart-tooltip-muted">
+            {((hovered.arc.value / totalAbs) * 100).toFixed(1)}%
+          </div>
+        </div>
+      )}
     </div>
   )
 }

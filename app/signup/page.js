@@ -80,6 +80,10 @@ export default function SignupPage() {
           <button type="submit" disabled={loading} className="auth-submit">
             {loading ? 'Creating account…' : 'Sign up'}
           </button>
+          <p className="auth-legal">
+            By signing up, you agree to our <a href="/terms">Terms of Service</a> and{' '}
+            <a href="/privacy">Privacy Policy</a>.
+          </p>
         </form>
 
         <div className="auth-divider"><span>or continue with</span></div>

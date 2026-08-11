@@ -160,6 +160,9 @@ required
  <div className="auth-switch">
     Don't have an account? <a href="/signup">Sign up</a>
     </div>
+ <p className="auth-legal">
+   <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a>
+ </p>
 </>
   ) : (
   <>

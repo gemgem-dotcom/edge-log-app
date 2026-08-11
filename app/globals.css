@@ -32,6 +32,8 @@
    1060  Cross-instrument overview dashboard (/app)
    1089  Not found / error boundary state pages
    1102  Toast notifications
+   1387  Public policy pages (Privacy, Terms)
+   1405  Legal links (auth pages + account settings)
    ============================================================ */
 
 :root{
@@ -1383,3 +1385,37 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:640px){
   .toast-stack{left:16px; right:16px; bottom:16px; max-width:none;}
 }
+
+/* ---------- Public policy pages (Privacy, Terms) ---------- */
+.policy-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;}
+.policy-logo{
+  font-family:'Archivo',sans-serif; font-size:20px; font-weight:800; letter-spacing:.01em;
+  text-transform:uppercase; color:var(--text); text-decoration:none;
+}
+.policy-logo span{color:var(--accent);}
+.policy-back-link{font-size:13px; color:var(--muted); text-decoration:none;}
+.policy-back-link:hover{color:var(--accent);}
+
+.policy-content{font-size:14px; line-height:1.7; color:var(--text);}
+.policy-content h2{font-family:'Archivo',sans-serif; font-size:16px; font-weight:700; margin-top:26px; margin-bottom:10px;}
+.policy-content h2:first-child{margin-top:0;}
+.policy-content p{margin-bottom:14px;}
+.policy-content ul{margin:0 0 14px 20px;}
+.policy-content li{margin-bottom:6px;}
+.policy-content a{color:var(--accent); text-decoration:none;}
+.policy-content a:hover{text-decoration:underline;}
+
+/* ---------- Legal links (auth pages + account settings) ---------- */
+.auth-legal{margin-top:16px; text-align:center; font-size:11.5px; color:var(--muted); line-height:1.5;}
+.auth-legal a{color:var(--accent); text-decoration:none;}
+.auth-legal a:hover{text-decoration:underline;}
+
+.account-legal{
+  display:flex; align-items:center; gap:10px; margin-top:28px;
+  font-size:12px; color:var(--muted);
+}
+.account-legal-label{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700;
+}
+.account-legal a{color:var(--accent); text-decoration:none;}
+.account-legal a:hover{text-decoration:underline;}

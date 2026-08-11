@@ -121,6 +121,13 @@ export default function AccountPage() {
         <DataExportSection />
 
         <DangerZoneSection email={email} hasPassword={hasPassword} />
+
+        <div className="account-legal">
+          <span className="account-legal-label">Legal</span>
+          <a href="/privacy">Privacy Policy</a>
+          <span aria-hidden="true">·</span>
+          <a href="/terms">Terms of Service</a>
+        </div>
       </div>
     </div>
   )

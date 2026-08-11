@@ -311,8 +311,8 @@ return (
   </div>
   <div>
   <div className="panel">
-  <div className="stat-label dashboard-card-title">P&amp;L by strategy</div>
-  <PnlDonut segments={strategySegments} />
+  <div className="stat-label dashboard-card-title">Cumulative P&amp;L by strategy</div>
+  <PnlDonut segments={strategySegments} netSignOnly />
   </div>
   </div>
   </div>

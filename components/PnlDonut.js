@@ -9,9 +9,10 @@ function fmtD(val) {
 
 // segments: [{ label, value, color }].
 //
-// netSignOnly (P&L by instrument only - P&L by strategy leaves this off and
-// keeps its original behavior): the ring represents the net P&L direction,
-// not raw trading magnitude. If the net total across every segment is
+// netSignOnly (on for both P&L-by-instrument and P&L-by-strategy; off
+// defaults to the original trading-magnitude ring, unused by either caller
+// today): the ring represents the net P&L direction, not raw trading
+// magnitude. If the net total across every segment is
 // negative, only the loss-side segments (value < 0) are drawn in the ring -
 // sized by their share of the total loss - and the profit-side segments
 // still get a legend row, just muted, with no arc. A positive net total

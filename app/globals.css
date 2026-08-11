@@ -140,10 +140,20 @@ textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
    looked taller than its siblings with no visible left border despite
    matching CSS: appearance:none stops the browser from painting that
    native box so our background/border/padding/height actually apply. */
+/* A hard height, not min-height - the native date/time control renders at
+   its own intrinsic height (taller than a plain text input, and taller
+   still for type=time with step="1" showing seconds) regardless of
+   viewport width, so without this it visibly mismatches its siblings any
+   time the mobile-only override below isn't in effect - e.g. a phone
+   rotated to landscape, where the viewport crosses back above 640px. 36px
+   matches the height a text input renders at outside the mobile
+   breakpoint; the mobile media query below overrides this to 41px to
+   match text inputs there instead. */
 input[type="date"],
 input[type="time"]{
   -webkit-appearance:none;
   appearance:none;
+  height:36px;
 }
 /* Safari (desktop and iOS) centers the value inside date/time inputs by
    default, which reads as a mismatch next to every other left-aligned

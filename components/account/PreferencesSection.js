@@ -31,8 +31,7 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
     if (deltaHours !== 0) {
       const sure = confirm(
         `Change your timezone to ${offsetLabel(newTz)}? Every trade time you've logged will shift by ` +
-        `${deltaHours > 0 ? '+' : ''}${deltaHours} hour${Math.abs(deltaHours) === 1 ? '' : 's'} to match. ` +
-        `Switching back to ${offsetLabel(timezone)} later will shift them back exactly.`
+        `${deltaHours > 0 ? '+' : ''}${deltaHours} hour${Math.abs(deltaHours) === 1 ? '' : 's'} to match.`
       )
       if (!sure) return
     }

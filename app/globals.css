@@ -1258,6 +1258,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    both cards to the row's height and center the donut's content in the
    extra space instead of leaving the shorter card visibly shorter. */
 .dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:center;}
+/* Per-instrument Overview: the stat-card stack sits opposite a taller
+   panel (P&L by strategy) - grow the stack and its two rows to fill the
+   row's full stretched height instead of leaving blank space beneath it,
+   and center each stat's content in the taller card. */
+.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr);}
+.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:center;}
+.dashboard-card-title{margin-bottom:16px;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}
 }

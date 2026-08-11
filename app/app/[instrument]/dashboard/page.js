@@ -310,7 +310,7 @@ return (
   </div>
   <div>
   <div className="panel">
-  <div className="panel-title">P&amp;L by strategy</div>
+  <div className="stat-label dashboard-card-title">P&amp;L by strategy</div>
   <PnlDonut segments={strategySegments} />
   </div>
   </div>

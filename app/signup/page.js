@@ -80,6 +80,10 @@ export default function SignupPage() {
           <button type="submit" disabled={loading} className="auth-submit">
             {loading ? 'Creating account…' : 'Sign up'}
           </button>
+          <p className="auth-legal">
+            By signing up, you agree to our <a href="/terms?from=signup">Terms of Service</a> and{' '}
+            <a href="/privacy?from=signup">Privacy Policy</a>.
+          </p>
         </form>
 
         <div className="auth-divider"><span>or continue with</span></div>
@@ -92,6 +96,10 @@ export default function SignupPage() {
         <div className="auth-switch">
           Already have an account? <a href="/login">Log in</a>
         </div>
+      </div>
+
+      <div className="auth-page-footer">
+        <span>© 2026 EdgeLog</span>
       </div>
     </div>
   )

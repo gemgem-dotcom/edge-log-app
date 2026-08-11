@@ -121,6 +121,15 @@ export default function AccountPage() {
         <DataExportSection />
 
         <DangerZoneSection email={email} hasPassword={hasPassword} />
+
+        <div className="account-legal">
+          <div className="account-legal-links">
+            <a href="/privacy?from=account">Privacy Policy</a>
+            <span aria-hidden="true">·</span>
+            <a href="/terms?from=account">Terms of Service</a>
+          </div>
+          <div className="copyright-line">© 2026 EdgeLog</div>
+        </div>
       </div>
     </div>
   )

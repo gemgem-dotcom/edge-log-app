@@ -1000,6 +1000,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .calendar-month-nav{display:flex; align-items:center; gap:12px;}
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
+.stats-2{grid-template-columns:repeat(2,1fr);}
 .stat-subvalue{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; margin-top:2px;}
 .stat-gauge{display:flex; flex-direction:column;}
 

@@ -9,6 +9,7 @@ import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
+import PnlDonut from '@/components/PnlDonut'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -221,6 +222,10 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
   const overall = computeStats(classifiedTrades)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
+  const strategySegments = strategies.map((s, i) => {
+    const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
+    return { label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
+  })
 
 const calTrades = calStrategy === 'all' ? allTrades : allTrades.filter((t) => t.strategy_id === calStrategy)
   const tradesByDate = {}
@@ -272,7 +277,9 @@ return (
 ) : (
   <>
 <div className="section-heading">Overview</div>
-  <div className="stats stats-5">
+  <div className="dashboard-split">
+  <div>
+  <div className="stats stats-2">
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -299,9 +306,13 @@ return (
   <div className="stat-label">Win rate</div>
   <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
   </div>
-  <div className="stat">
-  <div className="stat-label">Total trades</div>
-  <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
+  </div>
+  </div>
+  <div>
+  <div className="section-heading">P&amp;L by strategy</div>
+  <div className="panel">
+  <PnlDonut segments={strategySegments} />
+  </div>
   </div>
   </div>
 

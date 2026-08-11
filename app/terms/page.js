@@ -13,7 +13,7 @@ export default function TermsOfServicePage({ searchParams }) {
         <a href={backLink.href} className="policy-back-link">{backLink.label}</a>
       </div>
 
-      <h1 className="page-title">Terms of Service</h1>
+      <h1 className="page-title">TERMS OF SERVICE</h1>
       <p className="page-subtitle">Last updated: August 11, 2026</p>
 
       <div className="panel policy-content">

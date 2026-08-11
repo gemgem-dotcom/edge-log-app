@@ -1094,9 +1094,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   padding:4px 10px; border-radius:99px; font-size:12px; font-weight:600;
   background:rgba(59,167,255,.1); color:var(--accent); border:1px solid rgba(59,167,255,.25);
 }
-/* Hidden until hover (opacity, not display, so it doesn't shift the pill's
-   width when it appears) - matches the brief's "x when hovering". */
-.trade-tag-remove{cursor:pointer; flex-shrink:0; opacity:0; transition:opacity .15s ease;}
+.trade-tag-remove{cursor:pointer; flex-shrink:0; opacity:.7; transition:opacity .15s ease;}
 .trade-tag:hover .trade-tag-remove{opacity:1;}
 .tag-add-form{display:inline-flex; align-items:center; gap:8px;}
 .tag-add-form input{width:140px; padding:6px 10px; font-size:12.5px;}

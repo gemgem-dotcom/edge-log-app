@@ -81,8 +81,8 @@ export default function SignupPage() {
             {loading ? 'Creating account…' : 'Sign up'}
           </button>
           <p className="auth-legal">
-            By signing up, you agree to our <a href="/terms">Terms of Service</a> and{' '}
-            <a href="/privacy">Privacy Policy</a>.
+            By signing up, you agree to our <a href="/terms?from=signup">Terms of Service</a> and{' '}
+            <a href="/privacy?from=signup">Privacy Policy</a>.
           </p>
         </form>
 

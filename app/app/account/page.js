@@ -124,9 +124,9 @@ export default function AccountPage() {
 
         <div className="account-legal">
           <span className="account-legal-label">Legal</span>
-          <a href="/privacy">Privacy Policy</a>
+          <a href="/privacy?from=account">Privacy Policy</a>
           <span aria-hidden="true">·</span>
-          <a href="/terms">Terms of Service</a>
+          <a href="/terms?from=account">Terms of Service</a>
         </div>
       </div>
     </div>

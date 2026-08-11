@@ -1,13 +1,16 @@
+import { resolveBackLink } from '@/lib/policyBackLink'
+
 export const metadata = {
   title: 'Privacy Policy — EdgeLog',
 }
 
-export default function PrivacyPolicyPage() {
+export default function PrivacyPolicyPage({ searchParams }) {
+  const backLink = resolveBackLink(searchParams?.from)
   return (
     <div className="simple-page-wrap">
       <div className="policy-header">
         <a href="/login" className="policy-logo">Edge<span>Log</span></a>
-        <a href="/login" className="policy-back-link">Back to login</a>
+        <a href={backLink.href} className="policy-back-link">{backLink.label}</a>
       </div>
 
       <h1 className="page-title">Privacy Policy</h1>

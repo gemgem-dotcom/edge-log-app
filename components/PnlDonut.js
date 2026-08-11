@@ -61,7 +61,6 @@ export default function PnlDonut({ segments }) {
             <span className={`donut-legend-value ${seg.value > 0 ? 'pos' : seg.value < 0 ? 'neg' : 'neu'}`}>
               {fmtD(seg.value)}
             </span>
-            <span className="donut-legend-pct">{((seg.value / totalAbs) * 100).toFixed(1)}%</span>
           </div>
         ))}
       </div>

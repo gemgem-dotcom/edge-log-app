@@ -297,7 +297,10 @@ table{min-width:640px;}
   .submit-row{grid-column:span 2; justify-content:stretch;}
   .submit-row button{width:100%; padding:13px 0; font-size:14px;}
 
-  table{font-size:11.5px;}
+  /* Wider than the desktop 640px floor so columns (esp. P&L) get enough
+     room of their own instead of being squeezed toward soft-wrap points -
+     #tableWrap already scrolls horizontally to cover the difference. */
+  table{font-size:11.5px; min-width:760px;}
   th, td{padding:8px 8px;}
 }
 
@@ -684,8 +687,14 @@ a.shell-logo{color:inherit; text-decoration:none;}
   .shell-topbar{padding:12px 16px; margin:12px 12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap; border-radius:24px;}
   .shell-topbar .instrument-nav{order:3; flex-basis:100%;}
   .new-trade-btn span{display:none;}
-  .perf-table th:nth-child(5), .perf-table th:nth-child(6), .perf-table th:nth-child(7), .perf-table td:nth-child(5), .perf-table td:nth-child(6), .perf-table td:nth-child(7){display:none;}
-  .perf-table{min-width:0; table-layout:fixed;} .perf-table th, .perf-table td{padding:6px 4px; font-size:10.5px; word-break:break-word;} .panel:has(.perf-table){overflow-x:auto;}
+  /* Scroll instead of shrinking columns to fit - min-width:0 + fixed
+     layout used to force every row to fit the card width, which kept the
+     table scroll-free but squeezed Profit factor off-screen entirely.
+     A real min-width plus overflow-x on the card lets every column stay
+     legible and reachable by horizontal scroll instead. */
+  .perf-table{min-width:480px;}
+  .perf-table th, .perf-table td{padding:8px 8px; font-size:10.5px; white-space:nowrap;}
+  .panel:has(.perf-table){overflow-x:auto; -webkit-overflow-scrolling:touch;}
 }
 
 /* ---------- Expandable trade rows ---------- */
@@ -1207,8 +1216,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .table-count{font-size:12px; color:var(--muted); text-align:right; margin-bottom:10px;}
 
-.pnl-pos{color:var(--win);}
-.pnl-neg{color:var(--loss);}
+/* nowrap guards against the browser treating the sign's hyphen as a soft
+   line-break point and stranding it on its own line above the amount. */
+.pnl-pos{color:var(--win); white-space:nowrap;}
+.pnl-neg{color:var(--loss); white-space:nowrap;}
 
 /* ---------- Empty states, error banners, skeleton loaders ---------- */
 .empty-state{text-align:center; padding:40px 20px;}
@@ -1307,7 +1318,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    it (title stays flush top either way) uses the stretched space instead
    of leaving it all as dead air below the content. */
 .donut-card-lg .donut-svg{width:230px; height:230px;}
-.donut-card-body{flex:1; display:flex; align-items:center;}
+.donut-card-body{flex:1; display:flex; align-items:center; justify-content:center;}
 @media (max-width:640px){
   .donut-wrap{flex-direction:column; align-items:center;}
   .donut-legend{width:100%;}

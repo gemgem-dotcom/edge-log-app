@@ -253,7 +253,7 @@ export default function TradeLogTable({
               <Fragment key={t.id}>
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
                   <td>{t.trade_date}</td>
-                  {showDayColumn && <td>{dayOf(t)}</td>}
+                  {showDayColumn && <td>{dayOf(t).toUpperCase()}</td>}
                   {showInstrumentColumn && (
                     <td>
                       <span className="strategy-dot" style={{ background: instrumentColorFor?.(t), marginRight: '8px', verticalAlign: 'middle' }} />

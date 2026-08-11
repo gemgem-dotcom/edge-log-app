@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, todayDateString } from '../lib/tradeForm'
@@ -17,6 +18,7 @@ export const EMPTY_TRADE_FORM = {
   setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '' },
   execution: { contracts: '', exit_time: '', exit_price: '' },
   pnl: null,
+  tags: [],
   existingScreenshots: [],
 }
 
@@ -81,6 +83,10 @@ export default function TradeForm({
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])
   const [lightboxUrl, setLightboxUrl] = useState(null)
+
+  const [tags, setTags] = useState(initial.tags || [])
+  const [addingTag, setAddingTag] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
 
   const [saving, setSaving] = useState(false)
 
@@ -192,6 +198,30 @@ export default function TradeForm({
     setExistingScreenshots((prev) => prev.filter((_, i) => i !== index))
   }
 
+  // Tags live entirely in local state until the whole form saves - unlike
+  // strategies, there's no shared list to insert into, so adding one is
+  // just an array update. The input stays open after adding (rather than
+  // closing like "+ Add new strategy" does) since tagging a trade with
+  // several words in a row is the common case.
+  function handleAddTag() {
+    const trimmed = newTagName.trim()
+    if (!trimmed) return
+    setTags((prev) => (prev.some((t) => t.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, trimmed]))
+    setNewTagName('')
+  }
+
+  // Enter would otherwise submit the whole trade form, since this input
+  // lives inside it - same reason "+ Add new strategy" uses a type="button".
+  function handleTagKeyDown(e) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    handleAddTag()
+  }
+
+  function handleRemoveTag(tag) {
+    setTags((prev) => prev.filter((t) => t !== tag))
+  }
+
   function handlePnlFocus() {
     const parsed = parseCurrency(pnlInput)
     setPnlInput(parsed === null ? '' : String(parsed))
@@ -247,6 +277,7 @@ export default function TradeForm({
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       pnl: parseCurrency(pnlInput),
+      tags,
     }
 
     // The caller navigates away on success; returning an error message
@@ -451,6 +482,32 @@ export default function TradeForm({
             <span className="section-subtitle">
               Review your trade, record your observations, and identify areas for improvement.
             </span>
+          </div>
+
+          <div className="field full">
+            <div className="tag-row">
+              {tags.map((tag) => (
+                <span className="trade-tag" key={tag}>
+                  {tag}
+                  <X size={12} className="trade-tag-remove" onClick={() => handleRemoveTag(tag)} />
+                </span>
+              ))}
+              {addingTag ? (
+                <span className="tag-add-form">
+                  <input
+                    type="text" placeholder="Tag name" autoFocus
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                  />
+                  <span className="del" style={{ color: 'var(--accent)' }} onClick={handleAddTag}>Add</span>
+                </span>
+              ) : (
+                <span className="del" style={{ color: 'var(--accent)' }} onClick={() => setAddingTag(true)}>
+                  + Add tag
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="field full">

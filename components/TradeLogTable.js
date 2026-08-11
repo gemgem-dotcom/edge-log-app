@@ -310,6 +310,15 @@ export default function TradeLogTable({
                         <div><label>MAE</label><div>—</div></div>
                       </div>
 
+                      {t.tags?.length > 0 && (
+                        <div style={{ marginTop: '12px' }}>
+                          <label className="detail-sublabel">Tags</label>
+                          <div className="tag-row" style={{ marginTop: '4px' }}>
+                            {t.tags.map((tag) => <span className="trade-tag" key={tag}>{tag}</span>)}
+                          </div>
+                        </div>
+                      )}
+
                       {t.reasoning && (
                         <div style={{ marginTop: '12px' }}>
                           <label className="detail-sublabel">Reasoning</label>

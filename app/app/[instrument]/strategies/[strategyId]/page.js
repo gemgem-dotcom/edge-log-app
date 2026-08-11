@@ -25,7 +25,7 @@ async function computeStrategyStats(allTrades) {
   const n = trades.length
   if (n === 0) {
     return {
-      n, winRate: null, avgR: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
+      n, winRate: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
       hasD: false, avgDuration: computeAvgDuration(allTrades),
     }
   }
@@ -33,8 +33,11 @@ async function computeStrategyStats(allTrades) {
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgR = totalPnl / n
-  const winRate = (wins.length / n) * 100
+  // Breakeven trades don't count as a win or a loss, so they're excluded
+  // from the denominator here rather than diluting the rate - wr below
+  // (which feeds expectancy, not the displayed win rate) is unrelated and
+  // deliberately left as wins/n.
+  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
   const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
   const wr = wins.length / n
@@ -49,7 +52,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, avgR, expectancy, expectancyD, totalPnl, totalD, hasD, avgDuration: computeAvgDuration(allTrades) }
+return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, avgDuration: computeAvgDuration(allTrades) }
 }
 
 function computeAvgDuration(trades) {

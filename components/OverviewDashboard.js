@@ -58,17 +58,20 @@ function computeOverallStats(allTrades) {
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
   if (n === 0) {
     return {
-      n, tradingDays, winRate: null, avgR: null, expectancy: null, expectancyD: null,
-      totalPnl: null, totalD: null, hasD: false, profitFactor: null, wins: 0, breakeven: 0, losses: 0,
+      n, tradingDays, winRate: null, expectancy: null, expectancyD: null,
+      totalPnl: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0,
     }
   }
 
   const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  const breakeven = trades.filter((t) => t.r_multiple === 0)
   const wr = wins.length / n
+  // Breakeven trades don't count as a win or a loss, so they're excluded
+  // from the denominator here rather than diluting the rate - wr above
+  // (which feeds expectancy, not the displayed win rate) is unrelated and
+  // deliberately left as wins/n.
+  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgR = totalPnl / n
   const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
   const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
   const expectancy = wr * avgWin + (1 - wr) * avgLoss
@@ -87,8 +90,8 @@ function computeOverallStats(allTrades) {
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
   return {
-    n, tradingDays, winRate: wr * 100, avgR, expectancy, expectancyD, totalPnl, totalD, hasD,
-    profitFactor, wins: wins.length, breakeven: breakeven.length, losses: losses.length,
+    n, tradingDays, winRate, expectancy, expectancyD, totalPnl, totalD, hasD,
+    profitFactor, wins: wins.length, losses: losses.length,
   }
 }
 
@@ -303,7 +306,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
             <div className="stat stat-gauge">
               <div className="stat-label">Win rate</div>
-              <WinRateGauge wins={overall.wins} breakeven={overall.breakeven} losses={overall.losses} winRate={overall.winRate} />
+              <WinRateGauge wins={overall.wins} losses={overall.losses} winRate={overall.winRate} />
             </div>
             <div className="stat">
               <div className="stat-label">Profit factor</div>
@@ -385,7 +388,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </div>
               <div className="stat stat-gauge">
                 <div className="stat-label">Win rate</div>
-                <WinRateGauge wins={monthStats.wins} breakeven={monthStats.breakeven} losses={monthStats.losses} winRate={monthStats.winRate} />
+                <WinRateGauge wins={monthStats.wins} losses={monthStats.losses} winRate={monthStats.winRate} />
               </div>
               <div className="stat">
                 <div className="stat-label">Expectancy</div>

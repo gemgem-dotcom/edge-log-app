@@ -267,3 +267,10 @@ as $$
     end
   where user_id = auth.uid();
 $$;
+
+-- Free-text tags a trader can attach to a trade (e.g. "FOMC", "revenge
+-- trade") - added/removed on the Log New Trade / Edit Trade forms, shown
+-- read-only on the trade detail page and the trade log's expand row.
+-- No separate tags table: there's no shared/managed tag list (unlike
+-- strategies), so a plain array on the trade itself is all this needs.
+alter table trades add column if not exists tags text[];

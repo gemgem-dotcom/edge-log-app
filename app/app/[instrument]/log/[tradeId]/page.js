@@ -99,6 +99,16 @@ export default function TradeDetailPage({ params }) {
           <div><label>Contracts</label><div>{trade.contracts == null ? '—' : trade.contracts.toLocaleString('en-US')}</div></div>
         </div>
         <div style={{ marginTop: '14px' }}>
+          <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Tags</label>
+          {trade.tags?.length ? (
+            <div className="tag-row" style={{ marginTop: '6px' }}>
+              {trade.tags.map((tag) => <span className="trade-tag" key={tag}>{tag}</span>)}
+            </div>
+          ) : (
+            <p style={{ marginTop: '6px', lineHeight: 1.5 }}>—</p>
+          )}
+        </div>
+        <div style={{ marginTop: '14px' }}>
           <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Reasoning</label>
           <p style={{ marginTop: '6px', lineHeight: 1.5 }}>{trade.reasoning || '—'}</p>
         </div>

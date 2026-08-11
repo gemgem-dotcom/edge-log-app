@@ -21,16 +21,18 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
   // Every trade's stored trade_date/trade_time/exit_time is physically
   // shifted to match, not just relabeled - see shift_trade_times in
   // schema.sql for why (and why exit_time shifts as a bare time-of-day
-  // rather than following the date). That's a real, hard-to-undo rewrite
-  // of the trader's whole history, so it's confirmed like the other
-  // irreversible actions in this app (delete trade, sign out everywhere).
+  // rather than following the date). It's a real rewrite of the trader's
+  // whole history (undone by switching back to the exact same offset,
+  // since the shift is pure delta-hour arithmetic - but not by anything
+  // else), so it's confirmed like the other impactful actions in this app
+  // (delete trade, sign out everywhere).
   async function handleTimezoneChange(newTz) {
     const deltaHours = parseFloat(newTz) - parseFloat(timezone)
     if (deltaHours !== 0) {
       const sure = confirm(
         `Change your timezone to ${offsetLabel(newTz)}? Every trade time you've logged will shift by ` +
-        `${deltaHours > 0 ? '+' : ''}${deltaHours} hour${Math.abs(deltaHours) === 1 ? '' : 's'} to match - this rewrites your ` +
-        `trade history and can't be undone by switching back.`
+        `${deltaHours > 0 ? '+' : ''}${deltaHours} hour${Math.abs(deltaHours) === 1 ? '' : 's'} to match. ` +
+        `Switching back to ${offsetLabel(timezone)} later will shift them back exactly.`
       )
       if (!sure) return
     }

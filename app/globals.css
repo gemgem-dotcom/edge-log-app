@@ -1298,6 +1298,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    have no arc in the ring, per netSignOnly on PnlDonut) stay legible but
    read as secondary next to the rows the ring actually represents. */
 .donut-legend-item-muted{opacity:.45;}
+/* All Instruments overview only - that card stretches to match the taller
+   equity curve card next to it, so the default 160px ring leaves a lot of
+   dead space at the bottom. The per-instrument dashboard's P&L-by-strategy
+   card doesn't get this - its panel is sized to its own content, not
+   stretched against a taller neighbor. A bigger ring plus a body wrapper
+   that grows to fill the leftover height and centers the donut+legend in
+   it (title stays flush top either way) uses the stretched space instead
+   of leaving it all as dead air below the content. */
+.donut-card-lg .donut-svg{width:230px; height:230px;}
+.donut-card-body{flex:1; display:flex; align-items:center;}
 @media (max-width:640px){
   .donut-wrap{flex-direction:column; align-items:center;}
   .donut-legend{width:100%;}

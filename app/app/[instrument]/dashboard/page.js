@@ -9,7 +9,7 @@ import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
-import PnlDonut from '@/components/PnlDonut'
+import PnlBars from '@/components/PnlBars'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -312,7 +312,7 @@ return (
   <div>
   <div className="panel">
   <div className="stat-label dashboard-card-title">P&amp;L by strategy</div>
-  <PnlDonut segments={strategySegments} />
+  <PnlBars segments={strategySegments} />
   </div>
   </div>
   </div>

@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import EquityCurveChart from '@/components/EquityCurveChart'
-import PnlDonut from '@/components/PnlDonut'
+import PnlBars from '@/components/PnlBars'
 import WinRateGauge from '@/components/WinRateGauge'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
@@ -347,7 +347,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
             <div>
               <div className="section-heading">P&amp;L by instrument</div>
               <div className="panel">
-                <PnlDonut segments={instrumentSegments} />
+                <PnlBars segments={instrumentSegments} />
               </div>
             </div>
           </div>

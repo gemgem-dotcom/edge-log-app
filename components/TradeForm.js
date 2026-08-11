@@ -60,9 +60,23 @@ export default function TradeForm({
   const [execution, setExecution] = useState(initial.execution)
   const [pnlInput, setPnlInput] = useState(initial.pnl == null ? '' : formatCurrency(initial.pnl))
   // Once the trader edits P&L by hand the auto-fill stops overwriting it,
-  // until they clear the field again. A figure already stored on the trade
-  // counts as manual, so reopening it never silently recalculates.
-  const [pnlManual, setPnlManual] = useState(initial.pnl != null)
+  // until they clear the field again. A trade's stored P&L can't be told
+  // apart from a manual one just by being present - it's almost always
+  // there, whether it was auto-calculated or typed - so this instead
+  // recomputes what auto-fill would have produced from the trade's own
+  // stored inputs and only treats it as manual if that figure doesn't
+  // match. Otherwise editing Contracts/entry/exit on the edit page could
+  // never auto-update the way it does on the new-trade page.
+  const initialComputed = calcProfitLoss(
+    initial.direction,
+    parseFloat(initial.setup.entry),
+    parseFloat(initial.execution.exit_price),
+    parseFloat(initial.execution.contracts),
+    pointValueFor(symbol),
+  )
+  const [pnlManual, setPnlManual] = useState(
+    initial.pnl != null && (initialComputed === null || Math.abs(initialComputed - initial.pnl) > 0.005)
+  )
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])

@@ -1410,12 +1410,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .auth-legal a{color:var(--accent); text-decoration:none;}
 .auth-legal a:hover{text-decoration:underline;}
 
+/* A closing footer for the page, not another section - border-top +
+   generous top padding (rather than a section-heading of its own) reads
+   as "the page is done" instead of one more card in the same list as
+   Data and Danger Zone above it. */
 .account-legal{
-  display:flex; align-items:center; gap:10px; margin-top:28px;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin-top:32px; padding-top:24px; border-top:1px solid var(--line);
   font-size:12px; color:var(--muted);
 }
-.account-legal-label{
-  font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700;
-}
-.account-legal a{color:var(--accent); text-decoration:none;}
-.account-legal a:hover{text-decoration:underline;}
+.account-legal a{color:var(--muted); text-decoration:none;}
+.account-legal a:hover{color:var(--accent); text-decoration:underline;}

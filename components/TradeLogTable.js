@@ -4,6 +4,7 @@ import { useState, useEffect, Fragment } from 'react'
 import { Pencil, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
+import { useConfirm } from '../lib/useConfirm'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
 
@@ -66,6 +67,7 @@ export default function TradeLogTable({
   const [expandedId, setExpandedId] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  const { confirm, modal: confirmModal } = useConfirm()
 
   // Filters open from a chevron on each column heading. Day and Strategy
   // take any combination of values; an empty array means unfiltered.
@@ -91,7 +93,8 @@ export default function TradeLogTable({
 
   async function handleDelete(e, trade) {
     e.stopPropagation()
-    if (!confirm('Delete this trade? This cannot be undone.')) return
+    const sure = await confirm({ title: 'Delete Trade', message: 'This action cannot be undone.', confirmLabel: 'Delete trade', danger: true })
+    if (!sure) return
     setDeleteError(null)
     const { error } = await supabase.from('trades').delete().eq('id', trade.id)
     if (!error) {
@@ -345,6 +348,7 @@ export default function TradeLogTable({
           </div>
         </div>
       )}
+      {confirmModal}
     </div>
   )
 }

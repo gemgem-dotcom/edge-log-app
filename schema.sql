@@ -235,3 +235,35 @@ begin
       with check (auth.uid() = user_id);
   end if;
 end $$;
+
+-- Trade times are stored as plain wall-clock values with no timezone of
+-- their own (see lib/timezone.js) - the account page's UTC offset is only
+-- a label for what that clock meant. Changing the offset re-labels every
+-- trade at once by physically shifting trade_date/trade_time/exit_time by
+-- the delta, called from PreferencesSection.js as
+-- `supabase.rpc('shift_trade_times', { delta_hours })` right before the
+-- new offset itself is saved. security invoker (the default) means RLS
+-- still applies as the calling user; the explicit user_id filter below is
+-- a second line of defense, not a substitute for it.
+--
+-- trade_date/trade_time are combined into one timestamp so a shift that
+-- crosses midnight rolls the date over correctly; exit_time has no date
+-- column of its own (see the trades table above), so it's shifted as a
+-- bare time-of-day, wrapping at 24h in place - it stays exactly as far
+-- from trade_time as it started, which is all trade duration math
+-- (lib/tradeMath.js's tradeDurationMinutes) actually depends on.
+create or replace function shift_trade_times(delta_hours numeric)
+returns void
+language sql
+security invoker
+as $$
+  update trades
+  set
+    trade_time = ((trade_date + trade_time)::timestamp + (delta_hours * interval '1 hour'))::time,
+    trade_date = ((trade_date + trade_time)::timestamp + (delta_hours * interval '1 hour'))::date,
+    exit_time = case when exit_time is not null
+      then (exit_time + (delta_hours * interval '1 hour'))::time
+      else null
+    end
+  where user_id = auth.uid();
+$$;

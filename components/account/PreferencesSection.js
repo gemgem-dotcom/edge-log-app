@@ -4,12 +4,15 @@ import { useState } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/lib/toast'
-import { UTC_OFFSETS } from '@/lib/timezone'
+import { UTC_OFFSETS, offsetLabel } from '@/lib/timezone'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Timezone is owned by the page rather than here, because the sign-in
 // history renders its timestamps in it and has to re-render on a change.
 export default function PreferencesSection({ initialTheme, timezone, onTimezoneChange }) {
   const [theme, setTheme] = useState(initialTheme)
+  const [shiftingTz, setShiftingTz] = useState(false)
+  const { confirm, modal: confirmModal } = useConfirm()
 
   function handleThemeChange(newTheme) {
     setTheme(newTheme)
@@ -17,10 +20,42 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
     document.documentElement.setAttribute('data-theme', newTheme)
   }
 
+  // Every trade's stored trade_date/trade_time/exit_time is physically
+  // shifted to match, not just relabeled - see shift_trade_times in
+  // schema.sql for why (and why exit_time shifts as a bare time-of-day
+  // rather than following the date). It's a real rewrite of the trader's
+  // whole history (undone by switching back to the exact same offset,
+  // since the shift is pure delta-hour arithmetic - but not by anything
+  // else), so it's confirmed like the other impactful actions in this app
+  // (delete trade, sign out everywhere).
   async function handleTimezoneChange(newTz) {
+    const deltaHours = parseFloat(newTz) - parseFloat(timezone)
+    if (deltaHours !== 0) {
+      const sure = await confirm({
+        title: 'Change Timezone',
+        message:
+          `Change your timezone to ${offsetLabel(newTz)}? Every trade time you've logged will shift by ` +
+          `${deltaHours > 0 ? '+' : ''}${deltaHours} hour${Math.abs(deltaHours) === 1 ? '' : 's'} to match.`,
+        confirmLabel: 'Change timezone',
+      })
+      if (!sure) return
+    }
+
+    setShiftingTz(true)
+    if (deltaHours !== 0) {
+      const { error: shiftError } = await supabase.rpc('shift_trade_times', { delta_hours: deltaHours })
+      if (shiftError) {
+        setShiftingTz(false)
+        toast.error(`Couldn't update your trade times — ${shiftError.message}`)
+        return
+      }
+    }
+
     onTimezoneChange(newTz)
     const { error } = await supabase.auth.updateUser({ data: { timezone: newTz } })
-    if (!error) toast.success('Timezone updated.')
+    setShiftingTz(false)
+    if (!error) toast.success('Timezone updated — trade times shifted to match.')
+    else toast.error(`Trade times were updated, but saving the new timezone failed — ${error.message}`)
   }
 
   return (
@@ -40,14 +75,16 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
         </div>
         <div className="field wide" style={{ marginTop: '14px' }}>
           <label>Timezone</label>
-          <select value={timezone} onChange={(e) => handleTimezoneChange(e.target.value)}>
+          <select value={timezone} disabled={shiftingTz} onChange={(e) => handleTimezoneChange(e.target.value)}>
             {UTC_OFFSETS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <p className="account-fine-print">
-          Set this to the UTC offset your trade times are logged in.
+          Set this to the UTC offset your trade times are logged in. Changing it shifts every trade
+          time you&apos;ve already logged to match the new offset.
         </p>
       </div>
+      {confirmModal}
     </>
   )
 }

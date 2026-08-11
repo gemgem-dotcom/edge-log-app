@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { Pencil } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatInTz } from '@/lib/timezone'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and body — no .panel wrapper of its own.
 export default function SignInHistorySection({ initialEvents, timezone }) {
   const router = useRouter()
   const [loginEvents, setLoginEvents] = useState(initialEvents)
+  const { confirm, modal: confirmModal } = useConfirm()
   const [showAllEvents, setShowAllEvents] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
   const [sessionMessage, setSessionMessage] = useState('')
@@ -27,7 +29,12 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
   }
 
   async function handleSignOutEverywhere() {
-    const sure = confirm('Sign out of every device, including this one? You will need to log in again.')
+    const sure = await confirm({
+      title: 'Sign Out Everywhere',
+      message: 'You will need to log in again on every device, including this one.',
+      confirmLabel: 'Log out everywhere',
+      danger: true,
+    })
     if (!sure) return
     await supabase.auth.signOut({ scope: 'global' })
     router.push('/login')
@@ -106,6 +113,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
         <button type="button" className="btn-danger-outline" onClick={handleSignOutEverywhere}>Log out everywhere</button>
       </div>
       {sessionMessage && <div className="account-msg account-msg-success">{sessionMessage}</div>}
+      {confirmModal}
     </>
   )
 }

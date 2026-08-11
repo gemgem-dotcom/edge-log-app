@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { useConfirm } from '@/lib/useConfirm'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and body — no .panel wrapper of its own.
 export default function TwoFactorSection({ initialFactors }) {
   const [mfaFactors, setMfaFactors] = useState(initialFactors)
+  const { confirm, modal: confirmModal } = useConfirm()
   const [enrolling, setEnrolling] = useState(false)
   const [enrollQr, setEnrollQr] = useState(null)
   const [enrollSecret, setEnrollSecret] = useState(null)
@@ -86,7 +88,12 @@ export default function TwoFactorSection({ initialFactors }) {
   }
 
   async function handleDisable2FA(factorId) {
-    const sure = confirm('Turn off two-factor authentication? This makes your account easier to access if your password is ever compromised.')
+    const sure = await confirm({
+      title: 'Turn Off Two-Factor Authentication',
+      message: 'This makes your account easier to access if your password is ever compromised.',
+      confirmLabel: 'Turn off 2FA',
+      danger: true,
+    })
     if (!sure) return
     setMfaBusy(true)
     const { error } = await supabase.auth.mfa.unenroll({ factorId })
@@ -151,6 +158,7 @@ export default function TwoFactorSection({ initialFactors }) {
         </div>
       )}
       {mfaError && !enrolling && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}
+      {confirmModal}
     </>
   )
 }

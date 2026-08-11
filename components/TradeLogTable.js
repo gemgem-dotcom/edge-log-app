@@ -202,7 +202,6 @@ export default function TradeLogTable({
         <thead>
           <tr>
             <th>Date</th>
-            {showInstrumentColumn && <th>Instrument</th>}
             {showDayColumn && (
               <th>
                 <span className="th-label">Day</span>
@@ -211,6 +210,7 @@ export default function TradeLogTable({
                 )}
               </th>
             )}
+            {showInstrumentColumn && <th>Instrument</th>}
             {showStrategyColumn && (
               <th>
                 <span className="th-label">Strategy</span>
@@ -253,13 +253,13 @@ export default function TradeLogTable({
               <Fragment key={t.id}>
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
                   <td>{t.trade_date}</td>
+                  {showDayColumn && <td>{dayOf(t)}</td>}
                   {showInstrumentColumn && (
                     <td>
                       <span className="strategy-dot" style={{ background: instrumentColorFor?.(t), marginRight: '8px', verticalAlign: 'middle' }} />
                       {rowSymbol || '—'}
                     </td>
                   )}
-                  {showDayColumn && <td>{dayOf(t)}</td>}
                   {showStrategyColumn && (
                     <td>{t.strategy_id ? (strategyNameById?.(t.strategy_id) || '—') : <span className="unclassified-tag">Unassigned</span>}</td>
                   )}

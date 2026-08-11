@@ -1406,9 +1406,17 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .policy-content a:hover{text-decoration:underline;}
 
 /* ---------- Legal links (auth pages + account settings) ---------- */
-.auth-legal{margin-top:16px; text-align:center; font-size:11.5px; color:var(--muted); line-height:1.5;}
+.auth-legal{text-align:center; font-size:11.5px; color:var(--muted); line-height:1.5;}
 .auth-legal a{color:var(--accent); text-decoration:none;}
 .auth-legal a:hover{text-decoration:underline;}
+
+/* .auth-wrap centers its child as a flex row, so the card and the footer
+   below need a shared column wrapper to stack instead of sitting
+   side by side. */
+.auth-page{display:flex; flex-direction:column; align-items:center;}
+/* Sits below the card, not inside it - the login card is just the login
+   action, and this is a page-level footer next to it. */
+.auth-page-footer{margin-top:24px; display:flex; flex-direction:column; align-items:center; gap:10px;}
 
 /* A closing footer for the page, not another section - border-top +
    generous top padding (rather than a section-heading of its own) reads

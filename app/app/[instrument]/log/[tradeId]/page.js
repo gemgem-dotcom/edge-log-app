@@ -8,6 +8,14 @@ import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 
+// Plain thousands-grouped number, no sign/currency, no forced decimals -
+// for raw prices and point distances, which unlike P&L aren't always
+// entered to 2 decimal places and shouldn't gain fake trailing zeros.
+function fmtNum(value) {
+  if (value === null || value === undefined) return '—'
+  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 4 })
+}
+
 export default function TradeDetailPage({ params }) {
   usePageTitle('Trade Detail')
   const symbol = params.instrument
@@ -62,16 +70,16 @@ export default function TradeDetailPage({ params }) {
           <div><label>Date</label><div>{trade.trade_date}</div></div>
           <div><label>Entry time</label><div>{trade.trade_time}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
-          <div><label>Entry price</label><div>{trade.entry}</div></div>
-          <div><label>Stop loss</label><div>{trade.stop}{trade.stop_distance != null ? ` (${trade.stop_distance} pts)` : ''}</div></div>
-          <div><label>Take profit</label><div>{trade.target ?? '—'}{trade.target_distance != null ? ` (${trade.target_distance} pts)` : ''}</div></div>
-          <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toFixed(2)}</div></div>
-          <div><label>Exit price</label><div>{trade.exit_price ?? '—'}</div></div>
+          <div><label>Entry price</label><div>{fmtNum(trade.entry)}</div></div>
+          <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null ? ` (${fmtNum(trade.stop_distance)} pts)` : ''}</div></div>
+          <div><label>Take profit</label><div>{trade.target == null ? '—' : fmtNum(trade.target)}{trade.target_distance != null ? ` (${fmtNum(trade.target_distance)} pts)` : ''}</div></div>
+          <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+          <div><label>Exit price</label><div>{trade.exit_price == null ? '—' : fmtNum(trade.exit_price)}</div></div>
           <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(trade))}</div></div>
           {/* No data source until Phase 2 captures excursions. */}
           <div><label>MFE</label><div>—</div></div>
           <div><label>MAE</label><div>—</div></div>
-          <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
+          <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
         </div>
       </div>
 
@@ -85,7 +93,7 @@ export default function TradeDetailPage({ params }) {
       <div className="panel">
         <div className="section-label">Context</div>
         <div className="detail-grid">
-          <div><label>Contracts</label><div>{trade.contracts ?? '—'}</div></div>
+          <div><label>Contracts</label><div>{trade.contracts == null ? '—' : trade.contracts.toLocaleString('en-US')}</div></div>
         </div>
         <div style={{ marginTop: '14px' }}>
           <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Reasoning</label>

@@ -21,6 +21,14 @@ function fmtPnl(value) {
   return `${sign}$${Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+// Plain thousands-grouped number, no sign/currency, no forced decimals -
+// for raw prices and point distances, which unlike P&L aren't always
+// entered to 2 decimal places and shouldn't gain fake trailing zeros.
+function fmtNum(value) {
+  if (value === null || value === undefined) return '—'
+  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 4 })
+}
+
 function dayOf(trade) {
   return DAY_NAMES[new Date(trade.trade_date + 'T00:00:00').getDay()]
 }
@@ -257,7 +265,7 @@ export default function TradeLogTable({
                   </td>
                   <td>
                     {closed
-                      ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toFixed(2)}R</span>
+                      ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span>
                       : <span className="r-pill r-open">Open</span>}
                   </td>
                   {showPnlColumn && (
@@ -288,12 +296,12 @@ export default function TradeLogTable({
                     <td colSpan={colCount}>
                       <div className="detail-grid" style={{ padding: '16px 4px' }}>
                         <div><label>Entry time</label><div>{t.trade_time}</div></div>
-                        <div><label>Entry price</label><div>{t.entry}</div></div>
-                        <div><label>Stop loss</label><div>{t.stop}{t.stop_distance != null ? ` (${t.stop_distance} pts)` : ''}</div></div>
-                        <div><label>Take profit</label><div>{t.target ?? '—'}{t.target_distance != null ? ` (${t.target_distance} pts)` : ''}</div></div>
-                        <div><label>Exit price</label><div>{t.exit_price ?? '—'}</div></div>
+                        <div><label>Entry price</label><div>{fmtNum(t.entry)}</div></div>
+                        <div><label>Stop loss</label><div>{fmtNum(t.stop)}{t.stop_distance != null ? ` (${fmtNum(t.stop_distance)} pts)` : ''}</div></div>
+                        <div><label>Take profit</label><div>{fmtNum(t.target)}{t.target_distance != null ? ` (${fmtNum(t.target_distance)} pts)` : ''}</div></div>
+                        <div><label>Exit price</label><div>{fmtNum(t.exit_price)}</div></div>
                         <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(t))}</div></div>
-                        <div><label>Contracts</label><div>{t.contracts ?? '—'}</div></div>
+                        <div><label>Contracts</label><div>{t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')}</div></div>
                         {/* No data source until Phase 2 captures excursions. */}
                         <div><label>MFE</label><div>—</div></div>
                         <div><label>MAE</label><div>—</div></div>

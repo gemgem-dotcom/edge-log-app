@@ -59,11 +59,11 @@ function computeAvgDuration(trades) {
 
 function fmtR(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+' : '') + val.toFixed(2) + 'R'
+  return (val >= 0 ? '+' : '') + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R'
 }
 function fmtD(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2)
+  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
@@ -202,7 +202,7 @@ Delete strategy
 <div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Total trades</div>
-<div className="stat-value neu">{stats.n}</div>
+<div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
   </div>
   <div className="stat">
   <div className="stat-label">Win rate</div>

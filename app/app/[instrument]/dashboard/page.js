@@ -83,16 +83,16 @@ return { n, winRate: wr * 100, avgR, expectancyR, expectancyD, totalR, totalD, h
 
 function fmtR(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+' : '') + val.toFixed(2) + 'R'
+  return (val >= 0 ? '+' : '') + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R'
 }
 function fmtD(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2)
+  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function fmtPF(val) {
   if (val === null || val === undefined) return '—'
   if (val === Infinity) return '∞'
-  return val.toFixed(2)
+  return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
@@ -295,7 +295,7 @@ return (
   </div>
   <div className="stat">
   <div className="stat-label">Total trades</div>
-  <div className="stat-value neu">{overall.n}</div>
+  <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
   </div>
   </div>
 
@@ -324,7 +324,7 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
   <span className="strategy-dot" style={{ background: strategyColor(i) }} />
 {s.name}
 </td>
-<td>{stats.n}</td>
+<td>{stats.n.toLocaleString('en-US')}</td>
 <td className={stats.winRate !== null && stats.winRate < 50 ? 'neg' : ''}>
 {stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
 </td>

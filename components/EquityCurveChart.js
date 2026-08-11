@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 function fmtD(val) {
   if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toFixed(2)
+  return (val >= 0 ? '+$' : '-$') + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // Renders a cumulative $ P&L line from pre-bucketed points (see

@@ -770,6 +770,18 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .back-btn:hover{border-color:var(--accent); color:var(--accent); background:rgba(59,167,255,.1);}
 
 .account-wrap{padding:32px 230px 60px;}
+/* The 230px side padding above only reads right on a genuinely wide
+   desktop viewport - it exists to narrow/center this page's content since,
+   unlike every other page, it has no sidebar doing that already. Below
+   900px (this page's own breakpoint for the same 3-column grids other
+   pages use - see the .stats-6/.stats-5 collapse elsewhere) that padding
+   leaves so little width that the password-fields grid gets crushed into
+   unreadable slivers, most visible in landscape on a phone. 40px matches
+   what .main-area (every other page's content wrapper) already uses at
+   this width. */
+@media (max-width:900px){
+  .account-wrap{padding:32px 40px 60px;}
+}
 
 .signin-table-wrap{overflow-x:auto;}
 
@@ -1235,6 +1247,7 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
 
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
 .donut-svg{width:160px; height:160px; flex-shrink:0;}
+.donut-arc{cursor:pointer;}
 .donut-legend{display:flex; flex-direction:column; gap:var(--space-2); flex:1; min-width:180px;}
 .donut-legend-item{display:flex; align-items:center; gap:8px; font-size:12.5px;}
 .donut-legend-symbol{font-weight:600; min-width:44px;}
@@ -1244,6 +1257,25 @@ input:disabled{background:rgba(255,255,255,.04); color:var(--muted); cursor:not-
   .donut-wrap{flex-direction:column; align-items:center;}
   .donut-legend{width:100%;}
 }
+
+/* Shared hover callout for the equity curve and P&L-by-instrument donut -
+   position:fixed off the cursor's real clientX/clientY (same reasoning as
+   .col-filter-menu) so it's never clipped by an ancestor's overflow and
+   never needs its own positioning-context wrapper. pointer-events:none so
+   it can't itself become the mouseleave target and flicker the chart's
+   hover state off. */
+.chart-tooltip{
+  position:fixed; z-index:70; pointer-events:none;
+  background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4); padding:8px 12px; white-space:nowrap;
+}
+:root[data-theme="light"] .chart-tooltip{box-shadow:0 8px 24px rgba(20,22,26,.15);}
+.chart-tooltip-title{
+  font-family:'Inter',sans-serif; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--muted); margin-bottom:4px;
+}
+.chart-tooltip-row{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; color:var(--text);}
+.chart-tooltip-muted{color:var(--muted); font-weight:400;}
 
 /* ---------- Not found / error boundary state pages ---------- */
 .state-card{

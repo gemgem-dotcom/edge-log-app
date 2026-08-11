@@ -325,7 +325,7 @@ return (
   <thead>
   <tr>
   <th>Strategy</th><th>Trades</th><th>Win rate</th>
-  <th>Expectancy</th><th>Total P&amp;L</th><th>Profit factor</th>
+  <th>Expectancy</th><th>Profit factor</th>
   </tr>
   </thead>
 <tbody>
@@ -346,7 +346,6 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
 {stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
 </td>
 <td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
-<td className={colorClass(stats.totalPnl)}>{fmtR(stats.totalPnl)}</td>
 <td>{fmtPF(stats.profitFactor)}</td>
   </tr>
 )

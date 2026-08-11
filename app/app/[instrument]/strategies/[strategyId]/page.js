@@ -26,7 +26,7 @@ async function computeStrategyStats(allTrades) {
   if (n === 0) {
     return {
       n, winRate: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
-      hasD: false, avgDuration: computeAvgDuration(allTrades),
+      hasD: false, profitFactor: null, avgDuration: computeAvgDuration(allTrades),
     }
   }
 
@@ -43,6 +43,10 @@ const wins = trades.filter((t) => t.r_multiple > 0)
   const wr = wins.length / n
   const expectancy = wr * avgWin + (1 - wr) * avgLoss
 
+const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
+
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
@@ -52,7 +56,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, avgDuration: computeAvgDuration(allTrades) }
+return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, profitFactor, avgDuration: computeAvgDuration(allTrades) }
 }
 
 function computeAvgDuration(trades) {
@@ -67,6 +71,11 @@ function fmtR(val) {
 function fmtD(val) {
   if (val === null || val === undefined) return '—'
   return (val >= 0 ? '+$' : '-$') + Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+function fmtPF(val) {
+  if (val === null || val === undefined) return '—'
+  if (val === Infinity) return '∞'
+  return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
@@ -201,14 +210,15 @@ Delete strategy
 <p className="page-subtitle">See how your strategy has performed.</p>
 
 <div className="section-heading">Performance</div>
-<div className="stats stats-5">
-  <div className="stat">
-  <div className="stat-label">Total trades</div>
-<div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
-  </div>
-  <div className="stat">
-  <div className="stat-label">Win rate</div>
-<div className="stat-value neu">{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}</div>
+<div className="stats strategy-perf-stats">
+<div className="stat">
+  <div className="stat-label">Total P&amp;L</div>
+<div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
+{stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+</div>
+{stats.hasD && (
+  <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+)}
   </div>
 <div className="stat">
   <div className="stat-label">Expectancy</div>
@@ -220,13 +230,16 @@ Delete strategy
 )}
   </div>
 <div className="stat">
-  <div className="stat-label">Total P&amp;L</div>
-<div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
-{stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
-</div>
-{stats.hasD && (
-  <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
-)}
+  <div className="stat-label">Profit factor</div>
+<div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+  </div>
+  <div className="stat">
+  <div className="stat-label">Win rate</div>
+<div className="stat-value neu">{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}</div>
+  </div>
+  <div className="stat">
+  <div className="stat-label">Total trades</div>
+<div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
   </div>
 <div className="stat">
   <div className="stat-label">Avg trade duration</div>

@@ -1001,6 +1001,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
 .stats-2{grid-template-columns:repeat(2,1fr);}
+/* Strategy detail page: 8 cards, some with a stat-subvalue line (Total
+   P&L, Expectancy) and some without - min-height plus centering keeps
+   every card the same height regardless of which. */
+.strategy-perf-stats{grid-template-columns:repeat(4,1fr);}
+/* A fixed height (not min-height) so every card matches regardless of
+   which row it lands in - min-height only equalizes within a row, since
+   grid rows size to their own tallest card. */
+.strategy-perf-stats .stat{height:90px; display:flex; flex-direction:column; justify-content:center;}
 .stat-subvalue{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; margin-top:2px;}
 .stat-gauge{display:flex; flex-direction:column;}
 
@@ -1028,11 +1036,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 @media (max-width:1100px){
     .stats-5{grid-template-columns:repeat(3,1fr);}
+    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
 }
 @media (max-width:640px){
     .calendar-toolbar{flex-direction:column; align-items:stretch;}
     .calendar-month-nav{justify-content:space-between;}
     .stats-5{grid-template-columns:repeat(2,1fr);}
+    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
     .calendar-grid-8{grid-template-columns:repeat(7,1fr); gap:4px;}
     .calendar-cell-weekly, .calendar-weekday-weekly{display:none;}
     .calendar-day-subpnl{display:none;}

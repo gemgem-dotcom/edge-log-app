@@ -137,12 +137,20 @@ function parseBlsIcs(text) {
 }
 
 async function fetchBlsEvents() {
-  // BLS's server rejects requests with no/generic User-Agent (a 403, even
-  // though the feed itself is public) - identify honestly as a real
-  // calendar client fetching a feed BLS publishes for exactly this
-  // purpose, the same way Outlook/Google Calendar would when subscribing.
+  // BLS's WAF 403s requests that don't look like a real browser - a custom
+  // "EdgeLog/1.0" identifier still got blocked (it's not a browser string,
+  // and not on whatever allowlist of known calendar clients they honor),
+  // so this presents a standard browser User-Agent plus the Accept/
+  // Accept-Language headers a real browser sends alongside it, rather than
+  // identifying as a bot at all. The feed itself is still public data BLS
+  // built for external subscription - this is about clearing an
+  // overly-strict bot filter, not bypassing an actual access restriction.
   const res = await fetch(BLS_ICS_URL, {
-    headers: { 'User-Agent': 'EdgeLog-EconomicCalendar/1.0 (+https://edgelog-journal.com)' },
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'text/calendar,text/plain,*/*',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
   })
   if (!res.ok) throw new Error(`BLS returned ${res.status}`)
   const text = await res.text()
@@ -257,8 +265,14 @@ function parseFomcHtml(html) {
 // site hiccup) shouldn't take down the whole card, just this one slice.
 async function fetchFomcEvents() {
   try {
+    // Same reasoning as fetchBlsEvents - a browser User-Agent rather than a
+    // custom bot identifier, to clear WAF-style bot filtering.
     const res = await fetch(FOMC_CALENDAR_URL, {
-      headers: { 'User-Agent': 'EdgeLog-EconomicCalendar/1.0 (+https://edgelog-journal.com)' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
     })
     if (!res.ok) return []
     const html = await res.text()

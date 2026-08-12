@@ -47,9 +47,19 @@ export async function GET() {
 
   let events
   try {
-    const res = await fetch(`https://financialmodelingprep.com/api/v3/economic_calendar?from=${from}&to=${to}&apikey=${apiKey}`)
+    // The v3 path (economic_calendar) is a deprecated "legacy" endpoint,
+    // only reachable by subscriptions predating August 2025 - this is the
+    // current one, confirmed against FMP's own docs page and a real sample
+    // response (singular "economic-calendar", not "economics-calendar").
+    const res = await fetch(`https://financialmodelingprep.com/stable/economic-calendar?from=${from}&to=${to}&apikey=${apiKey}`)
     if (!res.ok) throw new Error(`FMP returned ${res.status}`)
     const data = await res.json()
+    // FMP returns HTTP 200 with an {"Error Message": "..."} body for some
+    // failure modes (bad params, etc.) rather than a non-2xx status, so the
+    // res.ok check above doesn't catch every failure on its own.
+    if (data && !Array.isArray(data) && data['Error Message']) {
+      throw new Error(data['Error Message'])
+    }
     const raw = Array.isArray(data) ? data : []
 
     // FMP's field names have shifted across API versions in the past, so

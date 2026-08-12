@@ -111,7 +111,13 @@ export async function GET() {
 
   let events
   try {
-    const res = await fetch(BLS_ICS_URL)
+    // BLS's server rejects requests with no/generic User-Agent (a 403,
+    // even though the feed itself is public) - identify honestly as a
+    // real calendar client fetching a feed BLS publishes for exactly this
+    // purpose, the same way Outlook/Google Calendar would when subscribing.
+    const res = await fetch(BLS_ICS_URL, {
+      headers: { 'User-Agent': 'EdgeLog-EconomicCalendar/1.0 (+https://edgelog-journal.com)' },
+    })
     if (!res.ok) throw new Error(`BLS returned ${res.status}`)
     const text = await res.text()
     const raw = parseBlsIcs(text)

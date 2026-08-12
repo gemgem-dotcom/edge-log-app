@@ -1,18 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import { useClickOutside } from '@/lib/useClickOutside'
 
-const IMPACT_FLOORS = [
-  { value: 'high', label: 'High impact only' },
-  { value: 'medium', label: 'High + medium impact' },
+const IMPACT_OPTIONS = [
+  { value: 'high', label: 'High impact' },
+  { value: 'medium', label: 'Medium impact' },
 ]
-const IMPACT_RANK = { high: 2, medium: 1 }
-
-function meetsImpactFloor(impact, floor) {
-  const floorRank = floor === 'high' ? 2 : 1
-  return (IMPACT_RANK[impact] ?? 0) >= floorRank
-}
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—'
@@ -37,6 +32,44 @@ function formatWeekLabel(from, to) {
   return `${start} – ${end}`
 }
 
+function impactFilterLabel(selected) {
+  if (selected.length === 0) return 'No impact selected'
+  if (selected.length === IMPACT_OPTIONS.length) return 'High + Medium impact'
+  return IMPACT_OPTIONS.find((o) => o.value === selected[0])?.label
+}
+
+// Independent checkboxes rather than a "floor" select - High and Medium
+// can each be toggled on/off on their own instead of only "high" or
+// "high and up".
+function ImpactChecklist({ selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const wrapRef = useClickOutside(open, close)
+
+  function toggle(value) {
+    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
+  }
+
+  return (
+    <div className="econ-impact-filter" ref={wrapRef}>
+      <button type="button" className="calendar-strategy-filter econ-impact-filter-btn" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        {impactFilterLabel(selected)}
+        <ChevronDown size={14} />
+      </button>
+      {open && (
+        <div className="col-filter-menu econ-impact-filter-menu">
+          {IMPACT_OPTIONS.map((o) => (
+            <label key={o.value} className="col-filter-option">
+              <input type="checkbox" checked={selected.includes(o.value)} onChange={() => toggle(o.value)} />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Sourced from BLS's own release calendar plus a hand-maintained FOMC
 // list (see app/api/economic-calendar/route.js) - every event here is US
 // data with no actual/forecast/previous values, so there's no country or
@@ -47,7 +80,7 @@ export default function EconomicCalendarCard() {
   const [events, setEvents] = useState([])
   const [weekStart, setWeekStart] = useState(null)
   const [weekEnd, setWeekEnd] = useState(null)
-  const [impactFilter, setImpactFilter] = useState('high')
+  const [impactSelected, setImpactSelected] = useState(['high'])
 
   useEffect(() => {
     loadEvents()
@@ -83,14 +116,12 @@ export default function EconomicCalendarCard() {
     loadEvents(shiftWeek(weekStart, 7), shiftWeek(weekEnd, 7))
   }
 
-  const visible = events.filter((e) => meetsImpactFloor(e.impact, impactFilter))
+  const visible = events.filter((e) => impactSelected.includes(e.impact))
 
   return (
     <>
       <div className="calendar-toolbar">
-        <select className="calendar-strategy-filter" value={impactFilter} onChange={(e) => setImpactFilter(e.target.value)}>
-          {IMPACT_FLOORS.map((lvl) => <option key={lvl.value} value={lvl.value}>{lvl.label}</option>)}
-        </select>
+        <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
         <div className="calendar-month-nav">
           <button type="button" className="calendar-nav-btn" onClick={goPrevWeek} disabled={!weekStart} aria-label="Previous week"><ChevronLeft size={18} /></button>
           <div className="calendar-month-label">{formatWeekLabel(weekStart, weekEnd)}</div>
@@ -106,7 +137,7 @@ export default function EconomicCalendarCard() {
         <div className="empty">No matching events for this week.</div>
       ) : (
         <div className="table-scroll">
-          <table>
+          <table className="econ-calendar-table">
             <thead>
               <tr><th>Date</th><th>Time (ET)</th><th>Event</th></tr>
             </thead>

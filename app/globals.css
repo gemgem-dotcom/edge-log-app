@@ -1457,3 +1457,21 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .econ-impact-dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:8px; vertical-align:middle;}
 .econ-impact-high{background:var(--loss);}
 .econ-impact-medium{background:var(--be);}
+
+/* Fixed layout with explicit column widths - without this, auto layout
+   sizes each column to that week's own content, so Date/Time visibly
+   shift position whenever prev/next lands on a week with differently
+   sized event names. */
+.econ-calendar-table{table-layout:fixed; width:100%;}
+.econ-calendar-table th:nth-child(1), .econ-calendar-table td:nth-child(1){width:110px;}
+.econ-calendar-table th:nth-child(2), .econ-calendar-table td:nth-child(2){width:100px;}
+.econ-calendar-table th:nth-child(3), .econ-calendar-table td:nth-child(3){width:auto; white-space:normal;}
+
+/* Impact checklist - independent High/Medium checkboxes rather than a
+   single-select "floor" dropdown. Absolute (not .col-filter-menu's fixed)
+   since this sits in the toolbar above the table, not inside a
+   horizontally-scrolling ancestor that would clip a fixed-position menu
+   differently than an absolute one anyway. */
+.econ-impact-filter{position:relative;}
+.econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer;}
+.econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}

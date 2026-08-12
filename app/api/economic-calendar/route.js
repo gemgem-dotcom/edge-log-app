@@ -1,4 +1,5 @@
-import { FOMC_STATEMENT_DATES_2026, FOMC_STATEMENT_TIME } from '@/lib/fomcDates'
+import { FRED_RELEASES } from '@/lib/fredReleases'
+import { computedReleasesInRange } from '@/lib/computedReleases'
 
 // No API key needed: BLS publishes this iCalendar feed for exactly this
 // purpose (external subscription in Outlook/Google Calendar/etc.), unlike
@@ -22,17 +23,26 @@ function classifyImpact(summary) {
   return HIGH_IMPACT_KEYWORDS.some((kw) => summary.includes(kw)) ? 'high' : 'medium'
 }
 
-// Module-level cache of the whole feed, unfiltered by week - BLS's release
-// calendar changes rarely (new dates get added a few times a year, not
-// daily), so a several-hour TTL is plenty. Caching the raw merged event
-// list rather than one week's slice means flipping between weeks (see
-// EconomicCalendarCard.js) never re-fetches BLS, just re-filters data
-// that's already in memory.
+// Module-level cache of the whole merged event list, unfiltered by week -
+// none of these sources change more than a few times a year, so a several-
+// hour TTL is plenty. Caching the raw merged list rather than one week's
+// slice means flipping between weeks (see EconomicCalendarCard.js) never
+// re-fetches anything, just re-filters data already in memory.
 let cache = { data: null, fetchedAt: 0 }
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
+// How far the FRED fetch reaches on either side of "now" - wide enough to
+// cover the card's prev/next week navigation without needing a fresh fetch
+// on every click.
+const FRED_WINDOW_PAST_DAYS = 90
+const FRED_WINDOW_FUTURE_DAYS = 180
+
 function pad(n) {
   return String(n).padStart(2, '0')
+}
+
+function toDateStr(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // BLS's DTSTART values are bare US-Eastern local time with no UTC offset
@@ -55,8 +65,7 @@ function weekRangeOf(dateStr) {
   monday.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
-  const fmt = (x) => `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`
-  return { from: fmt(monday), to: fmt(sunday) }
+  return { from: toDateStr(monday), to: toDateStr(sunday) }
 }
 
 // RFC 5545 line-folding: a line starting with a space is a continuation of
@@ -102,10 +111,7 @@ function parseBlsIcs(text) {
   return events
 }
 
-async function loadAllEvents() {
-  const now = Date.now()
-  if (cache.data && now - cache.fetchedAt < CACHE_TTL_MS) return cache.data
-
+async function fetchBlsEvents() {
   // BLS's server rejects requests with no/generic User-Agent (a 403, even
   // though the feed itself is public) - identify honestly as a real
   // calendar client fetching a feed BLS publishes for exactly this
@@ -117,7 +123,7 @@ async function loadAllEvents() {
   const text = await res.text()
   const raw = parseBlsIcs(text)
 
-  const events = raw.map((e) => ({
+  return raw.map((e) => ({
     date: e.date,
     time: e.time,
     country: 'US',
@@ -128,15 +134,63 @@ async function loadAllEvents() {
     prev: null,
     unit: '',
   }))
+}
 
-  FOMC_STATEMENT_DATES_2026.forEach((date) => {
-    events.push({
-      date, time: FOMC_STATEMENT_TIME, country: 'US', event: 'FOMC Statement',
-      impact: 'high', actual: null, estimate: null, prev: null, unit: '',
-    })
-  })
+// FRED's release_dates endpoint returns a date only (no time of day) per
+// release_id - one call per whitelisted release, in parallel. Silently
+// contributes nothing (rather than failing the whole card) if FRED_API_KEY
+// isn't set, since it's additive on top of BLS rather than required.
+async function fetchFredEvents() {
+  const apiKey = process.env.FRED_API_KEY
+  if (!apiKey) return []
 
+  const now = new Date()
+  const start = new Date(now)
+  start.setDate(start.getDate() - FRED_WINDOW_PAST_DAYS)
+  const end = new Date(now)
+  end.setDate(end.getDate() + FRED_WINDOW_FUTURE_DAYS)
+  const realtimeStart = toDateStr(start)
+  const realtimeEnd = toDateStr(end)
+
+  const ids = Object.keys(FRED_RELEASES)
+  const results = await Promise.all(ids.map(async (id) => {
+    const meta = FRED_RELEASES[id]
+    const url = `https://api.stlouisfed.org/fred/releases/dates?api_key=${apiKey}&file_type=json&release_id=${id}&realtime_start=${realtimeStart}&realtime_end=${realtimeEnd}&include_release_dates_with_no_data=true`
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.release_dates || []).map((rd) => ({
+        date: rd.date, time: meta.time, country: 'US', event: meta.name,
+        impact: meta.impact, actual: null, estimate: null, prev: null, unit: '',
+      }))
+    } catch {
+      return []
+    }
+  }))
+  return results.flat()
+}
+
+async function loadAllEvents() {
+  const now = Date.now()
+  if (cache.data && now - cache.fetchedAt < CACHE_TTL_MS) return cache.data
+
+  const [blsEvents, fredEvents] = await Promise.all([
+    fetchBlsEvents(),
+    fetchFredEvents(),
+  ])
+
+  // Computed events (ISM PMI, CB Consumer Confidence - see
+  // lib/computedReleases.js) span the same window FRED was fetched for,
+  // so all three sources cover the same forward/back range.
+  const now2 = new Date()
+  const start = new Date(now2); start.setDate(start.getDate() - FRED_WINDOW_PAST_DAYS)
+  const end = new Date(now2); end.setDate(end.getDate() + FRED_WINDOW_FUTURE_DAYS)
+  const computedEvents = computedReleasesInRange(toDateStr(start), toDateStr(end))
+
+  const events = [...blsEvents, ...fredEvents, ...computedEvents]
   events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+
   cache = { data: events, fetchedAt: now }
   return events
 }

@@ -67,9 +67,14 @@ All three must exist locally in `.env.local` and in Vercel (Project Settings →
 Environment Variables). The CI build uses harmless placeholder values, because
 nothing during a build talks to the database.
 
-`app/api/economic-calendar` (the Overview dashboard's calendar card) needs no key -
-it reads BLS's public iCalendar feed plus a hand-maintained FOMC date list
-(`lib/fomcDates.js`, update once a year when the Fed publishes the next year's dates).
+`FRED_API_KEY` (optional, **server only**) additionally powers part of the economic
+calendar card - see below.
+
+`app/api/economic-calendar` (the Overview dashboard's calendar card) merges BLS's
+public feed, computed release schedules (`lib/computedReleases.js` - ISM PMI, CB
+Consumer Confidence), and FRED (`lib/fredReleases.js` - GDP, PCE, Retail Sales,
+Housing Starts, and more). Only FRED needs a key (`FRED_API_KEY`, optional - see
+below); the rest work with none. FOMC meeting dates aren't covered yet - pending.
 
 ## Database
 

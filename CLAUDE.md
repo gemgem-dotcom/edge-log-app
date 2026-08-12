@@ -129,6 +129,7 @@ give it a `NEXT_PUBLIC_` prefix.
 All three live in `.env.local` locally and in Vercel's project settings. The CI
 build uses placeholders, since nothing during a build talks to the database.
 
-`app/api/economic-calendar` (the Overview dashboard's calendar card) needs no key —
-it reads BLS's public iCalendar feed plus a hand-maintained FOMC date list in
-`lib/fomcDates.js`, which needs a manual update once a year.
+`app/api/economic-calendar` (the Overview dashboard's calendar card) merges BLS's
+public feed, computed release schedules (`lib/computedReleases.js`), and FRED
+(`lib/fredReleases.js`) — only the FRED slice needs a key (`FRED_API_KEY`, optional,
+server only, free from fred.stlouisfed.org). FOMC meeting dates aren't covered yet.

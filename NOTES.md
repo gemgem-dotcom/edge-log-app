@@ -62,11 +62,14 @@ storage-setup.sql                  screenshots storage bucket
 | `NEXT_PUBLIC_SUPABASE_URL` | browser + server | safe to expose |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser + server | safe to expose |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | full admin access to the database. Used by the two API routes. Never import it into a page or prefix it with `NEXT_PUBLIC_`. |
-| `FMP_API_KEY` | **server only** | free key from Financial Modeling Prep (site.financialmodelingprep.com). Powers `app/api/economic-calendar` (the Overview dashboard's calendar card). Optional — missing it just shows a "not configured" message on that one card. |
 
-All four must exist locally in `.env.local` and in Vercel (Project Settings →
+All three must exist locally in `.env.local` and in Vercel (Project Settings →
 Environment Variables). The CI build uses harmless placeholder values, because
 nothing during a build talks to the database.
+
+`app/api/economic-calendar` (the Overview dashboard's calendar card) needs no key -
+it reads BLS's public iCalendar feed plus a hand-maintained FOMC date list
+(`lib/fomcDates.js`, update once a year when the Fed publishes the next year's dates).
 
 ## Database
 

@@ -126,9 +126,9 @@ storage-setup.sql             screenshots storage bucket
 level security, used solely by the two API routes. Never import it into a page or
 give it a `NEXT_PUBLIC_` prefix.
 
-`FMP_API_KEY` is also **server only**, used by `app/api/economic-calendar` to
-power the Overview dashboard's calendar card. Optional in the sense that its
-absence only degrades that one card, not the build or the rest of the app.
-
-All four live in `.env.local` locally and in Vercel's project settings. The CI
+All three live in `.env.local` locally and in Vercel's project settings. The CI
 build uses placeholders, since nothing during a build talks to the database.
+
+`app/api/economic-calendar` (the Overview dashboard's calendar card) needs no key —
+it reads BLS's public iCalendar feed plus a hand-maintained FOMC date list in
+`lib/fomcDates.js`, which needs a manual update once a year.

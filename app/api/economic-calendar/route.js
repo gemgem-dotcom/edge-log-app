@@ -1,44 +1,108 @@
-// Server only: FMP_API_KEY never reaches the browser. This is reference
-// data (not user data), so the route needs no auth check of its own - it's
-// only ever rendered inside the authenticated app shell.
-//
-// Switched from Finnhub to FMP (Financial Modeling Prep) - Finnhub's
-// economic-calendar endpoint turned out to be paid-plan-only (403 on a
-// free-tier key), where FMP's is free-tier accessible.
-//
-// Module-level cache rather than a database table: the free tier's rate
-// limit is generous enough that a per-instance in-memory cache is all this
-// needs, and it resets naturally on cold start.
+import { FOMC_STATEMENT_DATES_2026, FOMC_STATEMENT_TIME } from '@/lib/fomcDates'
+
+// No API key needed: BLS publishes this iCalendar feed for exactly this
+// purpose (external subscription in Outlook/Google Calendar/etc.), unlike
+// the paywalled Finnhub/FMP endpoints this route was originally built
+// against, or CME's own calendar (explicitly prohibits automated
+// collection/redistribution in their Terms of Use - see git history for
+// that dead end). It's U.S. government data with no comparable
+// restriction, and it's schedule-only - no actual/forecast/previous
+// values - which matches what this card actually needs.
+const BLS_ICS_URL = 'https://www.bls.gov/schedule/news_release/bls.ics'
+
+// Everything else in BLS's release calendar defaults to medium impact -
+// there's no "low" tier here, since BLS only lists indicators it
+// considers release-worthy in the first place. CATEGORIES:IMPORTANT is on
+// every event in the feed (including minor regional releases), so it
+// can't be used to distinguish market-moving impact - matching on the
+// well-known high-impact release names instead.
+const HIGH_IMPACT_KEYWORDS = ['Employment Situation', 'Consumer Price Index', 'Producer Price Index', 'Employment Cost Index']
+
+function classifyImpact(summary) {
+  return HIGH_IMPACT_KEYWORDS.some((kw) => summary.includes(kw)) ? 'high' : 'medium'
+}
+
+// Module-level cache: BLS's release calendar changes rarely (new dates get
+// added a few times a year, not daily), so a several-hour TTL is plenty -
+// this just avoids re-fetching and re-parsing the whole feed on every
+// dashboard load.
 let cache = { key: null, data: null, fetchedAt: 0 }
-const CACHE_TTL_MS = 30 * 60 * 1000
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
 function pad(n) {
   return String(n).padStart(2, '0')
 }
 
-function toDateStr(d) {
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+// BLS's DTSTART values are bare US-Eastern local time with no UTC offset
+// (DTSTART;TZID=US-Eastern:20250110T083000) - confirmed against a real
+// sample of the feed, not guessed - so there's no timezone conversion to
+// do here at all, unlike sessionFor() in lib/tradeMath.js.
+function todayInET() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date())
+  const get = (type) => parts.find((p) => p.type === type).value
+  return `${get('year')}-${get('month')}-${get('day')}`
 }
 
-// Monday through Sunday of the current UTC week - the calendar shows "this
-// week" as one fixed block rather than a rolling 7 days.
-function thisWeekRange() {
-  const now = new Date()
-  const day = now.getUTCDay()
-  const monday = new Date(now)
-  monday.setUTCDate(now.getUTCDate() + (day === 0 ? -6 : 1 - day))
+// Monday through Sunday of the week containing dateStr.
+function weekRangeOf(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  const day = d.getDay()
+  const monday = new Date(d)
+  monday.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
   const sunday = new Date(monday)
-  sunday.setUTCDate(monday.getUTCDate() + 6)
-  return { from: toDateStr(monday), to: toDateStr(sunday) }
+  sunday.setDate(monday.getDate() + 6)
+  const fmt = (x) => `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`
+  return { from: fmt(monday), to: fmt(sunday) }
+}
+
+// RFC 5545 line-folding: a line starting with a space is a continuation of
+// the previous line, not a new field.
+function unfoldLines(text) {
+  return text.replace(/\r\n/g, '\n').split('\n').reduce((lines, line) => {
+    if (line.startsWith(' ') && lines.length > 0) {
+      lines[lines.length - 1] += line.slice(1)
+    } else {
+      lines.push(line)
+    }
+    return lines
+  }, [])
+}
+
+function parseBlsIcs(text) {
+  const lines = unfoldLines(text)
+  const events = []
+  let current = null
+  for (const line of lines) {
+    if (line === 'BEGIN:VEVENT') {
+      current = {}
+    } else if (line === 'END:VEVENT') {
+      if (current?.event && current?.date) events.push(current)
+      current = null
+    } else if (current) {
+      const idx = line.indexOf(':')
+      if (idx === -1) continue
+      const key = line.slice(0, idx)
+      const value = line.slice(idx + 1)
+      if (key.startsWith('SUMMARY')) {
+        current.event = value.replace(/\\,/g, ',')
+      } else if (key.startsWith('DTSTART')) {
+        const m = value.match(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/)
+        if (m) {
+          const [, y, mo, d, h, mi] = m
+          current.date = `${y}-${mo}-${d}`
+          current.time = `${h}:${mi}`
+        }
+      }
+    }
+  }
+  return events
 }
 
 export async function GET() {
-  const apiKey = process.env.FMP_API_KEY
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Economic calendar is not configured yet - FMP_API_KEY is missing.' }), { status: 501 })
-  }
-
-  const { from, to } = thisWeekRange()
+  const today = todayInET()
+  const { from, to } = weekRangeOf(today)
   const cacheKey = `${from}_${to}`
   const now = Date.now()
   if (cache.key === cacheKey && now - cache.fetchedAt < CACHE_TTL_MS) {
@@ -47,38 +111,35 @@ export async function GET() {
 
   let events
   try {
-    // The v3 path (economic_calendar) is a deprecated "legacy" endpoint,
-    // only reachable by subscriptions predating August 2025 - this is the
-    // current one, confirmed against FMP's own docs page and a real sample
-    // response (singular "economic-calendar", not "economics-calendar").
-    const res = await fetch(`https://financialmodelingprep.com/stable/economic-calendar?from=${from}&to=${to}&apikey=${apiKey}`)
-    if (!res.ok) throw new Error(`FMP returned ${res.status}`)
-    const data = await res.json()
-    // FMP returns HTTP 200 with an {"Error Message": "..."} body for some
-    // failure modes (bad params, etc.) rather than a non-2xx status, so the
-    // res.ok check above doesn't catch every failure on its own.
-    if (data && !Array.isArray(data) && data['Error Message']) {
-      throw new Error(data['Error Message'])
-    }
-    const raw = Array.isArray(data) ? data : []
+    const res = await fetch(BLS_ICS_URL)
+    if (!res.ok) throw new Error(`BLS returned ${res.status}`)
+    const text = await res.text()
+    const raw = parseBlsIcs(text)
 
-    // FMP's field names have shifted across API versions in the past, so
-    // this reads a couple of plausible variants per field rather than
-    // assuming one exact shape - cheap insurance against a naming mismatch
-    // that would otherwise blank out a whole column.
     events = raw
+      .filter((e) => e.date >= from && e.date <= to)
       .map((e) => ({
-        date: (e.date || '').slice(0, 10),
-        time: (e.date || '').slice(11, 16),
-        country: e.country || '—',
-        event: e.event || e.eventName || 'Event',
-        impact: String(e.impact || 'low').toLowerCase(),
-        actual: e.actual ?? null,
-        estimate: e.estimate ?? e.forecast ?? null,
-        prev: e.previous ?? e.prev ?? null,
-        unit: e.unit || '',
+        date: e.date,
+        time: e.time,
+        country: 'US',
+        event: e.event,
+        impact: classifyImpact(e.event),
+        actual: null,
+        estimate: null,
+        prev: null,
+        unit: '',
       }))
-      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+
+    FOMC_STATEMENT_DATES_2026
+      .filter((date) => date >= from && date <= to)
+      .forEach((date) => {
+        events.push({
+          date, time: FOMC_STATEMENT_TIME, country: 'US', event: 'FOMC Statement',
+          impact: 'high', actual: null, estimate: null, prev: null, unit: '',
+        })
+      })
+
+    events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
   } catch (err) {
     return new Response(JSON.stringify({ error: "Couldn't load the economic calendar — " + err.message }), { status: 502 })
   }

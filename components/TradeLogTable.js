@@ -3,7 +3,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { Pencil, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
-import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
+import { hasResult, tradeDurationMinutes, formatDuration, sessionFor, SESSION_TAGS } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
@@ -34,6 +34,10 @@ function dayOf(trade) {
   return DAY_NAMES[new Date(trade.trade_date + 'T00:00:00').getDay()]
 }
 
+function sessionOf(trade, timezone) {
+  return sessionFor(trade.trade_date, trade.trade_time, timezone)
+}
+
 function resultOf(trade) {
   if (!hasResult(trade)) return 'open'
   if (trade.r_multiple > 0) return 'win'
@@ -49,6 +53,7 @@ export default function TradeLogTable({
   // The dashboard's calendar-day table opts out of these so it keeps the
   // exact column set it had before.
   showDayColumn = true,
+  showSessionColumn = true,
   showPnlColumn = true,
   showFilters = false,
   symbol,
@@ -67,11 +72,13 @@ export default function TradeLogTable({
   const [expandedId, setExpandedId] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  const [timezone, setTimezone] = useState('0')
   const { confirm, modal: confirmModal } = useConfirm()
 
-  // Filters open from a chevron on each column heading. Day and Strategy
-  // take any combination of values; an empty array means unfiltered.
+  // Filters open from a chevron on each column heading. Day, Session and
+  // Strategy take any combination of values; an empty array means unfiltered.
   const [filterDays, setFilterDays] = useState([])
+  const [filterSessions, setFilterSessions] = useState([])
   const [filterStrategies, setFilterStrategies] = useState([])
   const [filterDirection, setFilterDirection] = useState('all')
   const [filterResult, setFilterResult] = useState('all')
@@ -79,6 +86,17 @@ export default function TradeLogTable({
   useEffect(() => {
     setRows(trades)
   }, [trades])
+
+  // sessionFor needs the account page's UTC offset preference to reconstruct
+  // each trade's real instant (see lib/timezone.js) - fetched here rather
+  // than threaded down as a prop through every page that renders this table.
+  useEffect(() => {
+    if (!showSessionColumn) return
+    supabase.auth.getUser().then(({ data }) => {
+      const tz = data?.user?.user_metadata?.timezone
+      if (tz !== undefined && tz !== null) setTimezone(String(tz))
+    })
+  }, [showSessionColumn])
 
   // Support deep links like /log?strategy=<id> from the dashboard table.
   useEffect(() => {
@@ -110,6 +128,7 @@ export default function TradeLogTable({
   const visible = showFilters
     ? rows.filter((t) => {
         if (filterDays.length > 0 && !filterDays.includes(dayOf(t))) return false
+        if (filterSessions.length > 0 && !filterSessions.includes(sessionOf(t, timezone))) return false
         if (filterStrategies.length > 0 && !filterStrategies.includes(strategyKey(t))) return false
         if (filterDirection !== 'all' && t.direction !== filterDirection) return false
         if (filterResult !== 'all' && resultOf(t) !== filterResult) return false
@@ -126,6 +145,7 @@ export default function TradeLogTable({
   // go. Picking a value with no matches simply yields an empty table.
   const present = (fn) => new Set(rows.map(fn))
   const dayOptions = DAY_NAMES.map((d) => ({ value: d, label: d }))
+  const sessionOptions = SESSION_TAGS.map((s) => ({ value: s, label: s }))
   // Every strategy the user has created, plus any a trade still points at
   // (an archived one, say) and Unassigned when some trade has no strategy.
   const strategyKeys = [
@@ -151,6 +171,10 @@ export default function TradeLogTable({
       key: `day-${d}`, label: `Day: ${d}`,
       clear: () => setFilterDays((prev) => prev.filter((v) => v !== d)),
     })),
+    ...filterSessions.map((s) => ({
+      key: `session-${s}`, label: `Session: ${s}`,
+      clear: () => setFilterSessions((prev) => prev.filter((v) => v !== s)),
+    })),
     ...filterStrategies.map((s) => ({
       key: `strategy-${s}`,
       label: `Strategy: ${s === UNCLASSIFIED ? 'Unassigned' : (strategyNameById?.(s) || '—')}`,
@@ -168,6 +192,7 @@ export default function TradeLogTable({
 
   function clearAllFilters() {
     setFilterDays([])
+    setFilterSessions([])
     setFilterStrategies([])
     setFilterDirection('all')
     setFilterResult('all')
@@ -175,6 +200,7 @@ export default function TradeLogTable({
 
   const colCount = 4
     + (showDayColumn ? 1 : 0)
+    + (showSessionColumn ? 1 : 0)
     + (showPnlColumn ? 1 : 0)
     + (showStrategyColumn ? 1 : 0)
     + (showInstrumentColumn ? 1 : 0)
@@ -207,6 +233,14 @@ export default function TradeLogTable({
                 <span className="th-label">Day</span>
                 {showFilters && (
                   <ColumnFilter mode="multi" options={dayOptions} value={filterDays} onChange={setFilterDays} />
+                )}
+              </th>
+            )}
+            {showSessionColumn && (
+              <th>
+                <span className="th-label">Session</span>
+                {showFilters && (
+                  <ColumnFilter mode="multi" options={sessionOptions} value={filterSessions} onChange={setFilterSessions} />
                 )}
               </th>
             )}
@@ -254,6 +288,7 @@ export default function TradeLogTable({
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
                   <td>{t.trade_date}</td>
                   {showDayColumn && <td>{dayOf(t).toUpperCase()}</td>}
+                  {showSessionColumn && <td>{sessionOf(t, timezone) || '—'}</td>}
                   {showInstrumentColumn && (
                     <td>
                       <span className="strategy-dot" style={{ background: instrumentColorFor?.(t), marginRight: '8px', verticalAlign: 'middle' }} />

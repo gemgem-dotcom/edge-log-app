@@ -1,8 +1,12 @@
-// Server only: FINNHUB_API_KEY never reaches the browser. This is reference
+// Server only: FMP_API_KEY never reaches the browser. This is reference
 // data (not user data), so the route needs no auth check of its own - it's
 // only ever rendered inside the authenticated app shell.
 //
-// Module-level cache rather than a database table: Finnhub's free tier rate
+// Switched from Finnhub to FMP (Financial Modeling Prep) - Finnhub's
+// economic-calendar endpoint turned out to be paid-plan-only (403 on a
+// free-tier key), where FMP's is free-tier accessible.
+//
+// Module-level cache rather than a database table: the free tier's rate
 // limit is generous enough that a per-instance in-memory cache is all this
 // needs, and it resets naturally on cold start.
 let cache = { key: null, data: null, fetchedAt: 0 }
@@ -29,9 +33,9 @@ function thisWeekRange() {
 }
 
 export async function GET() {
-  const apiKey = process.env.FINNHUB_API_KEY
+  const apiKey = process.env.FMP_API_KEY
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Economic calendar is not configured yet - FINNHUB_API_KEY is missing.' }), { status: 501 })
+    return new Response(JSON.stringify({ error: 'Economic calendar is not configured yet - FMP_API_KEY is missing.' }), { status: 501 })
   }
 
   const { from, to } = thisWeekRange()
@@ -43,21 +47,25 @@ export async function GET() {
 
   let events
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${apiKey}`)
-    if (!res.ok) throw new Error(`Finnhub returned ${res.status}`)
+    const res = await fetch(`https://financialmodelingprep.com/stable/economics-calendar?from=${from}&to=${to}&apikey=${apiKey}`)
+    if (!res.ok) throw new Error(`FMP returned ${res.status}`)
     const data = await res.json()
-    const raw = Array.isArray(data?.economicCalendar) ? data.economicCalendar : []
+    const raw = Array.isArray(data) ? data : []
 
+    // FMP's field names have shifted across API versions in the past, so
+    // this reads a couple of plausible variants per field rather than
+    // assuming one exact shape - cheap insurance against a naming mismatch
+    // that would otherwise blank out a whole column.
     events = raw
       .map((e) => ({
-        date: (e.time || '').slice(0, 10),
-        time: (e.time || '').slice(11, 16),
+        date: (e.date || '').slice(0, 10),
+        time: (e.date || '').slice(11, 16),
         country: e.country || '—',
-        event: e.event || 'Event',
-        impact: (e.impact || 'low').toLowerCase(),
+        event: e.event || e.eventName || 'Event',
+        impact: String(e.impact || 'low').toLowerCase(),
         actual: e.actual ?? null,
-        estimate: e.estimate ?? null,
-        prev: e.prev ?? null,
+        estimate: e.estimate ?? e.forecast ?? null,
+        prev: e.previous ?? e.prev ?? null,
         unit: e.unit || '',
       }))
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))

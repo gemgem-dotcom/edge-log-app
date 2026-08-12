@@ -53,10 +53,10 @@ Copy `.env.local.example` to `.env.local` and fill in the four values:
   **server only**: it bypasses Row Level Security, so never rename it with a
   `NEXT_PUBLIC_` prefix. The two routes in `app/api/` (recording sign-ins, deleting an
   account) are the only things that use it.
-- `FINNHUB_API_KEY` — a free key from [finnhub.io](https://finnhub.io). Also server only,
-  used by `app/api/economic-calendar/route.js` to power the economic calendar card on the
-  All Instruments dashboard. Without it, that card just shows a "not configured" message —
-  nothing else breaks.
+- `FMP_API_KEY` — a free key from [Financial Modeling Prep](https://site.financialmodelingprep.com).
+  Also server only, used by `app/api/economic-calendar/route.js` to power the economic
+  calendar card on the All Instruments dashboard. Without it, that card just shows a
+  "not configured" message — nothing else breaks.
 
 All four also need to be added in Vercel under **Project Settings → Environment Variables**.
 

@@ -126,7 +126,7 @@ storage-setup.sql             screenshots storage bucket
 level security, used solely by the two API routes. Never import it into a page or
 give it a `NEXT_PUBLIC_` prefix.
 
-`FINNHUB_API_KEY` is also **server only**, used by `app/api/economic-calendar` to
+`FMP_API_KEY` is also **server only**, used by `app/api/economic-calendar` to
 power the Overview dashboard's calendar card. Optional in the sense that its
 absence only degrades that one card, not the build or the rest of the app.
 

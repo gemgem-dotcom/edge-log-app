@@ -16,15 +16,29 @@ const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool
 // set of mistakes the strategy detail page's breakdown table can group by.
 export const MISTAKE_TAG_OPTIONS = ['early entry', 'moved stop', 'oversized', 'hesitated', 'other']
 
+// Single-select day-type tag, captured for later breakdown views (not
+// built yet) once there's a few weeks of data to look at.
+export const DAY_TYPE_OPTIONS = [
+  { value: 'trend', label: 'Trend' },
+  { value: 'range', label: 'Range' },
+  { value: 'high_vol', label: 'High volatility' },
+  { value: 'low_vol', label: 'Low volatility' },
+]
+
+// A fixed dropdown, not free text, so this stays groupable later - same
+// reasoning as MISTAKE_TAG_OPTIONS' closed set.
+export const NEWS_EVENT_OPTIONS = ['CPI', 'FOMC', 'NFP', 'Other']
+
 export const EMPTY_TRADE_FORM = {
   direction: 'long',
   strategyId: '',
   reasoning: '',
-  setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '' },
+  setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '', newsEventName: '' },
   execution: { contracts: '', exit_time: '', exit_price: '' },
   pnl: null,
   tags: [],
   mistakeTags: [],
+  dayType: '',
   existingScreenshots: [],
 }
 
@@ -94,6 +108,7 @@ export default function TradeForm({
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [mistakeTags, setMistakeTags] = useState(initial.mistakeTags || [])
+  const [dayType, setDayType] = useState(initial.dayType || '')
 
   const [saving, setSaving] = useState(false)
 
@@ -290,6 +305,9 @@ export default function TradeForm({
       pnl: parseCurrency(pnlInput),
       tags,
       mistake_tags: mistakeTags,
+      day_type: isBlank(dayType) ? null : dayType,
+      is_news_event: !isBlank(setup.newsEventName),
+      news_event_name: isBlank(setup.newsEventName) ? null : setup.newsEventName,
     }
 
     // The caller navigates away on success; returning an error message
@@ -363,6 +381,13 @@ export default function TradeForm({
               value={setup.trade_time} onChange={(e) => updateSetup('trade_time', e.target.value)}
             />
             {errors.trade_time && <span className="field-error">{errors.trade_time}</span>}
+          </div>
+          <div className="field wide">
+            <label>Economic event</label>
+            <select value={setup.newsEventName} onChange={(e) => updateSetup('newsEventName', e.target.value)}>
+              <option value="">None</option>
+              {NEWS_EVENT_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
           <div className="field wide">
             <label>Entry price</label>
@@ -535,6 +560,14 @@ export default function TradeForm({
                 </span>
               ))}
             </div>
+          </div>
+
+          <div className="field wide">
+            <label>Day type</label>
+            <select value={dayType} onChange={(e) => setDayType(e.target.value)}>
+              <option value="">—</option>
+              {DAY_TYPE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
           </div>
 
           <div className="field full">

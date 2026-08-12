@@ -5,36 +5,36 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–318  Base: reset, typography, forms, tables, thumbnails,
+     1–319  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   319  Auth pages
-   371  Top nav
-   386  Instrument nav (topbar pill row)
-   426  Page layout
-   475  Tabs
-   485  Misc form helpers
-   491  Detail view
-   506  Shell layout (sidebar + topbar)
-   703  Expandable trade rows
-   720  Calendar
-   757  Account settings page
-   912  Light theme
-   937  2FA
-   952  Account fine print
-   955  Screenshot preview (log new trade)
-   972  Auth pages always dark
-   1000  Monthly P&L (calendar on Overview)
-   1076  Trade form: sections, validation, currency, screenshots
-   1125  Field tooltips
-   1160  In-header column filters (trade log table)
-   1194  Active filter chips
-   1227  Empty states, error banners, skeleton loaders
-   1278  Cross-instrument overview dashboard (/app)
-   1356  Not found / error boundary state pages
-   1369  Toast notifications
-   1397  Public policy pages (Privacy, Terms)
-   1416  Legal links (auth pages + account settings)
-   1455  Sample-size confidence pill (Phase 0)
+   320  Auth pages
+   372  Top nav
+   387  Instrument nav (topbar pill row)
+   427  Page layout
+   476  Tabs
+   486  Misc form helpers
+   492  Detail view
+   507  Shell layout (sidebar + topbar)
+   704  Expandable trade rows
+   721  Calendar
+   758  Account settings page
+   913  Light theme
+   938  2FA
+   953  Account fine print
+   956  Screenshot preview (log new trade)
+   973  Auth pages always dark
+   1001  Monthly P&L (calendar on Overview)
+   1077  Trade form: sections, validation, currency, screenshots
+   1141  Field tooltips
+   1176  In-header column filters (trade log table)
+   1210  Active filter chips
+   1243  Empty states, error banners, skeleton loaders
+   1294  Cross-instrument overview dashboard (/app)
+   1372  Not found / error boundary state pages
+   1385  Toast notifications
+   1413  Public policy pages (Privacy, Terms)
+   1432  Legal links (auth pages + account settings)
+   1471  Sample-size confidence pill (Phase 0)
    ============================================================ */
 
 :root{

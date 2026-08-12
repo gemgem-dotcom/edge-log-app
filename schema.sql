@@ -289,3 +289,15 @@ alter table trades add column if not exists mistake_tags text[];
 -- mistake_tags (a boolean doesn't say which mistake), so this drops the
 -- column outright rather than leaving a second, unused field alongside it.
 alter table trades drop column if exists in_plan;
+
+-- Day-type tag ('trend' | 'range' | 'high_vol' | 'low_vol'), manually
+-- tagged in Trade Review alongside mistake_tags. Capture-only for Phase 0 -
+-- breakdown views land later, once there's a few weeks of data to look at.
+alter table trades add column if not exists day_type text;
+
+-- Economic-event flag, tagged in Trade Setup next to entry time. A fixed
+-- dropdown (CPI/FOMC/NFP/Other) rather than free text so it stays groupable
+-- later, same reasoning as mistake_tags' closed set. news_event_name is
+-- null whenever is_news_event is false.
+alter table trades add column if not exists is_news_event boolean not null default false;
+alter table trades add column if not exists news_event_name text;

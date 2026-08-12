@@ -110,6 +110,7 @@ export default function EditTradePage({ params }) {
       entry: trade.entry ?? '',
       target_distance: trade.target_distance ?? (trade.target != null ? Math.abs(trade.target - trade.entry) : ''),
       stop_distance: trade.stop_distance ?? (trade.stop != null ? Math.abs(trade.stop - trade.entry) : ''),
+      newsEventName: trade.news_event_name || '',
     },
     execution: {
       contracts: trade.contracts ?? '',
@@ -119,6 +120,7 @@ export default function EditTradePage({ params }) {
     pnl: trade.pnl ?? null,
     tags: trade.tags || [],
     mistakeTags: trade.mistake_tags || [],
+    dayType: trade.day_type || '',
     existingScreenshots: trade.screenshot_urls?.length
       ? trade.screenshot_urls
       : (trade.screenshot_url ? [trade.screenshot_url] : []),

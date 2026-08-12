@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { DAY_TYPE_OPTIONS } from '@/components/TradeForm'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -72,6 +73,7 @@ export default function TradeDetailPage({ params }) {
           <div><label>Instrument</label><div>{symbol}</div></div>
           <div><label>Date</label><div>{trade.trade_date}</div></div>
           <div><label>Entry time</label><div>{trade.trade_time}</div></div>
+          <div><label>Economic event</label><div>{trade.is_news_event ? (trade.news_event_name || 'Yes') : '—'}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{fmtNum(trade.entry)}</div></div>
           <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null ? ` (${fmtNum(trade.stop_distance)} pts)` : ''}</div></div>
@@ -97,6 +99,7 @@ export default function TradeDetailPage({ params }) {
         <div className="section-label">Context</div>
         <div className="detail-grid">
           <div><label>Contracts</label><div>{trade.contracts == null ? '—' : trade.contracts.toLocaleString('en-US')}</div></div>
+          <div><label>Day type</label><div>{trade.day_type ? (DAY_TYPE_OPTIONS.find((o) => o.value === trade.day_type)?.label || trade.day_type) : '—'}</div></div>
         </div>
         <div style={{ marginTop: '14px' }}>
           <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Tags</label>

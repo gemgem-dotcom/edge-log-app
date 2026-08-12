@@ -1463,8 +1463,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    shift position whenever prev/next lands on a week with differently
    sized event names. */
 .econ-calendar-table{table-layout:fixed; width:100%;}
-.econ-calendar-table th:nth-child(1), .econ-calendar-table td:nth-child(1){width:110px;}
-.econ-calendar-table th:nth-child(2), .econ-calendar-table td:nth-child(2){width:100px;}
+/* Gap after each column rather than symmetric padding, so it doesn't eat
+   into the narrow fixed-width Date/Time columns and force their header
+   labels to wrap. */
+.econ-calendar-table th, .econ-calendar-table td{padding:10px 24px 10px 10px;}
+.econ-calendar-table th:nth-child(1), .econ-calendar-table td:nth-child(1){width:130px;}
+.econ-calendar-table th:nth-child(2), .econ-calendar-table td:nth-child(2){width:110px; white-space:nowrap;}
 .econ-calendar-table th:nth-child(3), .econ-calendar-table td:nth-child(3){width:auto; white-space:normal;}
 
 /* Impact checklist - independent High/Medium checkboxes rather than a

@@ -46,15 +46,19 @@ Skip this and the button will just show a Supabase error — email/password sign
 
 ## 4. Environment variables
 
-Copy `.env.local.example` to `.env.local` and fill in the three values:
+Copy `.env.local.example` to `.env.local` and fill in the four values:
 
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from **Project Settings → API**.
 - `SUPABASE_SERVICE_ROLE_KEY` — also on that page, under "service_role". This one is
   **server only**: it bypasses Row Level Security, so never rename it with a
   `NEXT_PUBLIC_` prefix. The two routes in `app/api/` (recording sign-ins, deleting an
   account) are the only things that use it.
+- `FINNHUB_API_KEY` — a free key from [finnhub.io](https://finnhub.io). Also server only,
+  used by `app/api/economic-calendar/route.js` to power the economic calendar card on the
+  All Instruments dashboard. Without it, that card just shows a "not configured" message —
+  nothing else breaks.
 
-All three also need to be added in Vercel under **Project Settings → Environment Variables**.
+All four also need to be added in Vercel under **Project Settings → Environment Variables**.
 
 ## 5. Run it
 

@@ -132,4 +132,5 @@ build uses placeholders, since nothing during a build talks to the database.
 `app/api/economic-calendar` (the Overview dashboard's calendar card) merges BLS's
 public feed, computed release schedules (`lib/computedReleases.js`), and FRED
 (`lib/fredReleases.js`) — only the FRED slice needs a key (`FRED_API_KEY`, optional,
-server only, free from fred.stlouisfed.org). FOMC meeting dates aren't covered yet.
+server only, free from fred.stlouisfed.org). FOMC meeting dates come from scraping
+federalreserve.gov's own calendar page — no feed exists anywhere for them.

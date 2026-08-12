@@ -74,7 +74,10 @@ calendar card - see below.
 public feed, computed release schedules (`lib/computedReleases.js` - ISM PMI, CB
 Consumer Confidence), and FRED (`lib/fredReleases.js` - GDP, PCE, Retail Sales,
 Housing Starts, and more). Only FRED needs a key (`FRED_API_KEY`, optional - see
-below); the rest work with none. FOMC meeting dates aren't covered yet - pending.
+below); the rest work with none. FOMC meeting dates come from scraping
+federalreserve.gov's own calendar page (no feed exists anywhere - checked FRED,
+the Fed's site, and Federal Register; every known open-source FOMC-date tool
+does the same thing).
 
 ## Database
 

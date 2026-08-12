@@ -11,6 +11,15 @@ import { computedReleasesInRange } from '@/lib/computedReleases'
 // values - which matches what this card actually needs.
 const BLS_ICS_URL = 'https://www.bls.gov/schedule/news_release/bls.ics'
 
+// No official feed exists for FOMC meeting dates (checked FRED, the Fed's
+// own site, Federal Register) - every known open-source tool that solves
+// this scrapes federalreserve.gov's own calendar page, so this does too.
+// A government agency's own scheduling page, not a commercial product they
+// license (unlike CME, which explicitly prohibits this - see git history).
+const FOMC_CALENDAR_URL = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
+
+const MONTH_NAMES = { January: 0, February: 1, March: 2, April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11 }
+
 // Everything else in BLS's release calendar defaults to medium impact -
 // there's no "low" tier here, since BLS only lists indicators it
 // considers release-worthy in the first place. CATEGORIES:IMPORTANT is on
@@ -136,6 +145,68 @@ async function fetchBlsEvents() {
   }))
 }
 
+// Meeting rows look like:
+//   <div class="fomc-meeting__month ..."><strong>January</strong></div>
+//   <div class="fomc-meeting__date ...">27-28</div>
+// (sometimes "27-28*", the asterisk flagging a Summary of Economic
+// Projections meeting - stripped, not meaningful here). The second day is
+// the announcement/statement day. A meeting whose range crosses a month
+// boundary (rare, e.g. "30-1") has a second day smaller than the first,
+// meaning it falls in the following month. Confirmed against a real
+// fetch of this page, not guessed - every 2026 date matched independent
+// verification.
+function parseFomcHtml(html) {
+  const events = []
+  const panelRe = /<a id="\d+">(\d{4}) FOMC Meetings<\/a>/g
+  const panelStarts = []
+  let m
+  while ((m = panelRe.exec(html))) {
+    panelStarts.push({ year: Number(m[1]), index: m.index })
+  }
+  for (let i = 0; i < panelStarts.length; i++) {
+    const { year, index } = panelStarts[i]
+    const end = i + 1 < panelStarts.length ? panelStarts[i + 1].index : html.length
+    const panelHtml = html.slice(index, end)
+
+    const meetingRe = /fomc-meeting__month[^>]*><strong>(\w+)<\/strong><\/div>\s*<div class="fomc-meeting__date[^>]*>(\d+)-(\d+)\*?<\/div>/g
+    let mm
+    while ((mm = meetingRe.exec(panelHtml))) {
+      const [, monthName, startDayStr, endDayStr] = mm
+      const month = MONTH_NAMES[monthName]
+      if (month === undefined) continue
+      const startDay = Number(startDayStr)
+      const endDay = Number(endDayStr)
+      let announceMonth = month
+      let announceYear = year
+      if (endDay < startDay) {
+        announceMonth = month + 1
+        if (announceMonth > 11) { announceMonth = 0; announceYear += 1 }
+      }
+      const date = `${announceYear}-${pad(announceMonth + 1)}-${pad(endDay)}`
+      events.push({
+        date, time: '14:00', country: 'US', event: 'FOMC Statement', impact: 'high',
+        actual: null, estimate: null, prev: null, unit: '',
+      })
+    }
+  }
+  return events
+}
+
+// Additive on top of BLS, same as FRED - a scrape failure (markup change,
+// site hiccup) shouldn't take down the whole card, just this one slice.
+async function fetchFomcEvents() {
+  try {
+    const res = await fetch(FOMC_CALENDAR_URL, {
+      headers: { 'User-Agent': 'EdgeLog-EconomicCalendar/1.0 (+https://edgelog-journal.com)' },
+    })
+    if (!res.ok) return []
+    const html = await res.text()
+    return parseFomcHtml(html)
+  } catch {
+    return []
+  }
+}
+
 // FRED's release_dates endpoint returns a date only (no time of day) per
 // release_id - one call per whitelisted release, in parallel. Silently
 // contributes nothing (rather than failing the whole card) if FRED_API_KEY
@@ -175,9 +246,10 @@ async function loadAllEvents() {
   const now = Date.now()
   if (cache.data && now - cache.fetchedAt < CACHE_TTL_MS) return cache.data
 
-  const [blsEvents, fredEvents] = await Promise.all([
+  const [blsEvents, fredEvents, fomcEvents] = await Promise.all([
     fetchBlsEvents(),
     fetchFredEvents(),
+    fetchFomcEvents(),
   ])
 
   // Computed events (ISM PMI, CB Consumer Confidence - see
@@ -188,7 +260,7 @@ async function loadAllEvents() {
   const end = new Date(now2); end.setDate(end.getDate() + FRED_WINDOW_FUTURE_DAYS)
   const computedEvents = computedReleasesInRange(toDateStr(start), toDateStr(end))
 
-  const events = [...blsEvents, ...fredEvents, ...computedEvents]
+  const events = [...blsEvents, ...fredEvents, ...fomcEvents, ...computedEvents]
   events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
 
   cache = { data: events, fetchedAt: now }

@@ -8,6 +8,7 @@ import { hasResult } from '@/lib/tradeMath'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlDonut from '@/components/PnlDonut'
 import WinRateGauge from '@/components/WinRateGauge'
+import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -317,6 +318,11 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
               <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
             </div>
+          </div>
+
+          <div className="section-heading">Economic calendar</div>
+          <div className="panel">
+            <EconomicCalendarCard />
           </div>
 
           <div className="dashboard-split">

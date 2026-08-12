@@ -34,6 +34,7 @@
    1102  Toast notifications
    1387  Public policy pages (Privacy, Terms)
    1405  Legal links (auth pages + account settings)
+   1454  Economic calendar card (All Instruments overview)
    ============================================================ */
 
 :root{
@@ -1451,3 +1452,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    a bordered .panel card, so the same border-top + padding reads as the
    closing footer rather than a stray line of text. */
 .policy-footer{margin-top:32px; padding-top:24px; border-top:1px solid var(--line); text-align:center;}
+
+/* ---------- Economic calendar card (All Instruments overview) ---------- */
+.econ-impact-dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:8px; vertical-align:middle;}
+.econ-impact-high{background:var(--loss);}
+.econ-impact-medium{background:var(--be);}
+.econ-impact-low{background:var(--muted);}

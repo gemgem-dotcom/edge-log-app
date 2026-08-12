@@ -164,13 +164,26 @@ async function fetchBlsEvents() {
 // Meeting rows look like:
 //   <div class="fomc-meeting__month ..."><strong>January</strong></div>
 //   <div class="fomc-meeting__date ...">27-28</div>
-// (sometimes "27-28*", the asterisk flagging a Summary of Economic
+//   ...
+//   <div class="... fomc-meeting__minutes">
+//     <strong>Minutes:</strong><br>
+//     <a href="...">PDF</a> | <a href="...">HTML</a>
+//     <br> (Released February 18, 2026)
+//   </div>
+// (date sometimes "27-28*", the asterisk flagging a Summary of Economic
 // Projections meeting - stripped, not meaningful here). The second day is
 // the announcement/statement day. A meeting whose range crosses a month
 // boundary (rare, e.g. "30-1") has a second day smaller than the first,
-// meaning it falls in the following month. Confirmed against a real
-// fetch of this page, not guessed - every 2026 date matched independent
-// verification.
+// meaning it falls in the following month.
+//
+// Minutes release the "(Released ...)" text only after they've actually
+// come out - a future meeting's chunk has no such text yet, since the
+// document doesn't exist. For those, minutes date is computed as 3 weeks
+// (21 days) after the meeting - the Fed's well-established, consistent
+// convention, confirmed against 5 real past examples that all matched
+// exactly except one (a holiday-adjacent case landed 1 day off), so this
+// is a disclosed approximation for future meetings, not sourced fact the
+// way the statement date and past minutes dates are.
 function parseFomcHtml(html) {
   const events = []
   const panelRe = /<a id="\d+">(\d{4}) FOMC Meetings<\/a>/g
@@ -184,23 +197,55 @@ function parseFomcHtml(html) {
     const end = i + 1 < panelStarts.length ? panelStarts[i + 1].index : html.length
     const panelHtml = html.slice(index, end)
 
-    const meetingRe = /fomc-meeting__month[^>]*><strong>(\w+)<\/strong><\/div>\s*<div class="fomc-meeting__date[^>]*>(\d+)-(\d+)\*?<\/div>/g
+    // Segment into one chunk per meeting, delimited by the month marker,
+    // so the "(Released ...)" search below only looks within that one
+    // meeting's own content rather than bleeding into the next meeting's.
+    const monthMarkerRe = /fomc-meeting__month[^>]*><strong>(\w+)<\/strong><\/div>/g
+    const monthMatches = []
     let mm
-    while ((mm = meetingRe.exec(panelHtml))) {
-      const [, monthName, startDayStr, endDayStr] = mm
+    while ((mm = monthMarkerRe.exec(panelHtml))) {
+      monthMatches.push({ month: mm[1], matchEnd: mm.index + mm[0].length })
+    }
+
+    for (let j = 0; j < monthMatches.length; j++) {
+      const { month: monthName, matchEnd } = monthMatches[j]
+      const chunkEnd = j + 1 < monthMatches.length ? monthMatches[j + 1].matchEnd : panelHtml.length
+      const chunk = panelHtml.slice(matchEnd, chunkEnd)
       const month = MONTH_NAMES[monthName]
       if (month === undefined) continue
-      const startDay = Number(startDayStr)
-      const endDay = Number(endDayStr)
+
+      const dateMatch = chunk.match(/^\s*<div class="fomc-meeting__date[^>]*>(\d+)-(\d+)\*?<\/div>/)
+      if (!dateMatch) continue
+      const startDay = Number(dateMatch[1])
+      const endDay = Number(dateMatch[2])
       let announceMonth = month
       let announceYear = year
       if (endDay < startDay) {
         announceMonth = month + 1
         if (announceMonth > 11) { announceMonth = 0; announceYear += 1 }
       }
-      const date = `${announceYear}-${pad(announceMonth + 1)}-${pad(endDay)}`
+      const statementDate = `${announceYear}-${pad(announceMonth + 1)}-${pad(endDay)}`
       events.push({
-        date, time: '14:00', country: 'US', event: 'FOMC Statement', impact: 'high',
+        date: statementDate, time: '14:00', country: 'US', event: 'FOMC Statement', impact: 'high',
+        actual: null, estimate: null, prev: null, unit: '',
+      })
+
+      const releasedMatch = chunk.match(/\(Released (\w+) (\d+), (\d+)\)/)
+      let minutesDate
+      if (releasedMatch) {
+        const [, relMonthName, relDayStr, relYearStr] = releasedMatch
+        const relMonth = MONTH_NAMES[relMonthName]
+        if (relMonth !== undefined) {
+          minutesDate = `${relYearStr}-${pad(relMonth + 1)}-${pad(Number(relDayStr))}`
+        }
+      }
+      if (!minutesDate) {
+        const d = new Date(announceYear, announceMonth, endDay)
+        d.setDate(d.getDate() + 21)
+        minutesDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      }
+      events.push({
+        date: minutesDate, time: '14:00', country: 'US', event: 'FOMC Minutes', impact: 'medium',
         actual: null, estimate: null, prev: null, unit: '',
       })
     }

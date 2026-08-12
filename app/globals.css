@@ -5,35 +5,36 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–272  Base: reset, typography, forms, tables, thumbnails,
+     1–318  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   273  Auth pages
-   324  Top nav
-   339  Instrument nav (topbar pill row)
-   378  Page layout
-   419  Tabs
-   429  Misc form helpers
-   435  Detail view
-   450  Shell layout (sidebar + topbar)
-   575  Expandable trade rows
-   592  Calendar
-   629  Account settings page
-   731  Light theme
-   749  2FA
-   764  Account fine print
-   767  Screenshot preview (log new trade)
-   784  Auth pages always dark
-   812  Monthly P&L (calendar on Overview)
-   874  Trade form: sections, validation, currency, screenshots
-   909  Field tooltips
-   944  In-header column filters (trade log table)
-   978  Active filter chips
-   1009  Empty states, error banners, skeleton loaders
-   1060  Cross-instrument overview dashboard (/app)
-   1089  Not found / error boundary state pages
-   1102  Toast notifications
-   1387  Public policy pages (Privacy, Terms)
-   1405  Legal links (auth pages + account settings)
+   319  Auth pages
+   371  Top nav
+   386  Instrument nav (topbar pill row)
+   426  Page layout
+   475  Tabs
+   485  Misc form helpers
+   491  Detail view
+   506  Shell layout (sidebar + topbar)
+   703  Expandable trade rows
+   720  Calendar
+   757  Account settings page
+   912  Light theme
+   937  2FA
+   952  Account fine print
+   955  Screenshot preview (log new trade)
+   972  Auth pages always dark
+   1000  Monthly P&L (calendar on Overview)
+   1076  Trade form: sections, validation, currency, screenshots
+   1125  Field tooltips
+   1160  In-header column filters (trade log table)
+   1194  Active filter chips
+   1227  Empty states, error banners, skeleton loaders
+   1278  Cross-instrument overview dashboard (/app)
+   1356  Not found / error boundary state pages
+   1369  Toast notifications
+   1397  Public policy pages (Privacy, Terms)
+   1416  Legal links (auth pages + account settings)
+   1455  Sample-size confidence pill (Phase 0)
    ============================================================ */
 
 :root{
@@ -1451,3 +1452,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    a bordered .panel card, so the same border-top + padding reads as the
    closing footer rather than a stray line of text. */
 .policy-footer{margin-top:32px; padding-top:24px; border-top:1px solid var(--line); text-align:center;}
+
+/* ---------- Sample-size confidence pill (Phase 0) ---------- */
+.confidence-pill{display:inline-block; padding:2px 8px; border-radius:99px; font-weight:600; font-size:11px; margin-top:4px;}
+.confidence-low{background:rgba(125,133,144,.16); color:var(--muted);}
+.confidence-medium{background:rgba(59,167,255,.14); color:var(--accent);}
+.confidence-high{background:rgba(51,193,122,.14); color:var(--win);}

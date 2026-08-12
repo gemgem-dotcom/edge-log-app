@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { hasResult, tradeDurationMinutes, formatDuration, sampleConfidence } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -240,6 +240,9 @@ Delete strategy
   <div className="stat">
   <div className="stat-label">Total trades</div>
 <div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
+{stats.n > 0 && (
+  <div className={`confidence-pill confidence-${sampleConfidence(stats.n).tier}`}>{sampleConfidence(stats.n).label}</div>
+)}
   </div>
 <div className="stat">
   <div className="stat-label">Avg trade duration</div>

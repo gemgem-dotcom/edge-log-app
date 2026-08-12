@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
-import { hasResult } from '@/lib/tradeMath'
+import { hasResult, sampleConfidence } from '@/lib/tradeMath'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlDonut from '@/components/PnlDonut'
 import WinRateGauge from '@/components/WinRateGauge'
@@ -316,6 +316,9 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat-label">Total trades</div>
               <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
               <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
+              {overall.n > 0 && (
+                <div className={`confidence-pill confidence-${sampleConfidence(overall.n).tier}`}>{sampleConfidence(overall.n).label}</div>
+              )}
             </div>
           </div>
 

@@ -320,7 +320,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
           </div>
 
-          <div className="section-heading">Economic calendar</div>
+          <div className="section-heading">US economic calendar</div>
           <div className="panel">
             <EconomicCalendarCard />
           </div>

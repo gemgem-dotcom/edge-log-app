@@ -22,11 +22,13 @@ function classifyImpact(summary) {
   return HIGH_IMPACT_KEYWORDS.some((kw) => summary.includes(kw)) ? 'high' : 'medium'
 }
 
-// Module-level cache: BLS's release calendar changes rarely (new dates get
-// added a few times a year, not daily), so a several-hour TTL is plenty -
-// this just avoids re-fetching and re-parsing the whole feed on every
-// dashboard load.
-let cache = { key: null, data: null, fetchedAt: 0 }
+// Module-level cache of the whole feed, unfiltered by week - BLS's release
+// calendar changes rarely (new dates get added a few times a year, not
+// daily), so a several-hour TTL is plenty. Caching the raw merged event
+// list rather than one week's slice means flipping between weeks (see
+// EconomicCalendarCard.js) never re-fetches BLS, just re-filters data
+// that's already in memory.
+let cache = { data: null, fetchedAt: 0 }
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
 function pad(n) {
@@ -100,56 +102,67 @@ function parseBlsIcs(text) {
   return events
 }
 
-export async function GET() {
-  const today = todayInET()
-  const { from, to } = weekRangeOf(today)
-  const cacheKey = `${from}_${to}`
+async function loadAllEvents() {
   const now = Date.now()
-  if (cache.key === cacheKey && now - cache.fetchedAt < CACHE_TTL_MS) {
-    return new Response(JSON.stringify({ events: cache.data, from, to }), { status: 200 })
-  }
+  if (cache.data && now - cache.fetchedAt < CACHE_TTL_MS) return cache.data
 
-  let events
-  try {
-    // BLS's server rejects requests with no/generic User-Agent (a 403,
-    // even though the feed itself is public) - identify honestly as a
-    // real calendar client fetching a feed BLS publishes for exactly this
-    // purpose, the same way Outlook/Google Calendar would when subscribing.
-    const res = await fetch(BLS_ICS_URL, {
-      headers: { 'User-Agent': 'EdgeLog-EconomicCalendar/1.0 (+https://edgelog-journal.com)' },
+  // BLS's server rejects requests with no/generic User-Agent (a 403, even
+  // though the feed itself is public) - identify honestly as a real
+  // calendar client fetching a feed BLS publishes for exactly this
+  // purpose, the same way Outlook/Google Calendar would when subscribing.
+  const res = await fetch(BLS_ICS_URL, {
+    headers: { 'User-Agent': 'EdgeLog-EconomicCalendar/1.0 (+https://edgelog-journal.com)' },
+  })
+  if (!res.ok) throw new Error(`BLS returned ${res.status}`)
+  const text = await res.text()
+  const raw = parseBlsIcs(text)
+
+  const events = raw.map((e) => ({
+    date: e.date,
+    time: e.time,
+    country: 'US',
+    event: e.event,
+    impact: classifyImpact(e.event),
+    actual: null,
+    estimate: null,
+    prev: null,
+    unit: '',
+  }))
+
+  FOMC_STATEMENT_DATES_2026.forEach((date) => {
+    events.push({
+      date, time: FOMC_STATEMENT_TIME, country: 'US', event: 'FOMC Statement',
+      impact: 'high', actual: null, estimate: null, prev: null, unit: '',
     })
-    if (!res.ok) throw new Error(`BLS returned ${res.status}`)
-    const text = await res.text()
-    const raw = parseBlsIcs(text)
+  })
 
-    events = raw
-      .filter((e) => e.date >= from && e.date <= to)
-      .map((e) => ({
-        date: e.date,
-        time: e.time,
-        country: 'US',
-        event: e.event,
-        impact: classifyImpact(e.event),
-        actual: null,
-        estimate: null,
-        prev: null,
-        unit: '',
-      }))
+  events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+  cache = { data: events, fetchedAt: now }
+  return events
+}
 
-    FOMC_STATEMENT_DATES_2026
-      .filter((date) => date >= from && date <= to)
-      .forEach((date) => {
-        events.push({
-          date, time: FOMC_STATEMENT_TIME, country: 'US', event: 'FOMC Statement',
-          impact: 'high', actual: null, estimate: null, prev: null, unit: '',
-        })
-      })
+function isDateStr(v) {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+}
 
-    events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD selects an explicit week (the card's
+// prev/next buttons use this); omitted or malformed falls back to the
+// current week in ET.
+export async function GET(req) {
+  const { searchParams } = new URL(req.url)
+  const fromParam = searchParams.get('from')
+  const toParam = searchParams.get('to')
+  const { from, to } = isDateStr(fromParam) && isDateStr(toParam)
+    ? { from: fromParam, to: toParam }
+    : weekRangeOf(todayInET())
+
+  let allEvents
+  try {
+    allEvents = await loadAllEvents()
   } catch (err) {
     return new Response(JSON.stringify({ error: "Couldn't load the economic calendar — " + err.message }), { status: 502 })
   }
 
-  cache = { key: cacheKey, data: events, fetchedAt: now }
+  const events = allEvents.filter((e) => e.date >= from && e.date <= to)
   return new Response(JSON.stringify({ events, from, to }), { status: 200 })
 }

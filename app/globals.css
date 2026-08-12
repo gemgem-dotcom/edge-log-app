@@ -1477,5 +1477,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    horizontally-scrolling ancestor that would clip a fixed-position menu
    differently than an absolute one anyway. */
 .econ-impact-filter{position:relative;}
-.econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer;}
+/* Overrides .calendar-strategy-filter's 34px right padding, sized for a
+   native <select>'s chevron background-image - this is a flex button with
+   its own SVG chevron child instead, so that reserved space just left a gap. */
+.econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
 .econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}

@@ -54,7 +54,7 @@ function renameBlsEvent(summary) {
 // slice means flipping between weeks (see EconomicCalendarCard.js) never
 // re-fetches anything, just re-filters data already in memory.
 let cache = { data: null, fetchedAt: 0 }
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000
+const CACHE_TTL_MS = 3 * 60 * 60 * 1000
 
 // How far the FRED fetch reaches on either side of "now" - wide enough to
 // cover the card's prev/next week navigation without needing a fresh fetch
@@ -136,37 +136,46 @@ function parseBlsIcs(text) {
   return events
 }
 
+// Additive on top of FRED/FOMC/computed, same reasoning as fetchFomcEvents -
+// BLS's WAF has 403'd this feed intermittently despite looking like a real
+// browser request, and a transient block on one source shouldn't take the
+// whole card down. Returns [] on failure instead of throwing.
 async function fetchBlsEvents() {
-  // BLS's WAF 403s requests that don't look like a real browser - a custom
-  // "EdgeLog/1.0" identifier still got blocked (it's not a browser string,
-  // and not on whatever allowlist of known calendar clients they honor),
-  // so this presents a standard browser User-Agent plus the Accept/
-  // Accept-Language headers a real browser sends alongside it, rather than
-  // identifying as a bot at all. The feed itself is still public data BLS
-  // built for external subscription - this is about clearing an
-  // overly-strict bot filter, not bypassing an actual access restriction.
-  const res = await fetch(BLS_ICS_URL, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Accept': 'text/calendar,text/plain,*/*',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-  })
-  if (!res.ok) throw new Error(`BLS returned ${res.status}`)
-  const text = await res.text()
-  const raw = parseBlsIcs(text)
+  try {
+    // BLS's WAF 403s requests that don't look like a real browser - a custom
+    // "EdgeLog/1.0" identifier still got blocked (it's not a browser string,
+    // and not on whatever allowlist of known calendar clients they honor),
+    // so this presents a standard browser User-Agent plus the Accept/
+    // Accept-Language headers a real browser sends alongside it, rather than
+    // identifying as a bot at all. The feed itself is still public data BLS
+    // built for external subscription - this is about clearing an
+    // overly-strict bot filter, not bypassing an actual access restriction.
+    const res = await fetch(BLS_ICS_URL, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/calendar,text/plain,*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.bls.gov/schedule/news_release/',
+      },
+    })
+    if (!res.ok) return []
+    const text = await res.text()
+    const raw = parseBlsIcs(text)
 
-  return raw.map((e) => ({
-    date: e.date,
-    time: e.time,
-    country: 'US',
-    event: renameBlsEvent(e.event),
-    impact: classifyImpact(e.event),
-    actual: null,
-    estimate: null,
-    prev: null,
-    unit: '',
-  }))
+    return raw.map((e) => ({
+      date: e.date,
+      time: e.time,
+      country: 'US',
+      event: renameBlsEvent(e.event),
+      impact: classifyImpact(e.event),
+      actual: null,
+      estimate: null,
+      prev: null,
+      unit: '',
+    }))
+  } catch {
+    return []
+  }
 }
 
 // Meeting rows look like:

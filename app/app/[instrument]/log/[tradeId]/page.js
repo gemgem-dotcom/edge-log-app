@@ -109,6 +109,16 @@ export default function TradeDetailPage({ params }) {
           )}
         </div>
         <div style={{ marginTop: '14px' }}>
+          <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Mistakes</label>
+          {trade.mistake_tags?.length ? (
+            <div className="mistake-tag-row" style={{ marginTop: '6px' }}>
+              {trade.mistake_tags.map((tag) => <span className="mistake-tag-toggle mistake-tag-toggle-active" key={tag} style={{ cursor: 'default' }}>{tag}</span>)}
+            </div>
+          ) : (
+            <p style={{ marginTop: '6px', lineHeight: 1.5 }}>—</p>
+          )}
+        </div>
+        <div style={{ marginTop: '14px' }}>
           <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Reasoning</label>
           <p style={{ marginTop: '6px', lineHeight: 1.5 }}>{trade.reasoning || '—'}</p>
         </div>

@@ -274,3 +274,18 @@ $$;
 -- No separate tags table: there's no shared/managed tag list (unlike
 -- strategies), so a plain array on the trade itself is all this needs.
 alter table trades add column if not exists tags text[];
+
+-- Fixed multi-select set of execution mistakes ('early entry', 'moved
+-- stop', 'oversized', 'hesitated', 'other'), tagged on review rather than
+-- at entry time so there's no pressure to self-judge while logging the
+-- trade. Drives the mistake-tag breakdown table on the strategy detail
+-- page - the "bad execution vs. no edge" signal.
+alter table trades add column if not exists mistake_tags text[];
+
+-- in_plan (from the v1 table above) was never read or written anywhere in
+-- the app - mistake_tags is its replacement for the same "did this trade
+-- deviate from plan" signal, at the granularity of which mistake it was
+-- rather than a bare yes/no. Its existing values can't be backfilled into
+-- mistake_tags (a boolean doesn't say which mistake), so this drops the
+-- column outright rather than leaving a second, unused field alongside it.
+alter table trades drop column if exists in_plan;

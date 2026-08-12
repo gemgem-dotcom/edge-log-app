@@ -1123,6 +1123,21 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .tag-add-form{display:inline-flex; align-items:center; gap:8px;}
 .tag-add-form input{width:140px; padding:6px 10px; font-size:12.5px;}
 
+/* Mistake tags - a fixed, closed set (unlike the free-text .trade-tag
+   above), so each option toggles active/inactive in place rather than
+   being added to and removed from a list. Red/loss-toned when active since
+   these are always self-flagged execution errors, never a neutral label. */
+.mistake-tag-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:2px;}
+.mistake-tag-toggle{
+  padding:6px 12px; border-radius:99px; font-size:12px; font-weight:600;
+  background:var(--panel-2); color:var(--muted); border:1px solid var(--line);
+  cursor:pointer; user-select:none; text-transform:capitalize;
+  transition:background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.mistake-tag-toggle:hover{border-color:var(--muted); color:var(--text);}
+.mistake-tag-toggle-active{background:rgba(225,92,92,.14); color:var(--loss); border-color:rgba(225,92,92,.35);}
+.mistake-tag-toggle-active:hover{color:var(--loss);}
+
 /* ---------- Field tooltips ---------- */
 .field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}
 .field-tooltip-btn{

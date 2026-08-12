@@ -11,6 +11,11 @@ import ErrorBanner from './ErrorBanner'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
+// Fixed multi-select set - unlike the free-text tags above, there's no
+// "+ Add" affordance here, since the whole point is a closed, comparable
+// set of mistakes the strategy detail page's breakdown table can group by.
+export const MISTAKE_TAG_OPTIONS = ['early entry', 'moved stop', 'oversized', 'hesitated', 'other']
+
 export const EMPTY_TRADE_FORM = {
   direction: 'long',
   strategyId: '',
@@ -19,6 +24,7 @@ export const EMPTY_TRADE_FORM = {
   execution: { contracts: '', exit_time: '', exit_price: '' },
   pnl: null,
   tags: [],
+  mistakeTags: [],
   existingScreenshots: [],
 }
 
@@ -87,6 +93,7 @@ export default function TradeForm({
   const [tags, setTags] = useState(initial.tags || [])
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
+  const [mistakeTags, setMistakeTags] = useState(initial.mistakeTags || [])
 
   const [saving, setSaving] = useState(false)
 
@@ -222,6 +229,10 @@ export default function TradeForm({
     setTags((prev) => prev.filter((t) => t !== tag))
   }
 
+  function toggleMistakeTag(tag) {
+    setMistakeTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  }
+
   function handlePnlFocus() {
     const parsed = parseCurrency(pnlInput)
     setPnlInput(parsed === null ? '' : String(parsed))
@@ -278,6 +289,7 @@ export default function TradeForm({
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       pnl: parseCurrency(pnlInput),
       tags,
+      mistake_tags: mistakeTags,
     }
 
     // The caller navigates away on success; returning an error message
@@ -507,6 +519,21 @@ export default function TradeForm({
                   + Add tag
                 </span>
               )}
+            </div>
+          </div>
+
+          <div className="field full">
+            <label>Mistakes (if any)</label>
+            <div className="mistake-tag-row">
+              {MISTAKE_TAG_OPTIONS.map((opt) => (
+                <span
+                  key={opt}
+                  className={`mistake-tag-toggle ${mistakeTags.includes(opt) ? 'mistake-tag-toggle-active' : ''}`}
+                  onClick={() => toggleMistakeTag(opt)}
+                >
+                  {opt}
+                </span>
+              ))}
             </div>
           </div>
 

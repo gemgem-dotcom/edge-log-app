@@ -8,6 +8,7 @@ import { hasResult, tradeDurationMinutes, formatDuration, sampleConfidence } fro
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { MISTAKE_TAG_OPTIONS } from '@/components/TradeForm'
 import TradeLogTable from '@/components/TradeLogTable'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
@@ -57,6 +58,21 @@ const withD = trades.filter(hasDollar)
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
 return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, profitFactor, avgDuration: computeAvgDuration(allTrades) }
+}
+
+// "Bad execution vs. no edge" signal: among this strategy's losing trades,
+// what share carry each mistake tag versus carrying none at all. A trade
+// with multiple tags counts toward each, so rows don't sum to the total.
+function computeMistakeBreakdown(allTrades) {
+  const losses = allTrades.filter(hasResult).filter((t) => t.r_multiple < 0)
+  const total = losses.length
+  const rows = MISTAKE_TAG_OPTIONS.map((tag) => {
+    const count = losses.filter((t) => t.mistake_tags?.includes(tag)).length
+    return { tag, count, pct: total > 0 ? (count / total) * 100 : null }
+  })
+  const noTagCount = losses.filter((t) => !t.mistake_tags || t.mistake_tags.length === 0).length
+  rows.push({ tag: 'No tag', count: noTagCount, pct: total > 0 ? (noTagCount / total) * 100 : null })
+  return { total, rows }
 }
 
 function computeAvgDuration(trades) {
@@ -173,6 +189,8 @@ if (loading) return <StrategyDetailSkeleton />
 if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={loadData} /></div>
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
+const mistakeBreakdown = computeMistakeBreakdown(trades)
+
 return (
   <div className="page-container">
   <ErrorBanner message={formError} />
@@ -257,6 +275,28 @@ Delete strategy
 <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
   </div>
   </div>
+
+<div className="section-heading">Mistake breakdown</div>
+<div className="panel">
+{mistakeBreakdown.total === 0 ? (
+  <div className="empty">No losing trades yet — nothing to break down.</div>
+) : (
+  <table className="perf-table">
+  <thead>
+  <tr><th>Mistake tag</th><th>Losing trades</th><th>% of losses</th></tr>
+  </thead>
+  <tbody>
+  {mistakeBreakdown.rows.map((row) => (
+    <tr key={row.tag}>
+    <td className="strategy-name-cell" style={{ textTransform: 'capitalize' }}>{row.tag}</td>
+    <td>{row.count.toLocaleString('en-US')}</td>
+    <td>{row.pct === null ? '—' : row.pct.toFixed(1) + '%'}</td>
+    </tr>
+  ))}
+  </tbody>
+  </table>
+)}
+</div>
 
 <div className="section-heading">Trade log — {strategy.name}</div>
 <div className="panel">

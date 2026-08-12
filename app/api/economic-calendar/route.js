@@ -47,7 +47,7 @@ export async function GET() {
 
   let events
   try {
-    const res = await fetch(`https://financialmodelingprep.com/stable/economics-calendar?from=${from}&to=${to}&apikey=${apiKey}`)
+    const res = await fetch(`https://financialmodelingprep.com/api/v3/economic_calendar?from=${from}&to=${to}&apikey=${apiKey}`)
     if (!res.ok) throw new Error(`FMP returned ${res.status}`)
     const data = await res.json()
     const raw = Array.isArray(data) ? data : []

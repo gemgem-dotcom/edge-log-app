@@ -25,11 +25,27 @@ const MONTH_NAMES = { January: 0, February: 1, March: 2, April: 3, May: 4, June:
 // considers release-worthy in the first place. CATEGORIES:IMPORTANT is on
 // every event in the feed (including minor regional releases), so it
 // can't be used to distinguish market-moving impact - matching on the
-// well-known high-impact release names instead.
-const HIGH_IMPACT_KEYWORDS = ['Employment Situation', 'Consumer Price Index', 'Producer Price Index', 'Employment Cost Index']
+// well-known high-impact release names instead. Employment Cost Index is
+// deliberately not in this list - ForexFactory rates it medium, not high.
+const HIGH_IMPACT_KEYWORDS = ['Employment Situation', 'Consumer Price Index', 'Producer Price Index']
 
 function classifyImpact(summary) {
   return HIGH_IMPACT_KEYWORDS.some((kw) => summary.includes(kw)) ? 'high' : 'medium'
+}
+
+// BLS's SUMMARY text doesn't match ForexFactory's naming - rename the
+// releases that matter for impact classification/recognition, leave
+// everything else (regional/niche BLS releases) under BLS's own name
+// rather than guessing at an FF equivalent that may not exist.
+const BLS_NAME_OVERRIDES = {
+  'Employment Situation': 'Non-Farm Payrolls',
+  'Consumer Price Index': 'CPI m/m',
+  'Producer Price Index': 'PPI m/m',
+  'Job Openings and Labor Turnover Survey': 'JOLTS Job Openings',
+}
+
+function renameBlsEvent(summary) {
+  return BLS_NAME_OVERRIDES[summary] || summary
 }
 
 // Module-level cache of the whole merged event list, unfiltered by week -
@@ -136,7 +152,7 @@ async function fetchBlsEvents() {
     date: e.date,
     time: e.time,
     country: 'US',
-    event: e.event,
+    event: renameBlsEvent(e.event),
     impact: classifyImpact(e.event),
     actual: null,
     estimate: null,

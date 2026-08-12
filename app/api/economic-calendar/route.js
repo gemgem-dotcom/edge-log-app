@@ -158,9 +158,15 @@ async function fetchBlsEvents() {
         'Referer': 'https://www.bls.gov/schedule/news_release/',
       },
     })
-    if (!res.ok) return []
+    if (!res.ok) {
+      console.error(`[economic-calendar] BLS fetch failed: ${res.status} ${res.statusText}`)
+      return []
+    }
     const text = await res.text()
     const raw = parseBlsIcs(text)
+    if (raw.length === 0) {
+      console.error('[economic-calendar] BLS fetch returned 200 but parsed 0 events - feed shape may have changed')
+    }
 
     return raw.map((e) => ({
       date: e.date,
@@ -173,7 +179,8 @@ async function fetchBlsEvents() {
       prev: null,
       unit: '',
     }))
-  } catch {
+  } catch (err) {
+    console.error('[economic-calendar] BLS fetch threw:', err.message)
     return []
   }
 }
@@ -283,10 +290,14 @@ async function fetchFomcEvents() {
         'Accept-Language': 'en-US,en;q=0.9',
       },
     })
-    if (!res.ok) return []
+    if (!res.ok) {
+      console.error(`[economic-calendar] FOMC fetch failed: ${res.status} ${res.statusText}`)
+      return []
+    }
     const html = await res.text()
     return parseFomcHtml(html)
-  } catch {
+  } catch (err) {
+    console.error('[economic-calendar] FOMC fetch threw:', err.message)
     return []
   }
 }
@@ -297,7 +308,10 @@ async function fetchFomcEvents() {
 // isn't set, since it's additive on top of BLS rather than required.
 async function fetchFredEvents() {
   const apiKey = process.env.FRED_API_KEY
-  if (!apiKey) return []
+  if (!apiKey) {
+    console.error('[economic-calendar] FRED_API_KEY not set - skipping FRED events')
+    return []
+  }
 
   const now = new Date()
   const start = new Date(now)
@@ -313,13 +327,17 @@ async function fetchFredEvents() {
     const url = `https://api.stlouisfed.org/fred/releases/dates?api_key=${apiKey}&file_type=json&release_id=${id}&realtime_start=${realtimeStart}&realtime_end=${realtimeEnd}&include_release_dates_with_no_data=true`
     try {
       const res = await fetch(url)
-      if (!res.ok) return []
+      if (!res.ok) {
+        console.error(`[economic-calendar] FRED release ${id} (${meta.name}) failed: ${res.status} ${res.statusText}`)
+        return []
+      }
       const data = await res.json()
       return (data.release_dates || []).map((rd) => ({
         date: rd.date, time: meta.time, country: 'US', event: meta.name,
         impact: meta.impact, actual: null, estimate: null, prev: null, unit: '',
       }))
-    } catch {
+    } catch (err) {
+      console.error(`[economic-calendar] FRED release ${id} (${meta.name}) threw:`, err.message)
       return []
     }
   }))

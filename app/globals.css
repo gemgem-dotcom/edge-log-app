@@ -516,7 +516,15 @@ table{min-width:640px;}
 }
 
 /* ---------- Shell layout (sidebar + topbar) ---------- */
-.shell{min-height:100vh; display:flex; flex-direction:column;}
+/* A real height, not min-height: .main-area's overflow-y:auto below only
+   ever engages if something in its ancestor chain is actually bounded
+   rather than just floored - min-height:100vh let .shell (and everything
+   in it, sidebar included) grow past the viewport to fit tall content
+   instead, so the whole document scrolled and the sidebar scrolled away
+   with it. Desktop only - see the mobile override below, where the
+   sidebar collapses into a horizontal top row and the page is meant to
+   scroll normally, same as it does today. */
+.shell{height:100vh; display:flex; flex-direction:column;}
 /* .shell-topbar is always position:fixed (see its rule below) so it can
    overlay content while pinned mid-scroll; this reserves the space it
    would otherwise have occupied in flow, sized by useStickyTopbar to match
@@ -686,6 +694,17 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .simple-page-wrap{max-width:800px; margin:0 auto; padding:32px 24px 60px;}
 
 @media (max-width:900px){
+  /* Reverts the desktop-only height:100vh fix above - once the sidebar
+     collapses into a horizontal top row (below) it's back in normal flow
+     above the content instead of beside it, so the whole page should
+     scroll as one, not turn .main-area into its own inner scroll box.
+     (overflow-y:visible here computes to auto, not visible - same
+     overflow-x/y interaction as .tags-field elsewhere in this file, since
+     overflow-x:hidden is still in effect - but harmless either way: with
+     .shell back to height:auto, .main-area is always exactly as tall as
+     its content, so there's never anything for either value to clip.) */
+  .shell{height:auto; min-height:100vh;}
+  .main-area{overflow-y:visible;}
   .shell-body{flex-direction:column;}
   .sidebar{
     width:100%; flex-direction:row; flex-wrap:wrap; border-right:none;

@@ -50,6 +50,9 @@ lib/
   screenshots.js                   screenshot upload, throws so callers word their own errors
   timezone.js                      UTC offset list + timestamp formatting
   useClickOutside.js               close a dropdown on outside click / Escape
+  greeting.js                      time-of-day-aware greeting phrases for the Overview page
+  streak.js                        current win/loss streak from a list of trades
+  marketContextMock.js             placeholder volatility/key-levels/econ-event data (not live)
 jsconfig.json                      the @/ import alias
 schema.sql                         database tables + row level security
 storage-setup.sql                  screenshots storage bucket
@@ -66,6 +69,16 @@ storage-setup.sql                  screenshots storage bucket
 All three must exist locally in `.env.local` and in Vercel (Project Settings →
 Environment Variables). The CI build uses harmless placeholder values, because
 nothing during a build talks to the database.
+
+The Overview pages' "Economic calendar", volatility, and key-levels cards currently
+render mock data from `lib/marketContextMock.js` (`components/EconomicCalendarCard.js`
+and the inline volatility/key-levels blocks in `OverviewDashboard.js` and
+`app/app/[instrument]/dashboard/page.js`). These previously ran on a live BLS/FRED/
+FOMC pipeline (`app/api/economic-calendar`, `lib/fredReleases.js`,
+`lib/computedReleases.js`) that was pulled out in favor of a paid market-data
+provider - not yet wired up. `lib/marketContextMock.js`'s exports keep the shape a
+real provider's data would need, so swapping it back to a live source shouldn't
+require touching the cards themselves.
 
 ## Database
 

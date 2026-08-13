@@ -34,6 +34,11 @@
    1102  Toast notifications
    1387  Public policy pages (Privacy, Terms)
    1405  Legal links (auth pages + account settings)
+   1490  Economic calendar card (mock - Overview pages)
+   1573  Calendar news badge (Monthly P&L day cells, mock)
+   1594  Streak badge (Overview + strategy detail pages)
+   1603  Market status pill (Overview + strategy detail pages)
+   1616  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -621,6 +626,16 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .main-area{flex:1; min-width:0; overflow-y:auto; overflow-x:hidden; padding:32px 40px 60px;}
 
 .page-subtitle{font-size:13.5px; color:var(--muted); margin-top:-14px; margin-bottom:24px;}
+/* Pairs the subtitle with the header's status pills (market status, streak)
+   on the pages that have both - deliberately NOT the header-level action
+   button, which stays up in .page-header-row/.strategy-header-row instead.
+   Grouping the pills with descriptive text on the left, opposite the lone
+   action button in the corner above, keeps the header from reading as a
+   cluster of rounded badges all stacked in the same spot. Carries
+   .page-subtitle's own negative top margin itself, so the nested
+   .page-subtitle needs none of its own. */
+.page-subtitle-row{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:-14px; margin-bottom:24px;}
+.page-subtitle-row .page-subtitle{margin-top:0; margin-bottom:0;}
 @media (max-width:640px){
   /* On desktop the header row (title + action button) is a single line and
      .page-subtitle rides up under the title on a negative margin. Once the
@@ -628,16 +643,22 @@ a.shell-logo{color:inherit; text-decoration:none;}
      plus a header button with not enough room beside it), that same
      negative margin instead pulls the subtitle up under the wrapped
      button. Give the row breathing room between wrapped lines and let the
-     subtitle sit at its natural position instead. */
+     subtitle sit at its natural position instead. Full-width rather than
+     left-aligned at its own content width - a content-sized pill button
+     wrapped onto its own line otherwise reads as an arbitrarily-sized
+     shape floating with dead space beside it. Full width gives it a clear
+     identity as the row's primary action. */
   .page-header-row{row-gap:10px;}
-  .page-header-row .new-trade-btn{margin-left:0 !important;}
+  .page-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
   .page-subtitle{margin-top:8px;}
+  /* Same wrap treatment as .page-header-row above, for the subtitle+pills
+     row (no button here - see the comment on .page-subtitle-row above). */
+  .page-subtitle-row{margin-top:8px; row-gap:8px;}
   /* Title and the ⋮ menu button stay on one line (menu belongs next to the
-     name it acts on); only the "Log new trade" button - which has nowhere
-     left to go once the name eats the row - drops to its own line below,
-     sized to its own content rather than stretched full-width. */
+     name it acts on); only the action button - which has nowhere left to go
+     once the name eats the row - drops to its own line below. */
   .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
-  .strategy-header-row .new-trade-btn{margin-left:0 !important; flex-grow:0;}
+  .strategy-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
 }
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
@@ -736,19 +757,30 @@ a.shell-logo{color:inherit; text-decoration:none;}
   letter-spacing:.06em; font-weight:600; padding-bottom:4px;
 }
 .calendar-cell{
-  min-height:76px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2);
-  padding:8px; display:flex; flex-direction:column; gap:2px; transition:border-color .15s ease;
+  position:relative; min-height:76px; border-radius:8px; border:1px solid var(--line);
+  background:var(--panel-2); padding:8px; display:flex; flex-direction:column; gap:2px;
+  transition:border-color .15s ease;
 }
 .calendar-cell-empty{border:none; background:transparent;}
 .calendar-cell-has-trades{cursor:pointer;}
 .calendar-cell-has-trades:hover{border-color:var(--accent);}
 .calendar-cell-selected{border-color:var(--accent); background:rgba(59,167,255,.08);}
 .calendar-date-num{font-size:12px; color:var(--muted); font-weight:600;}
+/* Explicit width/height rather than padding, so this stays a circle
+   instead of stretching to the cell's full width - .calendar-cell is a
+   column flexbox, whose default align-items:stretch would otherwise
+   stretch a bare block child across the cross axis. */
+.calendar-date-num-today{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; border-radius:50%; background:var(--accent);
+  color:#04121f; font-weight:700;
+}
 .calendar-day-pnl{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; margin-top:auto;}
 .calendar-day-count{font-size:10.5px; color:var(--muted);}
 
 @media (max-width:640px){
   .calendar-cell{min-height:56px; padding:5px;}
+  .calendar-date-num-today{width:15px; height:15px; font-size:10px;}
   .calendar-day-pnl{font-size:11px;}
   .calendar-day-count{display:none;}
 }
@@ -888,6 +920,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* h1 carries a global margin-top:4px, which the flex row centres along with
    the text and leaves the menu button sitting high next to the name. */
 .strategy-header-row h1{margin-top:0;}
+/* Groups the header's status pills (market status, streak) so they move -
+   and wrap - together on narrow screens, and so they share one gap instead
+   of each needing its own spacing rule. Lives in .page-subtitle-row,
+   grouped with the subtitle text on the left - deliberately not up here
+   with the header-level action button (Log new trade), which stays alone
+   in its own corner. Splitting "info" (pills, with the description) from
+   "action" (button, alone) keeps the header from reading as one dense
+   cluster of same-shaped badges. */
+.header-action-group{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+/* strategy-header-row has no justify-content:space-between (unlike
+   page-header-row), so the action button pushes itself right on its own. */
+.strategy-header-row .new-trade-btn{margin-left:auto;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
             background:none; border:1px solid transparent; border-radius:100px;
@@ -1451,3 +1495,170 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    a bordered .panel card, so the same border-top + padding reads as the
    closing footer rather than a stray line of text. */
 .policy-footer{margin-top:32px; padding-top:24px; border-top:1px solid var(--line); text-align:center;}
+
+/* ---------- Economic calendar card (mock - Overview pages) ---------- */
+.econ-impact-dot{width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0;}
+.econ-impact-high{background:var(--loss);}
+.econ-impact-medium{background:var(--be);}
+.econ-impact-low{background:var(--muted);}
+
+/* Impact checklist - independent High/Medium/Low checkboxes. Absolute
+   (not .col-filter-menu's own fixed) since this sits in a toolbar above
+   the event list, not inside a horizontally-scrolling ancestor that would
+   clip a fixed-position menu differently than an absolute one anyway. */
+.econ-impact-filter{position:relative;}
+/* Overrides .calendar-strategy-filter's 34px right padding, sized for a
+   native <select>'s chevron background-image - this is a flex button with
+   its own SVG chevron child instead, so that reserved space just left a gap. */
+.econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
+.econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
+
+/* Impact checklist + date range picker toolbar reuses .calendar-toolbar
+   (defined under Monthly P&L) rather than a bespoke header, so this card's
+   top spacing matches every other filter+nav toolbar in the app instead of
+   inventing its own margin. */
+.date-range-picker-wrap{position:relative;}
+.econ-date-range-trigger{display:flex; align-items:center; gap:8px; cursor:pointer;}
+/* Fixed-positioned popover (see CalendarNewsBadge/ColumnFilter for the same
+   pattern) rather than absolute, since this toolbar can end up inside a
+   horizontally-scrolling ancestor on narrow viewports. */
+.date-range-picker{
+  position:fixed; z-index:60; width:280px; background:var(--panel);
+  border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.45);
+  padding:14px; animation:dropdown-in .15s ease;
+}
+.date-range-picker-header{display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:12px;}
+.date-range-picker-month{font-size:13.5px; font-weight:700; min-width:130px; text-align:center;}
+.date-range-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px;}
+.date-range-weekday{
+  text-align:center; font-size:10px; color:var(--muted); text-transform:uppercase;
+  letter-spacing:.04em; font-weight:600; padding-bottom:6px;
+}
+.date-range-cell{
+  display:flex; align-items:center; justify-content:center; height:30px; border-radius:6px;
+  font-size:12.5px; color:var(--text); cursor:pointer; user-select:none;
+  transition:background-color .15s ease;
+}
+.date-range-cell:hover{background:rgba(59,167,255,.14);}
+.date-range-cell-outside{color:var(--muted); opacity:.5;}
+.date-range-cell-today{box-shadow:inset 0 0 0 1px var(--accent);}
+.date-range-cell-in-range{background:rgba(59,167,255,.16); border-radius:0;}
+.date-range-cell-endpoint{background:var(--accent); color:#04121f; font-weight:700;}
+.date-range-picker-footer{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); display:flex; justify-content:flex-end;}
+/* Ghost button, no border/fill - a quiet shortcut in the popover footer
+   rather than another boxed control. */
+.econ-today-btn{
+  display:inline-flex; align-items:center; gap:5px; background:none; border:none;
+  padding:4px 2px; font-size:12.5px; font-weight:600;
+  color:var(--muted); cursor:pointer; transition:color .15s ease;
+}
+.econ-today-btn:hover{color:var(--accent);}
+.econ-today-btn svg{width:12px; height:12px; flex-shrink:0;}
+.econ-calendar-mock-list{display:flex; flex-direction:column;}
+.econ-calendar-mock-row{
+  display:flex; align-items:center; gap:12px; padding:10px 0;
+  border-bottom:1px solid var(--line); font-size:13px;
+}
+.econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
+/* Only applied when the visible range is more than a single day (see
+   isSingleDay in EconomicCalendarCard) - viewing just today alone has
+   nothing to contrast it against, so the highlight would be meaningless. */
+.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:6px; padding-left:8px; padding-right:8px; margin:0 -8px;}
+.econ-calendar-mock-day{
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
+  width:46px; flex-shrink:0;
+}
+.econ-calendar-mock-time{font-family:'JetBrains Mono',monospace; color:var(--muted); width:44px; flex-shrink:0;}
+.econ-calendar-mock-event{flex:1; font-weight:600;}
+.econ-calendar-mock-figures{
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);
+  white-space:nowrap; flex-shrink:0;
+}
+.econ-calendar-mock-footer{
+  margin-top:12px; padding-top:12px; border-top:1px solid var(--line);
+  font-size:12.5px; color:var(--accent);
+}
+
+/* ---------- Calendar news badge (Monthly P&L day cells, mock) ---------- */
+.calendar-news-badge-wrap{position:absolute; top:5px; right:5px;}
+.calendar-news-badge{
+  display:flex; align-items:center; justify-content:center; width:16px; height:16px;
+  padding:0; border-radius:50%; background:rgba(59,167,255,.14); border:none;
+  color:var(--accent); cursor:pointer; transition:background-color .15s ease;
+}
+.calendar-news-badge:hover{background:rgba(59,167,255,.28);}
+.calendar-news-badge svg{width:9px; height:9px; flex-shrink:0;}
+.calendar-news-popover{min-width:220px; padding:6px;}
+.calendar-news-popover-row{
+  display:flex; align-items:center; gap:8px; padding:6px 7px; font-size:12.5px;
+  font-family:'Inter',sans-serif; color:var(--text);
+}
+.calendar-news-popover-time{font-family:'JetBrains Mono',monospace; color:var(--muted); font-size:11.5px; flex-shrink:0;}
+.calendar-news-popover-event{flex:1;}
+@media (max-width:640px){
+  .calendar-news-badge{width:13px; height:13px;}
+  .calendar-news-badge svg{width:7px; height:7px;}
+}
+
+/* ---------- Streak badge (Overview + strategy detail pages) ---------- */
+.streak-badge{
+  display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+  border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap;
+}
+.streak-badge-win{background:rgba(51,193,122,.14); color:var(--win);}
+.streak-badge-loss{background:rgba(225,92,92,.14); color:var(--loss);}
+.streak-badge-fire{font-size:13px;}
+
+/* ---------- Market status pill (Overview + strategy detail pages) ---------- */
+/* Same padding/font-size/radius as .streak-badge so the two pills read as
+   one cohesive set when they sit side by side in .header-action-group. */
+.market-status-pill{
+  display:inline-flex; align-items:center; gap:7px; padding:6px 14px;
+  border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap;
+  background:var(--panel-2); color:var(--muted); border:1px solid var(--line);
+}
+.market-status-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0; background:var(--muted-2);}
+.market-status-pill-open{background:rgba(51,193,122,.14); color:var(--win); border-color:transparent;}
+.market-status-pill-open .market-status-dot{background:var(--win); box-shadow:0 0 0 3px rgba(51,193,122,.18);}
+.market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
+
+/* ---------- Volatility, key levels, today's brief (mock cards) ---------- */
+.volatility-strip{display:flex; flex-direction:column;}
+.volatility-strip-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.volatility-strip-row:last-child{border-bottom:none; padding-bottom:0;}
+.volatility-strip-symbol{font-weight:700; font-family:'JetBrains Mono',monospace;}
+.volatility-strip-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
+.volatility-strip-tag{color:var(--muted); font-family:'Inter',sans-serif; margin-left:4px;}
+
+.volatility-card-value{
+  font-family:'Archivo',sans-serif; font-size:32px; font-weight:800; margin-bottom:6px;
+}
+.volatility-card-unit{font-size:15px; font-weight:500; color:var(--muted); margin-left:6px;}
+.volatility-card-badge{
+  display:inline-block; padding:3px 10px; border-radius:99px; font-size:11.5px;
+  font-weight:600; background:rgba(225,92,92,.14); color:var(--loss); margin-bottom:12px;
+}
+.volatility-card-text, .brief-card-text, .strategy-context-text{
+  font-size:13px; line-height:1.55; color:var(--text);
+}
+
+.key-levels-list{display:flex; flex-direction:column;}
+.key-levels-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.key-levels-row:last-child{border-bottom:none; padding-bottom:0;}
+.key-levels-row span:first-child{color:var(--accent);}
+.key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
+
+/* Per-instrument Overview's Volatility/Key levels/Today's brief row, and
+   the per-strategy detail page's streak-adjacent card row. */
+.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:stretch;}
+.instrument-glance-row .panel, .strategy-glance-row .panel{margin-bottom:0; flex:1;}
+.strategy-glance-row{grid-template-columns:repeat(2,1fr);}
+@media (max-width:860px){
+  .instrument-glance-row, .strategy-glance-row{grid-template-columns:1fr;}
+}

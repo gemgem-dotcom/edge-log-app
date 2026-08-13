@@ -7,9 +7,15 @@ import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { computeStreak } from '@/lib/streak'
+import { mockVolatility, mockKeyLevels } from '@/lib/marketContextMock'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
 import PnlDonut from '@/components/PnlDonut'
+import EconomicCalendarCard from '@/components/EconomicCalendarCard'
+import CalendarNewsBadge from '@/components/CalendarNewsBadge'
+import StreakBadge from '@/components/StreakBadge'
+import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -105,6 +111,9 @@ function fmtPF(val) {
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
   return val > 0 ? 'pos' : val < 0 ? 'neg' : 'neu'
+}
+function fmtPrice(val) {
+  return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function toDateStr(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -222,6 +231,9 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
 const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
   const overall = computeStats(classifiedTrades)
+  const streak = computeStreak(allTrades)
+  const volatility = mockVolatility(symbol)
+  const keyLevels = mockKeyLevels(symbol)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
   const strategySegments = strategies.map((s, i) => {
     const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
@@ -242,6 +254,8 @@ const year = calCursor.year
   const monthStats = computeMonthStats(monthTrades)
   const weeks = buildCalendarWeeks(year, month, tradesByDate)
   const selectedTrades = selectedDate ? (tradesByDate[selectedDate] || []) : []
+  const todayNow = new Date()
+  const todayStr = toDateStr(todayNow.getFullYear(), todayNow.getMonth(), todayNow.getDate())
 
     function goPrevMonth() {
       setCalCursor((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }))
@@ -258,7 +272,17 @@ return (
     <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
-  <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
+  <div className="page-subtitle-row">
+    <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
+    <div className="header-action-group">
+      <MarketStatusPill />
+      <StreakBadge
+        streak={streak}
+        winLabel={(n) => `${n} ${symbol} win${n === 1 ? '' : 's'} in a row`}
+        lossLabel={(n) => `${n} ${symbol} loss${n === 1 ? '' : 'es'} in a row`}
+      />
+    </div>
+  </div>
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">
@@ -316,6 +340,39 @@ return (
   </div>
   </div>
   </div>
+
+<div className="section-heading">Economic calendar</div>
+<div className="panel">
+  <EconomicCalendarCard />
+</div>
+
+<div className="section-heading">At a glance</div>
+<div className="instrument-glance-row">
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Volatility — {symbol}</div>
+    <div className="volatility-card-value">{volatility.multiplier}x<span className="volatility-card-unit">normal</span></div>
+    {volatility.elevated && <span className="volatility-card-badge">Elevated</span>}
+    <p className="volatility-card-text">
+      {volatility.elevated
+        ? `${symbol} is running hot today — wider range than usual. Worth sizing with that in mind.`
+        : `${symbol} is trading within its normal range today.`}
+    </p>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Key levels</div>
+    <div className="key-levels-list">
+      <div className="key-levels-row"><span>Prior day high</span><span>{fmtPrice(keyLevels.priorHigh)}</span></div>
+      <div className="key-levels-row"><span>Prior day low</span><span>{fmtPrice(keyLevels.priorLow)}</span></div>
+      <div className="key-levels-row"><span>Session open</span><span>{fmtPrice(keyLevels.sessionOpen)}</span></div>
+    </div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+    <p className="brief-card-text">
+      {symbol}&apos;s volatile{streak ? `, you're on a streak trading it,` : ','} and CPI lands at 08:30.
+    </p>
+  </div>
+</div>
 
 <div className="section-heading">Strategy performance</div>
 <div className="panel">
@@ -425,7 +482,8 @@ winRate={monthStats.winRate}
 className={`calendar-cell ${cell.outside ? 'calendar-cell-outside' : ''} ${cell.count > 0 ? 'calendar-cell-has-trades' : ''} ${toneClass(cell.hasD ? cell.sumD : cell.sumR, cell.count)} ${selectedDate === cell.dateStr ? 'calendar-cell-selected' : ''}`}
 onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ? null : cell.dateStr)}
 >
-<div className="calendar-date-num">{String(cell.dayNum).padStart(2, '0')}</div>
+<CalendarNewsBadge dateStr={cell.dateStr} />
+<div className={`calendar-date-num ${cell.dateStr === todayStr ? 'calendar-date-num-today' : ''}`}>{String(cell.dayNum).padStart(2, '0')}</div>
 {cell.count > 0 && (
   <>
   <div className={`calendar-day-pnl ${colorClass(cell.hasD ? cell.sumD : cell.sumR)}`}>

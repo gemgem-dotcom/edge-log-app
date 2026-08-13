@@ -56,6 +56,11 @@ Copy `.env.local.example` to `.env.local` and fill in the three values:
 
 All three also need to be added in Vercel under **Project Settings → Environment Variables**.
 
+The economic calendar, volatility, and key-levels cards on the Overview pages
+currently show mock/placeholder data (`lib/marketContextMock.js`) — no API key or
+setup needed for those. See `NOTES.md` for the plan to replace them with a real
+market-data provider.
+
 ## 5. Run it
 
 ```bash

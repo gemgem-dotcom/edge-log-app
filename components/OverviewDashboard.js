@@ -5,9 +5,16 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
+import { pickGreeting } from '@/lib/greeting'
+import { computeStreak } from '@/lib/streak'
+import { mockVolatility } from '@/lib/marketContextMock'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlDonut from '@/components/PnlDonut'
 import WinRateGauge from '@/components/WinRateGauge'
+import EconomicCalendarCard from '@/components/EconomicCalendarCard'
+import CalendarNewsBadge from '@/components/CalendarNewsBadge'
+import StreakBadge from '@/components/StreakBadge'
+import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -191,6 +198,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [allTrades, setAllTrades] = useState([])
+  const [greeting, setGreeting] = useState('')
   const [equityGroup, setEquityGroup] = useState('day')
   const [calInstrument, setCalInstrument] = useState('all')
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
@@ -213,6 +221,9 @@ export default function OverviewDashboard({ instruments, strategies }) {
       if (tradeError) throw tradeError
 
       setAllTrades(tradeData || [])
+
+      const { data: { user } } = await supabase.auth.getUser()
+      setGreeting(pickGreeting(user?.user_metadata?.full_name))
     } catch (err) {
       setError(err.message || "Couldn't load your dashboard — something went wrong.")
     } finally {
@@ -228,6 +239,17 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
   const overall = computeOverallStats(allTrades)
+  const streak = computeStreak(allTrades)
+
+  // Mock only - real version should weigh actual volatility/calendar data,
+  // not just restate the streak badge and the calendar card's first row.
+  const topVolInstrument = instruments.reduce((best, inst) => {
+    const v = mockVolatility(inst.symbol).multiplier
+    return !best || v > best.v ? { symbol: inst.symbol, v } : best
+  }, null)
+  const briefText = streak
+    ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep${topVolInstrument ? `, ${topVolInstrument.symbol}'s volatile,` : ','} and CPI drops at 08:30.`
+    : `${topVolInstrument ? `${topVolInstrument.symbol}'s volatile today` : 'Markets are active today'} and CPI drops at 08:30 — worth keeping an eye on.`
 
   const equityPoints = buildEquityCurve(allTrades, equityGroup)
 
@@ -256,6 +278,8 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const monthStats = computeOverallStats(monthTrades)
   const weeks = buildCalendarWeeks(year, month, tradesByDate)
   const selectedTrades = selectedDate ? (tradesByDate[selectedDate] || []) : []
+  const todayNow = new Date()
+  const todayStr = toDateStr(todayNow.getFullYear(), todayNow.getMonth(), todayNow.getDate())
 
   function goPrevMonth() {
     setCalCursor((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }))
@@ -270,8 +294,18 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">DASHBOARD</h1>
-      <p className="page-subtitle">Your performance overview across all instruments.</p>
+      <div className="page-header-row">
+        <h1 className="page-title">{greeting}</h1>
+        <div className="header-action-group">
+          <MarketStatusPill />
+          <StreakBadge
+            streak={streak}
+            winLabel={(n) => `${n}-trade win streak`}
+            lossLabel={(n) => `${n}-trade losing streak`}
+          />
+        </div>
+      </div>
+      <p className="page-subtitle">Here&apos;s your edge, at a glance.</p>
 
       {allTrades.length === 0 ? (
         <div className="panel">
@@ -316,6 +350,39 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat-label">Total trades</div>
               <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
               <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
+            </div>
+          </div>
+
+          <div className="section-heading">Economic calendar</div>
+          <div className="panel">
+            <EconomicCalendarCard />
+          </div>
+
+          <div className="section-heading">At a glance</div>
+          <div className="dashboard-split">
+            <div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Volatility</div>
+                <div className="volatility-strip">
+                  {instruments.map((inst) => {
+                    const v = mockVolatility(inst.symbol)
+                    return (
+                      <div className="volatility-strip-row" key={inst.id}>
+                        <span className="volatility-strip-symbol">{inst.symbol}</span>
+                        <span className="volatility-strip-value">
+                          {v.multiplier}x<span className="volatility-strip-tag">{v.elevated ? 'elevated' : 'normal'}</span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+                <p className="brief-card-text">{briefText}</p>
+              </div>
             </div>
           </div>
 
@@ -419,7 +486,8 @@ export default function OverviewDashboard({ instruments, strategies }) {
                       className={`calendar-cell ${cell.outside ? 'calendar-cell-outside' : ''} ${cell.count > 0 ? 'calendar-cell-has-trades' : ''} ${toneClass(cell.hasD ? cell.sumD : cell.sumR, cell.count)} ${selectedDate === cell.dateStr ? 'calendar-cell-selected' : ''}`}
                       onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ? null : cell.dateStr)}
                     >
-                      <div className="calendar-date-num">{String(cell.dayNum).padStart(2, '0')}</div>
+                      <CalendarNewsBadge dateStr={cell.dateStr} />
+                      <div className={`calendar-date-num ${cell.dateStr === todayStr ? 'calendar-date-num-today' : ''}`}>{String(cell.dayNum).padStart(2, '0')}</div>
                       {cell.count > 0 && (
                         <>
                           <div className={`calendar-day-pnl ${colorClass(cell.hasD ? cell.sumD : cell.sumR)}`}>

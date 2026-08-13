@@ -13,6 +13,7 @@ import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
 import PnlDonut from '@/components/PnlDonut'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
+import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
@@ -475,6 +476,7 @@ winRate={monthStats.winRate}
 className={`calendar-cell ${cell.outside ? 'calendar-cell-outside' : ''} ${cell.count > 0 ? 'calendar-cell-has-trades' : ''} ${toneClass(cell.hasD ? cell.sumD : cell.sumR, cell.count)} ${selectedDate === cell.dateStr ? 'calendar-cell-selected' : ''}`}
 onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ? null : cell.dateStr)}
 >
+<CalendarNewsBadge dateStr={cell.dateStr} />
 <div className="calendar-date-num">{String(cell.dayNum).padStart(2, '0')}</div>
 {cell.count > 0 && (
   <>

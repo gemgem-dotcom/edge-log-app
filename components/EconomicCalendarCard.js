@@ -11,6 +11,10 @@ const IMPACT_OPTIONS = [
   { value: 'low', label: 'Low impact' },
 ]
 const WEEKDAY_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI']
+const VIEW_MODES = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+]
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -34,6 +38,10 @@ function formatWeekLabel(monday) {
   const start = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const end = friday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   return `${start} – ${end}`
+}
+
+function formatDayLabel(date) {
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function impactFilterLabel(selected) {
@@ -76,22 +84,26 @@ function ImpactChecklist({ selected, onChange }) {
 // Mock data only (lib/marketContextMock.js) - not sourced from any live
 // feed. MOCK_ECON_WEEK's shape (weekday offset + time/event/impact/
 // forecast/previous) is what a real provider's data should slot into so
-// this component doesn't need to change - only the Monday/Friday dates
-// shown are real (computed from the browser clock plus however many weeks
-// the trader has flipped), the event list itself repeats every week.
+// this component doesn't need to change - only the dates shown are real
+// (computed from the browser clock plus however many days/weeks the
+// trader has flipped), the event list itself repeats every week.
 //
 // Reused as-is on the per-instrument Overview page. A future version
 // should filter events down to whatever's relevant to that instrument's
 // underlying currency/market instead of always showing the same US-wide
 // list - no such filtering exists yet.
 export default function EconomicCalendarCard() {
-  const [weekOffset, setWeekOffset] = useState(0)
+  const [viewMode, setViewMode] = useState('day')
+  // Single anchor date rather than separate day/week cursors - switching
+  // modes keeps showing whatever day/week that anchor currently falls in,
+  // instead of resetting to today.
+  const [cursorDate, setCursorDate] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d })
   const [impactSelected, setImpactSelected] = useState(['high', 'medium', 'low'])
 
-  const monday = mondayOf(new Date())
-  monday.setDate(monday.getDate() + weekOffset * 7)
+  const monday = mondayOf(cursorDate)
+  const cursorDateStr = toDateStr(cursorDate)
 
-  const events = MOCK_ECON_WEEK
+  const weekEvents = MOCK_ECON_WEEK
     .filter((e) => impactSelected.includes(e.impact))
     .map((e) => {
       const d = new Date(monday)
@@ -100,25 +112,44 @@ export default function EconomicCalendarCard() {
     })
     .sort((a, b) => (a.dateStr + a.time).localeCompare(b.dateStr + b.time))
 
+  const events = viewMode === 'day' ? weekEvents.filter((e) => e.dateStr === cursorDateStr) : weekEvents
+
+  function shiftCursor(days) {
+    setCursorDate((d) => { const nd = new Date(d); nd.setDate(nd.getDate() + days); return nd })
+  }
+
   return (
     <>
       <div className="calendar-toolbar">
-        <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
+        <div className="econ-calendar-toolbar-left">
+          <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
+          <div className="tabs econ-calendar-view-tabs">
+            {VIEW_MODES.map((m) => (
+              <div
+                key={m.value}
+                className={`tab ${viewMode === m.value ? 'tab-active' : ''}`}
+                onClick={() => setViewMode(m.value)}
+              >
+                {m.label}
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="calendar-month-nav">
-          <button type="button" className="calendar-nav-btn" onClick={() => setWeekOffset((w) => w - 1)} aria-label="Previous week"><ChevronLeft size={18} /></button>
-          <div className="calendar-month-label">{formatWeekLabel(monday)}</div>
-          <button type="button" className="calendar-nav-btn" onClick={() => setWeekOffset((w) => w + 1)} aria-label="Next week"><ChevronRight size={18} /></button>
+          <button type="button" className="calendar-nav-btn" onClick={() => shiftCursor(viewMode === 'day' ? -1 : -7)} aria-label={viewMode === 'day' ? 'Previous day' : 'Previous week'}><ChevronLeft size={18} /></button>
+          <div className="calendar-month-label">{viewMode === 'day' ? formatDayLabel(cursorDate) : formatWeekLabel(monday)}</div>
+          <button type="button" className="calendar-nav-btn" onClick={() => shiftCursor(viewMode === 'day' ? 1 : 7)} aria-label={viewMode === 'day' ? 'Next day' : 'Next week'}><ChevronRight size={18} /></button>
         </div>
       </div>
 
       {events.length === 0 ? (
-        <div className="empty">No matching events this week.</div>
+        <div className="empty">No matching events {viewMode === 'day' ? 'on this day' : 'this week'}.</div>
       ) : (
         <div className="econ-calendar-mock-list">
           {events.map((e, i) => (
             <div className="econ-calendar-mock-row" key={i}>
               <span className={`econ-impact-dot econ-impact-${e.impact}`} />
-              <span className="econ-calendar-mock-day">{WEEKDAY_LABELS[e.day]}</span>
+              {viewMode === 'week' && <span className="econ-calendar-mock-day">{WEEKDAY_LABELS[e.day]}</span>}
               <span className="econ-calendar-mock-time">{e.time}</span>
               <span className="econ-calendar-mock-event">{e.event}</span>
               <span className="econ-calendar-mock-figures">

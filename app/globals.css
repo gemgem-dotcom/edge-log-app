@@ -34,9 +34,10 @@
    1102  Toast notifications
    1387  Public policy pages (Privacy, Terms)
    1405  Legal links (auth pages + account settings)
-   1456  Economic calendar card (mock - Overview pages)
-   1484  Streak badge (Overview + strategy detail pages)
-   1493  Volatility, key levels, today's brief (mock cards)
+   1459  Economic calendar card (mock - Overview pages)
+   1509  Calendar news badge (Monthly P&L day cells, mock)
+   1528  Streak badge (Overview + strategy detail pages)
+   1537  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -739,8 +740,9 @@ a.shell-logo{color:inherit; text-decoration:none;}
   letter-spacing:.06em; font-weight:600; padding-bottom:4px;
 }
 .calendar-cell{
-  min-height:76px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2);
-  padding:8px; display:flex; flex-direction:column; gap:2px; transition:border-color .15s ease;
+  position:relative; min-height:76px; border-radius:8px; border:1px solid var(--line);
+  background:var(--panel-2); padding:8px; display:flex; flex-direction:column; gap:2px;
+  transition:border-color .15s ease;
 }
 .calendar-cell-empty{border:none; background:transparent;}
 .calendar-cell-has-trades{cursor:pointer;}
@@ -1472,10 +1474,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
 .econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
-/* Impact checklist + week nav toolbar reuses .calendar-toolbar (defined
-   under Monthly P&L) rather than a bespoke header, so this card's top
-   spacing matches every other filter+nav toolbar in the app instead of
+/* Impact checklist + day/week toggle + nav toolbar reuses .calendar-toolbar
+   (defined under Monthly P&L) rather than a bespoke header, so this card's
+   top spacing matches every other filter+nav toolbar in the app instead of
    inventing its own margin. */
+.econ-calendar-toolbar-left{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+/* .tabs normally carries its own 16px bottom margin for stacking above a
+   chart (see Equity curve's Day/Week/Month tabs) - here it's an inline
+   sibling of the impact filter instead, so that margin would just misalign
+   it against the toolbar's other flex children. */
+.econ-calendar-view-tabs{margin-bottom:0;}
 .econ-calendar-mock-list{display:flex; flex-direction:column;}
 .econ-calendar-mock-row{
   display:flex; align-items:center; gap:12px; padding:10px 0;
@@ -1495,6 +1503,27 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .econ-calendar-mock-footer{
   margin-top:12px; padding-top:12px; border-top:1px solid var(--line);
   font-size:12.5px; color:var(--accent);
+}
+
+/* ---------- Calendar news badge (Monthly P&L day cells, mock) ---------- */
+.calendar-news-badge-wrap{position:absolute; top:5px; right:5px;}
+.calendar-news-badge{
+  display:flex; align-items:center; justify-content:center; width:16px; height:16px;
+  padding:0; border-radius:50%; background:rgba(59,167,255,.14); border:none;
+  color:var(--accent); cursor:pointer; transition:background-color .15s ease;
+}
+.calendar-news-badge:hover{background:rgba(59,167,255,.28);}
+.calendar-news-badge svg{width:9px; height:9px; flex-shrink:0;}
+.calendar-news-popover{min-width:220px; padding:6px;}
+.calendar-news-popover-row{
+  display:flex; align-items:center; gap:8px; padding:6px 7px; font-size:12.5px;
+  font-family:'Inter',sans-serif; color:var(--text);
+}
+.calendar-news-popover-time{font-family:'JetBrains Mono',monospace; color:var(--muted); font-size:11.5px; flex-shrink:0;}
+.calendar-news-popover-event{flex:1;}
+@media (max-width:640px){
+  .calendar-news-badge{width:13px; height:13px;}
+  .calendar-news-badge svg{width:7px; height:7px;}
 }
 
 /* ---------- Streak badge (Overview + strategy detail pages) ---------- */

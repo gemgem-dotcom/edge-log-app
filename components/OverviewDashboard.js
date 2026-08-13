@@ -220,14 +220,8 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
       setAllTrades(tradeData || [])
 
-      // Same stored-timezone-preference fallback as app/app/account/page.js
-      // (browser offset if the trader has never set one), so the greeting's
-      // morning/afternoon/evening bucket matches their actual local clock
-      // rather than the server's.
       const { data: { user } } = await supabase.auth.getUser()
-      const savedTz = user?.user_metadata?.timezone
-      const tz = savedTz !== undefined && savedTz !== null ? savedTz : -(new Date().getTimezoneOffset()) / 60
-      setGreeting(pickGreeting(user?.user_metadata?.full_name, tz))
+      setGreeting(pickGreeting(user?.user_metadata?.full_name))
     } catch (err) {
       setError(err.message || "Couldn't load your dashboard — something went wrong.")
     } finally {

@@ -93,6 +93,12 @@ export default function InstrumentLayout({ children, params }) {
         }
   }
 
+  function cancelAddStrategy() {
+        setAddingStrategy(false)
+        setNewStrategyName('')
+        setStrategyAddError(null)
+  }
+
   const isActive = (href) => pathname === href
 
   return (
@@ -143,7 +149,10 @@ export default function InstrumentLayout({ children, params }) {
                      value={newStrategyName}
                      onChange={(e) => setNewStrategyName(e.target.value)}
                    />
-                                         <button type="submit">Add</button>
+                    <div className="sidebar-strategy-add-actions">
+                      <span className="del" onClick={cancelAddStrategy}>Cancel</span>
+                      <button type="submit">Add</button>
+                    </div>
                        </form>
                   {strategyAddError && (
                     <span className="field-error" style={{ display: 'block', padding: '0 12px 6px 30px' }}>{strategyAddError}</span>

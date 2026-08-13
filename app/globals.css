@@ -626,13 +626,15 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .main-area{flex:1; min-width:0; overflow-y:auto; overflow-x:hidden; padding:32px 40px 60px;}
 
 .page-subtitle{font-size:13.5px; color:var(--muted); margin-top:-14px; margin-bottom:24px;}
-/* Pairs the subtitle with a header-level action button (e.g. "Log new
-   trade") on pages where that button lives down here instead of up in
-   .page-header-row with the status pills - keeps the button aligned with
-   the subtitle's line rather than floating separately below it. Carries
+/* Pairs the subtitle with the header's status pills (market status, streak)
+   on the pages that have both - deliberately NOT the header-level action
+   button, which stays up in .page-header-row/.strategy-header-row instead.
+   Grouping the pills with descriptive text on the left, opposite the lone
+   action button in the corner above, keeps the header from reading as a
+   cluster of rounded badges all stacked in the same spot. Carries
    .page-subtitle's own negative top margin itself, so the nested
    .page-subtitle needs none of its own. */
-.page-subtitle-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-top:-14px; margin-bottom:24px;}
+.page-subtitle-row{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:-14px; margin-bottom:24px;}
 .page-subtitle-row .page-subtitle{margin-top:0; margin-bottom:0;}
 @media (max-width:640px){
   /* On desktop the header row (title + action button) is a single line and
@@ -641,24 +643,22 @@ a.shell-logo{color:inherit; text-decoration:none;}
      plus a header button with not enough room beside it), that same
      negative margin instead pulls the subtitle up under the wrapped
      button. Give the row breathing room between wrapped lines and let the
-     subtitle sit at its natural position instead. */
+     subtitle sit at its natural position instead. Full-width rather than
+     left-aligned at its own content width - a content-sized pill button
+     wrapped onto its own line otherwise reads as an arbitrarily-sized
+     shape floating with dead space beside it. Full width gives it a clear
+     identity as the row's primary action. */
   .page-header-row{row-gap:10px;}
-  .page-header-row .new-trade-btn{margin-left:0 !important;}
+  .page-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
   .page-subtitle{margin-top:8px;}
-  /* Same wrap treatment as .page-header-row above, for the pages where the
-     action button now lives beside the subtitle instead. Full-width rather
-     than left-aligned at its own content width - at this width, a
-     content-sized pill button sitting under two tightly-fit status pills
-     just reads as a third, arbitrarily-sized rounded shape floating with
-     dead space beside it. Full width gives it a clear identity as the
-     row's primary action instead of one more badge in the stack. */
-  .page-subtitle-row{margin-top:8px; row-gap:10px;}
-  .page-subtitle-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
+  /* Same wrap treatment as .page-header-row above, for the subtitle+pills
+     row (no button here - see the comment on .page-subtitle-row above). */
+  .page-subtitle-row{margin-top:8px; row-gap:8px;}
   /* Title and the ⋮ menu button stay on one line (menu belongs next to the
-     name it acts on); only the status pills - which have nowhere left to go
-     once the name eats the row - drop to their own line below. */
+     name it acts on); only the action button - which has nowhere left to go
+     once the name eats the row - drops to its own line below. */
   .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
-  .strategy-header-row .header-action-group{margin-left:0; flex-grow:0;}
+  .strategy-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
 }
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
@@ -922,13 +922,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .strategy-header-row h1{margin-top:0;}
 /* Groups the header's status pills (market status, streak) so they move -
    and wrap - together on narrow screens, and so they share one gap instead
-   of each needing its own spacing rule. The header-level action button
-   (Log new trade) lives in .page-subtitle-row instead, not here - keeping
-   it off this row is what makes the pills a cohesive, same-sized set.
-   strategy-header-row has no justify-content:space-between (unlike
-   page-header-row), so the group pushes itself right via margin-left:auto. */
+   of each needing its own spacing rule. Lives in .page-subtitle-row,
+   grouped with the subtitle text on the left - deliberately not up here
+   with the header-level action button (Log new trade), which stays alone
+   in its own corner. Splitting "info" (pills, with the description) from
+   "action" (button, alone) keeps the header from reading as one dense
+   cluster of same-shaped badges. */
 .header-action-group{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
-.strategy-header-row .header-action-group{margin-left:auto;}
+/* strategy-header-row has no justify-content:space-between (unlike
+   page-header-row), so the action button pushes itself right on its own. */
+.strategy-header-row .new-trade-btn{margin-left:auto;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
             background:none; border:1px solid transparent; border-radius:100px;

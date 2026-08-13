@@ -270,6 +270,10 @@ return (
   <div className="page-container">
   <div className="page-header-row">
     <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
+    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+  </div>
+  <div className="page-subtitle-row">
+    <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
     <div className="header-action-group">
       <MarketStatusPill />
       <StreakBadge
@@ -278,10 +282,6 @@ return (
         lossLabel={(n) => `${n} ${symbol} loss${n === 1 ? '' : 'es'} in a row`}
       />
     </div>
-  </div>
-  <div className="page-subtitle-row">
-    <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
-    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
 
   {unclassifiedCount > 0 && (

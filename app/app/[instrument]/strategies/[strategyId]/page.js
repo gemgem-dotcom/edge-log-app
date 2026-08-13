@@ -198,14 +198,7 @@ Delete strategy
   </div>
 )}
 </div>
-<div className="header-action-group">
-  <MarketStatusPill />
-  <StreakBadge
-    streak={streak}
-    winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
-    lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
-  />
-</div>
+<a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
 
 {renaming && (
@@ -223,7 +216,14 @@ Delete strategy
 
 <div className="page-subtitle-row">
   <p className="page-subtitle">See how your strategy has performed.</p>
-  <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+  <div className="header-action-group">
+    <MarketStatusPill />
+    <StreakBadge
+      streak={streak}
+      winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
+      lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
+    />
+  </div>
 </div>
 
 <div className="section-heading">Performance</div>

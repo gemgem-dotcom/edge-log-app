@@ -1619,7 +1619,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 .market-status-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0; background:var(--muted-2);}
 .market-status-pill-open{background:rgba(51,193,122,.14); color:var(--win); border-color:transparent;}
-.market-status-pill-open .market-status-dot{background:var(--win); box-shadow:0 0 0 3px rgba(51,193,122,.18);}
+/* Animates the dot's own ring outward and fading, rather than a separate
+   pseudo-element - the ring already existed as a static box-shadow, so
+   this reuses it instead of adding another layer just to animate. Closed
+   state keeps a plain dot; a "live" pulse only makes sense when the thing
+   it's reporting on is actually live. */
+.market-status-pill-open .market-status-dot{background:var(--win); animation:market-status-pulse 2s ease-out infinite;}
+@keyframes market-status-pulse{
+  0%{box-shadow:0 0 0 0 rgba(51,193,122,.4);}
+  70%{box-shadow:0 0 0 6px rgba(51,193,122,0);}
+  100%{box-shadow:0 0 0 0 rgba(51,193,122,0);}
+}
+@media (prefers-reduced-motion:reduce){
+  .market-status-pill-open .market-status-dot{animation:none; box-shadow:0 0 0 3px rgba(51,193,122,.18);}
+}
 .market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
 
 /* ---------- Volatility, key levels, today's brief (mock cards) ---------- */

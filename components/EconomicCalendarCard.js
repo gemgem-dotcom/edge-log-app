@@ -123,24 +123,28 @@ export default function EconomicCalendarCard() {
       <div className="calendar-toolbar">
         <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
         <div className="econ-calendar-range-controls">
-          <input
-            type="date"
-            className="econ-date-input"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            aria-label="From date"
-          />
-          <span className="econ-date-range-sep">–</span>
-          <input
-            type="date"
-            className="econ-date-input"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            aria-label="To date"
-          />
-          <button type="button" className="econ-today-btn" onClick={resetToToday} disabled={isToday}>
-            <RotateCcw size={13} /> Today
-          </button>
+          <div className="econ-date-range-group">
+            <input
+              type="date"
+              className="econ-date-input"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              aria-label="From date"
+            />
+            <span className="econ-date-range-sep">–</span>
+            <input
+              type="date"
+              className="econ-date-input"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              aria-label="To date"
+            />
+          </div>
+          {!isToday && (
+            <button type="button" className="econ-today-btn" onClick={resetToToday}>
+              <RotateCcw size={13} /> Today
+            </button>
+          )}
         </div>
       </div>
 

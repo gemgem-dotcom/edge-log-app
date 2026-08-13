@@ -1488,20 +1488,35 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    (defined under Monthly P&L) rather than a bespoke header, so this card's
    top spacing matches every other filter+nav toolbar in the app instead of
    inventing its own margin. */
-.econ-calendar-range-controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
-/* Overrides the base input{width:100%} - two side-by-side date fields plus
-   a "Today" button need to size to their own content, not stretch to fill
-   the toolbar the way a lone form field would. */
-.econ-date-input{width:auto; min-width:145px;}
-.econ-date-range-sep{color:var(--muted); font-size:12.5px;}
-.econ-today-btn{
+.econ-calendar-range-controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+/* One bordered group around both dates instead of boxing each field
+   separately - reads as a single control, not three stacked ones. The
+   inputs themselves go borderless/transparent inside it; focus moves to
+   the group border via :focus-within rather than each input flashing its
+   own accent outline. */
+.econ-date-range-group{
   display:flex; align-items:center; gap:6px; background:var(--panel-2);
-  border:1px solid var(--line); border-radius:100px; padding:8px 14px;
-  font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;
-  transition:border-color .15s ease, color .15s ease, opacity .15s ease;
+  border:1px solid var(--line); border-radius:7px; padding:2px 10px;
+  transition:border-color .15s ease;
 }
-.econ-today-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
-.econ-today-btn:disabled{opacity:.45; cursor:default;}
+.econ-date-range-group:focus-within{border-color:var(--accent);}
+/* Overrides the base input{width:100%,border,padding} - sized to its own
+   content inside the shared group above rather than stretching or
+   carrying a second border/background of its own. */
+.econ-date-input{
+  width:auto; min-width:112px; background:none; border:none; padding:7px 0;
+}
+.econ-date-input:focus{border-color:transparent;}
+.econ-date-range-sep{color:var(--muted); font-size:12.5px;}
+/* Ghost button, no border/fill at rest - only shown once the range has
+   actually moved off today (see the !isToday check in the component), so
+   it doesn't sit there disabled as one more box to look at. */
+.econ-today-btn{
+  display:flex; align-items:center; gap:5px; background:none; border:none;
+  padding:6px 2px; font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer;
+  transition:color .15s ease;
+}
+.econ-today-btn:hover{color:var(--accent);}
 .econ-calendar-mock-list{display:flex; flex-direction:column;}
 .econ-calendar-mock-row{
   display:flex; align-items:center; gap:12px; padding:10px 0;

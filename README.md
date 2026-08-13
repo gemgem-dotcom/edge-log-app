@@ -56,14 +56,10 @@ Copy `.env.local.example` to `.env.local` and fill in the three values:
 
 All three also need to be added in Vercel under **Project Settings → Environment Variables**.
 
-The economic calendar card on the All Instruments dashboard merges several sources
-(`app/api/economic-calendar`) — BLS's public feed and a couple of computed release
-schedules need no key, but the FRED (St. Louis Fed) piece does:
-
-- `FRED_API_KEY` — a free key from [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/fred/).
-  Optional: without it, the card still works with everything except FRED's releases
-  (GDP, PCE, Retail Sales, Housing Starts, and a few others) — no error, that slice
-  is just missing.
+The economic calendar, volatility, and key-levels cards on the Overview pages
+currently show mock/placeholder data (`lib/marketContextMock.js`) — no API key or
+setup needed for those. See `NOTES.md` for the plan to replace them with a real
+market-data provider.
 
 ## 5. Run it
 

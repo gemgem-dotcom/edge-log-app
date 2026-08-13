@@ -8,7 +8,10 @@ import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { computeStreak } from '@/lib/streak'
+import { mockVolatility } from '@/lib/marketContextMock'
 import TradeLogTable from '@/components/TradeLogTable'
+import StreakBadge from '@/components/StreakBadge'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -173,6 +176,9 @@ if (loading) return <StrategyDetailSkeleton />
 if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={loadData} /></div>
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
+const streak = computeStreak(trades)
+  const volatility = mockVolatility(symbol)
+
 return (
   <div className="page-container">
   <ErrorBanner message={formError} />
@@ -191,7 +197,14 @@ Delete strategy
   </div>
 )}
 </div>
-<a href={`/app/${symbol}/log/new`} className="new-trade-btn" style={{ marginLeft: 'auto' }}><Plus size={16} /> Log new trade</a>
+<div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+  <StreakBadge
+    streak={streak}
+    winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
+    lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
+  />
+  <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+</div>
   </div>
 
 {renaming && (
@@ -254,6 +267,22 @@ Delete strategy
 <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
   </div>
   </div>
+
+<div className="section-heading">At a glance</div>
+<div className="strategy-glance-row">
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Trades around today&apos;s events?</div>
+    {/* Mock only - a real version should check this strategy's name/tags
+        against today's economic-calendar events instead of a fixed line. */}
+    <p className="strategy-context-text">This strategy often trades around scheduled Fed events — one lands today at 10:00.</p>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Volatility context</div>
+    {/* Mock only - the 1.2-1.8x "typical" range is a placeholder, not
+        computed from this strategy's own trade history yet. */}
+    <p className="strategy-context-text">This strategy typically performs best around 1.2–1.8x normal volatility. Today is {volatility.multiplier}x.</p>
+  </div>
+</div>
 
 <div className="section-heading">Trade log — {strategy.name}</div>
 <div className="panel">

@@ -5,10 +5,14 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
+import { pickGreeting } from '@/lib/greeting'
+import { computeStreak } from '@/lib/streak'
+import { mockVolatility } from '@/lib/marketContextMock'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlDonut from '@/components/PnlDonut'
 import WinRateGauge from '@/components/WinRateGauge'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
+import StreakBadge from '@/components/StreakBadge'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -192,6 +196,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [allTrades, setAllTrades] = useState([])
+  const [greeting, setGreeting] = useState('')
   const [equityGroup, setEquityGroup] = useState('day')
   const [calInstrument, setCalInstrument] = useState('all')
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
@@ -214,6 +219,15 @@ export default function OverviewDashboard({ instruments, strategies }) {
       if (tradeError) throw tradeError
 
       setAllTrades(tradeData || [])
+
+      // Same stored-timezone-preference fallback as app/app/account/page.js
+      // (browser offset if the trader has never set one), so the greeting's
+      // morning/afternoon/evening bucket matches their actual local clock
+      // rather than the server's.
+      const { data: { user } } = await supabase.auth.getUser()
+      const savedTz = user?.user_metadata?.timezone
+      const tz = savedTz !== undefined && savedTz !== null ? savedTz : -(new Date().getTimezoneOffset()) / 60
+      setGreeting(pickGreeting(user?.user_metadata?.full_name, tz))
     } catch (err) {
       setError(err.message || "Couldn't load your dashboard — something went wrong.")
     } finally {
@@ -229,6 +243,17 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
   const overall = computeOverallStats(allTrades)
+  const streak = computeStreak(allTrades)
+
+  // Mock only - real version should weigh actual volatility/calendar data,
+  // not just restate the streak badge and the calendar card's first row.
+  const topVolInstrument = instruments.reduce((best, inst) => {
+    const v = mockVolatility(inst.symbol).multiplier
+    return !best || v > best.v ? { symbol: inst.symbol, v } : best
+  }, null)
+  const briefText = streak
+    ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep${topVolInstrument ? `, ${topVolInstrument.symbol}'s volatile,` : ','} and CPI drops at 08:30.`
+    : `${topVolInstrument ? `${topVolInstrument.symbol}'s volatile today` : 'Markets are active today'} and CPI drops at 08:30 — worth keeping an eye on.`
 
   const equityPoints = buildEquityCurve(allTrades, equityGroup)
 
@@ -271,8 +296,15 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">DASHBOARD</h1>
-      <p className="page-subtitle">Your performance overview across all instruments.</p>
+      <div className="page-header-row">
+        <h1 className="page-title">{greeting}</h1>
+        <StreakBadge
+          streak={streak}
+          winLabel={(n) => `${n}-trade win streak`}
+          lossLabel={(n) => `${n}-trade losing streak`}
+        />
+      </div>
+      <p className="page-subtitle">Here&apos;s your edge, at a glance.</p>
 
       {allTrades.length === 0 ? (
         <div className="panel">
@@ -320,9 +352,37 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
           </div>
 
-          <div className="section-heading">US economic calendar</div>
+          <div className="section-heading">Economic calendar</div>
           <div className="panel">
             <EconomicCalendarCard />
+          </div>
+
+          <div className="section-heading">At a glance</div>
+          <div className="dashboard-split">
+            <div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Volatility</div>
+                <div className="volatility-strip">
+                  {instruments.map((inst) => {
+                    const v = mockVolatility(inst.symbol)
+                    return (
+                      <div className="volatility-strip-row" key={inst.id}>
+                        <span className="volatility-strip-symbol">{inst.symbol}</span>
+                        <span className="volatility-strip-value">
+                          {v.multiplier}x<span className="volatility-strip-tag">{v.elevated ? 'elevated' : 'normal'}</span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+                <p className="brief-card-text">{briefText}</p>
+              </div>
+            </div>
           </div>
 
           <div className="dashboard-split">

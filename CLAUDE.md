@@ -68,6 +68,9 @@ lib/
   useClickOutside.js          close a menu on outside click / Escape
   strategyColor.js            strategy colour assignment
   validatePassword.js         signup password rules
+  greeting.js                  time-of-day-aware greeting phrases for the Overview page
+  streak.js                    current win/loss streak from a list of trades
+  marketContextMock.js         placeholder volatility/key-levels/econ-event data (not live)
 schema.sql                    tables + row level security
 storage-setup.sql             screenshots storage bucket
 ```
@@ -129,8 +132,7 @@ give it a `NEXT_PUBLIC_` prefix.
 All three live in `.env.local` locally and in Vercel's project settings. The CI
 build uses placeholders, since nothing during a build talks to the database.
 
-`app/api/economic-calendar` (the Overview dashboard's calendar card) merges BLS's
-public feed, computed release schedules (`lib/computedReleases.js`), and FRED
-(`lib/fredReleases.js`) — only the FRED slice needs a key (`FRED_API_KEY`, optional,
-server only, free from fred.stlouisfed.org). FOMC meeting dates come from scraping
-federalreserve.gov's own calendar page — no feed exists anywhere for them.
+The Overview pages' "Economic calendar" card (`components/EconomicCalendarCard.js`)
+currently renders mock data from `lib/marketContextMock.js` — the earlier BLS/FRED/
+FOMC live-fetch version was pulled out in favor of a paid market-data provider, not
+yet wired up. Same story for the volatility and key-levels cards on those pages.

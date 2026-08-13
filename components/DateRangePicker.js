@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
 
@@ -69,6 +69,21 @@ export default function DateRangePicker({ from, to, onChange }) {
 
   const close = useCallback(() => setOpen(false), [])
   const wrapRef = useClickOutside(open, close)
+
+  // Fixed-positioned off a bounding rect captured once at open time (see
+  // openPicker below), so it has to close on scroll or it stays pinned to
+  // that stale viewport position while the trigger scrolls away underneath
+  // it - same reasoning, same fix as ColumnFilter.js/CalendarNewsBadge.js.
+  useEffect(() => {
+    if (!open) return
+    const dismiss = () => setOpen(false)
+    window.addEventListener('scroll', dismiss, true)
+    window.addEventListener('resize', dismiss)
+    return () => {
+      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('resize', dismiss)
+    }
+  }, [open])
 
   function openPicker() {
     const d = new Date(from + 'T00:00:00')

@@ -641,7 +641,7 @@ a.shell-logo{color:inherit; text-decoration:none;}
      left to go once the name eats the row - drops to its own line below,
      sized to its own content rather than stretched full-width. */
   .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
-  .strategy-header-row .new-trade-btn{margin-left:0 !important; flex-grow:0;}
+  .strategy-header-row .header-action-group{margin-left:0; flex-grow:0;}
 }
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
@@ -903,6 +903,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* h1 carries a global margin-top:4px, which the flex row centres along with
    the text and leaves the menu button sitting high next to the name. */
 .strategy-header-row h1{margin-top:0;}
+/* Groups the streak badge with the header's own action button (Log new
+   trade) so the pair moves - and wraps - together on narrow screens,
+   rather than the badge sitting loose while only the button gets the
+   mobile treatment below. strategy-header-row has no
+   justify-content:space-between (unlike page-header-row) - the button
+   traditionally pushed itself right via its own margin-left:auto; now
+   that it's grouped with the badge, the group carries that margin instead. */
+.header-action-group{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+.strategy-header-row .header-action-group{margin-left:auto;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
             background:none; border:1px solid transparent; border-radius:100px;
@@ -1508,7 +1517,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .date-range-cell{
   display:flex; align-items:center; justify-content:center; height:30px; border-radius:6px;
   font-size:12.5px; color:var(--text); cursor:pointer; user-select:none;
-  transition:background-color .1s ease;
+  transition:background-color .15s ease;
 }
 .date-range-cell:hover{background:rgba(59,167,255,.14);}
 .date-range-cell-outside{color:var(--muted); opacity:.5;}
@@ -1531,6 +1540,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   border-bottom:1px solid var(--line); font-size:13px;
 }
 .econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
+/* Only applied when the visible range is more than a single day (see
+   isSingleDay in EconomicCalendarCard) - viewing just today alone has
+   nothing to contrast it against, so the highlight would be meaningless. */
+.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:6px; padding-left:8px; padding-right:8px; margin:0 -8px;}
 .econ-calendar-mock-day{
   font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
   width:46px; flex-shrink:0;

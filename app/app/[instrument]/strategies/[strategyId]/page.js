@@ -197,7 +197,7 @@ Delete strategy
   </div>
 )}
 </div>
-<div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+<div className="header-action-group">
   <StreakBadge
     streak={streak}
     winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}

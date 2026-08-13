@@ -154,9 +154,9 @@ export default function DateRangePicker({ from, to, onChange }) {
       {open && pos && (
         <div className="date-range-picker" style={{ left: `${pos.left}px`, top: `${pos.top}px` }} onMouseLeave={() => setHoverDate(null)}>
           <div className="date-range-picker-header">
-            <button type="button" className="calendar-nav-btn" onClick={() => shiftMonth(-1)} aria-label="Previous month"><ChevronLeft size={16} /></button>
+            <button type="button" className="calendar-nav-btn" onClick={() => shiftMonth(-1)} aria-label="Previous month"><ChevronLeft size={18} /></button>
             <div className="date-range-picker-month">{MONTH_NAMES[cursor.month]} {cursor.year}</div>
-            <button type="button" className="calendar-nav-btn" onClick={() => shiftMonth(1)} aria-label="Next month"><ChevronRight size={16} /></button>
+            <button type="button" className="calendar-nav-btn" onClick={() => shiftMonth(1)} aria-label="Next month"><ChevronRight size={18} /></button>
           </div>
 
           <div className="date-range-grid">

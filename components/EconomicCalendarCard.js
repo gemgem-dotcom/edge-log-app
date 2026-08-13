@@ -124,6 +124,7 @@ export default function EconomicCalendarCard() {
   const [impactSelected, setImpactSelected] = useState(['high', 'medium', 'low'])
 
   const isSingleDay = fromDate === toDate
+  const today = todayStr()
 
   const events = eventsInRange(fromDate, toDate)
     .filter((e) => impactSelected.includes(e.impact))
@@ -141,7 +142,7 @@ export default function EconomicCalendarCard() {
       ) : (
         <div className="econ-calendar-mock-list">
           {events.map((e, i) => (
-            <div className="econ-calendar-mock-row" key={i}>
+            <div className={`econ-calendar-mock-row ${!isSingleDay && e.dateStr === today ? 'econ-calendar-mock-row-today' : ''}`} key={i}>
               <span className={`econ-impact-dot econ-impact-${e.impact}`} />
               {!isSingleDay && <span className="econ-calendar-mock-day">{formatDateLabel(e.dateStr)}</span>}
               <span className="econ-calendar-mock-time">{e.time}</span>

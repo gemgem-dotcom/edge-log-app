@@ -269,7 +269,7 @@ return (
   <div className="page-container">
   <div className="page-header-row">
     <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <div className="header-action-group">
       <StreakBadge
         streak={streak}
         winLabel={(n) => `${n} ${symbol} win${n === 1 ? '' : 's'} in a row`}

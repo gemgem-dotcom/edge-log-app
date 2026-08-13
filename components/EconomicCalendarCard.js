@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronDown, RotateCcw } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { mockEventsForDate } from '@/lib/marketContextMock'
+import DateRangePicker from '@/components/DateRangePicker'
 
 const IMPACT_OPTIONS = [
   { value: 'high', label: 'High impact' },
@@ -106,46 +107,16 @@ export default function EconomicCalendarCard() {
   const [impactSelected, setImpactSelected] = useState(['high', 'medium', 'low'])
 
   const isSingleDay = fromDate === toDate
-  const isToday = isSingleDay && fromDate === todayStr()
 
   const events = eventsInRange(fromDate, toDate)
     .filter((e) => impactSelected.includes(e.impact))
     .sort((a, b) => (a.dateStr + a.time).localeCompare(b.dateStr + b.time))
 
-  function resetToToday() {
-    const t = todayStr()
-    setFromDate(t)
-    setToDate(t)
-  }
-
   return (
     <>
       <div className="calendar-toolbar">
         <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
-        <div className="econ-calendar-range-controls">
-          <div className="econ-date-range-group">
-            <input
-              type="date"
-              className="econ-date-input"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              aria-label="From date"
-            />
-            <span className="econ-date-range-sep">–</span>
-            <input
-              type="date"
-              className="econ-date-input"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              aria-label="To date"
-            />
-          </div>
-          {!isToday && (
-            <button type="button" className="econ-today-btn" onClick={resetToToday}>
-              <RotateCcw size={13} /> Today
-            </button>
-          )}
-        </div>
+        <DateRangePicker from={fromDate} to={toDate} onChange={(f, t) => { setFromDate(f); setToDate(t) }} />
       </div>
 
       {events.length === 0 ? (

@@ -1484,37 +1484,43 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
 .econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
-/* Impact checklist + date range controls toolbar reuses .calendar-toolbar
+/* Impact checklist + date range picker toolbar reuses .calendar-toolbar
    (defined under Monthly P&L) rather than a bespoke header, so this card's
    top spacing matches every other filter+nav toolbar in the app instead of
    inventing its own margin. */
-.econ-calendar-range-controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-/* One bordered group around both dates instead of boxing each field
-   separately - reads as a single control, not three stacked ones. The
-   inputs themselves go borderless/transparent inside it; focus moves to
-   the group border via :focus-within rather than each input flashing its
-   own accent outline. */
-.econ-date-range-group{
-  display:flex; align-items:center; gap:6px; background:var(--panel-2);
-  border:1px solid var(--line); border-radius:7px; padding:2px 10px;
-  transition:border-color .15s ease;
+.date-range-picker-wrap{position:relative;}
+.econ-date-range-trigger{display:flex; align-items:center; gap:8px; cursor:pointer;}
+/* Fixed-positioned popover (see CalendarNewsBadge/ColumnFilter for the same
+   pattern) rather than absolute, since this toolbar can end up inside a
+   horizontally-scrolling ancestor on narrow viewports. */
+.date-range-picker{
+  position:fixed; z-index:60; width:280px; background:var(--panel);
+  border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.45);
+  padding:14px; animation:dropdown-in .15s ease;
 }
-.econ-date-range-group:focus-within{border-color:var(--accent);}
-/* Overrides the base input{width:100%,border,padding} - sized to its own
-   content inside the shared group above rather than stretching or
-   carrying a second border/background of its own. */
-.econ-date-input{
-  width:auto; min-width:112px; background:none; border:none; padding:7px 0;
+.date-range-picker-header{display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:12px;}
+.date-range-picker-month{font-size:13.5px; font-weight:700; min-width:130px; text-align:center;}
+.date-range-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px;}
+.date-range-weekday{
+  text-align:center; font-size:10px; color:var(--muted); text-transform:uppercase;
+  letter-spacing:.04em; font-weight:600; padding-bottom:6px;
 }
-.econ-date-input:focus{border-color:transparent;}
-.econ-date-range-sep{color:var(--muted); font-size:12.5px;}
-/* Ghost button, no border/fill at rest - only shown once the range has
-   actually moved off today (see the !isToday check in the component), so
-   it doesn't sit there disabled as one more box to look at. */
+.date-range-cell{
+  display:flex; align-items:center; justify-content:center; height:30px; border-radius:6px;
+  font-size:12.5px; color:var(--text); cursor:pointer; user-select:none;
+  transition:background-color .1s ease;
+}
+.date-range-cell:hover{background:rgba(59,167,255,.14);}
+.date-range-cell-outside{color:var(--muted); opacity:.5;}
+.date-range-cell-today{box-shadow:inset 0 0 0 1px var(--accent);}
+.date-range-cell-in-range{background:rgba(59,167,255,.16); border-radius:0;}
+.date-range-cell-endpoint{background:var(--accent); color:#04121f; font-weight:700;}
+.date-range-picker-footer{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); display:flex; justify-content:flex-end;}
+/* Ghost button, no border/fill - a quiet shortcut in the popover footer
+   rather than another boxed control. */
 .econ-today-btn{
-  display:flex; align-items:center; gap:5px; background:none; border:none;
-  padding:6px 2px; font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer;
-  transition:color .15s ease;
+  background:none; border:none; padding:4px 2px; font-size:12.5px; font-weight:600;
+  color:var(--muted); cursor:pointer; transition:color .15s ease;
 }
 .econ-today-btn:hover{color:var(--accent);}
 .econ-calendar-mock-list{display:flex; flex-direction:column;}

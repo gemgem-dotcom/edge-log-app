@@ -56,11 +56,14 @@ function renameBlsEvent(summary) {
 let cache = { data: null, fetchedAt: 0 }
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000
 
-// How far the FRED fetch reaches on either side of "now" - wide enough to
-// cover the card's prev/next week navigation without needing a fresh fetch
-// on every click.
-const FRED_WINDOW_PAST_DAYS = 90
-const FRED_WINDOW_FUTURE_DAYS = 180
+// How far computedReleasesInRange (ISM PMI, CB Consumer Confidence - the
+// two sources with no fetch to bound them another way) reaches on either
+// side of "now" - wide enough to cover the card's prev/next week
+// navigation without needing to recompute on every click. FRED's own fetch
+// no longer uses this - see the realtime_start/realtime_end comment in
+// fetchFredEvents.
+const COMPUTED_WINDOW_PAST_DAYS = 90
+const COMPUTED_WINDOW_FUTURE_DAYS = 180
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -313,18 +316,21 @@ async function fetchFredEvents() {
     return []
   }
 
-  const now = new Date()
-  const start = new Date(now)
-  start.setDate(start.getDate() - FRED_WINDOW_PAST_DAYS)
-  const end = new Date(now)
-  end.setDate(end.getDate() + FRED_WINDOW_FUTURE_DAYS)
-  const realtimeStart = toDateStr(start)
-  const realtimeEnd = toDateStr(end)
+  // realtime_start/realtime_end select a *vintage* of FRED's release-date
+  // metadata (what the schedule looked like as of that day), not a filter
+  // on which release dates come back - they default to today for exactly
+  // this reason. Widening them to a multi-month window (as this used to)
+  // makes FRED echo the same still-scheduled future date once per day it
+  // remained "current" within that window, producing dozens of duplicate
+  // rows for one real release. Agencies publish their whole forward
+  // calendar in a single pass, so today's snapshot alone already carries
+  // the full future (and past) schedule - no window needed here.
+  const today = todayInET()
 
   const ids = Object.keys(FRED_RELEASES)
   const results = await Promise.all(ids.map(async (id) => {
     const meta = FRED_RELEASES[id]
-    const url = `https://api.stlouisfed.org/fred/releases/dates?api_key=${apiKey}&file_type=json&release_id=${id}&realtime_start=${realtimeStart}&realtime_end=${realtimeEnd}&include_release_dates_with_no_data=true`
+    const url = `https://api.stlouisfed.org/fred/releases/dates?api_key=${apiKey}&file_type=json&release_id=${id}&realtime_start=${today}&realtime_end=${today}&include_release_dates_with_no_data=true`
     try {
       const res = await fetch(url)
       if (!res.ok) {
@@ -332,7 +338,15 @@ async function fetchFredEvents() {
         return []
       }
       const data = await res.json()
-      return (data.release_dates || []).map((rd) => ({
+      // Defensive de-dup by date, in case a release_id ever echoes the
+      // same scheduled date more than once even under a single-day query.
+      const seen = new Set()
+      const unique = (data.release_dates || []).filter((rd) => {
+        if (seen.has(rd.date)) return false
+        seen.add(rd.date)
+        return true
+      })
+      return unique.map((rd) => ({
         date: rd.date, time: meta.time, country: 'US', event: meta.name,
         impact: meta.impact, actual: null, estimate: null, prev: null, unit: '',
       }))
@@ -355,14 +369,27 @@ async function loadAllEvents() {
   ])
 
   // Computed events (ISM PMI, CB Consumer Confidence - see
-  // lib/computedReleases.js) span the same window FRED was fetched for,
-  // so all three sources cover the same forward/back range.
+  // lib/computedReleases.js) span a wide window since nothing else bounds
+  // them - unlike FRED, they're derived, not fetched, so there's no
+  // realtime/vintage concept to worry about here.
   const now2 = new Date()
-  const start = new Date(now2); start.setDate(start.getDate() - FRED_WINDOW_PAST_DAYS)
-  const end = new Date(now2); end.setDate(end.getDate() + FRED_WINDOW_FUTURE_DAYS)
+  const start = new Date(now2); start.setDate(start.getDate() - COMPUTED_WINDOW_PAST_DAYS)
+  const end = new Date(now2); end.setDate(end.getDate() + COMPUTED_WINDOW_FUTURE_DAYS)
   const computedEvents = computedReleasesInRange(toDateStr(start), toDateStr(end))
 
-  const events = [...blsEvents, ...fredEvents, ...fomcEvents, ...computedEvents]
+  const merged = [...blsEvents, ...fredEvents, ...fomcEvents, ...computedEvents]
+
+  // Final safety net: one row per (date, event) regardless of which
+  // source(s) produced it. FRED_RELEASES is curated to avoid overlapping
+  // with BLS's own releases, but this catches that invariant slipping in
+  // the future as well as any remaining upstream duplication.
+  const seen = new Set()
+  const events = merged.filter((e) => {
+    const key = `${e.date}|${e.event}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
   events.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
 
   cache = { data: events, fetchedAt: now }

@@ -1178,9 +1178,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    overflow-clipped scroll container, so anchoring to its own
    position:relative wrapper is enough. */
 .tag-add-form-wrap{position:relative; display:inline-flex;}
+/* max-height caps the list at exactly 5 rows (5 x 30px .tag-suggestion-item)
+   before it scrolls - matches .tag-suggestion-item's own rendered height,
+   so update both together if either one's padding/font-size changes. */
 .tag-suggestions{
   position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
-  border:1px solid var(--line); border-radius:9px; min-width:160px; max-height:220px;
+  border:1px solid var(--line); border-radius:9px; min-width:160px; max-height:150px;
   overflow-y:auto; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
 }
 .tag-suggestion-item{padding:8px 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}

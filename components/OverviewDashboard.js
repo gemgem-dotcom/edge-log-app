@@ -14,6 +14,7 @@ import WinRateGauge from '@/components/WinRateGauge'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
+import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -295,11 +296,14 @@ export default function OverviewDashboard({ instruments, strategies }) {
     <div className="page-container">
       <div className="page-header-row">
         <h1 className="page-title">{greeting}</h1>
-        <StreakBadge
-          streak={streak}
-          winLabel={(n) => `${n}-trade win streak`}
-          lossLabel={(n) => `${n}-trade losing streak`}
-        />
+        <div className="header-action-group">
+          <MarketStatusPill />
+          <StreakBadge
+            streak={streak}
+            winLabel={(n) => `${n}-trade win streak`}
+            lossLabel={(n) => `${n}-trade losing streak`}
+          />
+        </div>
       </div>
       <p className="page-subtitle">Here&apos;s your edge, at a glance.</p>
 

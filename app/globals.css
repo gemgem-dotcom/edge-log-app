@@ -34,10 +34,11 @@
    1102  Toast notifications
    1387  Public policy pages (Privacy, Terms)
    1405  Legal links (auth pages + account settings)
-   1459  Economic calendar card (mock - Overview pages)
-   1509  Calendar news badge (Monthly P&L day cells, mock)
-   1528  Streak badge (Overview + strategy detail pages)
-   1537  Volatility, key levels, today's brief (mock cards)
+   1490  Economic calendar card (mock - Overview pages)
+   1573  Calendar news badge (Monthly P&L day cells, mock)
+   1594  Streak badge (Overview + strategy detail pages)
+   1603  Market status pill (Overview + strategy detail pages)
+   1616  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -625,6 +626,14 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .main-area{flex:1; min-width:0; overflow-y:auto; overflow-x:hidden; padding:32px 40px 60px;}
 
 .page-subtitle{font-size:13.5px; color:var(--muted); margin-top:-14px; margin-bottom:24px;}
+/* Pairs the subtitle with a header-level action button (e.g. "Log new
+   trade") on pages where that button lives down here instead of up in
+   .page-header-row with the status pills - keeps the button aligned with
+   the subtitle's line rather than floating separately below it. Carries
+   .page-subtitle's own negative top margin itself, so the nested
+   .page-subtitle needs none of its own. */
+.page-subtitle-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-top:-14px; margin-bottom:24px;}
+.page-subtitle-row .page-subtitle{margin-top:0; margin-bottom:0;}
 @media (max-width:640px){
   /* On desktop the header row (title + action button) is a single line and
      .page-subtitle rides up under the title on a negative margin. Once the
@@ -636,10 +645,13 @@ a.shell-logo{color:inherit; text-decoration:none;}
   .page-header-row{row-gap:10px;}
   .page-header-row .new-trade-btn{margin-left:0 !important;}
   .page-subtitle{margin-top:8px;}
+  /* Same wrap treatment as .page-header-row above, for the pages where the
+     action button now lives beside the subtitle instead. */
+  .page-subtitle-row{margin-top:8px; row-gap:8px;}
+  .page-subtitle-row .new-trade-btn{margin-left:0 !important;}
   /* Title and the ⋮ menu button stay on one line (menu belongs next to the
-     name it acts on); only the "Log new trade" button - which has nowhere
-     left to go once the name eats the row - drops to its own line below,
-     sized to its own content rather than stretched full-width. */
+     name it acts on); only the status pills - which have nowhere left to go
+     once the name eats the row - drop to their own line below. */
   .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
   .strategy-header-row .header-action-group{margin-left:0; flex-grow:0;}
 }
@@ -903,13 +915,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* h1 carries a global margin-top:4px, which the flex row centres along with
    the text and leaves the menu button sitting high next to the name. */
 .strategy-header-row h1{margin-top:0;}
-/* Groups the streak badge with the header's own action button (Log new
-   trade) so the pair moves - and wraps - together on narrow screens,
-   rather than the badge sitting loose while only the button gets the
-   mobile treatment below. strategy-header-row has no
-   justify-content:space-between (unlike page-header-row) - the button
-   traditionally pushed itself right via its own margin-left:auto; now
-   that it's grouped with the badge, the group carries that margin instead. */
+/* Groups the header's status pills (market status, streak) so they move -
+   and wrap - together on narrow screens, and so they share one gap instead
+   of each needing its own spacing rule. The header-level action button
+   (Log new trade) lives in .page-subtitle-row instead, not here - keeping
+   it off this row is what makes the pills a cohesive, same-sized set.
+   strategy-header-row has no justify-content:space-between (unlike
+   page-header-row), so the group pushes itself right via margin-left:auto. */
 .header-action-group{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
 .strategy-header-row .header-action-group{margin-left:auto;}
 .strategy-menu-wrap{position:relative;}
@@ -1588,6 +1600,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .streak-badge-win{background:rgba(51,193,122,.14); color:var(--win);}
 .streak-badge-loss{background:rgba(225,92,92,.14); color:var(--loss);}
 .streak-badge-fire{font-size:13px;}
+
+/* ---------- Market status pill (Overview + strategy detail pages) ---------- */
+/* Same padding/font-size/radius as .streak-badge so the two pills read as
+   one cohesive set when they sit side by side in .header-action-group. */
+.market-status-pill{
+  display:inline-flex; align-items:center; gap:7px; padding:6px 14px;
+  border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap;
+  background:var(--panel-2); color:var(--muted); border:1px solid var(--line);
+}
+.market-status-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0; background:var(--muted-2);}
+.market-status-pill-open{background:rgba(51,193,122,.14); color:var(--win); border-color:transparent;}
+.market-status-pill-open .market-status-dot{background:var(--win); box-shadow:0 0 0 3px rgba(51,193,122,.18);}
+.market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
 
 /* ---------- Volatility, key levels, today's brief (mock cards) ---------- */
 .volatility-strip{display:flex; flex-direction:column;}

@@ -15,6 +15,7 @@ import PnlDonut from '@/components/PnlDonut'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
+import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -270,15 +271,18 @@ return (
   <div className="page-header-row">
     <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
     <div className="header-action-group">
+      <MarketStatusPill />
       <StreakBadge
         streak={streak}
         winLabel={(n) => `${n} ${symbol} win${n === 1 ? '' : 's'} in a row`}
         lossLabel={(n) => `${n} ${symbol} loss${n === 1 ? '' : 'es'} in a row`}
       />
-      <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
     </div>
   </div>
-  <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
+  <div className="page-subtitle-row">
+    <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
+    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+  </div>
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">

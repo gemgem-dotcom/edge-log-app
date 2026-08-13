@@ -12,6 +12,7 @@ import { computeStreak } from '@/lib/streak'
 import { mockVolatility } from '@/lib/marketContextMock'
 import TradeLogTable from '@/components/TradeLogTable'
 import StreakBadge from '@/components/StreakBadge'
+import MarketStatusPill from '@/components/MarketStatusPill'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -198,12 +199,12 @@ Delete strategy
 )}
 </div>
 <div className="header-action-group">
+  <MarketStatusPill />
   <StreakBadge
     streak={streak}
     winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
     lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
   />
-  <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
 </div>
   </div>
 
@@ -220,7 +221,10 @@ Delete strategy
   </form>
 )}
 
-<p className="page-subtitle">See how your strategy has performed.</p>
+<div className="page-subtitle-row">
+  <p className="page-subtitle">See how your strategy has performed.</p>
+  <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+</div>
 
 <div className="section-heading">Performance</div>
 <div className="stats strategy-perf-stats">

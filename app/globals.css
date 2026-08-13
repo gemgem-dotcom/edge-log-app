@@ -424,6 +424,13 @@ table{min-width:640px;}
 .instrument-add-form input, .instrument-add-form select{padding:6px 8px; font-size:12.5px; width:100%;}
 .instrument-add-form select{padding-right:28px;}
 .instrument-add-form button{padding:6px 12px; font-size:12px; align-self:flex-end;}
+/* Pairs a Cancel link with the Add button so the new-strategy input (Log
+   New Trade / Edit Trade) can be closed back to "+ Add new strategy"
+   without submitting a name - same plain-text Cancel treatment as
+   .strategy-rename-form's Cancel, next to a real button rather than
+   replacing it. */
+.instrument-add-form-actions{display:flex; align-items:center; gap:14px; align-self:flex-end;}
+.instrument-add-form-actions button{align-self:auto;}
 @media (max-width:900px){
   .instrument-nav{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;}
 }

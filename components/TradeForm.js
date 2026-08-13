@@ -403,7 +403,10 @@ export default function TradeForm({
                   type="text" placeholder="New strategy name" autoFocus
                   value={newStrategyName} onChange={(e) => setNewStrategyName(e.target.value)}
                 />
-                <button type="button" onClick={handleAddStrategy}>Add</button>
+                <div className="instrument-add-form-actions">
+                  <span className="del" onClick={() => { setAddingStrategy(false); setNewStrategyName('') }}>Cancel</span>
+                  <button type="button" onClick={handleAddStrategy}>Add</button>
+                </div>
               </div>
             ) : (
               <span className="del" style={{ color: 'var(--accent)' }} onClick={() => setAddingStrategy(true)}>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
-import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, todayDateString } from '../lib/tradeForm'
+import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
@@ -417,7 +417,7 @@ export default function TradeForm({
           <div className="field half">
             <label>Date</label>
             <input
-              type="date" max={todayStr}
+              type="date" min={MIN_TRADE_DATE} max={todayStr}
               value={setup.trade_date} onChange={(e) => updateSetup('trade_date', e.target.value)}
             />
             {errors.trade_date && <span className="field-error">{errors.trade_date}</span>}

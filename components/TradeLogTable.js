@@ -1,16 +1,70 @@
 'use client'
 
-import { useState, useEffect, Fragment } from 'react'
-import { Pencil, Trash2, X } from 'lucide-react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
+import { Pencil, Trash2, X, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
+import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
 const UNCLASSIFIED = 'unclassified'
+
+// Checkbox-style filter button + dropdown above the table, same interaction
+// pattern as EconomicCalendarCard's impact filter (independent checkboxes,
+// applied immediately, closes on outside click/scroll) - not shared code
+// since the two live in different feature areas, but deliberately the same
+// shape so a "checkbox filter" looks and behaves the same everywhere it
+// shows up in the app.
+function TagFilterMenu({ options, selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  const wrapRef = useClickOutside(open, close)
+
+  useEffect(() => {
+    if (!open) return
+    const dismiss = () => setOpen(false)
+    window.addEventListener('scroll', dismiss, true)
+    window.addEventListener('resize', dismiss)
+    return () => {
+      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('resize', dismiss)
+    }
+  }, [open])
+
+  function toggle(value) {
+    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
+  }
+
+  const selectedLabels = options.filter((o) => selected.includes(o.value))
+  const label = selectedLabels.length === 0
+    ? 'Filter by tag'
+    : selectedLabels.length === 1
+      ? selectedLabels[0].label
+      : `${selectedLabels.length} tags`
+
+  return (
+    <div className="trade-tag-filter" ref={wrapRef}>
+      <button type="button" className="calendar-strategy-filter trade-tag-filter-btn" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        {label}
+        <ChevronDown size={14} />
+      </button>
+      {open && (
+        <div className="col-filter-menu trade-tag-filter-menu">
+          {options.map((o) => (
+            <label key={o.value} className="col-filter-option">
+              <input type="checkbox" checked={selected.includes(o.value)} onChange={() => toggle(o.value)} />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Full week: futures sessions open Sunday evening, and a stray Saturday date
 // should still render a day name rather than blank.
@@ -75,6 +129,10 @@ export default function TradeLogTable({
   const [filterStrategies, setFilterStrategies] = useState([])
   const [filterDirection, setFilterDirection] = useState('all')
   const [filterResult, setFilterResult] = useState('all')
+  // Tags aren't a column (they only show in the expand row), so this lives
+  // in the toolbar above the table instead of a column-header chevron. A
+  // trade matches if it has any one of the selected tags.
+  const [filterTags, setFilterTags] = useState([])
 
   useEffect(() => {
     setRows(trades)
@@ -113,6 +171,7 @@ export default function TradeLogTable({
         if (filterStrategies.length > 0 && !filterStrategies.includes(strategyKey(t))) return false
         if (filterDirection !== 'all' && t.direction !== filterDirection) return false
         if (filterResult !== 'all' && resultOf(t) !== filterResult) return false
+        if (filterTags.length > 0 && !(t.tags || []).some((tag) => filterTags.includes(tag.toLowerCase()))) return false
         return true
       })
     : rows
@@ -144,6 +203,19 @@ export default function TradeLogTable({
     { value: 'all', label: 'All' },
     ...['breakeven', 'loss', 'win'].map((r) => ({ value: r, label: RESULT_LABELS[r] })),
   ]
+  // Case-insensitive, same dedup as the tag-suggestions dropdown on the
+  // trade form (lib/tradeForm.js) - "FOMC" and "fomc" are one option, kept
+  // under whichever casing was seen first.
+  const tagOptionMap = new Map()
+  for (const t of rows) {
+    for (const tag of t.tags || []) {
+      const key = tag.toLowerCase()
+      if (!tagOptionMap.has(key)) tagOptionMap.set(key, tag)
+    }
+  }
+  const tagOptions = [...tagOptionMap.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label))
 
   // One chip per selected value, whichever column it came from.
   const chips = [
@@ -164,6 +236,10 @@ export default function TradeLogTable({
       key: 'result', label: `Result: ${RESULT_LABELS[filterResult] || filterResult}`,
       clear: () => setFilterResult('all'),
     }] : []),
+    ...filterTags.map((v) => ({
+      key: `tag-${v}`, label: `Tag: ${tagOptionMap.get(v) || v}`,
+      clear: () => setFilterTags((prev) => prev.filter((val) => val !== v)),
+    })),
   ]
 
   function clearAllFilters() {
@@ -171,6 +247,7 @@ export default function TradeLogTable({
     setFilterStrategies([])
     setFilterDirection('all')
     setFilterResult('all')
+    setFilterTags([])
   }
 
   const colCount = 4
@@ -182,6 +259,14 @@ export default function TradeLogTable({
   return (
     <div id="tableWrap">
       <ErrorBanner message={deleteError} />
+      {/* Only rendered once there's at least one tag to filter by - an
+          always-empty dropdown would just be clutter for traders who
+          haven't tagged anything yet. */}
+      {showFilters && tagOptions.length > 0 && (
+        <div className="trade-log-toolbar">
+          <TagFilterMenu options={tagOptions} selected={filterTags} onChange={setFilterTags} />
+        </div>
+      )}
       {showFilters && chips.length > 0 && (
         <div className="active-filters">
           {chips.map((chip) => (

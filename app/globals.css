@@ -10,35 +10,35 @@
    324  Auth pages
    376  Top nav
    391  Instrument nav (topbar pill row)
-   431  Page layout
-   480  Tabs
-   490  Misc form helpers
-   496  Detail view
-   511  Shell layout (sidebar + topbar)
-   724  Expandable trade rows
-   741  Calendar
-   789  Account settings page
-   956  Light theme
-   982  2FA
-   997  Account fine print
-   1000  Screenshot preview (log new trade)
-   1017  Auth pages always dark
-   1045  Monthly P&L (calendar on Overview)
-   1121  Trade form: sections, validation, currency, screenshots
-   1183  Field tooltips
-   1218  In-header column filters (trade log table)
-   1252  Active filter chips
-   1285  Empty states, error banners, skeleton loaders
-   1336  Cross-instrument overview dashboard (/app)
-   1414  Not found / error boundary state pages
-   1427  Toast notifications
-   1455  Public policy pages (Privacy, Terms)
-   1474  Legal links (auth pages + account settings)
-   1513  Economic calendar card (mock - Overview pages)
-   1596  Calendar news badge (Monthly P&L day cells, mock)
-   1617  Streak badge (Overview + strategy detail pages)
-   1626  Market status pill (Overview + strategy detail pages)
-   1652  Volatility, key levels, today's brief (mock cards)
+   438  Page layout
+   487  Tabs
+   497  Misc form helpers
+   503  Detail view
+   518  Shell layout (sidebar + topbar)
+   731  Expandable trade rows
+   748  Calendar
+   796  Account settings page
+   963  Light theme
+   989  2FA
+   1004  Account fine print
+   1007  Screenshot preview (log new trade)
+   1024  Auth pages always dark
+   1052  Monthly P&L (calendar on Overview)
+   1128  Trade form: sections, validation, currency, screenshots
+   1199  Field tooltips
+   1234  In-header column filters (trade log table)
+   1268  Active filter chips
+   1317  Empty states, error banners, skeleton loaders
+   1368  Cross-instrument overview dashboard (/app)
+   1446  Not found / error boundary state pages
+   1459  Toast notifications
+   1487  Public policy pages (Privacy, Terms)
+   1506  Legal links (auth pages + account settings)
+   1545  Economic calendar card (mock - Overview pages)
+   1628  Calendar news badge (Monthly P&L day cells, mock)
+   1649  Streak badge (Overview + strategy detail pages)
+   1658  Market status pill (Overview + strategy detail pages)
+   1684  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -1290,6 +1290,22 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   cursor:pointer; margin-left:2px;
 }
 .filter-clear-all:hover{text-decoration:underline;}
+
+/* Sits above the table, ahead of the active-filter chips - a checkbox
+   filter on tags (unlike Day/Strategy/Direction/Result, tags aren't a
+   column, so there's no header chevron to hang it off of). */
+.trade-log-toolbar{display:flex; margin-bottom:12px;}
+.trade-tag-filter{position:relative;}
+/* Overrides .calendar-strategy-filter's 34px right padding, sized for a
+   native <select>'s chevron background-image - this is a flex button with
+   its own SVG chevron child instead, same override as
+   .econ-impact-filter-btn (EconomicCalendarCard.js) uses for the same
+   reason. */
+.trade-tag-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
+/* Absolute, not .col-filter-menu's own fixed - this toolbar sits above the
+   table in normal flow, not inside #tableWrap's horizontally-scrolling
+   ancestor that a fixed-position menu would need to escape. */
+.trade-tag-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
 .table-count{font-size:12px; color:var(--muted); text-align:right; margin-bottom:10px;}
 

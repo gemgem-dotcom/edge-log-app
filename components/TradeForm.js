@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, todayDateString } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
+import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
 
@@ -88,6 +89,10 @@ export default function TradeForm({
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [existingTags, setExistingTags] = useState([])
+  // Separate from addingTag, which keeps the tag input itself open - this
+  // only governs the suggestions dropdown, so scrolling or clicking away
+  // closes the dropdown without losing whatever's mid-typed in the input.
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   const [saving, setSaving] = useState(false)
 
@@ -154,6 +159,30 @@ export default function TradeForm({
     loadTagSuggestions()
     return () => { cancelled = true }
   }, [])
+
+  // Closes the tag-suggestions dropdown on an outside click, and - since
+  // it's rendered inline in the form rather than position:fixed off a
+  // captured bounding rect - also on scroll/resize, matching how the
+  // other floating menus in this app (ColumnFilter, the strategy ⋮ menu)
+  // dismiss rather than drift out of place.
+  const tagDropdownRef = useClickOutside(showSuggestions, () => setShowSuggestions(false))
+  useEffect(() => {
+    if (!showSuggestions) return
+    const dismiss = () => setShowSuggestions(false)
+    // The tag input is autoFocus'd, which can itself trigger a scroll-into-
+    // view the instant the dropdown opens (e.g. a field near the viewport
+    // edge). Deferring attachment by a frame lets that settle first, so
+    // opening the dropdown doesn't immediately close itself.
+    const raf = requestAnimationFrame(() => {
+      window.addEventListener('scroll', dismiss, true)
+      window.addEventListener('resize', dismiss)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('resize', dismiss)
+    }
+  }, [showSuggestions])
 
   function updateSetup(field, value) {
     setSetup((prev) => ({ ...prev, [field]: value }))
@@ -529,17 +558,17 @@ export default function TradeForm({
                 </span>
               ))}
               {addingTag ? (
-                <span className="tag-add-form-wrap">
+                <span className="tag-add-form-wrap" ref={tagDropdownRef}>
                   <span className="tag-add-form">
                     <input
                       type="text" placeholder="Tag name" autoFocus
                       value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
+                      onChange={(e) => { setNewTagName(e.target.value); setShowSuggestions(true) }}
                       onKeyDown={handleTagKeyDown}
                     />
                     <span className="del" style={{ color: 'var(--accent)' }} onClick={() => handleAddTag()}>Add</span>
                   </span>
-                  {tagSuggestions.length > 0 && (
+                  {showSuggestions && tagSuggestions.length > 0 && (
                     <div className="tag-suggestions">
                       {tagSuggestions.map((t) => (
                         <div key={t} className="tag-suggestion-item" onClick={() => handleAddTag(t)}>{t}</div>
@@ -548,7 +577,7 @@ export default function TradeForm({
                   )}
                 </span>
               ) : (
-                <span className="del" style={{ color: 'var(--accent)' }} onClick={() => setAddingTag(true)}>
+                <span className="del" style={{ color: 'var(--accent)' }} onClick={() => { setAddingTag(true); setShowSuggestions(true) }}>
                   + Add tag
                 </span>
               )}

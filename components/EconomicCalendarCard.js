@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { mockEventsForDate } from '@/lib/marketContextMock'
@@ -66,6 +66,23 @@ function ImpactChecklist({ selected, onChange }) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const wrapRef = useClickOutside(open, close)
+
+  // Same close-on-scroll behavior as DateRangePicker/ColumnFilter/
+  // CalendarNewsBadge, for consistency across every popover this card
+  // (and the calendar) opens - this one is position:absolute rather than
+  // fixed, so it wouldn't visually detach the way theirs do, but leaving
+  // it open while the page scrolls out from under the toolbar still looks
+  // wrong the same way an unrelated stray open dropdown always does.
+  useEffect(() => {
+    if (!open) return
+    const dismiss = () => setOpen(false)
+    window.addEventListener('scroll', dismiss, true)
+    window.addEventListener('resize', dismiss)
+    return () => {
+      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('resize', dismiss)
+    }
+  }, [open])
 
   function toggle(value) {
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])

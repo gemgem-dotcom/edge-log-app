@@ -1519,10 +1519,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* Ghost button, no border/fill - a quiet shortcut in the popover footer
    rather than another boxed control. */
 .econ-today-btn{
-  background:none; border:none; padding:4px 2px; font-size:12.5px; font-weight:600;
+  display:inline-flex; align-items:center; gap:5px; background:none; border:none;
+  padding:4px 2px; font-size:12.5px; font-weight:600;
   color:var(--muted); cursor:pointer; transition:color .15s ease;
 }
 .econ-today-btn:hover{color:var(--accent);}
+.econ-today-btn svg{width:12px; height:12px; flex-shrink:0;}
 .econ-calendar-mock-list{display:flex; flex-direction:column;}
 .econ-calendar-mock-row{
   display:flex; align-items:center; gap:12px; padding:10px 0;

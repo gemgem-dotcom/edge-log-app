@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
 
 const WEEKDAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -185,7 +185,7 @@ export default function DateRangePicker({ from, to, onChange }) {
           </div>
 
           <div className="date-range-picker-footer">
-            <button type="button" className="econ-today-btn" onClick={jumpToToday}>Today</button>
+            <button type="button" className="econ-today-btn" onClick={jumpToToday}><RotateCcw size={12} /> Today</button>
           </div>
         </div>
       )}

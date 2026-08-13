@@ -27,10 +27,22 @@ function TagFilterMenu({ options, selected, onChange }) {
   useEffect(() => {
     if (!open) return
     const dismiss = () => setOpen(false)
-    window.addEventListener('scroll', dismiss, true)
+    // capture:true is what lets this see the dropdown's own scrollbar
+    // scrolling (a native 'scroll' event doesn't bubble, so a plain
+    // bubble-phase listener would never see it) - but that means it has to
+    // explicitly ignore scrolls that originate inside the dropdown itself
+    // (.col-filter-menu scrolls internally once there are enough tags to
+    // exceed its max-height), or scrolling the list would close the very
+    // list being scrolled. Same fix as TradeForm.js's tag-suggestions
+    // dropdown, which hit the identical bug.
+    const dismissOnScroll = (e) => {
+      if (wrapRef.current && wrapRef.current.contains(e.target)) return
+      dismiss()
+    }
+    window.addEventListener('scroll', dismissOnScroll, true)
     window.addEventListener('resize', dismiss)
     return () => {
-      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('scroll', dismissOnScroll, true)
       window.removeEventListener('resize', dismiss)
     }
   }, [open])

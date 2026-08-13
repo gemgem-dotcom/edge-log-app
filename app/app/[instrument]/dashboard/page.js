@@ -253,6 +253,8 @@ const year = calCursor.year
   const monthStats = computeMonthStats(monthTrades)
   const weeks = buildCalendarWeeks(year, month, tradesByDate)
   const selectedTrades = selectedDate ? (tradesByDate[selectedDate] || []) : []
+  const todayNow = new Date()
+  const todayStr = toDateStr(todayNow.getFullYear(), todayNow.getMonth(), todayNow.getDate())
 
     function goPrevMonth() {
       setCalCursor((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }))
@@ -477,7 +479,7 @@ className={`calendar-cell ${cell.outside ? 'calendar-cell-outside' : ''} ${cell.
 onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ? null : cell.dateStr)}
 >
 <CalendarNewsBadge dateStr={cell.dateStr} />
-<div className="calendar-date-num">{String(cell.dayNum).padStart(2, '0')}</div>
+<div className={`calendar-date-num ${cell.dateStr === todayStr ? 'calendar-date-num-today' : ''}`}>{String(cell.dayNum).padStart(2, '0')}</div>
 {cell.count > 0 && (
   <>
   <div className={`calendar-day-pnl ${colorClass(cell.hasD ? cell.sumD : cell.sumR)}`}>

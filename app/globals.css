@@ -7,38 +7,38 @@
    ------------------------------------------------------------
      1–272  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   273  Auth pages
-   324  Top nav
-   339  Instrument nav (topbar pill row)
-   378  Page layout
-   419  Tabs
-   429  Misc form helpers
-   435  Detail view
-   450  Shell layout (sidebar + topbar)
-   575  Expandable trade rows
-   592  Calendar
-   629  Account settings page
-   731  Light theme
-   749  2FA
-   764  Account fine print
-   767  Screenshot preview (log new trade)
-   784  Auth pages always dark
-   812  Monthly P&L (calendar on Overview)
-   874  Trade form: sections, validation, currency, screenshots
-   909  Field tooltips
-   944  In-header column filters (trade log table)
-   978  Active filter chips
-   1009  Empty states, error banners, skeleton loaders
-   1060  Cross-instrument overview dashboard (/app)
-   1089  Not found / error boundary state pages
-   1102  Toast notifications
-   1387  Public policy pages (Privacy, Terms)
-   1405  Legal links (auth pages + account settings)
-   1490  Economic calendar card (mock - Overview pages)
-   1573  Calendar news badge (Monthly P&L day cells, mock)
-   1594  Streak badge (Overview + strategy detail pages)
-   1603  Market status pill (Overview + strategy detail pages)
-   1616  Volatility, key levels, today's brief (mock cards)
+   324  Auth pages
+   376  Top nav
+   391  Instrument nav (topbar pill row)
+   431  Page layout
+   480  Tabs
+   490  Misc form helpers
+   496  Detail view
+   511  Shell layout (sidebar + topbar)
+   724  Expandable trade rows
+   741  Calendar
+   789  Account settings page
+   956  Light theme
+   982  2FA
+   997  Account fine print
+   1000  Screenshot preview (log new trade)
+   1017  Auth pages always dark
+   1045  Monthly P&L (calendar on Overview)
+   1121  Trade form: sections, validation, currency, screenshots
+   1183  Field tooltips
+   1218  In-header column filters (trade log table)
+   1252  Active filter chips
+   1285  Empty states, error banners, skeleton loaders
+   1336  Cross-instrument overview dashboard (/app)
+   1414  Not found / error boundary state pages
+   1427  Toast notifications
+   1455  Public policy pages (Privacy, Terms)
+   1474  Legal links (auth pages + account settings)
+   1513  Economic calendar card (mock - Overview pages)
+   1596  Calendar news badge (Monthly P&L day cells, mock)
+   1617  Streak badge (Overview + strategy detail pages)
+   1626  Market status pill (Overview + strategy detail pages)
+   1652  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -976,7 +976,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 :root[data-theme="light"] .modal-overlay{background:rgba(20,22,26,.55);}
 :root[data-theme="light"] .instrument-dropdown,
-:root[data-theme="light"] .strategy-menu-dropdown{box-shadow:0 8px 24px rgba(20,22,26,.15);}
+:root[data-theme="light"] .strategy-menu-dropdown,
+:root[data-theme="light"] .tag-suggestions{box-shadow:0 8px 24px rgba(20,22,26,.15);}
 
 /* ---------- 2FA ---------- */
 .mfa-status-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
@@ -1155,6 +1156,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* Trade tags - the editable form (with a remove "x") and the read-only
    trade detail page / trade log expand row (without one) both use
    .trade-tag, so a tag looks identical everywhere it appears. */
+/* .field's overflow-x:hidden (its date/time-widget backstop, above) has a
+   side effect: leaving overflow-y at its default computes it to auto, not
+   visible, once overflow-x is anything but visible - so it silently clips
+   .tag-suggestions' position:absolute dropdown below. This field has no
+   native widget to guard against, so it's exempted. */
+.tags-field{overflow-x:visible;}
 .tag-row{display:flex; flex-wrap:wrap; align-items:center; gap:8px;}
 .trade-tag{
   display:inline-flex; align-items:center; gap:5px;
@@ -1165,6 +1172,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .trade-tag:hover .trade-tag-remove{opacity:1;}
 .tag-add-form{display:inline-flex; align-items:center; gap:8px;}
 .tag-add-form input{width:140px; padding:6px 10px; font-size:12.5px;}
+/* Dropdown of previously-used tags, filtered as you type in the input
+   above - same floating-menu treatment as .strategy-menu-dropdown. Not
+   position:fixed: unlike ColumnFilter's menus, this one isn't inside an
+   overflow-clipped scroll container, so anchoring to its own
+   position:relative wrapper is enough. */
+.tag-add-form-wrap{position:relative; display:inline-flex;}
+.tag-suggestions{
+  position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; min-width:160px; max-height:220px;
+  overflow-y:auto; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
+}
+.tag-suggestion-item{padding:8px 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
+.tag-suggestion-item:hover{background:var(--panel-2);}
 
 /* ---------- Field tooltips ---------- */
 .field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}

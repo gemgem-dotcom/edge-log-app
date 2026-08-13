@@ -87,6 +87,7 @@ export default function TradeForm({
   const [tags, setTags] = useState(initial.tags || [])
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
+  const [existingTags, setExistingTags] = useState([])
 
   const [saving, setSaving] = useState(false)
 
@@ -126,6 +127,32 @@ export default function TradeForm({
   screenshotsRef.current = screenshots
   useEffect(() => {
     return () => screenshotsRef.current.forEach((s) => URL.revokeObjectURL(s.previewUrl))
+  }, [])
+
+  // Tag suggestions for the dropdown below - every tag currently in use on
+  // any of the trader's trades, across every instrument (tags like "FOMC"
+  // aren't instrument-specific). There's still no separate tags table (see
+  // schema.sql): this list is derived fresh from trades.tags each time the
+  // form mounts, so a tag that's no longer on any trade just stops
+  // appearing here on its own, with nothing to clean up.
+  useEffect(() => {
+    let cancelled = false
+    async function loadTagSuggestions() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase.from('trades').select('tags').eq('user_id', user.id)
+      if (cancelled) return
+      const seen = new Map()
+      for (const row of data || []) {
+        for (const tag of row.tags || []) {
+          const key = tag.toLowerCase()
+          if (!seen.has(key)) seen.set(key, tag)
+        }
+      }
+      setExistingTags([...seen.values()].sort((a, b) => a.localeCompare(b)))
+    }
+    loadTagSuggestions()
+    return () => { cancelled = true }
   }, [])
 
   function updateSetup(field, value) {
@@ -202,9 +229,10 @@ export default function TradeForm({
   // strategies, there's no shared list to insert into, so adding one is
   // just an array update. The input stays open after adding (rather than
   // closing like "+ Add new strategy" does) since tagging a trade with
-  // several words in a row is the common case.
-  function handleAddTag() {
-    const trimmed = newTagName.trim()
+  // several words in a row is the common case. `tagText` lets a suggestion
+  // click add that tag directly, without going through the input at all.
+  function handleAddTag(tagText) {
+    const trimmed = (tagText ?? newTagName).trim()
     if (!trimmed) return
     setTags((prev) => (prev.some((t) => t.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, trimmed]))
     setNewTagName('')
@@ -289,6 +317,14 @@ export default function TradeForm({
       setSaving(false)
     }
   }
+
+  // Previously-used tags, minus ones already on this trade, narrowed by
+  // whatever's typed so far - shown as a dropdown under the tag input.
+  const tagQuery = newTagName.trim().toLowerCase()
+  const tagSuggestions = existingTags.filter((t) => (
+    !tags.some((existing) => existing.toLowerCase() === t.toLowerCase())
+    && (!tagQuery || t.toLowerCase().includes(tagQuery))
+  ))
 
   return (
     <>
@@ -484,7 +520,7 @@ export default function TradeForm({
             </span>
           </div>
 
-          <div className="field full">
+          <div className="field full tags-field">
             <div className="tag-row">
               {tags.map((tag) => (
                 <span className="trade-tag" key={tag}>
@@ -493,14 +529,23 @@ export default function TradeForm({
                 </span>
               ))}
               {addingTag ? (
-                <span className="tag-add-form">
-                  <input
-                    type="text" placeholder="Tag name" autoFocus
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    onKeyDown={handleTagKeyDown}
-                  />
-                  <span className="del" style={{ color: 'var(--accent)' }} onClick={handleAddTag}>Add</span>
+                <span className="tag-add-form-wrap">
+                  <span className="tag-add-form">
+                    <input
+                      type="text" placeholder="Tag name" autoFocus
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                    />
+                    <span className="del" style={{ color: 'var(--accent)' }} onClick={() => handleAddTag()}>Add</span>
+                  </span>
+                  {tagSuggestions.length > 0 && (
+                    <div className="tag-suggestions">
+                      {tagSuggestions.map((t) => (
+                        <div key={t} className="tag-suggestion-item" onClick={() => handleAddTag(t)}>{t}</div>
+                      ))}
+                    </div>
+                  )}
                 </span>
               ) : (
                 <span className="del" style={{ color: 'var(--accent)' }} onClick={() => setAddingTag(true)}>

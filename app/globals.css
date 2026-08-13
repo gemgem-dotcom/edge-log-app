@@ -646,9 +646,14 @@ a.shell-logo{color:inherit; text-decoration:none;}
   .page-header-row .new-trade-btn{margin-left:0 !important;}
   .page-subtitle{margin-top:8px;}
   /* Same wrap treatment as .page-header-row above, for the pages where the
-     action button now lives beside the subtitle instead. */
-  .page-subtitle-row{margin-top:8px; row-gap:8px;}
-  .page-subtitle-row .new-trade-btn{margin-left:0 !important;}
+     action button now lives beside the subtitle instead. Full-width rather
+     than left-aligned at its own content width - at this width, a
+     content-sized pill button sitting under two tightly-fit status pills
+     just reads as a third, arbitrarily-sized rounded shape floating with
+     dead space beside it. Full width gives it a clear identity as the
+     row's primary action instead of one more badge in the stack. */
+  .page-subtitle-row{margin-top:8px; row-gap:10px;}
+  .page-subtitle-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
   /* Title and the ⋮ menu button stay on one line (menu belongs next to the
      name it acts on); only the status pills - which have nowhere left to go
      once the name eats the row - drop to their own line below. */

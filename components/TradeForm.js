@@ -169,17 +169,28 @@ export default function TradeForm({
   useEffect(() => {
     if (!showSuggestions) return
     const dismiss = () => setShowSuggestions(false)
+    // capture:true is what lets this see the dropdown's own scrollbar
+    // scrolling (a native 'scroll' event doesn't bubble, so a plain
+    // bubble-phase listener would never see it) - but that means it has to
+    // explicitly ignore scrolls that originate inside the dropdown itself
+    // (e.target is a real Node there, unlike resize's e.target === window),
+    // or scrolling the 5-row suggestion list would close the very list
+    // being scrolled.
+    const dismissOnScroll = (e) => {
+      if (tagDropdownRef.current && tagDropdownRef.current.contains(e.target)) return
+      dismiss()
+    }
     // The tag input is autoFocus'd, which can itself trigger a scroll-into-
     // view the instant the dropdown opens (e.g. a field near the viewport
     // edge). Deferring attachment by a frame lets that settle first, so
     // opening the dropdown doesn't immediately close itself.
     const raf = requestAnimationFrame(() => {
-      window.addEventListener('scroll', dismiss, true)
+      window.addEventListener('scroll', dismissOnScroll, true)
       window.addEventListener('resize', dismiss)
     })
     return () => {
       cancelAnimationFrame(raf)
-      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('scroll', dismissOnScroll, true)
       window.removeEventListener('resize', dismiss)
     }
   }, [showSuggestions])

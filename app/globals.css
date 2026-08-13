@@ -1484,16 +1484,24 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
 .econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
-/* Impact checklist + day/week toggle + nav toolbar reuses .calendar-toolbar
+/* Impact checklist + date range controls toolbar reuses .calendar-toolbar
    (defined under Monthly P&L) rather than a bespoke header, so this card's
    top spacing matches every other filter+nav toolbar in the app instead of
    inventing its own margin. */
-.econ-calendar-toolbar-left{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-/* .tabs normally carries its own 16px bottom margin for stacking above a
-   chart (see Equity curve's Day/Week/Month tabs) - here it's an inline
-   sibling of the impact filter instead, so that margin would just misalign
-   it against the toolbar's other flex children. */
-.econ-calendar-view-tabs{margin-bottom:0;}
+.econ-calendar-range-controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+/* Overrides the base input{width:100%} - two side-by-side date fields plus
+   a "Today" button need to size to their own content, not stretch to fill
+   the toolbar the way a lone form field would. */
+.econ-date-input{width:auto; min-width:145px;}
+.econ-date-range-sep{color:var(--muted); font-size:12.5px;}
+.econ-today-btn{
+  display:flex; align-items:center; gap:6px; background:var(--panel-2);
+  border:1px solid var(--line); border-radius:100px; padding:8px 14px;
+  font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;
+  transition:border-color .15s ease, color .15s ease, opacity .15s ease;
+}
+.econ-today-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+.econ-today-btn:disabled{opacity:.45; cursor:default;}
 .econ-calendar-mock-list{display:flex; flex-direction:column;}
 .econ-calendar-mock-row{
   display:flex; align-items:center; gap:12px; padding:10px 0;
@@ -1502,7 +1510,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
 .econ-calendar-mock-day{
   font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
-  width:30px; flex-shrink:0;
+  width:46px; flex-shrink:0;
 }
 .econ-calendar-mock-time{font-family:'JetBrains Mono',monospace; color:var(--muted); width:44px; flex-shrink:0;}
 .econ-calendar-mock-event{flex:1; font-weight:600;}

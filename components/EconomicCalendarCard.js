@@ -1,20 +1,20 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import { ChevronDown, RotateCcw } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
-import { MOCK_ECON_WEEK } from '@/lib/marketContextMock'
+import { mockEventsForDate } from '@/lib/marketContextMock'
 
 const IMPACT_OPTIONS = [
   { value: 'high', label: 'High impact' },
   { value: 'medium', label: 'Medium impact' },
   { value: 'low', label: 'Low impact' },
 ]
-const WEEKDAY_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI']
-const VIEW_MODES = [
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-]
+
+// Long enough for any range someone would plausibly pick in this card, and
+// a hard stop against an accidental multi-year range (e.g. a typo'd year
+// in the date input) turning into a very long loop.
+const MAX_RANGE_DAYS = 90
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -22,26 +22,35 @@ function pad(n) {
 function toDateStr(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
-
-// Monday of the week containing `date`.
-function mondayOf(date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
-  d.setHours(0, 0, 0, 0)
-  return d
+function todayStr() {
+  return toDateStr(new Date())
 }
 
-function formatWeekLabel(monday) {
-  const friday = new Date(monday)
-  friday.setDate(monday.getDate() + 4)
-  const start = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const end = friday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  return `${start} – ${end}`
+const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return `${WEEKDAY_ABBR[d.getDay()]} ${d.getDate()}`
 }
 
-function formatDayLabel(date) {
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+// Every mock event landing on any day within [fromStr, toStr] inclusive,
+// via marketContextMock's per-date lookup rather than duplicating its
+// weekday-offset math here. Swaps the bounds if entered backwards, since
+// the two <input type="date"> fields don't enforce order themselves.
+function eventsInRange(fromStr, toStr) {
+  let from = new Date(fromStr + 'T00:00:00')
+  let to = new Date(toStr + 'T00:00:00')
+  if (from > to) { const t = from; from = to; to = t }
+
+  const out = []
+  const cursor = new Date(from)
+  let guard = 0
+  while (cursor <= to && guard < MAX_RANGE_DAYS) {
+    const dateStr = toDateStr(cursor)
+    for (const e of mockEventsForDate(dateStr)) out.push({ ...e, dateStr })
+    cursor.setDate(cursor.getDate() + 1)
+    guard++
+  }
+  return out
 }
 
 function impactFilterLabel(selected) {
@@ -82,74 +91,67 @@ function ImpactChecklist({ selected, onChange }) {
 }
 
 // Mock data only (lib/marketContextMock.js) - not sourced from any live
-// feed. MOCK_ECON_WEEK's shape (weekday offset + time/event/impact/
-// forecast/previous) is what a real provider's data should slot into so
-// this component doesn't need to change - only the dates shown are real
-// (computed from the browser clock plus however many days/weeks the
-// trader has flipped), the event list itself repeats every week.
+// feed. mockEventsForDate's shape (time/event/impact/forecast/previous per
+// date) is what a real provider's data should slot into so this component
+// doesn't need to change - only the dates picked are real, the event
+// pattern itself repeats every week since there's no live source yet.
 //
 // Reused as-is on the per-instrument Overview page. A future version
 // should filter events down to whatever's relevant to that instrument's
 // underlying currency/market instead of always showing the same US-wide
 // list - no such filtering exists yet.
 export default function EconomicCalendarCard() {
-  const [viewMode, setViewMode] = useState('day')
-  // Single anchor date rather than separate day/week cursors - switching
-  // modes keeps showing whatever day/week that anchor currently falls in,
-  // instead of resetting to today.
-  const [cursorDate, setCursorDate] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d })
+  const [fromDate, setFromDate] = useState(todayStr)
+  const [toDate, setToDate] = useState(todayStr)
   const [impactSelected, setImpactSelected] = useState(['high', 'medium', 'low'])
 
-  const monday = mondayOf(cursorDate)
-  const cursorDateStr = toDateStr(cursorDate)
+  const isSingleDay = fromDate === toDate
+  const isToday = isSingleDay && fromDate === todayStr()
 
-  const weekEvents = MOCK_ECON_WEEK
+  const events = eventsInRange(fromDate, toDate)
     .filter((e) => impactSelected.includes(e.impact))
-    .map((e) => {
-      const d = new Date(monday)
-      d.setDate(d.getDate() + e.day)
-      return { ...e, dateStr: toDateStr(d) }
-    })
     .sort((a, b) => (a.dateStr + a.time).localeCompare(b.dateStr + b.time))
 
-  const events = viewMode === 'day' ? weekEvents.filter((e) => e.dateStr === cursorDateStr) : weekEvents
-
-  function shiftCursor(days) {
-    setCursorDate((d) => { const nd = new Date(d); nd.setDate(nd.getDate() + days); return nd })
+  function resetToToday() {
+    const t = todayStr()
+    setFromDate(t)
+    setToDate(t)
   }
 
   return (
     <>
       <div className="calendar-toolbar">
-        <div className="econ-calendar-toolbar-left">
-          <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
-          <div className="tabs econ-calendar-view-tabs">
-            {VIEW_MODES.map((m) => (
-              <div
-                key={m.value}
-                className={`tab ${viewMode === m.value ? 'tab-active' : ''}`}
-                onClick={() => setViewMode(m.value)}
-              >
-                {m.label}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="calendar-month-nav">
-          <button type="button" className="calendar-nav-btn" onClick={() => shiftCursor(viewMode === 'day' ? -1 : -7)} aria-label={viewMode === 'day' ? 'Previous day' : 'Previous week'}><ChevronLeft size={18} /></button>
-          <div className="calendar-month-label">{viewMode === 'day' ? formatDayLabel(cursorDate) : formatWeekLabel(monday)}</div>
-          <button type="button" className="calendar-nav-btn" onClick={() => shiftCursor(viewMode === 'day' ? 1 : 7)} aria-label={viewMode === 'day' ? 'Next day' : 'Next week'}><ChevronRight size={18} /></button>
+        <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
+        <div className="econ-calendar-range-controls">
+          <input
+            type="date"
+            className="econ-date-input"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            aria-label="From date"
+          />
+          <span className="econ-date-range-sep">–</span>
+          <input
+            type="date"
+            className="econ-date-input"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            aria-label="To date"
+          />
+          <button type="button" className="econ-today-btn" onClick={resetToToday} disabled={isToday}>
+            <RotateCcw size={13} /> Today
+          </button>
         </div>
       </div>
 
       {events.length === 0 ? (
-        <div className="empty">No matching events {viewMode === 'day' ? 'on this day' : 'this week'}.</div>
+        <div className="empty">No matching events in this range.</div>
       ) : (
         <div className="econ-calendar-mock-list">
           {events.map((e, i) => (
             <div className="econ-calendar-mock-row" key={i}>
               <span className={`econ-impact-dot econ-impact-${e.impact}`} />
-              {viewMode === 'week' && <span className="econ-calendar-mock-day">{WEEKDAY_LABELS[e.day]}</span>}
+              {!isSingleDay && <span className="econ-calendar-mock-day">{formatDateLabel(e.dateStr)}</span>}
               <span className="econ-calendar-mock-time">{e.time}</span>
               <span className="econ-calendar-mock-event">{e.event}</span>
               <span className="econ-calendar-mock-figures">
@@ -162,7 +164,7 @@ export default function EconomicCalendarCard() {
 
       {/* Mock only - a real version would check whether the trader's own
           strategies (tags, typical session times) line up with this
-          week's high-impact events instead of this hardcoded line. */}
+          range's high-impact events instead of this hardcoded line. */}
       <div className="econ-calendar-mock-footer">
         2 of your strategies trade around high-impact events this week — Powell Mon, Break and Retest
       </div>

@@ -908,9 +908,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .sidebar-strategy-add{color:var(--accent); font-weight:600; cursor:pointer; transition:opacity .15s ease;}
 .sidebar-strategy-add:hover{opacity:.75;}
-.sidebar-strategy-add-form{display:flex; gap:6px; padding:6px 12px 6px 30px;}
-.sidebar-strategy-add-form input{padding:6px 8px; font-size:12.5px;}
-.sidebar-strategy-add-form button{padding:6px 10px; font-size:12px;}
+/* Stacked, not side-by-side - the sidebar's own width (230px, minus its
+   padding and this row's 30px left indent to line up under the strategy
+   dots above it) leaves too little room for an input and a button in one
+   row without crushing the input's placeholder text. Same fix already
+   used for .instrument-add-form (the equivalent "add new" input on the
+   trade form), just narrower here. */
+.sidebar-strategy-add-form{display:flex; flex-direction:column; align-items:stretch; gap:6px; padding:6px 12px 6px 30px;}
+.sidebar-strategy-add-form input{padding:6px 8px; font-size:12.5px; width:100%;}
+.sidebar-strategy-add-form button{padding:6px 10px; font-size:12px; align-self:flex-end;}
 
 
 .row-actions{text-align:right; white-space:nowrap;}

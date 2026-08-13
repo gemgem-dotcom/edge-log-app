@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, Fragment } from 'react'
-import { Pencil, Trash2, X, ChevronDown } from 'lucide-react'
+import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
@@ -39,18 +39,11 @@ function TagFilterMenu({ options, selected, onChange }) {
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
   }
 
-  const selectedLabels = options.filter((o) => selected.includes(o.value))
-  const label = selectedLabels.length === 0
-    ? 'Filter by tag'
-    : selectedLabels.length === 1
-      ? selectedLabels[0].label
-      : `${selectedLabels.length} tags`
-
   return (
     <div className="trade-tag-filter" ref={wrapRef}>
       <button type="button" className="calendar-strategy-filter trade-tag-filter-btn" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        {label}
-        <ChevronDown size={14} />
+        <Filter size={14} />
+        Filter
       </button>
       {open && (
         <div className="col-filter-menu trade-tag-filter-menu">
@@ -237,7 +230,7 @@ export default function TradeLogTable({
       clear: () => setFilterResult('all'),
     }] : []),
     ...filterTags.map((v) => ({
-      key: `tag-${v}`, label: `Tag: ${tagOptionMap.get(v) || v}`,
+      key: `tag-${v}`, label: tagOptionMap.get(v) || v,
       clear: () => setFilterTags((prev) => prev.filter((val) => val !== v)),
     })),
   ]

@@ -578,6 +578,7 @@ export default function TradeForm({
                       type="text" placeholder="Tag name" autoFocus
                       value={newTagName}
                       onChange={(e) => { setNewTagName(e.target.value); setShowSuggestions(true) }}
+                      onFocus={() => setShowSuggestions(true)}
                       onKeyDown={handleTagKeyDown}
                     />
                     <span className="del" style={{ color: 'var(--accent)' }} onClick={() => handleAddTag()}>Add</span>

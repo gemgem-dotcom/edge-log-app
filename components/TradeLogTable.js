@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
-import { hasResult, planAdherence, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
+import { hasResult, planAdherence, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
@@ -392,7 +392,7 @@ export default function TradeLogTable({
                   <tr className="expand-row">
                     <td colSpan={colCount}>
                       <div className="detail-grid" style={{ padding: '16px 4px' }}>
-                        <div><label>Entry time</label><div>{t.trade_time}</div></div>
+                        <div><label>Entry time</label><div>{formatTime12h(t.trade_time)}</div></div>
                         <div><label>Entry price</label><div>{fmtNum(t.entry)}</div></div>
                         <div><label>Stop loss</label><div>{fmtNum(t.stop)}{t.stop_distance != null && <div className="detail-subvalue">{fmtNum(t.stop_distance)} pts</div>}</div></div>
                         <div><label>Take profit</label><div>{fmtNum(t.target)}{t.target_distance != null && <div className="detail-subvalue">{fmtNum(t.target_distance)} pts</div>}</div></div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult, calcRiskReward, planAdherence, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { hasResult, calcRiskReward, planAdherence, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -75,7 +75,7 @@ export default function TradeDetailPage({ params }) {
         <div className="detail-grid">
           <div><label>Instrument</label><div>{symbol}</div></div>
           <div><label>Date</label><div>{trade.trade_date}</div></div>
-          <div><label>Entry time</label><div>{trade.trade_time}</div></div>
+          <div><label>Entry time</label><div>{formatTime12h(trade.trade_time)}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{fmtNum(trade.entry)}</div></div>
           <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null && <div className="detail-subvalue">{fmtNum(trade.stop_distance)} pts</div>}</div></div>

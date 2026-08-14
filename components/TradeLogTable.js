@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
-import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
+import { hasResult, planAdherence, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
@@ -336,6 +336,9 @@ export default function TradeLogTable({
           {visible.map((t) => {
             const closed = hasResult(t)
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
+            const adherence = planAdherence(t)
+            const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', deviated: 'Deviated' }[adherence]
+            const adherenceClass = { target: 'r-pos', stop: 'r-neg', deviated: 'r-zero' }[adherence]
             const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
@@ -398,6 +401,7 @@ export default function TradeLogTable({
                         {/* No data source until Phase 2 captures excursions. */}
                         <div><label>MFE</label><div>—</div></div>
                         <div><label>MAE</label><div>—</div></div>
+                        <div><label>Plan Adherence</label><div>{adherence === null ? '—' : <span className={`r-pill ${adherenceClass}`}>{adherenceLabel}</span>}</div></div>
                       </div>
 
                       {t.tags?.length > 0 && (

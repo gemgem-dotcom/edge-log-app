@@ -350,7 +350,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
             <EconomicCalendarCard />
           </div>
 
-          <div className="section-heading">All Time Performance</div>
+          <div className="section-heading">All-Time Performance</div>
           <div className="stats stats-5">
             <div className="stat">
               <div className="stat-label">Total P&amp;L</div>

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
+import { useIsMobile } from '../lib/useIsMobile'
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const MONTH_NAMES = [
@@ -21,12 +22,46 @@ function parseIso(iso) {
   return { year: y, month: m - 1, day: d }
 }
 
-// The native input[type=date] handles typing itself (segmented, its
-// display order follows the browser's own locale - not something a page
-// can override) - this only adds an alternative, optional way to set the
+// dd/mm/yyyy, both for display and for what typing accepts back - only
+// used on the mobile typed fallback below.
+function formatDisplayDDMMYYYY(iso) {
+  const parsed = parseIso(iso)
+  if (!parsed) return ''
+  return `${pad(parsed.day)}/${pad(parsed.month + 1)}/${parsed.year}`
+}
+
+// Reformats digits-only input as the user types, auto-inserting the two
+// slashes ("14082026" -> "14/08/2026") rather than requiring them typed.
+function autoSlash(raw) {
+  const digits = raw.replace(/\D/g, '').slice(0, 8)
+  let out = digits.slice(0, 2)
+  if (digits.length > 2) out += '/' + digits.slice(2, 4)
+  if (digits.length > 4) out += '/' + digits.slice(4, 8)
+  return out
+}
+
+function parseTypedDDMMYYYY(text) {
+  const m = text.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!m) return null
+  const day = Number(m[1])
+  const month = Number(m[2])
+  const year = Number(m[3])
+  if (month < 1 || month > 12) return null
+  if (day < 1 || day > new Date(year, month, 0).getDate()) return null
+  return toIso(year, month - 1, day)
+}
+
+// The native input[type=date] handles typing itself on desktop (segmented,
+// its display order follows the browser's own locale - not something a
+// page can override) - this adds an alternative, optional way to set the
 // same value: a calendar popup, since the native popup can't be restyled
 // (see the color-scheme comment in globals.css). value/onChange/min/max
 // all speak the same ISO YYYY-MM-DD string the input already used.
+//
+// Real mobile browsers don't support typing into input[type=date] at all -
+// tapping it opens the OS's own picker with no keyboard entry and no
+// placeholder - so below the app's mobile breakpoint this swaps in a
+// plain typed dd/mm/yyyy text field instead, restoring manual entry there.
 export default function DatePicker({ value, onChange, min, max }) {
   const [open, setOpen] = useState(false)
   const parsedValue = parseIso(value)
@@ -34,10 +69,36 @@ export default function DatePicker({ value, onChange, min, max }) {
   const [viewYear, setViewYear] = useState(parsedValue?.year ?? today.getFullYear())
   const [viewMonth, setViewMonth] = useState(parsedValue?.month ?? today.getMonth())
   const ref = useClickOutside(open, useCallback(() => setOpen(false), []))
+  const isMobile = useIsMobile()
+
+  const [text, setText] = useState(formatDisplayDDMMYYYY(value))
+  const [editing, setEditing] = useState(false)
+
+  useEffect(() => {
+    if (!editing) setText(formatDisplayDDMMYYYY(value))
+  }, [value, editing])
+
+  function handleTextChange(e) {
+    setText(autoSlash(e.target.value))
+  }
+  function handleTextFocus() {
+    setEditing(true)
+  }
+  function handleTextBlur() {
+    setEditing(false)
+    if (text.trim() === '') { onChange(''); return }
+    const iso = parseTypedDDMMYYYY(text)
+    if (iso) {
+      onChange(iso)
+      setText(formatDisplayDDMMYYYY(iso))
+    } else {
+      setText(formatDisplayDDMMYYYY(value))
+    }
+  }
 
   // Keep the visible month in sync if the value changes from outside this
-  // component - typing directly into the native input, or the edit-trade
-  // page loading an existing trade in.
+  // component - typing directly into the input, or the edit-trade page
+  // loading an existing trade in.
   useEffect(() => {
     const p = parseIso(value)
     if (p) { setViewYear(p.year); setViewMonth(p.month) }
@@ -118,10 +179,18 @@ export default function DatePicker({ value, onChange, min, max }) {
   return (
     <div className="dt-picker" ref={ref}>
       <div className="dt-picker-trigger">
-        <input
-          type="date" min={min} max={max} className="dt-picker-native-input"
-          value={value || ''} onChange={(e) => onChange(e.target.value)}
-        />
+        {isMobile ? (
+          <input
+            type="text" inputMode="numeric" className="dt-picker-input" placeholder="dd/mm/yyyy"
+            value={text} onChange={handleTextChange} onFocus={handleTextFocus} onBlur={handleTextBlur}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+          />
+        ) : (
+          <input
+            type="date" min={min} max={max} className="dt-picker-native-input"
+            value={value || ''} onChange={(e) => onChange(e.target.value)}
+          />
+        )}
         <button type="button" className="dt-picker-icon-btn" aria-label="Open date picker" onClick={() => setOpen((v) => !v)}>
           <Calendar size={15} />
         </button>

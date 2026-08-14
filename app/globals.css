@@ -264,14 +264,14 @@ table{min-width:640px;}
   .section-label{font-size:10px;}
 
   /* Prevent iOS Safari's auto-zoom-on-focus, which happens on any
-     input with font-size under 16px */
+     input with font-size under 16px. .dt-picker-native-input never
+     renders at this width (DatePicker/TimePicker swap to the typed
+     .dt-picker-input fallback below the same breakpoint - see
+     useIsMobile), so unlike the old native-only version of this file,
+     nothing here needs exempting from the 16px floor: .dt-picker-input
+     is a real typed field and should get the same zoom protection as
+     every other text input. */
   input, select, textarea{font-size:16px; padding:10px;}
-  /* type=date/time open a picker, not the keyboard that triggers the
-     zoom above, so they don't need the 16px floor - and on iOS Safari a
-     bigger font makes the native control's internal segments (hour,
-     minute, second, AM/PM) wider, which is exactly what was pushing
-     these fields past the card edge despite the width:100% above. */
-  .dt-picker-native-input{font-size:13.5px;}
   select{font-size:13.5px; height:41px; padding-right:34px;}
   /* .dt-picker-trigger doesn't inherit the 16px/padding:10px bump above
      (it's a wrapper div, not an input) - without this it stays at its
@@ -1236,12 +1236,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* ---------- Date/time picker (adds an optional popup to native input[type=date/time]) ---------- */
 /* The native date/time picker's own popup can't be restyled - color-scheme
    (see :root above) is the only lever CSS has over it, and testing showed
-   even that doesn't reach this popup in Chromium. Typing stays on the
-   real native input (unchanged keyboard/segment/locale behavior) - this
-   only adds a second, optional way to set the same value: a custom
-   popup (same treatment as .tag-suggestions) opened by its own icon,
-   with the input's own native picker-indicator icon hidden below so
-   there's exactly one way to open a picker, not two competing ones. */
+   even that doesn't reach this popup in Chromium. On desktop, typing stays
+   on the real native input (unchanged keyboard/segment/locale behavior) -
+   this only adds a second, optional way to set the same value: a custom
+   popup (same treatment as .tag-suggestions) opened by its own icon, with
+   the input's own native picker-indicator icon hidden below so there's
+   exactly one way to open a picker, not two competing ones. Real mobile
+   browsers don't support typing into these input types at all - tapping
+   opens the OS's own picker with no keyboard entry and no placeholder -
+   so DatePicker/TimePicker swap in a plain typed .dt-picker-input there
+   instead (see useIsMobile), which shares this same trigger styling. */
 .dt-picker{position:relative;}
 .dt-picker-trigger{
   display:flex; align-items:center; justify-content:space-between; width:100%; height:36px;
@@ -1262,6 +1266,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    field - ::-webkit-date-and-time-value is WebKit-only and silently
    ignored elsewhere, so this only touches the browsers that need it. */
 .dt-picker-native-input::-webkit-date-and-time-value{text-align:left;}
+/* Mobile's typed fallback - a plain text input, so unlike
+   .dt-picker-native-input it needs no native-chrome resets. */
+.dt-picker-input{
+  flex:1; min-width:0; background:transparent; border:none; padding:0;
+  color:inherit; font:inherit; outline:none;
+}
+.dt-picker-input::placeholder{color:var(--muted);}
 .dt-picker-icon-btn{
   flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-left:8px;
   width:22px; height:22px; padding:0; background:transparent; border:none; border-radius:5px;

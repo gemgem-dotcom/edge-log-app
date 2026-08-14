@@ -140,10 +140,13 @@ export default function TimePicker({ value, onChange }) {
   function handleFieldChange(e) {
     const digits = e.target.value.replace(/\D/g, '').slice(0, 2)
     setFieldText(digits)
+    // Commits as soon as 2 digits are typed, but stays in edit mode (rather
+    // than clearing editingField/fieldText right away) so the field keeps
+    // showing what was typed instead of snapping back to the committed
+    // display value - otherwise Backspace would have nothing of its own
+    // left to delete. commitField (on blur) is what actually ends the edit.
     if (digits.length === 2) {
       FIELD_SETTERS[editingField](Number(digits))
-      setEditingField(null)
-      setFieldText('')
     }
   }
   function commitField() {

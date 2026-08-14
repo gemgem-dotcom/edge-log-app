@@ -43,6 +43,45 @@ function autoSlash(raw) {
   return out
 }
 
+// Clamps each segment as soon as it's fully typed, rather than accepting
+// anything and only discovering it's invalid on blur (where there's no
+// previously-valid value to fall back to other than blanking the field).
+// Only whole, complete segments are clamped - a day of "3" mid-typing is
+// left alone since it could still become "31".
+function clampDigits(digits, min, max) {
+  let day = digits.slice(0, 2)
+  let month = digits.slice(2, 4)
+  let year = digits.slice(4, 8)
+
+  if (day.length === 2) {
+    day = pad(Math.min(31, Math.max(1, Number(day))))
+  }
+  if (month.length === 2) {
+    month = pad(Math.min(12, Math.max(1, Number(month))))
+  }
+
+  let out = day + month + year
+  if (year.length === 4 && day.length === 2 && month.length === 2) {
+    const minYear = min ? Number(min.slice(0, 4)) : null
+    const maxYear = max ? Number(max.slice(0, 4)) : null
+    let y = Number(year)
+    if (minYear != null) y = Math.max(minYear, y)
+    if (maxYear != null) y = Math.min(maxYear, y)
+    year = String(y).padStart(4, '0')
+
+    const dd = Math.min(Number(day), new Date(y, Number(month), 0).getDate())
+    let iso = toIso(y, Number(month) - 1, dd)
+    if (min && iso < min) iso = min
+    if (max && iso > max) iso = max
+    const p = parseIso(iso)
+    day = pad(p.day)
+    month = pad(p.month + 1)
+    year = String(p.year).padStart(4, '0')
+    out = day + month + year
+  }
+  return out
+}
+
 const DATE_MASK = 'dd/mm/yyyy'
 
 function parseTypedDDMMYYYY(text) {
@@ -83,7 +122,8 @@ export default function DatePicker({ value, onChange, min, max }) {
   }, [value, editing])
 
   function handleTextChange(e) {
-    setText(autoSlash(e.target.value))
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 8)
+    setText(autoSlash(clampDigits(digits, min, max)))
   }
   function handleTextFocus() {
     setEditing(true)

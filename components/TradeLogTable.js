@@ -337,8 +337,8 @@ export default function TradeLogTable({
             const closed = hasResult(t)
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
             const adherence = planAdherence(t)
-            const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', deviated: 'Deviated' }[adherence]
-            const adherenceClass = { target: 'r-pos', stop: 'r-neg', deviated: 'r-zero' }[adherence]
+            const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', breakeven: 'Breakeven', deviated: 'Deviated' }[adherence]
+            const adherenceClass = { target: 'r-pos', stop: 'r-neg', breakeven: 'r-zero', deviated: 'r-open' }[adherence]
             const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol

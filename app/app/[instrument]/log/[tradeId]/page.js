@@ -61,8 +61,8 @@ export default function TradeDetailPage({ params }) {
   const shots = trade.screenshot_urls?.length ? trade.screenshot_urls : (trade.screenshot_url ? [trade.screenshot_url] : [])
   const riskReward = calcRiskReward(trade.target_distance, trade.stop_distance)
   const adherence = planAdherence(trade)
-  const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', deviated: 'Deviated' }[adherence]
-  const adherenceClass = { target: 'r-pos', stop: 'r-neg', deviated: 'r-zero' }[adherence]
+  const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', breakeven: 'Breakeven', deviated: 'Deviated' }[adherence]
+  const adherenceClass = { target: 'r-pos', stop: 'r-neg', breakeven: 'r-zero', deviated: 'r-open' }[adherence]
 
   return (
     <div className="page-container">

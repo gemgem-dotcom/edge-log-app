@@ -32,6 +32,11 @@ function formatDisplayDDMMYYYY(iso) {
 
 // Reformats digits-only input as the user types, auto-inserting the two
 // slashes ("14082026" -> "14/08/2026") rather than requiring them typed.
+// Slashes always land at raw-digit-count 2 and 4, which is exactly where
+// DATE_MASK's own slashes sit (index 2 and 5) - so this output is always
+// an exact character-for-character prefix of the mask at every partial
+// typing state, which is what lets the overlay below just slice the mask
+// instead of needing real per-character masking.
 function autoSlash(raw) {
   const digits = raw.replace(/\D/g, '').slice(0, 8)
   let out = digits.slice(0, 2)
@@ -39,6 +44,8 @@ function autoSlash(raw) {
   if (digits.length > 4) out += '/' + digits.slice(4, 8)
   return out
 }
+
+const DATE_MASK = 'dd/mm/yyyy'
 
 function parseTypedDDMMYYYY(text) {
   const m = text.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
@@ -115,14 +122,25 @@ export default function DatePicker({ value, onChange, min, max }) {
       if (ref.current && ref.current.contains(e.target)) return
       dismiss()
     }
+    // On mobile, tapping the icon to open this popup blurs the typed
+    // input next to it, which closes the on-screen keyboard if it was
+    // open - and that shrinks-then-grows the visual viewport, firing a
+    // 'resize' right as this popup opens. Width, unlike height, doesn't
+    // change when a keyboard opens or closes - only on an actual
+    // orientation change or window resize, which is what should still
+    // dismiss it.
+    const initialWidth = window.innerWidth
+    const dismissOnResize = () => {
+      if (window.innerWidth !== initialWidth) dismiss()
+    }
     const raf = requestAnimationFrame(() => {
       window.addEventListener('scroll', dismissOnScroll, true)
-      window.addEventListener('resize', dismiss)
+      window.addEventListener('resize', dismissOnResize)
     })
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('scroll', dismissOnScroll, true)
-      window.removeEventListener('resize', dismiss)
+      window.removeEventListener('resize', dismissOnResize)
     }
   }, [open, ref])
 
@@ -180,11 +198,25 @@ export default function DatePicker({ value, onChange, min, max }) {
     <div className="dt-picker" ref={ref}>
       <div className="dt-picker-trigger">
         {isMobile ? (
-          <input
-            type="text" inputMode="numeric" className="dt-picker-input" placeholder="dd/mm/yyyy"
-            value={text} onChange={handleTextChange} onFocus={handleTextFocus} onBlur={handleTextBlur}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
-          />
+          <span className="dt-picker-input-wrap">
+            <input
+              type="text" inputMode="numeric" className="dt-picker-input" placeholder="dd/mm/yyyy"
+              value={text} onChange={handleTextChange} onFocus={handleTextFocus} onBlur={handleTextBlur}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+            />
+            {/* Native input[type=date] keeps showing "mm/yyyy" for the
+                segments not yet typed - a plain placeholder can't do that,
+                it's all-or-nothing. text is always an exact prefix of
+                DATE_MASK (see autoSlash), so the untyped remainder can
+                just be sliced off it and overlaid as a muted hint,
+                without touching the input's own value or cursor. */}
+            {text.length > 0 && text.length < DATE_MASK.length && (
+              <span className="dt-picker-mask-hint" aria-hidden="true">
+                <span className="dt-picker-mask-hint-spacer">{text}</span>
+                {DATE_MASK.slice(text.length)}
+              </span>
+            )}
+          </span>
         ) : (
           <input
             type="date" min={min} max={max} className="dt-picker-native-input"

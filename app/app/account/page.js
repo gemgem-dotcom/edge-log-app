@@ -13,6 +13,7 @@ import PasswordSection from '@/components/account/PasswordSection'
 import TwoFactorSection from '@/components/account/TwoFactorSection'
 import SignInHistorySection from '@/components/account/SignInHistorySection'
 import DataExportSection from '@/components/account/DataExportSection'
+import BillingSection from '@/components/account/BillingSection'
 import DangerZoneSection from '@/components/account/DangerZoneSection'
 import PageLoading from '@/components/PageLoading'
 
@@ -119,6 +120,8 @@ export default function AccountPage() {
         </div>
 
         <DataExportSection />
+
+        <BillingSection />
 
         <DangerZoneSection email={email} hasPassword={hasPassword} />
 

@@ -1509,8 +1509,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    cancels .stats' own 24px - flex:1 already sizes this to the full
    stretched row height, but that 24px was still carved out of it,
    leaving a gap the same size beneath the stat cards instead of letting
-   them actually grow into the space this was meant to give them. */
-.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
+   them actually grow into the space this was meant to give them.
+   gap:16px overrides .stats' own 12px (--space-3, the dense-tile-row
+   convention used elsewhere) to match .dashboard-split's own gap - this
+   stack and the donut card beside it are one family of cards, same as
+   every other .dashboard-split pairing, so the space between the two
+   stat cards should read the same as the space between the stack and
+   the donut, not a smaller, denser value borrowed from unrelated stat
+   rows. */
+.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0; gap:16px;}
 .dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:center;}
 .dashboard-card-title{margin-bottom:16px;}
 @media (max-width:1100px){

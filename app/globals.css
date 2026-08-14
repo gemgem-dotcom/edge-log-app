@@ -1504,12 +1504,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start; margin-bottom:0;}
 /* Per-instrument Overview: the stat-card stack sits opposite a taller
    panel (P&L by strategy) - grow the stack and its two rows to fill the
-   row's full stretched height instead of leaving blank space beneath it,
-   and center each stat's content in the taller card. margin-bottom:0
-   cancels .stats' own 24px - flex:1 already sizes this to the full
-   stretched row height, but that 24px was still carved out of it,
-   leaving a gap the same size beneath the stat cards instead of letting
-   them actually grow into the space this was meant to give them.
+   row's full stretched height instead of leaving blank space beneath it.
+   margin-bottom:0 cancels .stats' own 24px - flex:1 already sizes this
+   to the full stretched row height, but that 24px was still carved out
+   of it, leaving a gap the same size beneath the stat cards instead of
+   letting them actually grow into the space this was meant to give them.
    gap:16px overrides .stats' own 12px (--space-3, the dense-tile-row
    convention used elsewhere) to match .dashboard-split's own gap - this
    stack and the donut card beside it are one family of cards, same as
@@ -1518,7 +1517,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    the donut, not a smaller, denser value borrowed from unrelated stat
    rows. */
 .dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0; gap:16px;}
-.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:center;}
+/* flex-start, not center - same reasoning as .dashboard-split .panel
+   above: centering split the extra stretched height evenly above and
+   below each stat's label+value, reading as if the card had more
+   padding than every other card in this family. flex-start keeps each
+   label flush with its cell's top edge instead, with any leftover
+   height landing below the value where it doesn't stand out. */
+.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:flex-start;}
 .dashboard-card-title{margin-bottom:16px;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}

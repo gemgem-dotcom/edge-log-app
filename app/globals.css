@@ -14,31 +14,31 @@
    487  Tabs
    497  Misc form helpers
    503  Detail view
-   518  Shell layout (sidebar + topbar)
-   731  Expandable trade rows
-   748  Calendar
-   796  Account settings page
-   963  Light theme
-   989  2FA
-   1004  Account fine print
-   1007  Screenshot preview (log new trade)
-   1024  Auth pages always dark
-   1052  Monthly P&L (calendar on Overview)
-   1128  Trade form: sections, validation, currency, screenshots
-   1199  Field tooltips
-   1234  In-header column filters (trade log table)
-   1268  Active filter chips
-   1317  Empty states, error banners, skeleton loaders
-   1368  Cross-instrument overview dashboard (/app)
-   1446  Not found / error boundary state pages
-   1459  Toast notifications
-   1487  Public policy pages (Privacy, Terms)
-   1506  Legal links (auth pages + account settings)
-   1545  Economic calendar card (mock - Overview pages)
-   1628  Calendar news badge (Monthly P&L day cells, mock)
-   1649  Streak badge (Overview + strategy detail pages)
-   1658  Market status pill (Overview + strategy detail pages)
-   1684  Volatility, key levels, today's brief (mock cards)
+   519  Shell layout (sidebar + topbar)
+   732  Expandable trade rows
+   749  Calendar
+   797  Account settings page
+   974  Light theme
+   1000  2FA
+   1015  Account fine print
+   1018  Screenshot preview (log new trade)
+   1035  Auth pages always dark
+   1063  Monthly P&L (calendar on Overview)
+   1139  Trade form: sections, validation, currency, screenshots
+   1210  Field tooltips
+   1245  In-header column filters (trade log table)
+   1279  Active filter chips
+   1328  Empty states, error banners, skeleton loaders
+   1379  Cross-instrument overview dashboard (/app)
+   1457  Not found / error boundary state pages
+   1470  Toast notifications
+   1498  Public policy pages (Privacy, Terms)
+   1517  Legal links (auth pages + account settings)
+   1556  Economic calendar card (mock - Overview pages)
+   1639  Calendar news badge (Monthly P&L day cells, mock)
+   1660  Streak badge (Overview + strategy detail pages)
+   1669  Market status pill (Overview + strategy detail pages)
+   1695  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -509,6 +509,7 @@ table{min-width:640px;}
   letter-spacing:.06em; margin-bottom:4px;
 }
 .detail-grid > div > div{font-family:'JetBrains Mono',monospace; font-size:14px;}
+.detail-subvalue{color:var(--muted); font-size:12px; margin-top:2px;}
 
 @media (max-width:640px){
   .topnav{flex-direction:column; align-items:flex-start;}

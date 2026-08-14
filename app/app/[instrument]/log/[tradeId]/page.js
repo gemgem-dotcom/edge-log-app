@@ -77,8 +77,8 @@ export default function TradeDetailPage({ params }) {
           <div><label>Entry time</label><div>{trade.trade_time}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{fmtNum(trade.entry)}</div></div>
-          <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null ? ` (${fmtNum(trade.stop_distance)} pts)` : ''}</div></div>
-          <div><label>Take profit</label><div>{trade.target == null ? '—' : fmtNum(trade.target)}{trade.target_distance != null ? ` (${fmtNum(trade.target_distance)} pts)` : ''}</div></div>
+          <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null && <div className="detail-subvalue">{fmtNum(trade.stop_distance)} pts</div>}</div></div>
+          <div><label>Take profit</label><div>{trade.target == null ? '—' : fmtNum(trade.target)}{trade.target_distance != null && <div className="detail-subvalue">{fmtNum(trade.target_distance)} pts</div>}</div></div>
           <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price == null ? '—' : fmtNum(trade.exit_price)}</div></div>
           <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(trade))}</div></div>

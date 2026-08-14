@@ -393,8 +393,8 @@ export default function TradeLogTable({
                       <div className="detail-grid" style={{ padding: '16px 4px' }}>
                         <div><label>Entry time</label><div>{t.trade_time}</div></div>
                         <div><label>Entry price</label><div>{fmtNum(t.entry)}</div></div>
-                        <div><label>Stop loss</label><div>{fmtNum(t.stop)}{t.stop_distance != null ? ` (${fmtNum(t.stop_distance)} pts)` : ''}</div></div>
-                        <div><label>Take profit</label><div>{fmtNum(t.target)}{t.target_distance != null ? ` (${fmtNum(t.target_distance)} pts)` : ''}</div></div>
+                        <div><label>Stop loss</label><div>{fmtNum(t.stop)}{t.stop_distance != null && <div className="detail-subvalue">{fmtNum(t.stop_distance)} pts</div>}</div></div>
+                        <div><label>Take profit</label><div>{fmtNum(t.target)}{t.target_distance != null && <div className="detail-subvalue">{fmtNum(t.target_distance)} pts</div>}</div></div>
                         <div><label>Exit price</label><div>{fmtNum(t.exit_price)}</div></div>
                         <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(t))}</div></div>
                         <div><label>Contracts</label><div>{t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')}</div></div>

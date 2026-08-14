@@ -81,12 +81,13 @@ function fmtPnl(value) {
   return `${sign}$${Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// Plain thousands-grouped number, no sign/currency, no forced decimals -
-// for raw prices and point distances, which unlike P&L aren't always
-// entered to 2 decimal places and shouldn't gain fake trailing zeros.
+// Plain thousands-grouped number, no sign/currency - for raw prices and
+// point distances, which are now stored to two decimal places (see
+// toDecimalString in lib/tradeForm.js) and always display at that same
+// precision, e.g. "32" -> "32.00".
 function fmtNum(value) {
   if (value === null || value === undefined) return '—'
-  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 4 })
+  return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function dayOf(trade) {

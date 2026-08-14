@@ -509,7 +509,7 @@ table{min-width:640px;}
   letter-spacing:.06em; margin-bottom:4px;
 }
 .detail-grid > div > div{font-family:'JetBrains Mono',monospace; font-size:14px;}
-.detail-subvalue{color:var(--muted); font-size:12px; margin-top:2px;}
+.detail-subvalue{font-size:12px; margin-top:2px;}
 
 @media (max-width:640px){
   .topnav{flex-direction:column; align-items:flex-start;}

@@ -9,6 +9,8 @@ import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
+import DatePicker from './DatePicker'
+import TimePicker from './TimePicker'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
@@ -416,18 +418,17 @@ export default function TradeForm({
           </div>
           <div className="field half">
             <label>Date</label>
-            <input
-              type="date" min={MIN_TRADE_DATE} max={todayStr}
-              value={setup.trade_date} onChange={(e) => updateSetup('trade_date', e.target.value)}
+            <DatePicker
+              min={MIN_TRADE_DATE} max={todayStr}
+              value={setup.trade_date} onChange={(v) => updateSetup('trade_date', v)}
             />
             {errors.trade_date && <span className="field-error">{errors.trade_date}</span>}
           </div>
 
           <div className="field wide">
             <label>Entry time (to the second)</label>
-            <input
-              type="time" step="1"
-              value={setup.trade_time} onChange={(e) => updateSetup('trade_time', e.target.value)}
+            <TimePicker
+              value={setup.trade_time} onChange={(v) => updateSetup('trade_time', v)}
             />
             {errors.trade_time && <span className="field-error">{errors.trade_time}</span>}
           </div>
@@ -485,9 +486,8 @@ export default function TradeForm({
           </div>
           <div className="field wide">
             <label>Actual exit time (to the second)</label>
-            <input
-              type="time" step="1"
-              value={execution.exit_time} onChange={(e) => updateExecution('exit_time', e.target.value)}
+            <TimePicker
+              value={execution.exit_time} onChange={(v) => updateExecution('exit_time', v)}
             />
           </div>
           <div className="field wide">

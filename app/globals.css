@@ -5,43 +5,50 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–272  Base: reset, typography, forms, tables, thumbnails,
+     1–299  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   324  Auth pages
-   376  Top nav
-   391  Instrument nav (topbar pill row)
-   438  Page layout
-   487  Tabs
-   497  Misc form helpers
-   503  Detail view
-   519  Shell layout (sidebar + topbar)
-   732  Expandable trade rows
-   749  Calendar
-   797  Account settings page
-   974  Light theme
-   1000  2FA
-   1015  Account fine print
-   1018  Screenshot preview (log new trade)
-   1035  Auth pages always dark
-   1063  Monthly P&L (calendar on Overview)
-   1139  Trade form: sections, validation, currency, screenshots
-   1210  Field tooltips
-   1250  In-header column filters (trade log table)
-   1284  Active filter chips
-   1333  Empty states, error banners, skeleton loaders
-   1384  Cross-instrument overview dashboard (/app)
-   1462  Not found / error boundary state pages
-   1475  Toast notifications
-   1503  Public policy pages (Privacy, Terms)
-   1522  Legal links (auth pages + account settings)
-   1561  Economic calendar card (mock - Overview pages)
-   1644  Calendar news badge (Monthly P&L day cells, mock)
-   1665  Streak badge (Overview + strategy detail pages)
-   1674  Market status pill (Overview + strategy detail pages)
-   1700  Volatility, key levels, today's brief (mock cards)
+   301  Auth pages
+   353  Top nav
+   368  Instrument nav (topbar pill row)
+   415  Page layout
+   464  Tabs
+   474  Misc form helpers
+   480  Detail view
+   496  Shell layout (sidebar + topbar)
+   709  Expandable trade rows
+   726  Calendar
+   774  Account settings page
+   951  Light theme
+   978  2FA
+   993  Account fine print
+   996  Screenshot preview (log new trade)
+   1013  Auth pages always dark
+   1041  Monthly P&L (calendar on Overview)
+   1117  Trade form: sections, validation, currency, screenshots
+   1188  Field tooltips
+   1229  Date/time picker (replaces native input[type=date/time])
+   1302  In-header column filters (trade log table)
+   1336  Active filter chips
+   1385  Empty states, error banners, skeleton loaders
+   1436  Cross-instrument overview dashboard (/app)
+   1514  Not found / error boundary state pages
+   1527  Toast notifications
+   1555  Public policy pages (Privacy, Terms)
+   1574  Legal links (auth pages + account settings)
+   1613  Economic calendar card (mock - Overview pages)
+   1696  Calendar news badge (Monthly P&L day cells, mock)
+   1717  Streak badge (Overview + strategy detail pages)
+   1726  Market status pill (Overview + strategy detail pages)
+   1752  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
+  /* Tells the browser to use its dark native-control palette - the only
+     lever CSS has over the native date/time picker dropdown itself (its
+     internals aren't otherwise stylable), so it renders dark and
+     blue-accented instead of the white/black default. Flipped to light
+     below for the light theme. */
+  color-scheme: dark;
     --bg: #0a111b;
   --panel: #141d30;
   --panel-2: #0b1428;
@@ -141,36 +148,16 @@ form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
 input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%; min-width:0;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
-/* Mobile browsers (not just Safari) render date/time inputs with their
-   own native chrome - background, border and intrinsic sizing - that
-   overrides the box model above entirely, which is why this field alone
-   looked taller than its siblings with no visible left border despite
-   matching CSS: appearance:none stops the browser from painting that
-   native box so our background/border/padding/height actually apply. */
-/* A hard height, not min-height - the native date/time control renders at
-   its own intrinsic height (taller than a plain text input, and taller
-   still for type=time with step="1" showing seconds) regardless of
-   viewport width, so without this it visibly mismatches its siblings any
-   time the mobile-only override below isn't in effect - e.g. a phone
-   rotated to landscape, where the viewport crosses back above 640px. 36px
-   matches the height a text input renders at outside the mobile
-   breakpoint; the mobile media query below overrides this to 41px to
-   match text inputs there instead. */
-input[type="date"],
-input[type="time"]{
-  -webkit-appearance:none;
-  appearance:none;
-  height:36px;
-}
-/* <select> has the same native-chrome problem as date/time above - on
-   real mobile browsers (not reproducible in a desktop-engine screenshot)
-   it renders its own taller intrinsic box regardless of the padding/
-   font-size set on it, which is why it kept mismatching the (already
-   fixed) date/time fields even after those were pinned to a hard height.
-   appearance:none suppresses that chrome - including the native dropdown
-   arrow, replaced here with a hand-drawn chevron since ::after doesn't
-   render on native form controls, so a plain background-image is the
-   only way to redraw it without wrapping every <select> in a div. */
+/* <select> has native-chrome problems on real mobile browsers (not
+   reproducible in a desktop-engine screenshot) - its own background,
+   border and taller intrinsic box override the box model above entirely
+   regardless of the padding/font-size set on it. appearance:none
+   suppresses that chrome, including the native dropdown arrow, replaced
+   here with a hand-drawn chevron since ::after doesn't render on native
+   form controls, so a plain background-image is the only way to redraw it
+   without wrapping every <select> in a div. Date and time no longer have
+   this problem - DatePicker/TimePicker below are plain buttons/divs, not
+   native date/time inputs, so they never had browser chrome to fight. */
 select{
   -webkit-appearance:none;
   appearance:none;
@@ -180,14 +167,6 @@ select{
   background-repeat:no-repeat;
   background-position:right 12px center;
   background-size:14px;
-}
-/* Safari (desktop and iOS) centers the value inside date/time inputs by
-   default, which reads as a mismatch next to every other left-aligned
-   field - ::-webkit-date-and-time-value is WebKit-only and silently
-   ignored elsewhere, so this only touches the browsers that need it. */
-input[type="date"]::-webkit-date-and-time-value,
-input[type="time"]::-webkit-date-and-time-value{
-  text-align:left;
 }
 input:focus, select:focus, textarea:focus{border-color:var(--accent);}
 
@@ -287,19 +266,18 @@ table{min-width:640px;}
   /* Prevent iOS Safari's auto-zoom-on-focus, which happens on any
      input with font-size under 16px */
   input, select, textarea{font-size:16px; padding:10px;}
-  /* type=date/time open a picker, not the keyboard that triggers the
-     zoom above, so they don't need the 16px floor - and on iOS Safari a
-     bigger font makes the native control's internal segments (hour,
-     minute, second, AM/PM) wider, which is exactly what was pushing
-     these fields past the card edge despite the width:100% above. */
-  /* A hard height, not min-height - min-height is only a floor, and a
-     type=time input with step="1" (showing seconds) renders with a very
-     slightly taller intrinsic box than a plain text/number input even with
-     appearance:none applied, so it was pushing past the floor by a
-     fraction of a pixel and reading as visibly mismatched next to its
-     siblings. A fixed height forces every field to the same 41px
-     regardless of what the native control would otherwise prefer. */
-  input[type="date"], input[type="time"], select{font-size:13.5px; height:41px; padding-right:34px;}
+  select{font-size:13.5px; height:41px; padding-right:34px;}
+  /* .dt-picker-trigger is a <div>, not an <input>, so it never picked up
+     the 16px/padding:10px bump above (the rule that makes plain inputs
+     naturally render ~41px tall here) - without this it stays at its
+     desktop 36px and visibly mismatches its siblings, the same height-
+     mismatch bug the native date/time inputs it replaced used to have.
+     .field .dt-picker-trigger (not just .dt-picker-trigger): this media
+     query comes before the base .dt-picker-trigger{height:36px} rule
+     further down the file, so equal specificity would let source order -
+     not the viewport - decide, and the base rule would win regardless of
+     width. The extra .field ancestor outranks it instead. */
+  .field .dt-picker-trigger{height:41px;}
 
   .submit-row{grid-column:span 2; justify-content:stretch;}
   .submit-row button{width:100%; padding:13px 0; font-size:14px;}
@@ -973,6 +951,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 /* ---------- Light theme ---------- */
 :root[data-theme="light"]{
+  color-scheme: light;
   --bg: #f4f5f7;
   --panel: #ffffff;
   --panel-2: #eef0f3;
@@ -1212,7 +1191,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    backstop computes overflow-y to auto instead of visible, which clips the
    tooltip bubble (position:absolute, opens above the button) against the
    field's own box. Any field with a FieldTooltip needs the same exemption. */
-.field:has(.field-tooltip){overflow-x:visible;}
+.field:has(.field-tooltip),
+.field:has(.dt-picker){overflow-x:visible;}
 .field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;
@@ -1246,6 +1226,79 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:640px){
   .field-tooltip-bubble{width:180px; left:auto; right:-6px; transform:none;}
 }
+
+/* ---------- Date/time picker (replaces native input[type=date/time]) ---------- */
+/* The native date/time picker's own popup can't be restyled - color-scheme
+   (see :root above) is the only lever CSS has over it, and testing showed
+   even that doesn't reach this popup in Chromium - so this rebuilds it as
+   an ordinary floating menu, same treatment as .tag-suggestions. */
+.dt-picker{position:relative;}
+/* Plain div, not a button - only .dt-picker-icon-btn below opens the
+   popup, so clicking the rest of the field deliberately does nothing. */
+.dt-picker-trigger{
+  display:flex; align-items:center; justify-content:space-between; width:100%; height:36px;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text);
+  padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:400;
+}
+.dt-picker-placeholder{color:var(--muted);}
+.dt-picker-icon-btn{
+  flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-left:8px;
+  width:22px; height:22px; padding:0; background:transparent; border:none; border-radius:5px;
+  color:var(--muted); cursor:pointer; transition:background-color .15s ease, color .15s ease;
+}
+.dt-picker-icon-btn:hover{background:var(--panel); color:var(--accent);}
+.dt-picker-popup{
+  position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; z-index:50; padding:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
+}
+.dt-picker-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+.dt-picker-nav-btn{
+  display:flex; align-items:center; justify-content:center; width:22px; height:22px;
+  border-radius:6px; color:var(--muted); cursor:pointer; transition:background-color .15s ease, color .15s ease;
+}
+.dt-picker-nav-btn:hover{background:var(--panel-2); color:var(--text);}
+.dt-picker-nav-label{font-size:12.5px; font-weight:600; color:var(--text);}
+.dt-picker-weekdays{
+  display:grid; grid-template-columns:repeat(7,1fr); gap:2px;
+  font-size:10px; color:var(--muted); text-align:center; margin-bottom:4px;
+}
+.dt-picker-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px; width:224px;}
+/* The generic button{} rule above (blue pill, bold, rounded) applies to
+   any unstyled <button> - .dt-picker-day is one, so every property it set
+   needs an explicit reset here rather than just the ones this actually
+   wants to change. */
+.dt-picker-day{
+  width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  background:transparent; border:none; border-radius:6px; padding:0;
+  font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:400; color:var(--text);
+  cursor:pointer; transition:background-color .15s ease, color .15s ease;
+}
+.dt-picker-day:hover:not(:disabled){background:var(--panel-2);}
+.dt-picker-day-muted{color:var(--muted-2);}
+.dt-picker-day-today{box-shadow:inset 0 0 0 1px var(--accent);}
+.dt-picker-day-selected{background:var(--accent); color:#04121f; font-weight:700;}
+.dt-picker-day-disabled{color:var(--muted-2); opacity:.4; cursor:not-allowed;}
+.dt-picker-footer{display:flex; justify-content:flex-end; margin-top:6px; padding-top:8px; border-top:1px solid var(--line);}
+.dt-picker-today-link{color:var(--accent); font-size:12px; font-weight:600; cursor:pointer;}
+.dt-picker-today-link:hover{text-decoration:underline;}
+
+.dt-picker-popup-time{padding:8px;}
+.dt-picker-time-cols{display:flex; gap:4px;}
+/* Caps each column at 6 visible rows (6 x 30px .dt-picker-col-item) before
+   it scrolls, same convention as .tag-suggestions' 5-row cap. */
+.dt-picker-col{
+  width:52px; max-height:180px; overflow-y:auto;
+  display:flex; flex-direction:column; scroll-behavior:auto;
+}
+.dt-picker-col-period{max-height:none; overflow-y:visible;}
+.dt-picker-col-item{
+  height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  border-radius:6px; font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text);
+  cursor:pointer; transition:background-color .15s ease, color .15s ease;
+}
+.dt-picker-col-item:hover{background:var(--panel-2);}
+.dt-picker-col-active{background:var(--accent); color:#04121f; font-weight:700;}
 
 /* ---------- In-header column filters (trade log table) ---------- */
 /* A chevron beside the heading opens that column's filter. The heading text

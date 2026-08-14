@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
-import { useIsMobile } from '../lib/useIsMobile'
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const MONTH_NAMES = [
@@ -22,8 +21,7 @@ function parseIso(iso) {
   return { year: y, month: m - 1, day: d }
 }
 
-// dd/mm/yyyy, both for display and for what typing accepts back - only
-// used on the mobile typed fallback below.
+// dd/mm/yyyy, both for display and for what typing accepts back.
 function formatDisplayDDMMYYYY(iso) {
   const parsed = parseIso(iso)
   if (!parsed) return ''
@@ -58,17 +56,17 @@ function parseTypedDDMMYYYY(text) {
   return toIso(year, month - 1, day)
 }
 
-// The native input[type=date] handles typing itself on desktop (segmented,
-// its display order follows the browser's own locale - not something a
-// page can override) - this adds an alternative, optional way to set the
-// same value: a calendar popup, since the native popup can't be restyled
-// (see the color-scheme comment in globals.css). value/onChange/min/max
-// all speak the same ISO YYYY-MM-DD string the input already used.
-//
-// Real mobile browsers don't support typing into input[type=date] at all -
-// tapping it opens the OS's own picker with no keyboard entry and no
-// placeholder - so below the app's mobile breakpoint this swaps in a
-// plain typed dd/mm/yyyy text field instead, restoring manual entry there.
+// A plain typed dd/mm/yyyy text field, the same on every platform - this
+// used to be a real native input[type=date] on desktop (native segmented
+// typing) with a typed fallback swapped in only below the app's mobile
+// breakpoint, since real mobile browsers don't support typing into
+// input[type=date] at all (tapping it opens the OS's own picker with no
+// keyboard entry). That split kept producing behavior that only worked on
+// one platform at a time, so both now always use this one implementation.
+// Pairs with an optional calendar popup, since the native popup can't be
+// restyled to match the app (see the color-scheme comment in globals.css).
+// value/onChange/min/max all speak the same ISO YYYY-MM-DD string the
+// native input used, so nothing downstream needed to change.
 export default function DatePicker({ value, onChange, min, max }) {
   const [open, setOpen] = useState(false)
   const parsedValue = parseIso(value)
@@ -76,7 +74,6 @@ export default function DatePicker({ value, onChange, min, max }) {
   const [viewYear, setViewYear] = useState(parsedValue?.year ?? today.getFullYear())
   const [viewMonth, setViewMonth] = useState(parsedValue?.month ?? today.getMonth())
   const ref = useClickOutside(open, useCallback(() => setOpen(false), []))
-  const isMobile = useIsMobile()
 
   const [text, setText] = useState(formatDisplayDDMMYYYY(value))
   const [editing, setEditing] = useState(false)
@@ -197,32 +194,25 @@ export default function DatePicker({ value, onChange, min, max }) {
   return (
     <div className="dt-picker" ref={ref}>
       <div className="dt-picker-trigger">
-        {isMobile ? (
-          <span className="dt-picker-input-wrap">
-            <input
-              type="text" inputMode="numeric" className="dt-picker-input" placeholder="dd/mm/yyyy"
-              value={text} onChange={handleTextChange} onFocus={handleTextFocus} onBlur={handleTextBlur}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
-            />
-            {/* Native input[type=date] keeps showing "mm/yyyy" for the
-                segments not yet typed - a plain placeholder can't do that,
-                it's all-or-nothing. text is always an exact prefix of
-                DATE_MASK (see autoSlash), so the untyped remainder can
-                just be sliced off it and overlaid as a muted hint,
-                without touching the input's own value or cursor. */}
-            {text.length > 0 && text.length < DATE_MASK.length && (
-              <span className="dt-picker-mask-hint" aria-hidden="true">
-                <span className="dt-picker-mask-hint-spacer">{text}</span>
-                {DATE_MASK.slice(text.length)}
-              </span>
-            )}
-          </span>
-        ) : (
+        <span className="dt-picker-input-wrap">
           <input
-            type="date" min={min} max={max} className="dt-picker-native-input"
-            value={value || ''} onChange={(e) => onChange(e.target.value)}
+            type="text" inputMode="numeric" className="dt-picker-input" placeholder="dd/mm/yyyy"
+            value={text} onChange={handleTextChange} onFocus={handleTextFocus} onBlur={handleTextBlur}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
           />
-        )}
+          {/* A native input[type=date] would keep showing "mm/yyyy" for the
+              segments not yet typed - a plain placeholder can't do that,
+              it's all-or-nothing. text is always an exact prefix of
+              DATE_MASK (see autoSlash), so the untyped remainder can just
+              be sliced off it and overlaid as a muted hint, without
+              touching the input's own value or cursor. */}
+          {text.length > 0 && text.length < DATE_MASK.length && (
+            <span className="dt-picker-mask-hint" aria-hidden="true">
+              <span className="dt-picker-mask-hint-spacer">{text}</span>
+              {DATE_MASK.slice(text.length)}
+            </span>
+          )}
+        </span>
         <button type="button" className="dt-picker-icon-btn" aria-label="Open date picker" onClick={() => setOpen((v) => !v)}>
           <Calendar size={15} />
         </button>

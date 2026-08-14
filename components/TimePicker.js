@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Clock, ChevronUp, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
-import { useIsMobile } from '../lib/useIsMobile'
 
 function pad(n) { return String(n).padStart(2, '0') }
 
@@ -39,24 +38,19 @@ function formatDisplay12h(value) {
   return `${pad(h12)}:${pad(t.m)}:${pad(t.s)} ${period}`
 }
 
-// The native input[type=time] handles typing itself on desktop - whether
-// that shows 12-hour with AM/PM or 24-hour is the browser's own locale
-// choice, not something a page can force either way. This adds an
-// alternative, optional way to set the same value: a spinner popup, always
-// in 12-hour with an AM/PM toggle regardless of what the native segments
-// show, since the native popup itself can't be restyled (see the
-// color-scheme comment in globals.css).
-//
-// Real mobile browsers don't support typing into input[type=time] at all -
-// tapping it opens the OS's own picker with no keyboard entry - so below
-// the app's mobile breakpoint, typing isn't offered here at all: tapping
-// the field opens the spinner directly (its up/down buttons are the only
-// way to set a time on mobile), rather than swapping in a typed fallback
-// like DatePicker does.
+// The field itself is never typed into directly, on any platform - tapping
+// it opens a spinner popup instead (always 12-hour with an AM/PM toggle,
+// where hour/minute/second are themselves typable - tapping one opens the
+// numeric keypad, see spinCol below). This used to be a real native
+// input[type=time] on desktop (whose typing works well there) with this
+// tap-to-open behavior only below the app's mobile breakpoint, since real
+// mobile browsers don't support typing into input[type=time] at all
+// (tapping it opens the OS's own unstylable picker). That split kept
+// producing behavior that only worked on one platform at a time, so both
+// now always use this one implementation.
 export default function TimePicker({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useClickOutside(open, useCallback(() => setOpen(false), []))
-  const isMobile = useIsMobile()
 
   const parsed = parseTime(value)
   const { h12, period } = parsed ? to12Hour(parsed.h) : { h12: null, period: null }
@@ -174,18 +168,11 @@ export default function TimePicker({ value, onChange }) {
   return (
     <div className="dt-picker" ref={ref}>
       <div className="dt-picker-trigger">
-        {isMobile ? (
-          <input
-            type="text" readOnly inputMode="none" className="dt-picker-input" placeholder="--:--:-- --"
-            value={value ? formatDisplay12h(value) : ''}
-            onClick={() => setOpen(true)} onFocus={() => setOpen(true)}
-          />
-        ) : (
-          <input
-            type="time" step="1" className="dt-picker-native-input"
-            value={value || ''} onChange={(e) => onChange(e.target.value)}
-          />
-        )}
+        <input
+          type="text" readOnly inputMode="none" className="dt-picker-input" placeholder="--:--:-- --"
+          value={value ? formatDisplay12h(value) : ''}
+          onClick={() => setOpen(true)} onFocus={() => setOpen(true)}
+        />
         <button type="button" className="dt-picker-icon-btn" aria-label="Open time picker" onClick={() => setOpen((v) => !v)}>
           <Clock size={15} />
         </button>

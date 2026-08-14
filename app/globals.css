@@ -5,41 +5,41 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–300  Base: reset, typography, forms, tables, thumbnails,
+     1–301  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   302  Auth pages
-   354  Top nav
-   369  Instrument nav (topbar pill row)
-   416  Page layout
-   465  Tabs
-   475  Misc form helpers
-   481  Detail view
-   497  Shell layout (sidebar + topbar)
-   710  Expandable trade rows
-   727  Calendar
-   775  Account settings page
-   952  Light theme
-   979  2FA
-   994  Account fine print
-   997  Screenshot preview (log new trade)
-   1014  Auth pages always dark
-   1042  Monthly P&L (calendar on Overview)
-   1118  Trade form: sections, validation, currency, screenshots
-   1189  Field tooltips
-   1230  Date/time picker (replaces native input[type=date/time])
-   1311  In-header column filters (trade log table)
-   1345  Active filter chips
-   1394  Empty states, error banners, skeleton loaders
-   1445  Cross-instrument overview dashboard (/app)
-   1523  Not found / error boundary state pages
-   1536  Toast notifications
-   1564  Public policy pages (Privacy, Terms)
-   1583  Legal links (auth pages + account settings)
-   1622  Economic calendar card (mock - Overview pages)
-   1705  Calendar news badge (Monthly P&L day cells, mock)
-   1726  Streak badge (Overview + strategy detail pages)
-   1735  Market status pill (Overview + strategy detail pages)
-   1761  Volatility, key levels, today's brief (mock cards)
+   303  Auth pages
+   355  Top nav
+   370  Instrument nav (topbar pill row)
+   417  Page layout
+   466  Tabs
+   476  Misc form helpers
+   482  Detail view
+   498  Shell layout (sidebar + topbar)
+   711  Expandable trade rows
+   728  Calendar
+   776  Account settings page
+   953  Light theme
+   980  2FA
+   995  Account fine print
+   998  Screenshot preview (log new trade)
+   1015  Auth pages always dark
+   1043  Monthly P&L (calendar on Overview)
+   1119  Trade form: sections, validation, currency, screenshots
+   1190  Field tooltips
+   1231  Date/time picker (adds an optional popup to a typed input)
+   1340  In-header column filters (trade log table)
+   1374  Active filter chips
+   1423  Empty states, error banners, skeleton loaders
+   1474  Cross-instrument overview dashboard (/app)
+   1552  Not found / error boundary state pages
+   1565  Toast notifications
+   1593  Public policy pages (Privacy, Terms)
+   1612  Legal links (auth pages + account settings)
+   1651  Economic calendar card (mock - Overview pages)
+   1734  Calendar news badge (Monthly P&L day cells, mock)
+   1755  Streak badge (Overview + strategy detail pages)
+   1764  Market status pill (Overview + strategy detail pages)
+   1790  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -264,13 +264,8 @@ table{min-width:640px;}
   .section-label{font-size:10px;}
 
   /* Prevent iOS Safari's auto-zoom-on-focus, which happens on any
-     input with font-size under 16px. .dt-picker-native-input never
-     renders at this width (DatePicker/TimePicker swap to the typed
-     .dt-picker-input fallback below the same breakpoint - see
-     useIsMobile), so unlike the old native-only version of this file,
-     nothing here needs exempting from the 16px floor: .dt-picker-input
-     is a real typed field and should get the same zoom protection as
-     every other text input. */
+     input with font-size under 16px - .dt-picker-input included, since
+     it's a real typed field like any other text input. */
   input, select, textarea{font-size:16px; padding:10px;}
   select{font-size:13.5px; height:41px; padding-right:34px;}
   /* .dt-picker-trigger doesn't inherit the 16px/padding:10px bump above
@@ -1233,19 +1228,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   .field-tooltip-bubble{width:180px; left:auto; right:-6px; transform:none;}
 }
 
-/* ---------- Date/time picker (adds an optional popup to native input[type=date/time]) ---------- */
+/* ---------- Date/time picker (adds an optional popup to a typed input) ---------- */
 /* The native date/time picker's own popup can't be restyled - color-scheme
    (see :root above) is the only lever CSS has over it, and testing showed
-   even that doesn't reach this popup in Chromium. On desktop, typing stays
-   on the real native input (unchanged keyboard/segment/locale behavior) -
-   this only adds a second, optional way to set the same value: a custom
-   popup (same treatment as .tag-suggestions) opened by its own icon, with
-   the input's own native picker-indicator icon hidden below so there's
-   exactly one way to open a picker, not two competing ones. Real mobile
-   browsers don't support typing into these input types at all - tapping
-   opens the OS's own picker with no keyboard entry and no placeholder -
-   so DatePicker/TimePicker swap in a plain typed .dt-picker-input there
-   instead (see useIsMobile), which shares this same trigger styling. */
+   even that doesn't reach this popup in Chromium. This used to be a real
+   native input[type=date]/[type=time] on desktop (whose own typing works
+   well) with a plain typed .dt-picker-input swapped in only below the
+   app's mobile breakpoint, since real mobile browsers don't support
+   typing into those input types at all - tapping one opens the OS's own
+   unstylable picker instead, with no keyboard entry. That split kept
+   producing behavior that only worked on one platform at a time, so
+   DatePicker/TimePicker now always use .dt-picker-input everywhere, paired
+   with an optional custom popup (same treatment as .tag-suggestions)
+   opened by its own icon. */
 .dt-picker{position:relative;}
 .dt-picker-trigger{
   display:flex; align-items:center; justify-content:space-between; width:100%; height:36px;
@@ -1253,30 +1248,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:400;
 }
 .dt-picker-trigger:focus-within{border-color:var(--accent);}
-.dt-picker-native-input{
-  flex:1; min-width:0; -webkit-appearance:none; appearance:none;
-  background:transparent; border:none; padding:0; margin:0;
-  color:inherit; font:inherit; outline:none;
-}
-/* Chromium/WebKit only - Firefox doesn't expose an equivalent pseudo-
-   element, so its native picker-indicator (if any) stays visible there. */
-.dt-picker-native-input::-webkit-calendar-picker-indicator{display:none;}
-/* Safari (desktop and iOS) centers the value inside date/time inputs by
-   default, which reads as a mismatch next to every other left-aligned
-   field - ::-webkit-date-and-time-value is WebKit-only and silently
-   ignored elsewhere, so this only touches the browsers that need it. */
-.dt-picker-native-input::-webkit-date-and-time-value{text-align:left;}
-/* Mobile's typed fallback - a plain text input, so unlike
-   .dt-picker-native-input it needs no native-chrome resets. Wrapped in its
-   own relative span (rather than being the flex:1 child directly) so
-   DatePicker's mask-remainder hint below has something to anchor to
-   without disturbing the icon button's layout. */
-.dt-picker-input-wrap{position:relative; flex:1; min-width:0;}
+/* flex:1 (not just DatePicker's wrapping span below) so this also fills
+   the row correctly when it's TimePicker's direct, unwrapped child. */
 .dt-picker-input{
-  width:100%; background:transparent; border:none; padding:0;
+  flex:1; min-width:0; background:transparent; border:none; padding:0;
   color:inherit; font:inherit; outline:none;
 }
 .dt-picker-input::placeholder{color:var(--muted);}
+/* DatePicker wraps its input in this relative span so its mask-remainder
+   hint below has something to anchor to, without disturbing the icon
+   button's layout - TimePicker's input, which has no such hint, doesn't
+   need the wrapper and is a direct .dt-picker-trigger child instead. */
+.dt-picker-input-wrap{position:relative; flex:1; min-width:0;}
+.dt-picker-input-wrap .dt-picker-input{width:100%;}
 /* DatePicker's mobile mask remainder ("mm/yyyy" etc. for the segments not
    yet typed) - an invisible spacer matching the already-typed text pushes
    the muted remainder text to line up right after it. pointer-events:none

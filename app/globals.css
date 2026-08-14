@@ -1505,8 +1505,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* Per-instrument Overview: the stat-card stack sits opposite a taller
    panel (P&L by strategy) - grow the stack and its two rows to fill the
    row's full stretched height instead of leaving blank space beneath it,
-   and center each stat's content in the taller card. */
-.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr);}
+   and center each stat's content in the taller card. margin-bottom:0
+   cancels .stats' own 24px - flex:1 already sizes this to the full
+   stretched row height, but that 24px was still carved out of it,
+   leaving a gap the same size beneath the stat cards instead of letting
+   them actually grow into the space this was meant to give them. */
+.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
 .dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:center;}
 .dashboard-card-title{margin-bottom:16px;}
 @media (max-width:1100px){

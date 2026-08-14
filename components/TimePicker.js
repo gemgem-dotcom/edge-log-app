@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { Clock } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Clock, ChevronUp, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
 
 function pad(n) { return String(n).padStart(2, '0') }
@@ -37,15 +37,60 @@ function formatDisplay(value) {
   return `${pad(h12)}:${pad(t.m)}:${pad(t.s)} ${period}`
 }
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 1)
-const SIXTY = Array.from({ length: 60 }, (_, i) => i)
+// Lenient typed-text parser: "9:35:00 am", "0935 pm", "21:35" (no am/pm ->
+// 24-hour) all parse. Minute/second default to 0 when left off entirely.
+function parseTyped(text) {
+  const t = text.trim().toLowerCase()
+  const m = t.match(/^(\d{1,2})(?::?(\d{1,2}))?(?::?(\d{1,2}))?\s*(am|pm)?$/)
+  if (!m) return null
+  let h = Number(m[1])
+  const min = m[2] !== undefined ? Number(m[2]) : 0
+  const sec = m[3] !== undefined ? Number(m[3]) : 0
+  const period = m[4]
+  if (min > 59 || sec > 59) return null
+  if (period) {
+    if (h < 1 || h > 12) return null
+    h = from12Hour(h, period.toUpperCase())
+  } else if (h > 23) {
+    return null
+  }
+  return `${pad(h)}:${pad(min)}:${pad(sec)}`
+}
 
+// Replaces the native <input type="time" step="1"> - its own popup can't
+// be restyled (see the color-scheme comment in globals.css). The trigger
+// is still a real text input (typing "9:35:00 am" works directly), and
+// the clock icon opens a compact spinner for mouse-driven adjustment -
+// up/down per segment rather than a scrolling list of 60 options, which
+// read as too close to the native picker this replaces.
 export default function TimePicker({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useClickOutside(open, useCallback(() => setOpen(false), []))
-  const hourColRef = useRef(null)
-  const minColRef = useRef(null)
-  const secColRef = useRef(null)
+
+  const [text, setText] = useState(formatDisplay(value))
+  const [editing, setEditing] = useState(false)
+
+  useEffect(() => {
+    if (!editing) setText(formatDisplay(value))
+  }, [value, editing])
+
+  function handleTextChange(e) {
+    setText(e.target.value)
+  }
+  function handleFocus() {
+    setEditing(true)
+  }
+  function handleBlur() {
+    setEditing(false)
+    if (text.trim() === '') { onChange(''); return }
+    const parsed = parseTyped(text)
+    if (parsed) {
+      onChange(parsed)
+      setText(formatDisplay(parsed))
+    } else {
+      setText(formatDisplay(value))
+    }
+  }
 
   const parsed = parseTime(value)
   const { h12, period } = parsed ? to12Hour(parsed.h) : { h12: null, period: null }
@@ -62,49 +107,57 @@ export default function TimePicker({ value, onChange }) {
     const raf = requestAnimationFrame(() => {
       window.addEventListener('scroll', dismissOnScroll, true)
       window.addEventListener('resize', dismiss)
-      // Scroll each column so the current value (or a sane default) is
-      // in view instead of opening on hour "01".
-      ;[hourColRef, minColRef, secColRef].forEach((colRef) => {
-        const el = colRef.current?.querySelector('.dt-picker-col-active')
-        if (el) el.scrollIntoView({ block: 'center' })
-      })
     })
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('scroll', dismissOnScroll, true)
       window.removeEventListener('resize', dismiss)
     }
-    // Deliberately only [open] - re-running this per keystroke would yank
-    // the columns' scroll position while the trader is still clicking
-    // through hour/minute/second.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open, ref])
 
   function commit(next) {
     onChange(`${pad(next.h)}:${pad(next.m)}:${pad(next.s)}`)
   }
 
-  // Any segment clicked before the others starts from a plain default
-  // (12:00:00 AM) rather than requiring every column to be set in order.
+  // Any segment nudged before the others starts from a plain default
+  // (12:00:00 AM) rather than requiring every segment to be set in order.
   const base = parsed || { h: 0, m: 0, s: 0 }
+  const wrap = (n, size) => ((n % size) + size) % size
 
-  function setHour12(newH12) {
-    commit({ ...base, h: from12Hour(newH12, parsed ? period : 'AM') })
+  function bumpHour(delta) {
+    const currentH12 = parsed ? h12 : 12
+    const currentPeriod = parsed ? period : 'AM'
+    const newH12 = wrap(currentH12 - 1 + delta, 12) + 1
+    commit({ ...base, h: from12Hour(newH12, currentPeriod) })
   }
-  function setMinute(m) {
-    commit({ ...base, m })
+  function bumpMinute(delta) {
+    commit({ ...base, m: wrap((parsed ? minute : 0) + delta, 60) })
   }
-  function setSecond(s) {
-    commit({ ...base, s })
+  function bumpSecond(delta) {
+    commit({ ...base, s: wrap((parsed ? second : 0) + delta, 60) })
   }
-  function setPeriod(p) {
-    commit({ ...base, h: from12Hour(parsed ? h12 : 12, p) })
+  function togglePeriod() {
+    const currentPeriod = parsed ? period : 'AM'
+    const currentH12 = parsed ? h12 : 12
+    commit({ ...base, h: from12Hour(currentH12, currentPeriod === 'AM' ? 'PM' : 'AM') })
   }
+
+  const spinCol = (label, display, onUp, onDown) => (
+    <div className="dt-picker-spin-col">
+      <button type="button" className="dt-picker-spin-btn" aria-label={`Increase ${label}`} onClick={onUp}><ChevronUp size={14} /></button>
+      <div className="dt-picker-spin-value">{display}</div>
+      <button type="button" className="dt-picker-spin-btn" aria-label={`Decrease ${label}`} onClick={onDown}><ChevronDown size={14} /></button>
+    </div>
+  )
 
   return (
     <div className="dt-picker" ref={ref}>
       <div className="dt-picker-trigger">
-        <span className={value ? '' : 'dt-picker-placeholder'}>{value ? formatDisplay(value) : '--:--:-- --'}</span>
+        <input
+          type="text" inputMode="text" className="dt-picker-input" placeholder="--:--:-- --"
+          value={text} onChange={handleTextChange} onFocus={handleFocus} onBlur={handleBlur}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+        />
         <button type="button" className="dt-picker-icon-btn" aria-label="Open time picker" onClick={() => setOpen((v) => !v)}>
           <Clock size={15} />
         </button>
@@ -112,25 +165,12 @@ export default function TimePicker({ value, onChange }) {
       {open && (
         <div className="dt-picker-popup dt-picker-popup-time">
           <div className="dt-picker-time-cols">
-            <div className="dt-picker-col" ref={hourColRef}>
-              {HOURS.map((h) => (
-                <div key={h} className={`dt-picker-col-item ${h12 === h ? 'dt-picker-col-active' : ''}`} onClick={() => setHour12(h)}>{pad(h)}</div>
-              ))}
-            </div>
-            <div className="dt-picker-col" ref={minColRef}>
-              {SIXTY.map((m) => (
-                <div key={m} className={`dt-picker-col-item ${minute === m ? 'dt-picker-col-active' : ''}`} onClick={() => setMinute(m)}>{pad(m)}</div>
-              ))}
-            </div>
-            <div className="dt-picker-col" ref={secColRef}>
-              {SIXTY.map((s) => (
-                <div key={s} className={`dt-picker-col-item ${second === s ? 'dt-picker-col-active' : ''}`} onClick={() => setSecond(s)}>{pad(s)}</div>
-              ))}
-            </div>
-            <div className="dt-picker-col dt-picker-col-period">
-              <div className={`dt-picker-col-item ${period === 'AM' ? 'dt-picker-col-active' : ''}`} onClick={() => setPeriod('AM')}>AM</div>
-              <div className={`dt-picker-col-item ${period === 'PM' ? 'dt-picker-col-active' : ''}`} onClick={() => setPeriod('PM')}>PM</div>
-            </div>
+            {spinCol('hour', pad(h12 ?? 12), () => bumpHour(1), () => bumpHour(-1))}
+            <span className="dt-picker-spin-sep">:</span>
+            {spinCol('minute', pad(minute ?? 0), () => bumpMinute(1), () => bumpMinute(-1))}
+            <span className="dt-picker-spin-sep">:</span>
+            {spinCol('second', pad(second ?? 0), () => bumpSecond(1), () => bumpSecond(-1))}
+            {spinCol('AM/PM', period ?? 'AM', togglePeriod, togglePeriod)}
           </div>
         </div>
       )}

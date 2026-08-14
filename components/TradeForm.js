@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
-import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
+import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
@@ -334,17 +334,17 @@ export default function TradeForm({
       trade_date: setup.trade_date,
       trade_time: setup.trade_time,
       direction,
-      entry,
-      stop: stopPrice,
-      target: targetPrice,
-      stop_distance: stopDistance,
-      target_distance: targetDistance,
-      exit_price: exitPrice,
+      entry: toDecimalString(entry),
+      stop: toDecimalString(stopPrice),
+      target: toDecimalString(targetPrice),
+      stop_distance: toDecimalString(stopDistance),
+      target_distance: toDecimalString(targetDistance),
+      exit_price: toDecimalString(exitPrice),
       exit_time: execution.exit_time || null,
       r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
-      pnl: parseCurrency(pnlInput),
+      pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,
     }
 

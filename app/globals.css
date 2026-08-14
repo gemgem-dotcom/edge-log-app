@@ -26,19 +26,19 @@
    1063  Monthly P&L (calendar on Overview)
    1139  Trade form: sections, validation, currency, screenshots
    1210  Field tooltips
-   1245  In-header column filters (trade log table)
-   1279  Active filter chips
-   1328  Empty states, error banners, skeleton loaders
-   1379  Cross-instrument overview dashboard (/app)
-   1457  Not found / error boundary state pages
-   1470  Toast notifications
-   1498  Public policy pages (Privacy, Terms)
-   1517  Legal links (auth pages + account settings)
-   1556  Economic calendar card (mock - Overview pages)
-   1639  Calendar news badge (Monthly P&L day cells, mock)
-   1660  Streak badge (Overview + strategy detail pages)
-   1669  Market status pill (Overview + strategy detail pages)
-   1695  Volatility, key levels, today's brief (mock cards)
+   1250  In-header column filters (trade log table)
+   1284  Active filter chips
+   1333  Empty states, error banners, skeleton loaders
+   1384  Cross-instrument overview dashboard (/app)
+   1462  Not found / error boundary state pages
+   1475  Toast notifications
+   1503  Public policy pages (Privacy, Terms)
+   1522  Legal links (auth pages + account settings)
+   1561  Economic calendar card (mock - Overview pages)
+   1644  Calendar news badge (Monthly P&L day cells, mock)
+   1665  Streak badge (Overview + strategy detail pages)
+   1674  Market status pill (Overview + strategy detail pages)
+   1700  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -1208,6 +1208,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .tag-suggestion-item:hover{background:var(--panel-2);}
 
 /* ---------- Field tooltips ---------- */
+/* Same clipping quirk as .tags-field above: .field's overflow-x:hidden
+   backstop computes overflow-y to auto instead of visible, which clips the
+   tooltip bubble (position:absolute, opens above the button) against the
+   field's own box. Any field with a FieldTooltip needs the same exemption. */
+.field:has(.field-tooltip){overflow-x:visible;}
 .field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;

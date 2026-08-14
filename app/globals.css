@@ -647,9 +647,17 @@ a.shell-logo{color:inherit; text-decoration:none;}
   .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
   .strategy-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
 }
+/* margin-top:24px, not the smaller gap this used to carry, so a heading
+   is always the same distance from whatever it follows regardless of
+   what that is - a plain .panel/.stats already carries a 24px
+   margin-bottom of its own, which this collapses with harmlessly (still
+   24, same as before), but .dashboard-split/.instrument-glance-row/
+   .strategy-glance-row only carry their own internal gap (16px) on
+   their margin-bottom, which used to leave less space before the next
+   heading than every other section gets. */
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
-  font-weight:700; margin-bottom:12px; margin-top:8px;
+  font-weight:700; margin-bottom:12px; margin-top:24px;
 }
 
 .stats-6{grid-template-columns:repeat(6,1fr);}
@@ -1480,14 +1488,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
-.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
+/* margin-bottom matches this grid's own gap, so the space below the row
+   (to whatever comes next) reads the same as the space between its two
+   cards instead of whatever the panels' own margin-bottom happens to add
+   up to - see the .panel override below. */
+.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch; margin-bottom:16px;}
 .dashboard-split > div{display:flex; flex-direction:column;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
    both cards to the row's height so the shorter one isn't visibly shorter.
    flex-start (not center) so each card's title stays flush with the top
    like every other card's, even when its own content doesn't fill the
-   row's full stretched height. */
-.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start;}
+   row's full stretched height. margin-bottom:0 cancels .panel's own -
+   left as-is, the row's trailing space would be whatever that margin
+   happens to be instead of the row's own gap above. */
+.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start; margin-bottom:0;}
 /* Per-instrument Overview: the stat-card stack sits opposite a taller
    panel (P&L by strategy) - grow the stack and its two rows to fill the
    row's full stretched height instead of leaving blank space beneath it,
@@ -1828,8 +1842,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
 /* Per-instrument Overview's Volatility/Key levels/Today's brief row, and
-   the per-strategy detail page's streak-adjacent card row. */
-.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:stretch;}
+   the per-strategy detail page's streak-adjacent card row. margin-bottom
+   matches this grid's own gap, same reasoning as .dashboard-split above -
+   its panels already zero out their own margin-bottom, but nothing filled
+   in the resulting gap, leaving less space before whatever follows than
+   this row's own internal gap. */
+.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:stretch; margin-bottom:16px;}
 .instrument-glance-row .panel, .strategy-glance-row .panel{margin-bottom:0; flex:1;}
 .strategy-glance-row{grid-template-columns:repeat(2,1fr);}
 @media (max-width:860px){

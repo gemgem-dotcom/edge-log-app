@@ -305,7 +305,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
           />
         </div>
       </div>
-      <p className="page-subtitle">Here&apos;s your edge, at a glance.</p>
+      <p className="page-subtitle">Here&apos;s what&apos;s happening today.</p>
 
       {allTrades.length === 0 ? (
         <div className="panel">
@@ -318,7 +318,39 @@ export default function OverviewDashboard({ instruments, strategies }) {
         </div>
       ) : (
         <>
-          <div className="section-heading">Overview</div>
+          <div className="dashboard-split">
+            <div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+                <p className="brief-card-text">{briefText}</p>
+              </div>
+            </div>
+            <div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Volatility</div>
+                <div className="volatility-strip">
+                  {instruments.map((inst) => {
+                    const v = mockVolatility(inst.symbol)
+                    return (
+                      <div className="volatility-strip-row" key={inst.id}>
+                        <span className="volatility-strip-symbol">{inst.symbol}</span>
+                        <span className="volatility-strip-value">
+                          {v.multiplier}x<span className="volatility-strip-tag">{v.elevated ? 'elevated' : 'normal'}</span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="stat-label dashboard-card-title">Economic calendar</div>
+            <EconomicCalendarCard />
+          </div>
+
+          <div className="section-heading">All-Time Performance</div>
           <div className="stats stats-5">
             <div className="stat">
               <div className="stat-label">Total P&amp;L</div>
@@ -350,39 +382,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat-label">Total trades</div>
               <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
               <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
-            </div>
-          </div>
-
-          <div className="section-heading">Economic calendar</div>
-          <div className="panel">
-            <EconomicCalendarCard />
-          </div>
-
-          <div className="section-heading">At a glance</div>
-          <div className="dashboard-split">
-            <div>
-              <div className="panel">
-                <div className="stat-label dashboard-card-title">Volatility</div>
-                <div className="volatility-strip">
-                  {instruments.map((inst) => {
-                    const v = mockVolatility(inst.symbol)
-                    return (
-                      <div className="volatility-strip-row" key={inst.id}>
-                        <span className="volatility-strip-symbol">{inst.symbol}</span>
-                        <span className="volatility-strip-value">
-                          {v.multiplier}x<span className="volatility-strip-tag">{v.elevated ? 'elevated' : 'normal'}</span>
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-            <div>
-              <div className="panel">
-                <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
-                <p className="brief-card-text">{briefText}</p>
-              </div>
             </div>
           </div>
 

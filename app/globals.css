@@ -18,28 +18,28 @@
    711  Expandable trade rows
    728  Calendar
    776  Account settings page
-   953  Light theme
-   980  2FA
-   995  Account fine print
-   998  Screenshot preview (log new trade)
-   1015  Auth pages always dark
-   1043  Monthly P&L (calendar on Overview)
-   1119  Trade form: sections, validation, currency, screenshots
-   1190  Field tooltips
-   1231  Date/time picker (adds an optional popup to a typed input)
-   1340  In-header column filters (trade log table)
-   1374  Active filter chips
-   1423  Empty states, error banners, skeleton loaders
-   1474  Cross-instrument overview dashboard (/app)
-   1552  Not found / error boundary state pages
-   1565  Toast notifications
-   1593  Public policy pages (Privacy, Terms)
-   1612  Legal links (auth pages + account settings)
-   1651  Economic calendar card (mock - Overview pages)
-   1734  Calendar news badge (Monthly P&L day cells, mock)
-   1755  Streak badge (Overview + strategy detail pages)
-   1764  Market status pill (Overview + strategy detail pages)
-   1790  Volatility, key levels, today's brief (mock cards)
+   961  Light theme
+   988  2FA
+   1003  Account fine print
+   1006  Screenshot preview (log new trade)
+   1023  Auth pages always dark
+   1051  Monthly P&L (calendar on Overview)
+   1127  Trade form: sections, validation, currency, screenshots
+   1198  Field tooltips
+   1239  Date/time picker (adds an optional popup to a typed input)
+   1348  In-header column filters (trade log table)
+   1382  Active filter chips
+   1431  Empty states, error banners, skeleton loaders
+   1482  Cross-instrument overview dashboard (/app)
+   1560  Not found / error boundary state pages
+   1573  Toast notifications
+   1601  Public policy pages (Privacy, Terms)
+   1620  Legal links (auth pages + account settings)
+   1659  Economic calendar card (mock - Overview pages)
+   1742  Calendar news badge (Monthly P&L day cells, mock)
+   1763  Streak badge (Overview + strategy detail pages)
+   1772  Market status pill (Overview + strategy detail pages)
+   1798  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -108,7 +108,16 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .progress-fill{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-bright)); transition:width .4s ease;}
 .progress-note{font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4;}
 
-.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); margin-bottom:24px;}
+/* 15px, not --space-3 (12px) - every card-family grid on the platform
+   (this, .dashboard-split, .instrument-glance-row/.strategy-glance-row)
+   was standardized to a uniform 15px gap by explicit request, off the
+   4/8/12/16/24/32 scale above on purpose rather than snapping to its
+   nearest step. margin-bottom matches the gap for the same reason
+   .dashboard-split's does - the space to whatever card follows should
+   read the same as the space between the cards in this row. Untouched
+   where a .section-heading follows instead: its own 24px margin-top
+   still wins that collapse regardless of this value. */
+.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:15px;}
 .stat{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px;}
 .stat-label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
 .stat-value{font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:600;}
@@ -647,9 +656,17 @@ a.shell-logo{color:inherit; text-decoration:none;}
   .strategy-header-row{flex-wrap:wrap; row-gap:10px;}
   .strategy-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
 }
+/* margin-top:24px, not the smaller gap this used to carry, so a heading
+   is always the same distance from whatever it follows regardless of
+   what that is - a plain .panel/.stats already carries a 24px
+   margin-bottom of its own, which this collapses with harmlessly (still
+   24, same as before), but .dashboard-split/.instrument-glance-row/
+   .strategy-glance-row only carry their own internal gap (16px) on
+   their margin-bottom, which used to leave less space before the next
+   heading than every other section gets. */
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
-  font-weight:700; margin-bottom:12px; margin-top:8px;
+  font-weight:700; margin-bottom:12px; margin-top:24px;
 }
 
 .stats-6{grid-template-columns:repeat(6,1fr);}
@@ -858,6 +875,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .account-msg{border-radius:7px; padding:9px 12px; font-size:12.5px; margin-top:12px;}
 .account-msg-error{background:rgba(225,92,92,.12); border:1px solid var(--loss); color:var(--loss);}
 .account-msg-success{background:rgba(51,193,122,.12); border:1px solid var(--win); color:var(--win);}
+
+/* Same shape as .danger-row (title+note left, action right) but under its
+   own name - reusing "danger-row" for a plan/payment-method row that isn't
+   dangerous would read as a copy-paste leftover to the next person editing
+   this file. */
+.billing-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
+.billing-row-title{font-size:14.5px; font-weight:700; margin-bottom:4px;}
+.billing-row-note{font-size:12.5px; color:var(--muted);}
 
 @media (max-width:640px){
   /* Same fix as .shell-topbar: once the logo/back-link/log-out group wraps
@@ -1472,20 +1497,44 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
-.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
+/* 15px, not --space-4 (16px) - standardized to match .stats/
+   .instrument-glance-row/.strategy-glance-row, see the comment on
+   .stats above. margin-bottom matches this grid's own gap, so the space
+   below the row (to whatever comes next) reads the same as the space
+   between its two cards instead of whatever the panels' own
+   margin-bottom happens to add up to - see the .panel override below. */
+.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:15px; align-items:stretch; margin-bottom:15px;}
 .dashboard-split > div{display:flex; flex-direction:column;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
    both cards to the row's height so the shorter one isn't visibly shorter.
    flex-start (not center) so each card's title stays flush with the top
    like every other card's, even when its own content doesn't fill the
-   row's full stretched height. */
-.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start;}
+   row's full stretched height. margin-bottom:0 cancels .panel's own -
+   left as-is, the row's trailing space would be whatever that margin
+   happens to be instead of the row's own gap above. */
+.dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start; margin-bottom:0;}
 /* Per-instrument Overview: the stat-card stack sits opposite a taller
    panel (P&L by strategy) - grow the stack and its two rows to fill the
-   row's full stretched height instead of leaving blank space beneath it,
-   and center each stat's content in the taller card. */
-.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr);}
-.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:center;}
+   row's full stretched height instead of leaving blank space beneath it.
+   margin-bottom:0 cancels .stats' own 24px - flex:1 already sizes this
+   to the full stretched row height, but that 24px was still carved out
+   of it, leaving a gap the same size beneath the stat cards instead of
+   letting them actually grow into the space this was meant to give them.
+   .stats' own gap is 15px too now (see above), so this stack, the two
+   stat rows within it, and the donut card beside it all read as one
+   family of cards with a single consistent gap, same as the Today's
+   brief/Volatility pairing on the all-instruments Overview page. */
+.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
+/* flex-start, not center - same reasoning as .dashboard-split .panel
+   above: centering split the extra stretched height evenly above and
+   below each stat's label+value, reading as if the card had more
+   padding than every other card in this family. flex-start keeps each
+   label flush with its cell's top edge instead, with any leftover
+   height landing below the value where it doesn't stand out.
+   padding matches .panel's own 20px (up from .stat's usual 14px 16px) -
+   otherwise a stat's label still sat 6px higher than the donut card's
+   title beside it, both flush-top within boxes with different padding. */
+.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:flex-start; padding:20px;}
 .dashboard-card-title{margin-bottom:16px;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}
@@ -1820,8 +1869,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
 /* Per-instrument Overview's Volatility/Key levels/Today's brief row, and
-   the per-strategy detail page's streak-adjacent card row. */
-.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:stretch;}
+   the per-strategy detail page's streak-adjacent card row. 15px, not
+   --space-4 (16px) - see the comment on .stats above. margin-bottom
+   matches this grid's own gap, same reasoning as .dashboard-split above -
+   its panels already zero out their own margin-bottom, but nothing filled
+   in the resulting gap, leaving less space before whatever follows than
+   this row's own internal gap. */
+.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
 .instrument-glance-row .panel, .strategy-glance-row .panel{margin-bottom:0; flex:1;}
 .strategy-glance-row{grid-template-columns:repeat(2,1fr);}
 @media (max-width:860px){

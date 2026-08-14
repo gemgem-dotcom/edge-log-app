@@ -7,11 +7,12 @@ import { useClickOutside } from '../lib/useClickOutside'
 function pad(n) { return String(n).padStart(2, '0') }
 
 // value is 24-hour "HH:MM:SS" - the same format the native
-// input[type=time] this replaces stored, so tradeDurationMinutes and
-// everything else reading trade_time/exit_time needed no changes. Trades
-// logged before step="1" existed only stored "HH:MM", so seconds isn't
-// just possibly NaN (a bad 3rd segment) but possibly missing entirely -
-// Number.isNaN(undefined) is false, so that alone won't catch it.
+// input[type=time] stores regardless of how it displays, so
+// tradeDurationMinutes and everything else reading trade_time/exit_time
+// needed no changes. Trades logged before step="1" existed only stored
+// "HH:MM", so seconds isn't just possibly NaN (a bad 3rd segment) but
+// possibly missing entirely - Number.isNaN(undefined) is false, so that
+// alone won't catch it.
 function parseTime(value) {
   if (!value) return null
   const [h, m, s] = value.split(':').map(Number)
@@ -30,67 +31,16 @@ function from12Hour(h12, period) {
   return period === 'PM' ? h + 12 : h
 }
 
-function formatDisplay(value) {
-  const t = parseTime(value)
-  if (!t) return ''
-  const { h12, period } = to12Hour(t.h)
-  return `${pad(h12)}:${pad(t.m)}:${pad(t.s)} ${period}`
-}
-
-// Lenient typed-text parser: "9:35:00 am", "0935 pm", "21:35" (no am/pm ->
-// 24-hour) all parse. Minute/second default to 0 when left off entirely.
-function parseTyped(text) {
-  const t = text.trim().toLowerCase()
-  const m = t.match(/^(\d{1,2})(?::?(\d{1,2}))?(?::?(\d{1,2}))?\s*(am|pm)?$/)
-  if (!m) return null
-  let h = Number(m[1])
-  const min = m[2] !== undefined ? Number(m[2]) : 0
-  const sec = m[3] !== undefined ? Number(m[3]) : 0
-  const period = m[4]
-  if (min > 59 || sec > 59) return null
-  if (period) {
-    if (h < 1 || h > 12) return null
-    h = from12Hour(h, period.toUpperCase())
-  } else if (h > 23) {
-    return null
-  }
-  return `${pad(h)}:${pad(min)}:${pad(sec)}`
-}
-
-// Replaces the native <input type="time" step="1"> - its own popup can't
-// be restyled (see the color-scheme comment in globals.css). The trigger
-// is still a real text input (typing "9:35:00 am" works directly), and
-// the clock icon opens a compact spinner for mouse-driven adjustment -
-// up/down per segment rather than a scrolling list of 60 options, which
-// read as too close to the native picker this replaces.
+// The native input[type=time] handles typing itself - whether that shows
+// 12-hour with AM/PM or 24-hour is the browser's own locale choice, not
+// something a page can force either way. This only adds an alternative,
+// optional way to set the same value: a spinner popup, always in 12-hour
+// with an AM/PM toggle regardless of what the native segments show, since
+// the native popup itself can't be restyled (see the color-scheme comment
+// in globals.css).
 export default function TimePicker({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useClickOutside(open, useCallback(() => setOpen(false), []))
-
-  const [text, setText] = useState(formatDisplay(value))
-  const [editing, setEditing] = useState(false)
-
-  useEffect(() => {
-    if (!editing) setText(formatDisplay(value))
-  }, [value, editing])
-
-  function handleTextChange(e) {
-    setText(e.target.value)
-  }
-  function handleFocus() {
-    setEditing(true)
-  }
-  function handleBlur() {
-    setEditing(false)
-    if (text.trim() === '') { onChange(''); return }
-    const parsed = parseTyped(text)
-    if (parsed) {
-      onChange(parsed)
-      setText(formatDisplay(parsed))
-    } else {
-      setText(formatDisplay(value))
-    }
-  }
 
   const parsed = parseTime(value)
   const { h12, period } = parsed ? to12Hour(parsed.h) : { h12: null, period: null }
@@ -154,9 +104,8 @@ export default function TimePicker({ value, onChange }) {
     <div className="dt-picker" ref={ref}>
       <div className="dt-picker-trigger">
         <input
-          type="text" inputMode="text" className="dt-picker-input" placeholder="--:--:-- --"
-          value={text} onChange={handleTextChange} onFocus={handleFocus} onBlur={handleBlur}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+          type="time" step="1" className="dt-picker-native-input"
+          value={value || ''} onChange={(e) => onChange(e.target.value)}
         />
         <button type="button" className="dt-picker-icon-btn" aria-label="Open time picker" onClick={() => setOpen((v) => !v)}>
           <Clock size={15} />

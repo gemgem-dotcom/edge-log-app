@@ -21,40 +21,12 @@ function parseIso(iso) {
   return { year: y, month: m - 1, day: d }
 }
 
-// dd/mm/yyyy, both for display and for what typing accepts back.
-function formatDisplay(iso) {
-  const parsed = parseIso(iso)
-  if (!parsed) return ''
-  return `${pad(parsed.day)}/${pad(parsed.month + 1)}/${parsed.year}`
-}
-
-// Reformats digits-only input as the user types, auto-inserting the two
-// slashes ("14082026" -> "14/08/2026") rather than requiring them typed.
-function autoSlash(raw) {
-  const digits = raw.replace(/\D/g, '').slice(0, 8)
-  let out = digits.slice(0, 2)
-  if (digits.length > 2) out += '/' + digits.slice(2, 4)
-  if (digits.length > 4) out += '/' + digits.slice(4, 8)
-  return out
-}
-
-function parseTyped(text) {
-  const m = text.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (!m) return null
-  const day = Number(m[1])
-  const month = Number(m[2])
-  const year = Number(m[3])
-  if (month < 1 || month > 12) return null
-  if (day < 1 || day > new Date(year, month, 0).getDate()) return null
-  return toIso(year, month - 1, day)
-}
-
-// Replaces the native <input type="date"> - its own popup can't be
-// restyled (see the color-scheme comment in globals.css), so this rebuilds
-// just enough of a calendar to match the app. value/onChange/min/max all
-// speak the same ISO YYYY-MM-DD string the native input used, so nothing
-// downstream (validateSetup's string comparisons, the trades table) needed
-// to change.
+// The native input[type=date] handles typing itself (segmented, its
+// display order follows the browser's own locale - not something a page
+// can override) - this only adds an alternative, optional way to set the
+// same value: a calendar popup, since the native popup can't be restyled
+// (see the color-scheme comment in globals.css). value/onChange/min/max
+// all speak the same ISO YYYY-MM-DD string the input already used.
 export default function DatePicker({ value, onChange, min, max }) {
   const [open, setOpen] = useState(false)
   const parsedValue = parseIso(value)
@@ -63,36 +35,9 @@ export default function DatePicker({ value, onChange, min, max }) {
   const [viewMonth, setViewMonth] = useState(parsedValue?.month ?? today.getMonth())
   const ref = useClickOutside(open, useCallback(() => setOpen(false), []))
 
-  // Typing is tracked separately from `value` so a mid-edit keystroke
-  // ("14/0") isn't clobbered by the formatted-value sync below - only
-  // reformats once the field isn't actively being typed into.
-  const [text, setText] = useState(formatDisplay(value))
-  const [editing, setEditing] = useState(false)
-
-  useEffect(() => {
-    if (!editing) setText(formatDisplay(value))
-  }, [value, editing])
-
-  function handleTextChange(e) {
-    setText(autoSlash(e.target.value))
-  }
-  function handleFocus() {
-    setEditing(true)
-  }
-  function handleBlur() {
-    setEditing(false)
-    if (text.trim() === '') { onChange(''); return }
-    const iso = parseTyped(text)
-    if (iso) {
-      onChange(iso)
-      setText(formatDisplay(iso))
-    } else {
-      setText(formatDisplay(value))
-    }
-  }
-
   // Keep the visible month in sync if the value changes from outside this
-  // component - e.g. the edit-trade page loading an existing trade in.
+  // component - typing directly into the native input, or the edit-trade
+  // page loading an existing trade in.
   useEffect(() => {
     const p = parseIso(value)
     if (p) { setViewYear(p.year); setViewMonth(p.month) }
@@ -174,9 +119,8 @@ export default function DatePicker({ value, onChange, min, max }) {
     <div className="dt-picker" ref={ref}>
       <div className="dt-picker-trigger">
         <input
-          type="text" inputMode="numeric" className="dt-picker-input" placeholder="dd/mm/yyyy"
-          value={text} onChange={handleTextChange} onFocus={handleFocus} onBlur={handleBlur}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+          type="date" min={min} max={max} className="dt-picker-native-input"
+          value={value || ''} onChange={(e) => onChange(e.target.value)}
         />
         <button type="button" className="dt-picker-icon-btn" aria-label="Open date picker" onClick={() => setOpen((v) => !v)}>
           <Calendar size={15} />

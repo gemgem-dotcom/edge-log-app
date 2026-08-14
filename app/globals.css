@@ -266,17 +266,23 @@ table{min-width:640px;}
   /* Prevent iOS Safari's auto-zoom-on-focus, which happens on any
      input with font-size under 16px */
   input, select, textarea{font-size:16px; padding:10px;}
+  /* type=date/time open a picker, not the keyboard that triggers the
+     zoom above, so they don't need the 16px floor - and on iOS Safari a
+     bigger font makes the native control's internal segments (hour,
+     minute, second, AM/PM) wider, which is exactly what was pushing
+     these fields past the card edge despite the width:100% above. */
+  .dt-picker-native-input{font-size:13.5px;}
   select{font-size:13.5px; height:41px; padding-right:34px;}
-  /* .dt-picker-trigger is a <div>, not an <input>, so it never picked up
-     the 16px/padding:10px bump above (the rule that makes plain inputs
-     naturally render ~41px tall here) - without this it stays at its
+  /* .dt-picker-trigger doesn't inherit the 16px/padding:10px bump above
+     (it's a wrapper div, not an input) - without this it stays at its
      desktop 36px and visibly mismatches its siblings, the same height-
-     mismatch bug the native date/time inputs it replaced used to have.
-     .field .dt-picker-trigger (not just .dt-picker-trigger): this media
-     query comes before the base .dt-picker-trigger{height:36px} rule
-     further down the file, so equal specificity would let source order -
-     not the viewport - decide, and the base rule would win regardless of
-     width. The extra .field ancestor outranks it instead. */
+     mismatch bug the native date/time inputs inside it used to have on
+     their own before being wrapped. .field .dt-picker-trigger (not just
+     .dt-picker-trigger): this media query comes before the base
+     .dt-picker-trigger{height:36px} rule further down the file, so equal
+     specificity would let source order - not the viewport - decide, and
+     the base rule would win regardless of width. The extra .field
+     ancestor outranks it instead. */
   .field .dt-picker-trigger{height:41px;}
 
   .submit-row{grid-column:span 2; justify-content:stretch;}
@@ -1227,26 +1233,35 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   .field-tooltip-bubble{width:180px; left:auto; right:-6px; transform:none;}
 }
 
-/* ---------- Date/time picker (replaces native input[type=date/time]) ---------- */
+/* ---------- Date/time picker (adds an optional popup to native input[type=date/time]) ---------- */
 /* The native date/time picker's own popup can't be restyled - color-scheme
    (see :root above) is the only lever CSS has over it, and testing showed
-   even that doesn't reach this popup in Chromium - so this rebuilds it as
-   an ordinary floating menu, same treatment as .tag-suggestions. */
+   even that doesn't reach this popup in Chromium. Typing stays on the
+   real native input (unchanged keyboard/segment/locale behavior) - this
+   only adds a second, optional way to set the same value: a custom
+   popup (same treatment as .tag-suggestions) opened by its own icon,
+   with the input's own native picker-indicator icon hidden below so
+   there's exactly one way to open a picker, not two competing ones. */
 .dt-picker{position:relative;}
-/* The wrapper itself isn't interactive - it just holds the typable input
-   and the icon button that opens the popup, so clicking the field types
-   into it like any other input, and only the icon opens the picker. */
 .dt-picker-trigger{
   display:flex; align-items:center; justify-content:space-between; width:100%; height:36px;
   background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text);
   padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:400;
 }
 .dt-picker-trigger:focus-within{border-color:var(--accent);}
-.dt-picker-input{
-  flex:1; min-width:0; background:transparent; border:none; padding:0;
+.dt-picker-native-input{
+  flex:1; min-width:0; -webkit-appearance:none; appearance:none;
+  background:transparent; border:none; padding:0; margin:0;
   color:inherit; font:inherit; outline:none;
 }
-.dt-picker-input::placeholder{color:var(--muted);}
+/* Chromium/WebKit only - Firefox doesn't expose an equivalent pseudo-
+   element, so its native picker-indicator (if any) stays visible there. */
+.dt-picker-native-input::-webkit-calendar-picker-indicator{display:none;}
+/* Safari (desktop and iOS) centers the value inside date/time inputs by
+   default, which reads as a mismatch next to every other left-aligned
+   field - ::-webkit-date-and-time-value is WebKit-only and silently
+   ignored elsewhere, so this only touches the browsers that need it. */
+.dt-picker-native-input::-webkit-date-and-time-value{text-align:left;}
 .dt-picker-icon-btn{
   flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-left:8px;
   width:22px; height:22px; padding:0; background:transparent; border:none; border-radius:5px;

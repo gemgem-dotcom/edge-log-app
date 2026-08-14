@@ -1343,9 +1343,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   color:var(--muted); cursor:pointer; transition:background-color .15s ease, color .15s ease;
 }
 .dt-picker-spin-btn:hover{background:var(--panel-2); color:var(--accent);}
+/* Shared by the AM/PM toggle (a <div>) and the hour/minute/second cells
+   (real <input>s, so their taps open the numeric keypad instead of just
+   incrementing via the arrows) - background/border/outline only matter
+   for the inputs, but are harmless no-ops on the div. */
 .dt-picker-spin-value{
   width:100%; text-align:center; padding:5px 0; border-radius:6px;
   font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; color:var(--text);
+  background:transparent; border:none; outline:none;
 }
 
 /* ---------- In-header column filters (trade log table) ---------- */

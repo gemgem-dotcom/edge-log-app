@@ -1509,11 +1509,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    to the full stretched row height, but that 24px was still carved out
    of it, leaving a gap the same size beneath the stat cards instead of
    letting them actually grow into the space this was meant to give them.
-   .stats' own gap (12px, --space-3) is left as-is - it was already
-   equal horizontally and vertically within this grid, and bumping it to
-   match .dashboard-split's larger 16px (tried once, reverted) just made
-   these small tiles read as loosely spaced for their size. */
-.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
+   gap:16px overrides .stats' own 12px (--space-3, the dense-tile-row
+   convention used elsewhere) to match .dashboard-split's own gap - this
+   stack and the donut card beside it are one family of cards, same as
+   the Today's brief/Volatility pairing on the all-instruments Overview
+   page, so every gap here (between the two stat cards, between the two
+   stat rows, and between the stack and the donut) should read as the
+   same width, matching that reference exactly. */
+.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0; gap:16px;}
 /* flex-start, not center - same reasoning as .dashboard-split .panel
    above: centering split the extra stretched height evenly above and
    below each stat's label+value, reading as if the card had more

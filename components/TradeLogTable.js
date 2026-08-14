@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
-import { hasResult, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
+import { hasResult, planAdherence, tradeDurationMinutes, formatDuration } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
@@ -81,12 +81,13 @@ function fmtPnl(value) {
   return `${sign}$${Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// Plain thousands-grouped number, no sign/currency, no forced decimals -
-// for raw prices and point distances, which unlike P&L aren't always
-// entered to 2 decimal places and shouldn't gain fake trailing zeros.
+// Plain thousands-grouped number, no sign/currency - for raw prices and
+// point distances, which are now stored to two decimal places (see
+// toDecimalString in lib/tradeForm.js) and always display at that same
+// precision, e.g. "32" -> "32.00".
 function fmtNum(value) {
   if (value === null || value === undefined) return '—'
-  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 4 })
+  return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function dayOf(trade) {
@@ -336,6 +337,9 @@ export default function TradeLogTable({
           {visible.map((t) => {
             const closed = hasResult(t)
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
+            const adherence = planAdherence(t)
+            const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', breakeven: 'Breakeven', deviated: 'Deviated' }[adherence]
+            const adherenceClass = { target: 'r-pos', stop: 'r-neg', breakeven: 'r-zero', deviated: 'r-open' }[adherence]
             const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
@@ -390,14 +394,15 @@ export default function TradeLogTable({
                       <div className="detail-grid" style={{ padding: '16px 4px' }}>
                         <div><label>Entry time</label><div>{t.trade_time}</div></div>
                         <div><label>Entry price</label><div>{fmtNum(t.entry)}</div></div>
-                        <div><label>Stop loss</label><div>{fmtNum(t.stop)}{t.stop_distance != null ? ` (${fmtNum(t.stop_distance)} pts)` : ''}</div></div>
-                        <div><label>Take profit</label><div>{fmtNum(t.target)}{t.target_distance != null ? ` (${fmtNum(t.target_distance)} pts)` : ''}</div></div>
+                        <div><label>Stop loss</label><div>{fmtNum(t.stop)}{t.stop_distance != null && <div className="detail-subvalue">{fmtNum(t.stop_distance)} pts</div>}</div></div>
+                        <div><label>Take profit</label><div>{fmtNum(t.target)}{t.target_distance != null && <div className="detail-subvalue">{fmtNum(t.target_distance)} pts</div>}</div></div>
                         <div><label>Exit price</label><div>{fmtNum(t.exit_price)}</div></div>
                         <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(t))}</div></div>
                         <div><label>Contracts</label><div>{t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')}</div></div>
                         {/* No data source until Phase 2 captures excursions. */}
                         <div><label>MFE</label><div>—</div></div>
                         <div><label>MAE</label><div>—</div></div>
+                        <div><label>Plan Adherence</label><div>{adherence === null ? '—' : <span className={`r-pill ${adherenceClass}`}>{adherenceLabel}</span>}</div></div>
                       </div>
 
                       {t.tags?.length > 0 && (

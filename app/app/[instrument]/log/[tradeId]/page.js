@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { hasResult, calcRiskReward, planAdherence, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
 import PageLoading from '@/components/PageLoading'
 
-// Plain thousands-grouped number, no sign/currency, no forced decimals -
-// for raw prices and point distances, which unlike P&L aren't always
-// entered to 2 decimal places and shouldn't gain fake trailing zeros.
+// Plain thousands-grouped number, no sign/currency - for raw prices and
+// point distances, which are now stored to two decimal places (see
+// toDecimalString in lib/tradeForm.js) and always display at that same
+// precision, e.g. "32" -> "32.00".
 function fmtNum(value) {
   if (value === null || value === undefined) return '—'
-  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 4 })
+  return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export default function TradeDetailPage({ params }) {
@@ -60,6 +61,9 @@ export default function TradeDetailPage({ params }) {
   const rClass = !closed ? 'r-zero' : trade.r_multiple > 0 ? 'r-pos' : trade.r_multiple < 0 ? 'r-neg' : 'r-zero'
   const shots = trade.screenshot_urls?.length ? trade.screenshot_urls : (trade.screenshot_url ? [trade.screenshot_url] : [])
   const riskReward = calcRiskReward(trade.target_distance, trade.stop_distance)
+  const adherence = planAdherence(trade)
+  const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', breakeven: 'Breakeven', deviated: 'Deviated' }[adherence]
+  const adherenceClass = { target: 'r-pos', stop: 'r-neg', breakeven: 'r-zero', deviated: 'r-open' }[adherence]
 
   return (
     <div className="page-container">
@@ -74,8 +78,8 @@ export default function TradeDetailPage({ params }) {
           <div><label>Entry time</label><div>{trade.trade_time}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{fmtNum(trade.entry)}</div></div>
-          <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null ? ` (${fmtNum(trade.stop_distance)} pts)` : ''}</div></div>
-          <div><label>Take profit</label><div>{trade.target == null ? '—' : fmtNum(trade.target)}{trade.target_distance != null ? ` (${fmtNum(trade.target_distance)} pts)` : ''}</div></div>
+          <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null && <div className="detail-subvalue">{fmtNum(trade.stop_distance)} pts</div>}</div></div>
+          <div><label>Take profit</label><div>{trade.target == null ? '—' : fmtNum(trade.target)}{trade.target_distance != null && <div className="detail-subvalue">{fmtNum(trade.target_distance)} pts</div>}</div></div>
           <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price == null ? '—' : fmtNum(trade.exit_price)}</div></div>
           <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(trade))}</div></div>
@@ -83,6 +87,7 @@ export default function TradeDetailPage({ params }) {
           <div><label>MFE</label><div>—</div></div>
           <div><label>MAE</label><div>—</div></div>
           <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
+          <div><label>Plan Adherence</label><div>{adherence === null ? '—' : <span className={`r-pill ${adherenceClass}`}>{adherenceLabel}</span>}</div></div>
         </div>
       </div>
 

@@ -1267,12 +1267,26 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    ignored elsewhere, so this only touches the browsers that need it. */
 .dt-picker-native-input::-webkit-date-and-time-value{text-align:left;}
 /* Mobile's typed fallback - a plain text input, so unlike
-   .dt-picker-native-input it needs no native-chrome resets. */
+   .dt-picker-native-input it needs no native-chrome resets. Wrapped in its
+   own relative span (rather than being the flex:1 child directly) so
+   DatePicker's mask-remainder hint below has something to anchor to
+   without disturbing the icon button's layout. */
+.dt-picker-input-wrap{position:relative; flex:1; min-width:0;}
 .dt-picker-input{
-  flex:1; min-width:0; background:transparent; border:none; padding:0;
+  width:100%; background:transparent; border:none; padding:0;
   color:inherit; font:inherit; outline:none;
 }
 .dt-picker-input::placeholder{color:var(--muted);}
+/* DatePicker's mobile mask remainder ("mm/yyyy" etc. for the segments not
+   yet typed) - an invisible spacer matching the already-typed text pushes
+   the muted remainder text to line up right after it. pointer-events:none
+   so it never intercepts taps meant for the real input beneath it. */
+.dt-picker-mask-hint{
+  position:absolute; inset:0; display:flex; align-items:center;
+  pointer-events:none; white-space:pre; color:var(--muted);
+  font-family:'JetBrains Mono',monospace; font-size:13.5px;
+}
+.dt-picker-mask-hint-spacer{color:transparent;}
 .dt-picker-icon-btn{
   flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-left:8px;
   width:22px; height:22px; padding:0; background:transparent; border:none; border-radius:5px;
@@ -1329,9 +1343,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   color:var(--muted); cursor:pointer; transition:background-color .15s ease, color .15s ease;
 }
 .dt-picker-spin-btn:hover{background:var(--panel-2); color:var(--accent);}
+/* Shared by the AM/PM toggle (a <div>) and the hour/minute/second cells
+   (real <input>s, so their taps open the numeric keypad instead of just
+   incrementing via the arrows) - background/border/outline only matter
+   for the inputs, but are harmless no-ops on the div. */
 .dt-picker-spin-value{
   width:100%; text-align:center; padding:5px 0; border-radius:6px;
   font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; color:var(--text);
+  background:transparent; border:none; outline:none;
 }
 
 /* ---------- In-header column filters (trade log table) ---------- */

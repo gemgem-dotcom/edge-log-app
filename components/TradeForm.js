@@ -182,18 +182,30 @@ export default function TradeForm({
       if (tagDropdownRef.current && tagDropdownRef.current.contains(e.target)) return
       dismiss()
     }
+    // The tag input is autoFocus'd, which on a real phone summons the
+    // on-screen keyboard the instant this dropdown opens - and the
+    // keyboard sliding up shrinks the visual viewport, firing a 'resize'
+    // on most mobile browsers. A plain dismiss-on-any-resize closed the
+    // dropdown before the user ever saw it. Width, unlike height, doesn't
+    // change when a keyboard opens or closes - only on an actual
+    // orientation change or window resize, which is what should still
+    // dismiss it.
+    const initialWidth = window.innerWidth
+    const dismissOnResize = () => {
+      if (window.innerWidth !== initialWidth) dismiss()
+    }
     // The tag input is autoFocus'd, which can itself trigger a scroll-into-
     // view the instant the dropdown opens (e.g. a field near the viewport
     // edge). Deferring attachment by a frame lets that settle first, so
     // opening the dropdown doesn't immediately close itself.
     const raf = requestAnimationFrame(() => {
       window.addEventListener('scroll', dismissOnScroll, true)
-      window.addEventListener('resize', dismiss)
+      window.addEventListener('resize', dismissOnResize)
     })
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('scroll', dismissOnScroll, true)
-      window.removeEventListener('resize', dismiss)
+      window.removeEventListener('resize', dismissOnResize)
     }
   }, [showSuggestions])
 

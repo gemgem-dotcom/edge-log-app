@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Clock, ChevronUp, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
 
@@ -57,11 +57,26 @@ export default function TimePicker({ value, onChange }) {
   const minute = parsed ? parsed.m : null
   const second = parsed ? parsed.s : null
 
+  // Mirrors editingField (declared below, where the spin-field editing
+  // logic lives) into a ref so dismissOnScroll can read its current value
+  // without retriggering this effect - and therefore without re-adding
+  // its listeners - on every keystroke.
+  const editingFieldRef = useRef(null)
+
   useEffect(() => {
     if (!open) return
     const dismiss = () => setOpen(false)
     const dismissOnScroll = (e) => {
       if (ref.current && ref.current.contains(e.target)) return
+      // Tapping a spin field to type opens the on-screen keyboard, and
+      // mobile browsers auto-scroll the page to keep the focused field
+      // above it - firing a 'scroll' whose target is document, not the
+      // input, so the check above can't tell it apart from a real
+      // outside scroll. Only suppress the dismiss for that case (a spin
+      // field mid-edit), not whenever focus merely happens to be
+      // somewhere in the popup, or a genuine background scroll while the
+      // trigger still has focus would stop dismissing it too.
+      if (editingFieldRef.current) return
       dismiss()
     }
     // On mobile, tapping this field blurs whatever had focus before it,
@@ -135,6 +150,7 @@ export default function TimePicker({ value, onChange }) {
 
   function startEdit(field) {
     setEditingField(field)
+    editingFieldRef.current = field
     setFieldText('')
   }
   function handleFieldChange(e) {
@@ -152,6 +168,7 @@ export default function TimePicker({ value, onChange }) {
   function commitField() {
     if (editingField && fieldText !== '') FIELD_SETTERS[editingField](Number(fieldText))
     setEditingField(null)
+    editingFieldRef.current = null
     setFieldText('')
   }
 

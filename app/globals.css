@@ -1665,8 +1665,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* Impact checklist - independent High/Medium/Low checkboxes. Absolute
    (not .col-filter-menu's own fixed) since this sits in a toolbar above
    the event list, not inside a horizontally-scrolling ancestor that would
-   clip a fixed-position menu differently than an absolute one anyway. */
-.econ-impact-filter{position:relative;}
+   clip a fixed-position menu differently than an absolute one anyway.
+   -12px margin cancels the filter button's own left padding (below) so
+   its text lines up with this card's title and the event rows beneath
+   it, rather than sitting inset from both - shifting the wrapper (not
+   just the button) keeps the dropdown menu, positioned relative to it,
+   anchored under the button instead of drifting from it. */
+.econ-impact-filter{position:relative; margin-left:-12px;}
 /* Overrides .calendar-strategy-filter's 34px right padding, sized for a
    native <select>'s chevron background-image - this is a flex button with
    its own SVG chevron child instead, so that reserved space just left a gap. */

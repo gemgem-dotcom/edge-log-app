@@ -108,7 +108,16 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .progress-fill{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-bright)); transition:width .4s ease;}
 .progress-note{font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4;}
 
-.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); margin-bottom:24px;}
+/* 15px, not --space-3 (12px) - every card-family grid on the platform
+   (this, .dashboard-split, .instrument-glance-row/.strategy-glance-row)
+   was standardized to a uniform 15px gap by explicit request, off the
+   4/8/12/16/24/32 scale above on purpose rather than snapping to its
+   nearest step. margin-bottom matches the gap for the same reason
+   .dashboard-split's does - the space to whatever card follows should
+   read the same as the space between the cards in this row. Untouched
+   where a .section-heading follows instead: its own 24px margin-top
+   still wins that collapse regardless of this value. */
+.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:15px;}
 .stat{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px;}
 .stat-label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
 .stat-value{font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:600;}
@@ -1488,11 +1497,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
-/* margin-bottom matches this grid's own gap, so the space below the row
-   (to whatever comes next) reads the same as the space between its two
-   cards instead of whatever the panels' own margin-bottom happens to add
-   up to - see the .panel override below. */
-.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch; margin-bottom:16px;}
+/* 15px, not --space-4 (16px) - standardized to match .stats/
+   .instrument-glance-row/.strategy-glance-row, see the comment on
+   .stats above. margin-bottom matches this grid's own gap, so the space
+   below the row (to whatever comes next) reads the same as the space
+   between its two cards instead of whatever the panels' own
+   margin-bottom happens to add up to - see the .panel override below. */
+.dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:15px; align-items:stretch; margin-bottom:15px;}
 .dashboard-split > div{display:flex; flex-direction:column;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
    both cards to the row's height so the shorter one isn't visibly shorter.
@@ -1509,14 +1520,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    to the full stretched row height, but that 24px was still carved out
    of it, leaving a gap the same size beneath the stat cards instead of
    letting them actually grow into the space this was meant to give them.
-   gap:16px overrides .stats' own 12px (--space-3, the dense-tile-row
-   convention used elsewhere) to match .dashboard-split's own gap - this
-   stack and the donut card beside it are one family of cards, same as
-   the Today's brief/Volatility pairing on the all-instruments Overview
-   page, so every gap here (between the two stat cards, between the two
-   stat rows, and between the stack and the donut) should read as the
-   same width, matching that reference exactly. */
-.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0; gap:16px;}
+   .stats' own gap is 15px too now (see above), so this stack, the two
+   stat rows within it, and the donut card beside it all read as one
+   family of cards with a single consistent gap, same as the Today's
+   brief/Volatility pairing on the all-instruments Overview page. */
+.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
 /* flex-start, not center - same reasoning as .dashboard-split .panel
    above: centering split the extra stretched height evenly above and
    below each stat's label+value, reading as if the card had more
@@ -1861,12 +1869,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
 /* Per-instrument Overview's Volatility/Key levels/Today's brief row, and
-   the per-strategy detail page's streak-adjacent card row. margin-bottom
+   the per-strategy detail page's streak-adjacent card row. 15px, not
+   --space-4 (16px) - see the comment on .stats above. margin-bottom
    matches this grid's own gap, same reasoning as .dashboard-split above -
    its panels already zero out their own margin-bottom, but nothing filled
    in the resulting gap, leaving less space before whatever follows than
    this row's own internal gap. */
-.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:stretch; margin-bottom:16px;}
+.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
 .instrument-glance-row .panel, .strategy-glance-row .panel{margin-bottom:0; flex:1;}
 .strategy-glance-row{grid-template-columns:repeat(2,1fr);}
 @media (max-width:860px){

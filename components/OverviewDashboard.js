@@ -305,7 +305,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
           />
         </div>
       </div>
-      <p className="page-subtitle">Here&apos;s your edge, at a glance.</p>
+      <p className="page-subtitle">Here&apos;s what&apos;s happening today.</p>
 
       {allTrades.length === 0 ? (
         <div className="panel">
@@ -318,8 +318,13 @@ export default function OverviewDashboard({ instruments, strategies }) {
         </div>
       ) : (
         <>
-          <div className="section-heading">At a glance</div>
           <div className="dashboard-split">
+            <div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+                <p className="brief-card-text">{briefText}</p>
+              </div>
+            </div>
             <div>
               <div className="panel">
                 <div className="stat-label dashboard-card-title">Volatility</div>
@@ -336,12 +341,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
                     )
                   })}
                 </div>
-              </div>
-            </div>
-            <div>
-              <div className="panel">
-                <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
-                <p className="brief-card-text">{briefText}</p>
               </div>
             </div>
           </div>

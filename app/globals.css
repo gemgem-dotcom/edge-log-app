@@ -1799,8 +1799,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    since the vertical scrollbar itself narrows the available row width by
    its own width - without min-width:0 on .econ-calendar-mock-event below,
    that's just enough to force the row wider than the list and produce an
-   unwanted second, horizontal scrollbar along the bottom of the card. */
-.econ-calendar-mock-list{display:flex; flex-direction:column; max-height:180px; overflow-y:auto; overflow-x:hidden;}
+   unwanted second, horizontal scrollbar along the bottom of the card.
+   padding-right is a gutter between the rightmost column (figures) and
+   the scrollbar track, so a full-width OS scrollbar doesn't read as
+   sitting right on top of that text; the thin custom scrollbar below
+   also narrows the track itself so there's less of it to crowd in. */
+.econ-calendar-mock-list{
+  display:flex; flex-direction:column; max-height:180px; overflow-y:auto; overflow-x:hidden;
+  padding-right:10px; scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+}
+.econ-calendar-mock-list::-webkit-scrollbar{width:6px;}
+.econ-calendar-mock-list::-webkit-scrollbar-track{background:transparent;}
+.econ-calendar-mock-list::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+.econ-calendar-mock-list::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
 .econ-calendar-mock-row{
   display:flex; align-items:center; gap:12px; padding:10px 0;
   border-bottom:1px solid var(--line); font-size:13px;

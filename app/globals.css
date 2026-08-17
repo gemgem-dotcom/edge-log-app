@@ -10,38 +10,38 @@
    314  Auth pages
    366  Top nav
    381  Instrument nav (topbar pill row)
-   432  Page layout
-   481  Tabs
-   491  Misc form helpers
-   497  Detail view
-   513  Holiday notice (site-wide, above the shell)
-   538  Shell layout (sidebar + topbar)
-   759  Expandable trade rows
-   776  Calendar
-   824  Account settings page
-   1005  Light theme
-   1032  2FA
-   1047  Account fine print
-   1050  Screenshot preview (log new trade)
-   1067  Auth pages always dark
-   1095  Monthly P&L (calendar on Overview)
-   1171  Trade form: sections, validation, currency, screenshots
-   1252  Field tooltips
-   1308  Date/time picker (adds an optional popup to a typed input)
-   1417  In-header column filters (trade log table)
-   1451  Active filter chips
-   1500  Empty states, error banners, skeleton loaders
-   1556  Cross-instrument overview dashboard (/app)
-   1657  Not found / error boundary state pages
-   1670  Toast notifications
-   1698  Public policy pages (Privacy, Terms)
-   1717  Legal links (auth pages + account settings)
-   1756  Economic calendar card (mock - Overview pages)
-   1860  Calendar news badge (Monthly P&L day cells, mock)
-   1881  Streak badge (Overview + strategy detail pages)
-   1898  Market status pill (Overview + strategy detail pages)
-   1924  Key levels, today's brief (mock cards)
-   1950  Market context cards (all-instruments Overview)
+   445  Page layout
+   494  Tabs
+   504  Misc form helpers
+   510  Detail view
+   526  Holiday notice (site-wide, above the shell)
+   551  Shell layout (sidebar + topbar)
+   772  Expandable trade rows
+   789  Calendar
+   837  Account settings page
+   1018  Light theme
+   1045  2FA
+   1060  Account fine print
+   1063  Screenshot preview (log new trade)
+   1080  Auth pages always dark
+   1108  Monthly P&L (calendar on Overview)
+   1184  Trade form: sections, validation, currency, screenshots
+   1265  Field tooltips
+   1321  Date/time picker (adds an optional popup to a typed input)
+   1430  In-header column filters (trade log table)
+   1464  Active filter chips
+   1513  Empty states, error banners, skeleton loaders
+   1569  Cross-instrument overview dashboard (/app)
+   1697  Not found / error boundary state pages
+   1710  Toast notifications
+   1738  Public policy pages (Privacy, Terms)
+   1757  Legal links (auth pages + account settings)
+   1796  Economic calendar card (mock - Overview pages)
+   1904  Calendar news badge (Monthly P&L day cells, mock)
+   1925  Streak badge (Overview + strategy detail pages)
+   1942  Market status pill (Overview + strategy detail pages)
+   1968  Key levels, today's brief (mock cards)
+   1994  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -383,6 +383,16 @@ table{min-width:640px;}
    the pill, logo/icons included) - this is just the row of items inside
    it, each its own smaller pill on hover/active. */
 .instrument-nav{display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-width:0;}
+/* Holds just the instrument pills - the part that scrolls on mobile (see
+   the @media rule below). "Add instrument" lives outside this as its own
+   flex-shrink:0 sibling; see the comment in InstrumentNav.js for why -
+   several attempts at keeping it tappable while living inside this strip
+   all failed identically on a real phone despite each addressing a real,
+   verified mechanism, so it stays outside for reliability. Sharing this
+   row's own gap (10px, same as the gap between pills, from .instrument-nav
+   above) keeps it reading as part of the same row rather than a
+   conspicuously separate chip, even though it isn't part of the scroll. */
+.instrument-nav-scroll{display:flex; align-items:center; gap:10px; min-width:0;}
 .instrument-nav-item{
   padding:7px 14px; border-radius:100px; font-size:13px; font-weight:600;
   color:var(--muted); text-decoration:none; white-space:nowrap;
@@ -390,16 +400,18 @@ table{min-width:640px;}
 }
 .instrument-nav-item:hover{color:var(--text); background:var(--line);}
 .instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
-.instrument-nav-add-wrap{position:relative;}
+.instrument-nav-add-wrap{position:relative; flex-shrink:0;}
 .instrument-nav-add{
   display:inline-block; padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
   font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color .15s ease;
 }
 .instrument-nav-add:hover{background:var(--line);}
 /* Fixed rather than absolute, and positioned inline from a measured rect
-   (see InstrumentNav.js) - .instrument-nav switches to overflow-x:auto on
-   mobile, which would otherwise clip this the same way #tableWrap clips an
-   absolutely-positioned menu. */
+   (see InstrumentNav.js) - the trigger sits outside .instrument-nav-scroll
+   precisely so it's never a descendant of that overflow-x:auto strip, but
+   position:fixed is kept regardless since it's already proven correct and
+   an absolute menu would still need the same viewport-edge clamping this
+   already does. */
 .instrument-dropdown{
   position:fixed; background:var(--panel);
   border:1px solid var(--line); border-radius:9px; min-width:220px; z-index:60;
@@ -426,7 +438,8 @@ table{min-width:640px;}
 .instrument-add-form-actions{display:flex; align-items:center; gap:14px; align-self:flex-end;}
 .instrument-add-form-actions button{align-self:auto;}
 @media (max-width:900px){
-  .instrument-nav{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .instrument-nav{flex-wrap:nowrap;}
+  .instrument-nav-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
 }
 
 /* ---------- Page layout ---------- */
@@ -1602,6 +1615,43 @@ label:has(.field-tooltip){display:flex; align-items:center;}
   font-size:11px; color:var(--muted); margin-top:6px;
 }
 
+/* P&L by instrument + Avg P&L by day of week, side by side beneath the
+   equity curve in the same "Performance breakdown" panel - one card
+   holding several related sub-sections, the same shape Monthly P&L below
+   it already uses (toolbar, stats row and calendar grid all in one panel)
+   rather than each stat getting its own small card. */
+.performance-card-subgrid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:28px;}
+@media (max-width:700px){
+  .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
+}
+
+.pnl-rank-list{display:flex; flex-direction:column;}
+.pnl-rank-item{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); font-size:12.5px;}
+.pnl-rank-item:last-child{border-bottom:none; padding-bottom:0;}
+.pnl-rank-symbol{font-weight:600;}
+.pnl-rank-value{margin-left:auto; font-family:'JetBrains Mono',monospace;}
+
+/* One diverging bar per weekday, split into a lane either side of a fixed
+   center line (zero) - each lane is 50% of the track and a bar grows from
+   the center outward rather than from either end, so magnitude reads
+   correctly regardless of sign. */
+.weekday-chart{display:flex; flex-direction:column; gap:9px;}
+.weekday-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
+.weekday-chart-label{
+  width:30px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
+  font-size:10.5px; color:var(--muted); letter-spacing:.04em;
+}
+.weekday-chart-track{flex:1; display:flex; align-items:center; height:10px; min-width:0;}
+.weekday-chart-lane{flex:1; height:100%; display:flex; min-width:0;}
+.weekday-chart-lane-neg{justify-content:flex-end;}
+.weekday-chart-center{width:1px; height:14px; background:var(--line); flex-shrink:0;}
+.weekday-chart-bar{height:100%; border-radius:3px; min-width:2px;}
+.weekday-chart-bar-pos{background:var(--win);}
+.weekday-chart-bar-neg{background:var(--loss);}
+.weekday-chart-value{
+  width:80px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;
+}
+
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
 .donut-svg{width:160px; height:160px; flex-shrink:0;}
 .donut-arc{cursor:pointer;}
@@ -1609,28 +1659,18 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .donut-legend-item{display:flex; align-items:center; gap:8px; font-size:12.5px;}
 .donut-legend-symbol{font-weight:600; min-width:44px;}
 .donut-legend-value{margin-left:auto; font-family:'JetBrains Mono',monospace;}
-/* P&L by instrument: rows whose sign is opposite the net total (so they
-   have no arc in the ring, per netSignOnly on PnlDonut) stay legible but
-   read as secondary next to the rows the ring actually represents. */
+/* P&L by strategy (the only remaining PnlDonut usage - Overview's old P&L
+   by instrument card was replaced by a plain ranked list, see
+   .pnl-rank-list below): rows whose sign is opposite the net total (so
+   they have no arc in the ring, per netSignOnly on PnlDonut) stay legible
+   but read as secondary next to the rows the ring actually represents. */
 .donut-legend-item-muted{opacity:.45;}
-/* All Instruments overview only - that card stretches to match the taller
-   equity curve card next to it, so the default 160px ring leaves a lot of
-   dead space at the bottom. The per-instrument dashboard's P&L-by-strategy
-   card doesn't get this - its panel is sized to its own content, not
-   stretched against a taller neighbor. A bigger ring plus a body wrapper
-   that grows to fill the leftover height and centers the donut+legend in
-   it (title stays flush top either way) uses the stretched space instead
-   of leaving it all as dead air below the content. */
-.donut-card-lg .donut-svg{width:230px; height:230px;}
-.donut-card-body{flex:1; display:flex; align-items:center; justify-content:center;}
 @media (max-width:640px){
   /* .donut-wrap needs its own definite width here, not just center-aligned
      shrink-to-fit - otherwise .donut-legend's width:100% (below) has
-     nothing to resolve against inside .donut-card-body's centered flex
-     context (align-items:center, no stretch), and the legend collapses to
-     a tight content-sized block instead of spanning the card edge-to-edge
-     the way it does without that wrapper (donut-card-lg / All Instruments
-     only - the per-instrument card was never affected). */
+     nothing to resolve against in the centered flex row, and the legend
+     collapses to a tight content-sized block instead of spanning the
+     card edge-to-edge. */
   .donut-wrap{flex-direction:column; align-items:center; width:100%;}
   .donut-legend{width:100%;}
 }
@@ -1839,8 +1879,12 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
 /* Only applied when the visible range is more than a single day (see
    isSingleDay in EconomicCalendarCard) - viewing just today alone has
-   nothing to contrast it against, so the highlight would be meaningless. */
-.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:6px; padding-left:8px; padding-right:8px; margin:0 -8px;}
+   nothing to contrast it against, so the highlight would be meaningless.
+   Padding only, no negative margin - the row's own box (and so the
+   highlight painted into it) never extends past where an ordinary row's
+   box already sits, it just insets the impact dot from the highlight's
+   own rounded edge instead of leaving it flush against a straight one. */
+.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:8px; padding-left:10px; padding-right:10px;}
 .econ-calendar-mock-day{
   font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
   width:46px; flex-shrink:0;

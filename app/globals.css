@@ -5,42 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–311  Base: reset, typography, forms, tables, thumbnails,
+     1–313  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   312  Auth pages
-   364  Top nav
-   379  Instrument nav (topbar pill row)
-   430  Page layout
-   479  Tabs
-   489  Misc form helpers
-   495  Detail view
-   511  Shell layout (sidebar + topbar)
-   726  Expandable trade rows
-   743  Calendar
-   791  Account settings page
-   967  Light theme
-   994  2FA
-   1009  Account fine print
-   1012  Screenshot preview (log new trade)
-   1029  Auth pages always dark
-   1057  Monthly P&L (calendar on Overview)
-   1133  Trade form: sections, validation, currency, screenshots
-   1214  Field tooltips
-   1255  Date/time picker (adds an optional popup to a typed input)
-   1364  In-header column filters (trade log table)
-   1398  Active filter chips
-   1447  Empty states, error banners, skeleton loaders
-   1498  Cross-instrument overview dashboard (/app)
-   1599  Not found / error boundary state pages
-   1612  Toast notifications
-   1640  Public policy pages (Privacy, Terms)
-   1659  Legal links (auth pages + account settings)
-   1698  Economic calendar card (mock - Overview pages)
-   1781  Calendar news badge (Monthly P&L day cells, mock)
-   1802  Streak badge (Overview + strategy detail pages)
-   1819  Market status pill (Overview + strategy detail pages)
-   1845  Key levels, today's brief (mock cards)
-   1871  Market context cards (all-instruments Overview)
+   314  Auth pages
+   366  Top nav
+   381  Instrument nav (topbar pill row)
+   432  Page layout
+   481  Tabs
+   491  Misc form helpers
+   497  Detail view
+   513  Holiday notice (site-wide, above the shell)
+   530  Shell layout (sidebar + topbar)
+   745  Expandable trade rows
+   762  Calendar
+   810  Account settings page
+   986  Light theme
+   1013  2FA
+   1028  Account fine print
+   1031  Screenshot preview (log new trade)
+   1048  Auth pages always dark
+   1076  Monthly P&L (calendar on Overview)
+   1152  Trade form: sections, validation, currency, screenshots
+   1233  Field tooltips
+   1274  Date/time picker (adds an optional popup to a typed input)
+   1383  In-header column filters (trade log table)
+   1417  Active filter chips
+   1466  Empty states, error banners, skeleton loaders
+   1517  Cross-instrument overview dashboard (/app)
+   1618  Not found / error boundary state pages
+   1631  Toast notifications
+   1659  Public policy pages (Privacy, Terms)
+   1678  Legal links (auth pages + account settings)
+   1717  Economic calendar card (mock - Overview pages)
+   1800  Calendar news badge (Monthly P&L day cells, mock)
+   1821  Streak badge (Overview + strategy detail pages)
+   1838  Market status pill (Overview + strategy detail pages)
+   1864  Key levels, today's brief (mock cards)
+   1890  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -509,6 +510,31 @@ table{min-width:640px;}
   .topnav-links{width:100%; overflow-x:auto; padding-bottom:4px;}
 }
 
+/* ---------- Holiday notice (site-wide, above the shell) ---------- */
+/* Rendered by app/app/layout.js, a parent of [instrument]/layout.js's
+   shell - so this sits above the topbar rather than inside .main-area,
+   styled as a slim full-width announcement bar rather than a card.
+   position:fixed (z-index above the topbar's 90) since the topbar is
+   fixed regardless of where this sits in document flow - a merely
+   in-flow banner here would still get visually covered at the very top
+   of the viewport. HolidayNotice.js measures its own rendered height and
+   writes --holiday-notice-height, which .shell-topbar/.account-topbar's
+   `top` (and useStickyTopbar's spacer) read to make room below this
+   instead of underneath it. */
+.holiday-notice{
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  position:fixed; top:0; left:0; right:0; z-index:95;
+  background:rgba(59,167,255,.12); border-bottom:1px solid rgba(59,167,255,.25);
+  color:var(--text); padding:10px 44px; font-size:13px; font-weight:600; text-align:center;
+}
+.holiday-notice-dismiss{
+  position:absolute; right:16px; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;
+  display:flex; align-items:center; justify-content:center; transition:color .15s ease;
+}
+.holiday-notice-dismiss:hover{color:var(--text);}
+.holiday-notice-dismiss svg{width:14px; height:14px; flex-shrink:0;}
+
 /* ---------- Shell layout (sidebar + topbar) ---------- */
 .shell{min-height:100vh; display:flex; flex-direction:column;}
 /* .shell-topbar is always position:fixed (see its rule below) so it can
@@ -530,7 +556,13 @@ table{min-width:640px;}
   display:flex; align-items:center; gap:20px; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel);
   border:1px solid var(--line); flex-shrink:0;
-  position:fixed; top:0; left:0; right:0; z-index:90;
+  /* var(--holiday-notice-height) - see the comment on .holiday-notice -
+     makes room below that banner instead of sitting under it. Not in the
+     transition list below on purpose: useStickyTopbar's spacer measures
+     this element's real position via getBoundingClientRect() the instant
+     it changes, and an animated `top` would have that measurement land
+     mid-transition instead of at the settled value. */
+  position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
   transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .shell-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
@@ -796,7 +828,12 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .account-topbar{
   display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel); border:1px solid var(--line);
-  position:fixed; top:0; left:0; right:0; z-index:90;
+  /* var(--holiday-notice-height) - see the comment on .holiday-notice.
+     Not in the transition list below - see the comment on .shell-topbar's
+     own `top`. In practice HolidayNotice never renders on this page, but
+     the variable can still be transiently non-zero right as the trader
+     navigates here away from a page where it was showing. */
+  position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
   transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}

@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import PageLoading from '@/components/PageLoading'
+import HolidayNotice from '@/components/HolidayNotice'
 
 export default function AppLayout({ children }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
@@ -35,5 +37,10 @@ export default function AppLayout({ children }) {
     return <PageLoading />
   }
 
-  return <>{children}</>
+  return (
+    <>
+      {pathname !== '/app/account' && <HolidayNotice />}
+      {children}
+    </>
+  )
 }

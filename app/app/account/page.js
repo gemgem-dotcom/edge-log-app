@@ -12,8 +12,8 @@ import PreferencesSection from '@/components/account/PreferencesSection'
 import PasswordSection from '@/components/account/PasswordSection'
 import TwoFactorSection from '@/components/account/TwoFactorSection'
 import SignInHistorySection from '@/components/account/SignInHistorySection'
-import DataExportSection from '@/components/account/DataExportSection'
 import BillingSection from '@/components/account/BillingSection'
+import DataExportSection from '@/components/account/DataExportSection'
 import DangerZoneSection from '@/components/account/DangerZoneSection'
 import PageLoading from '@/components/PageLoading'
 
@@ -119,9 +119,9 @@ export default function AccountPage() {
           <SignInHistorySection initialEvents={loginEvents} timezone={timezone} />
         </div>
 
-        <DataExportSection />
-
         <BillingSection />
+
+        <DataExportSection />
 
         <DangerZoneSection email={email} hasPassword={hasPassword} />
 

@@ -39,21 +39,25 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   useEffect(() => {
     if (!adding) return
     const dismiss = () => close()
-    // The <select> below is autoFocus'd, and on a real phone tapping it
-    // opens the OS's own native picker UI, which shrinks the visual
-    // viewport (like an on-screen keyboard does) and fires a 'resize' on
-    // most mobile browsers - a plain dismiss-on-any-resize closed this
-    // dropdown, "Add" button included, the instant the user tried to pick
-    // an instrument. Width, unlike height, doesn't change for that - only
-    // for an actual orientation change or window resize, which should
-    // still dismiss it. Same guard as TradeForm's tag-suggestions dropdown.
+    // Width, unlike height, doesn't change when a mobile on-screen
+    // keyboard or native <select> picker opens - only for an actual
+    // orientation change or window resize, which should still dismiss
+    // this. Same guard as TradeForm's tag-suggestions dropdown.
     const initialWidth = window.innerWidth
     const dismissOnResize = () => {
       if (window.innerWidth !== initialWidth) dismiss()
     }
-    window.addEventListener('scroll', dismiss, true)
-    window.addEventListener('resize', dismissOnResize)
+    // Deferred a frame: the dropdown mounting right at the edge of the
+    // viewport can itself trigger a scroll-into-view (and the resulting
+    // layout settling can fire a stray resize), which would otherwise be
+    // seen as "the user scrolled/resized" and close the dropdown before
+    // they ever saw it - same reasoning as TradeForm's tag-suggestions.
+    const raf = requestAnimationFrame(() => {
+      window.addEventListener('scroll', dismiss, true)
+      window.addEventListener('resize', dismissOnResize)
+    })
     return () => {
+      cancelAnimationFrame(raf)
       window.removeEventListener('scroll', dismiss, true)
       window.removeEventListener('resize', dismissOnResize)
     }
@@ -108,7 +112,12 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
         {adding && pos && (
           <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
             <form onSubmit={handleAddInstrument} className="instrument-add-form">
-              <select autoFocus value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} required>
+              {/* Not autoFocus: on a real phone, programmatically focusing a
+                  <select> can open the OS's native picker (and scroll it
+                  into view) immediately on mount, before the user ever
+                  sees this dropdown - same class of bug the RAF deferral
+                  above guards against, avoided here at the source instead. */}
+              <select value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} required>
                 <option value="">Select instrument…</option>
                 {INSTRUMENT_CATALOG
                   .filter((i) => !instruments.some((existing) => existing.symbol === i.symbol))

@@ -27,21 +27,21 @@
    1095  Monthly P&L (calendar on Overview)
    1171  Trade form: sections, validation, currency, screenshots
    1252  Field tooltips
-   1302  Date/time picker (adds an optional popup to a typed input)
-   1411  In-header column filters (trade log table)
-   1445  Active filter chips
-   1494  Empty states, error banners, skeleton loaders
-   1550  Cross-instrument overview dashboard (/app)
-   1651  Not found / error boundary state pages
-   1664  Toast notifications
-   1692  Public policy pages (Privacy, Terms)
-   1711  Legal links (auth pages + account settings)
-   1750  Economic calendar card (mock - Overview pages)
-   1854  Calendar news badge (Monthly P&L day cells, mock)
-   1875  Streak badge (Overview + strategy detail pages)
-   1892  Market status pill (Overview + strategy detail pages)
-   1918  Key levels, today's brief (mock cards)
-   1944  Market context cards (all-instruments Overview)
+   1311  Date/time picker (adds an optional popup to a typed input)
+   1420  In-header column filters (trade log table)
+   1454  Active filter chips
+   1503  Empty states, error banners, skeleton loaders
+   1559  Cross-instrument overview dashboard (/app)
+   1660  Not found / error boundary state pages
+   1673  Toast notifications
+   1701  Public policy pages (Privacy, Terms)
+   1720  Legal links (auth pages + account settings)
+   1759  Economic calendar card (mock - Overview pages)
+   1863  Calendar news badge (Monthly P&L day cells, mock)
+   1884  Streak badge (Overview + strategy detail pages)
+   1901  Market status pill (Overview + strategy detail pages)
+   1927  Key levels, today's brief (mock cards)
+   1953  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1256,11 +1256,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    field's own box. Any field with a FieldTooltip needs the same exemption. */
 .field:has(.field-tooltip),
 .field:has(.dt-picker){overflow-x:visible;}
-.field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}
+/* vertical-align:middle - default baseline alignment sits this against the
+   bottom of adjacent text instead of centering with it, which reads as
+   the "?" circle floating low next to a heading/label. */
+.field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;}
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;
   background:var(--line); color:var(--muted);
-  font-size:9.5px; font-weight:700; line-height:14px; text-align:center;
+  /* Explicit rather than inherited - this button shows up in ambient
+     contexts with different default fonts (a form field vs. a table th,
+     which sets its own font-family), and the "?" glyph's ink sits at a
+     different spot within its own line box in each typeface. Pinning the
+     font here means the centering nudge below only ever has to be tuned
+     once, for one font, instead of drifting per usage site. */
+  font-family:'Inter',sans-serif; font-size:9.5px; font-weight:700; line-height:14px; text-align:center;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   transition:background-color .15s ease, color .15s ease;
 }
@@ -1271,7 +1280,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    right), so box-model centering still reads as off even once the box
    itself is centered. Nudging this inner span moves the glyph relative to
    the (already-centered) circle instead. */
-.field-tooltip-glyph{display:block; transform:translate(0.1px, 1.4px);}
+.field-tooltip-glyph{display:block; transform:translate(0.4px, 2.7px);}
 .field-tooltip-btn:hover{background:var(--accent); color:#04121f; filter:none;}
 .field-tooltip-bubble{
   position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);

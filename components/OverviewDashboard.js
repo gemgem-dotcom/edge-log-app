@@ -338,16 +338,16 @@ export default function OverviewDashboard({ instruments, strategies }) {
                     <tr>
                       <th>Instrument</th>
                       <th>
-                        Range vs. typical
-                        <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
-                      </th>
-                      <th>
                         Overnight gap
                         <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
                       </th>
                       <th>
+                        Range vs. typical
+                        <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
+                      </th>
+                      <th>
                         Volume vs. typical
-                        <TableHeaderTooltip text="Today's cumulative volume so far, divided by the average cumulative volume by this same time of day across the last 20 sessions (today excluded) — same methodology as Range vs. typical, just measuring volume instead of price." />
+                        <TableHeaderTooltip text="How much volume has traded so far this session, compared to the average volume at this same point across the last 20 sessions." />
                       </th>
                     </tr>
                   </thead>

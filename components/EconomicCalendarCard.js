@@ -12,6 +12,11 @@ const IMPACT_OPTIONS = [
   { value: 'low', label: 'Low impact' },
 ]
 
+// Shared across every EconomicCalendarCard instance (both dashboards render
+// one with no distinguishing props) - one filter setting for "the economic
+// calendar", not a separate one per page it happens to appear on.
+const IMPACT_FILTER_STORAGE_KEY = 'econCalendarImpactFilter'
+
 // Long enough for any range someone would plausibly pick in this card, and
 // a hard stop against an accidental multi-year range (e.g. a typo'd year
 // in the date input) turning into a very long loop.
@@ -136,6 +141,28 @@ export default function EconomicCalendarCard() {
   const [toDate, setToDate] = useState(weekEndStr)
   const [impactSelected, setImpactSelected] = useState(['high', 'medium', 'low'])
 
+  // Restores whatever the trader last set, rather than resetting to
+  // High+Medium+Low on every visit - this component only ever mounts
+  // client-side (both dashboards gate it behind their own loading state),
+  // so there's no SSR/hydration mismatch to guard against by deferring
+  // this to an effect the way HolidayNotice's localStorage read does.
+  useEffect(() => {
+    const saved = localStorage.getItem(IMPACT_FILTER_STORAGE_KEY)
+    if (!saved) return
+    try {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed)) setImpactSelected(parsed)
+    } catch {
+      // Malformed value from an older version of this key, or manual
+      // tampering - fall back to the default already set above.
+    }
+  }, [])
+
+  function handleImpactChange(next) {
+    setImpactSelected(next)
+    localStorage.setItem(IMPACT_FILTER_STORAGE_KEY, JSON.stringify(next))
+  }
+
   const isSingleDay = fromDate === toDate
   const today = todayStr()
 
@@ -146,7 +173,7 @@ export default function EconomicCalendarCard() {
   return (
     <>
       <div className="calendar-toolbar">
-        <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
+        <ImpactChecklist selected={impactSelected} onChange={handleImpactChange} />
         <DateRangePicker from={fromDate} to={toDate} onChange={(f, t) => { setFromDate(f); setToDate(t) }} />
       </div>
 

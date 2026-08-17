@@ -26,6 +26,19 @@ function toDateStr(d) {
 function todayStr() {
   return toDateStr(new Date())
 }
+// Sunday and Saturday of the current week, in the visitor's local time -
+// the default range this card opens to, so it reads as "what's happening
+// this week" rather than just today.
+function weekStartStr() {
+  const d = new Date()
+  d.setDate(d.getDate() - d.getDay())
+  return toDateStr(d)
+}
+function weekEndStr() {
+  const d = new Date()
+  d.setDate(d.getDate() + (6 - d.getDay()))
+  return toDateStr(d)
+}
 
 const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 function formatDateLabel(dateStr) {
@@ -119,8 +132,8 @@ function ImpactChecklist({ selected, onChange }) {
 // underlying currency/market instead of always showing the same US-wide
 // list - no such filtering exists yet.
 export default function EconomicCalendarCard() {
-  const [fromDate, setFromDate] = useState(todayStr)
-  const [toDate, setToDate] = useState(todayStr)
+  const [fromDate, setFromDate] = useState(weekStartStr)
+  const [toDate, setToDate] = useState(weekEndStr)
   const [impactSelected, setImpactSelected] = useState(['high', 'medium', 'low'])
 
   const isSingleDay = fromDate === toDate

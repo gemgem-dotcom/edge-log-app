@@ -7,7 +7,6 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
-import { mockVolatility } from '@/lib/marketContextMock'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlDonut from '@/components/PnlDonut'
 import WinRateGauge from '@/components/WinRateGauge'
@@ -241,15 +240,9 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const overall = computeOverallStats(allTrades)
   const streak = computeStreak(allTrades)
 
-  // Mock only - real version should weigh actual volatility/calendar data,
-  // not just restate the streak badge and the calendar card's first row.
-  const topVolInstrument = instruments.reduce((best, inst) => {
-    const v = mockVolatility(inst.symbol).multiplier
-    return !best || v > best.v ? { symbol: inst.symbol, v } : best
-  }, null)
   const briefText = streak
-    ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep${topVolInstrument ? `, ${topVolInstrument.symbol}'s volatile,` : ','} and CPI drops at 08:30.`
-    : `${topVolInstrument ? `${topVolInstrument.symbol}'s volatile today` : 'Markets are active today'} and CPI drops at 08:30 — worth keeping an eye on.`
+    ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep, and CPI drops at 08:30.`
+    : 'Markets are active today and CPI drops at 08:30 — worth keeping an eye on.'
 
   const equityPoints = buildEquityCurve(allTrades, equityGroup)
 
@@ -318,31 +311,9 @@ export default function OverviewDashboard({ instruments, strategies }) {
         </div>
       ) : (
         <>
-          <div className="dashboard-split">
-            <div>
-              <div className="panel">
-                <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
-                <p className="brief-card-text">{briefText}</p>
-              </div>
-            </div>
-            <div>
-              <div className="panel">
-                <div className="stat-label dashboard-card-title">Volatility</div>
-                <div className="volatility-strip">
-                  {instruments.map((inst) => {
-                    const v = mockVolatility(inst.symbol)
-                    return (
-                      <div className="volatility-strip-row" key={inst.id}>
-                        <span className="volatility-strip-symbol">{inst.symbol}</span>
-                        <span className="volatility-strip-value">
-                          {v.multiplier}x<span className="volatility-strip-tag">{v.elevated ? 'elevated' : 'normal'}</span>
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
+          <div className="panel">
+            <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+            <p className="brief-card-text">{briefText}</p>
           </div>
 
           <div className="panel">

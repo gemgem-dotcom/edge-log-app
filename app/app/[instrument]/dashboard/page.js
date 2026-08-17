@@ -8,7 +8,7 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
-import { mockVolatility, mockKeyLevels } from '@/lib/marketContextMock'
+import { mockKeyLevels } from '@/lib/marketContextMock'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
 import PnlDonut from '@/components/PnlDonut'
@@ -232,7 +232,6 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
   const overall = computeStats(classifiedTrades)
   const streak = computeStreak(allTrades)
-  const volatility = mockVolatility(symbol)
   const keyLevels = mockKeyLevels(symbol)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
   const strategySegments = strategies.map((s, i) => {
@@ -347,16 +346,6 @@ return (
 <div className="section-heading">At a glance</div>
 <div className="instrument-glance-row">
   <div className="panel">
-    <div className="stat-label dashboard-card-title">Volatility — {symbol}</div>
-    <div className="volatility-card-value">{volatility.multiplier}x<span className="volatility-card-unit">normal</span></div>
-    {volatility.elevated && <span className="volatility-card-badge">Elevated</span>}
-    <p className="volatility-card-text">
-      {volatility.elevated
-        ? `${symbol} is running hot today — wider range than usual. Worth sizing with that in mind.`
-        : `${symbol} is trading within its normal range today.`}
-    </p>
-  </div>
-  <div className="panel">
     <div className="stat-label dashboard-card-title">Key levels</div>
     <div className="key-levels-list">
       <div className="key-levels-row"><span>Prior day high</span><span>{fmtPrice(keyLevels.priorHigh)}</span></div>
@@ -367,7 +356,7 @@ return (
   <div className="panel">
     <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
     <p className="brief-card-text">
-      {symbol}&apos;s volatile{streak ? `, you're on a streak trading it,` : ','} and CPI lands at 08:30.
+      {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
     </p>
   </div>
 </div>

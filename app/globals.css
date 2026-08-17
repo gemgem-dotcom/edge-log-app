@@ -5,41 +5,41 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–301  Base: reset, typography, forms, tables, thumbnails,
+     1–311  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   303  Auth pages
-   355  Top nav
-   370  Instrument nav (topbar pill row)
-   417  Page layout
-   466  Tabs
-   476  Misc form helpers
-   482  Detail view
-   498  Shell layout (sidebar + topbar)
-   711  Expandable trade rows
-   728  Calendar
-   776  Account settings page
-   961  Light theme
-   988  2FA
-   1003  Account fine print
-   1006  Screenshot preview (log new trade)
-   1023  Auth pages always dark
-   1051  Monthly P&L (calendar on Overview)
-   1127  Trade form: sections, validation, currency, screenshots
-   1198  Field tooltips
-   1239  Date/time picker (adds an optional popup to a typed input)
-   1348  In-header column filters (trade log table)
-   1382  Active filter chips
-   1431  Empty states, error banners, skeleton loaders
-   1482  Cross-instrument overview dashboard (/app)
-   1560  Not found / error boundary state pages
-   1573  Toast notifications
-   1601  Public policy pages (Privacy, Terms)
-   1620  Legal links (auth pages + account settings)
-   1659  Economic calendar card (mock - Overview pages)
-   1742  Calendar news badge (Monthly P&L day cells, mock)
-   1763  Streak badge (Overview + strategy detail pages)
-   1772  Market status pill (Overview + strategy detail pages)
-   1798  Volatility, key levels, today's brief (mock cards)
+   312  Auth pages
+   364  Top nav
+   379  Instrument nav (topbar pill row)
+   430  Page layout
+   479  Tabs
+   489  Misc form helpers
+   495  Detail view
+   511  Shell layout (sidebar + topbar)
+   726  Expandable trade rows
+   743  Calendar
+   791  Account settings page
+   967  Light theme
+   994  2FA
+   1009  Account fine print
+   1012  Screenshot preview (log new trade)
+   1029  Auth pages always dark
+   1057  Monthly P&L (calendar on Overview)
+   1133  Trade form: sections, validation, currency, screenshots
+   1214  Field tooltips
+   1255  Date/time picker (adds an optional popup to a typed input)
+   1364  In-header column filters (trade log table)
+   1398  Active filter chips
+   1447  Empty states, error banners, skeleton loaders
+   1498  Cross-instrument overview dashboard (/app)
+   1599  Not found / error boundary state pages
+   1612  Toast notifications
+   1640  Public policy pages (Privacy, Terms)
+   1659  Legal links (auth pages + account settings)
+   1698  Economic calendar card (mock - Overview pages)
+   1781  Calendar news badge (Monthly P&L day cells, mock)
+   1802  Streak badge (Overview + strategy detail pages)
+   1819  Market status pill (Overview + strategy detail pages)
+   1845  Key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -109,10 +109,10 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .progress-note{font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4;}
 
 /* 15px, not --space-3 (12px) - every card-family grid on the platform
-   (this, .dashboard-split, .instrument-glance-row/.strategy-glance-row)
-   was standardized to a uniform 15px gap by explicit request, off the
-   4/8/12/16/24/32 scale above on purpose rather than snapping to its
-   nearest step. margin-bottom matches the gap for the same reason
+   (this, .dashboard-split, .instrument-glance-row) was standardized to a
+   uniform 15px gap by explicit request, off the 4/8/12/16/24/32 scale
+   above on purpose rather than snapping to its nearest step. margin-bottom
+   matches the gap for the same reason
    .dashboard-split's does - the space to whatever card follows should
    read the same as the space between the cards in this row. Untouched
    where a .section-heading follows instead: its own 24px margin-top
@@ -658,10 +658,10 @@ a.shell-logo{color:inherit; text-decoration:none;}
    is always the same distance from whatever it follows regardless of
    what that is - a plain .panel/.stats already carries a 24px
    margin-bottom of its own, which this collapses with harmlessly (still
-   24, same as before), but .dashboard-split/.instrument-glance-row/
-   .strategy-glance-row only carry their own internal gap (16px) on
-   their margin-bottom, which used to leave less space before the next
-   heading than every other section gets. */
+   24, same as before), but .dashboard-split/.instrument-glance-row only
+   carry their own internal gap (16px) on their margin-bottom, which used
+   to leave less space before the next heading than every other section
+   gets. */
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
   font-weight:700; margin-bottom:12px; margin-top:24px;
@@ -1521,8 +1521,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    letting them actually grow into the space this was meant to give them.
    .stats' own gap is 15px too now (see above), so this stack, the two
    stat rows within it, and the donut card beside it all read as one
-   family of cards with a single consistent gap, same as the Today's
-   brief/Volatility pairing on the all-instruments Overview page. */
+   family of cards with a single consistent gap. */
 .dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
 /* flex-start, not center - same reasoning as .dashboard-split .panel
    above: centering split the extra stretched height evenly above and
@@ -1843,26 +1842,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 .market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
 
-/* ---------- Volatility, key levels, today's brief (mock cards) ---------- */
-.volatility-strip{display:flex; flex-direction:column;}
-.volatility-strip-row{
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
-}
-.volatility-strip-row:last-child{border-bottom:none; padding-bottom:0;}
-.volatility-strip-symbol{font-weight:700; font-family:'JetBrains Mono',monospace;}
-.volatility-strip-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
-.volatility-strip-tag{color:var(--muted); font-family:'Inter',sans-serif; margin-left:4px;}
-
-.volatility-card-value{
-  font-family:'Archivo',sans-serif; font-size:32px; font-weight:800; margin-bottom:6px;
-}
-.volatility-card-unit{font-size:15px; font-weight:500; color:var(--muted); margin-left:6px;}
-.volatility-card-badge{
-  display:inline-block; padding:3px 10px; border-radius:99px; font-size:11.5px;
-  font-weight:600; background:rgba(225,92,92,.14); color:var(--loss); margin-bottom:12px;
-}
-.volatility-card-text, .brief-card-text, .strategy-context-text{
+/* ---------- Key levels, today's brief (mock cards) ---------- */
+.brief-card-text, .strategy-context-text{
   font-size:13px; line-height:1.55; color:var(--text);
 }
 
@@ -1875,16 +1856,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .key-levels-row span:first-child{color:var(--accent);}
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
-/* Per-instrument Overview's Volatility/Key levels/Today's brief row, and
-   the per-strategy detail page's streak-adjacent card row. 15px, not
+/* Per-instrument Overview's Key levels/Today's brief row. 15px, not
    --space-4 (16px) - see the comment on .stats above. margin-bottom
    matches this grid's own gap, same reasoning as .dashboard-split above -
    its panels already zero out their own margin-bottom, but nothing filled
    in the resulting gap, leaving less space before whatever follows than
    this row's own internal gap. */
-.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
-.instrument-glance-row .panel, .strategy-glance-row .panel{margin-bottom:0; flex:1;}
-.strategy-glance-row{grid-template-columns:repeat(2,1fr);}
+.instrument-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
+.instrument-glance-row .panel{margin-bottom:0; flex:1;}
 @media (max-width:860px){
-  .instrument-glance-row, .strategy-glance-row{grid-template-columns:1fr;}
+  .instrument-glance-row{grid-template-columns:1fr;}
 }

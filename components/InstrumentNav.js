@@ -31,11 +31,11 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   const addRef = useClickOutside(adding, close)
 
   // Fixed-positioned, measured from the trigger, rather than the wrapper's
-  // own position:relative + top/left - .instrument-nav switches to
-  // overflow-x:auto on mobile (see the CLAUDE.md gotcha on #tableWrap) which
-  // would otherwise clip this the same way it clips a naively absolute menu.
-  // Closes on scroll/resize since a fixed position can't track the trigger
-  // once the page moves - same treatment as ColumnFilter's menu.
+  // own position:relative + top/left - same treatment as ColumnFilter's
+  // menu, so it can't be clipped by any scrollable ancestor regardless of
+  // where this trigger ends up sitting in the layout. Closes on
+  // scroll/resize since a fixed position can't track the trigger once the
+  // page moves.
   useEffect(() => {
     if (!adding) return
     const dismiss = () => close()
@@ -95,18 +95,29 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
 
   return (
     <nav className="instrument-nav">
-      <a href="/app" className={`instrument-nav-item ${!currentSymbol ? 'instrument-nav-item-active' : ''}`}>
-        All instruments
-      </a>
-      {instruments.map((inst) => (
-        <a
-          key={inst.id}
-          href={`/app/${inst.symbol}/dashboard`}
-          className={`instrument-nav-item ${inst.symbol === currentSymbol ? 'instrument-nav-item-active' : ''}`}
-        >
-          {inst.symbol}
+      {/* Scrollable on mobile (see globals.css) - "Add instrument" is
+          deliberately NOT inside this wrapper. A tap on an element inside a
+          horizontally-scrollable strip is ambiguous with the start of a
+          scroll gesture, and a real phone can swallow the click entirely
+          the instant it registers any finger jitter as a pan instead of a
+          tap - the button would flash its pressed state and then just do
+          nothing. Keeping the trigger outside the scrollable region (as a
+          flex-shrink:0 sibling) means it's never a participant in that
+          gesture, so it's always a plain, reliable tap. */}
+      <div className="instrument-nav-scroll">
+        <a href="/app" className={`instrument-nav-item ${!currentSymbol ? 'instrument-nav-item-active' : ''}`}>
+          All instruments
         </a>
-      ))}
+        {instruments.map((inst) => (
+          <a
+            key={inst.id}
+            href={`/app/${inst.symbol}/dashboard`}
+            className={`instrument-nav-item ${inst.symbol === currentSymbol ? 'instrument-nav-item-active' : ''}`}
+          >
+            {inst.symbol}
+          </a>
+        ))}
+      </div>
       <div className="instrument-nav-add-wrap" ref={addRef}>
         <span ref={triggerRef} className="instrument-nav-add" onClick={handleTrigger}>+ Add instrument</span>
         {adding && pos && (

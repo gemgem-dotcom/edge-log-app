@@ -296,16 +296,16 @@ export default function OverviewDashboard({ instruments, strategies }) {
     <div className="page-container">
       <div className="page-header-row">
         <h1 className="page-title">{greeting}</h1>
-        <div className="header-action-group">
-          <MarketStatusPill />
-          <StreakBadge
-            streak={streak}
-            winLabel={(n) => `${n}-trade win streak`}
-            lossLabel={(n) => `${n}-trade losing streak`}
-          />
-        </div>
       </div>
-      <p className="page-subtitle">Here&apos;s what&apos;s happening today.</p>
+      <p className="page-subtitle page-subtitle-tight">Here&apos;s what you need to know.</p>
+      <div className="header-pills-row">
+        <MarketStatusPill />
+        <StreakBadge
+          streak={streak}
+          winLabel={(n) => `${n}-trade win streak`}
+          lossLabel={(n) => `${n}-trade losing streak`}
+        />
+      </div>
 
       {allTrades.length === 0 ? (
         <div className="panel">

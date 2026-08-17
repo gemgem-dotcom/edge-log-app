@@ -66,9 +66,8 @@ export default function TableHeaderTooltip({ text }) {
         onClick={handleClick}
       >
         <span className="field-tooltip-glyph" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3" />
-            <line x1="12" y1="17" x2="12" y2="17.01" />
+          <svg viewBox="0 0 14 14">
+            <text x="7" y="7.3" textAnchor="middle" dominantBaseline="central">?</text>
           </svg>
         </span>
       </button>

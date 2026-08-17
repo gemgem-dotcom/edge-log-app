@@ -27,21 +27,21 @@
    1095  Monthly P&L (calendar on Overview)
    1171  Trade form: sections, validation, currency, screenshots
    1252  Field tooltips
-   1303  Date/time picker (adds an optional popup to a typed input)
-   1412  In-header column filters (trade log table)
-   1446  Active filter chips
-   1495  Empty states, error banners, skeleton loaders
-   1551  Cross-instrument overview dashboard (/app)
-   1652  Not found / error boundary state pages
-   1665  Toast notifications
-   1693  Public policy pages (Privacy, Terms)
-   1712  Legal links (auth pages + account settings)
-   1751  Economic calendar card (mock - Overview pages)
-   1855  Calendar news badge (Monthly P&L day cells, mock)
-   1876  Streak badge (Overview + strategy detail pages)
-   1893  Market status pill (Overview + strategy detail pages)
-   1919  Key levels, today's brief (mock cards)
-   1945  Market context cards (all-instruments Overview)
+   1304  Date/time picker (adds an optional popup to a typed input)
+   1413  In-header column filters (trade log table)
+   1447  Active filter chips
+   1496  Empty states, error banners, skeleton loaders
+   1552  Cross-instrument overview dashboard (/app)
+   1653  Not found / error boundary state pages
+   1666  Toast notifications
+   1694  Public policy pages (Privacy, Terms)
+   1713  Legal links (auth pages + account settings)
+   1752  Economic calendar card (mock - Overview pages)
+   1856  Calendar news badge (Monthly P&L day cells, mock)
+   1877  Streak badge (Overview + strategy detail pages)
+   1894  Market status pill (Overview + strategy detail pages)
+   1920  Key levels, today's brief (mock cards)
+   1946  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1266,13 +1266,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   transition:background-color .15s ease, color .15s ease;
 }
-/* An SVG icon rather than a "?" text glyph - a character's ink is never
-   centered in its own line box (varies by font/weight/renderer), which
-   made this drift between usage sites and even between browsers on the
-   exact same markup. An SVG's viewBox is symmetric, so flex-centering the
-   icon itself centers it exactly, everywhere, with nothing to hand-tune. */
+/* The "?" is drawn as SVG text rather than a plain HTML character - the
+   SVG centers itself in the circle exactly (an svg's own text-anchor/
+   dominantBaseline positioning doesn't depend on the surrounding page's
+   line-height/vertical-align stack the way an HTML glyph did), while still
+   rendering the real character shape instead of a custom icon. */
 .field-tooltip-glyph{display:flex;}
-.field-tooltip-glyph svg{width:8px; height:8px; display:block;}
+.field-tooltip-glyph svg{width:14px; height:14px; display:block;}
+.field-tooltip-glyph svg text{font-family:'Inter',sans-serif; font-size:10px; font-weight:800; fill:currentColor;}
 .field-tooltip-btn:hover{background:var(--accent); color:#04121f; filter:none;}
 .field-tooltip-bubble{
   position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
@@ -1988,3 +1989,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:900px){
   .market-context-row{grid-template-columns:1fr;}
 }
+/* Wraps a <th>'s text + TableHeaderTooltip so they can be centered against
+   each other directly (align-items:center) instead of via vertical-align,
+   which centers against the parent font's x-height rather than the
+   actual rendered (uppercase, per the base th rule) glyphs - close enough
+   normally, but visibly off once compared side-by-side across a header row. */
+.th-with-tooltip{display:inline-flex; align-items:center;}

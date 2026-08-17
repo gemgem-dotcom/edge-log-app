@@ -8,6 +8,9 @@ import { useClickOutside } from '@/lib/useClickOutside'
 
 const DROPDOWN_WIDTH = 220
 const VIEWPORT_MARGIN = 12
+// How far (px) a touch can drift between start and end before it no
+// longer counts as a tap on the trigger - see handleTouchEnd below.
+const TAP_MOVE_THRESHOLD = 10
 
 // Pill-row instrument nav shown in every shell topbar: "All instruments"
 // (the cross-instrument Dashboard) plus one pill per instrument, plus an
@@ -28,6 +31,8 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   const [pos, setPos] = useState(null)
   const triggerRef = useRef(null)
   const scrollStripRef = useRef(null)
+  const touchStartRef = useRef(null)
+  const touchHandledRef = useRef(false)
   const close = useCallback(() => { setAdding(false); setAddError(null) }, [])
   const addRef = useClickOutside(adding, close)
 
@@ -89,6 +94,42 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
     setAdding(true)
   }
 
+  // touch-action:none (globals.css) and the scroll-dismiss guard above
+  // both addressed real, verified mechanisms, but "Add instrument" still
+  // wasn't reliably opening on a real phone - which points at this
+  // depending, one way or another, on the browser's own synthetic 'click'
+  // actually firing after a touch, rather than on anything specific this
+  // app controls. Handling the tap directly off the raw touchend event
+  // sidesteps that dependency entirely: no waiting on click synthesis, no
+  // gesture-arbitration theory to get right, just "did this touch end
+  // close to where it started." preventDefault on a clean tap also stops
+  // the browser's own default handling for that touch (residual
+  // scroll-momentum included) at the source, rather than reacting to its
+  // side effects afterward the way the scroll-dismiss guard has to.
+  // touchHandledRef then tells the plain onClick fallback (still needed
+  // for desktop mouse clicks, which never fire touch events at all) to
+  // ignore the ghost click a touch device still fires after this.
+  function handleTouchStart(e) {
+    const t = e.touches[0]
+    touchStartRef.current = { x: t.clientX, y: t.clientY }
+  }
+  function handleTouchEnd(e) {
+    const start = touchStartRef.current
+    touchStartRef.current = null
+    if (!start) return
+    const t = e.changedTouches[0]
+    const moved = Math.hypot(t.clientX - start.x, t.clientY - start.y)
+    if (moved < TAP_MOVE_THRESHOLD) {
+      e.preventDefault()
+      touchHandledRef.current = true
+      handleTrigger()
+    }
+  }
+  function handleClick() {
+    if (touchHandledRef.current) { touchHandledRef.current = false; return }
+    handleTrigger()
+  }
+
   async function handleAddInstrument(e) {
     e.preventDefault()
     if (!newSymbol) return
@@ -139,7 +180,15 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
           </a>
         ))}
         <div className="instrument-nav-add-wrap" ref={addRef}>
-          <span ref={triggerRef} className="instrument-nav-add" onClick={handleTrigger}>+ Add instrument</span>
+          <span
+            ref={triggerRef}
+            className="instrument-nav-add"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onClick={handleClick}
+          >
+            + Add instrument
+          </span>
           {adding && pos && (
             <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
               <form onSubmit={handleAddInstrument} className="instrument-add-form">

@@ -8,9 +8,6 @@ import { useClickOutside } from '@/lib/useClickOutside'
 
 const DROPDOWN_WIDTH = 220
 const VIEWPORT_MARGIN = 12
-// How far (px) a touch can drift between start and end before it no
-// longer counts as a tap on the trigger - see handleTouchEnd below.
-const TAP_MOVE_THRESHOLD = 10
 
 // Pill-row instrument nav shown in every shell topbar: "All instruments"
 // (the cross-instrument Dashboard) plus one pill per instrument, plus an
@@ -30,9 +27,6 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   const [addError, setAddError] = useState(null)
   const [pos, setPos] = useState(null)
   const triggerRef = useRef(null)
-  const scrollStripRef = useRef(null)
-  const touchStartRef = useRef(null)
-  const touchHandledRef = useRef(false)
   const close = useCallback(() => { setAdding(false); setAddError(null) }, [])
   const addRef = useClickOutside(adding, close)
 
@@ -44,31 +38,14 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   // page moves.
   useEffect(() => {
     if (!adding) return
-    // Ignores scrolls that originate from .instrument-nav-scroll itself -
-    // the trigger is the last item in that strip (see the JSX below), so
-    // it's exactly where a real touch tends to leave residual momentum/
-    // rubber-band scrolling once the finger lifts. Without this guard,
-    // that settling fires a native 'scroll' event on the strip a moment
-    // after the tap that just opened this, and since this listener is on
-    // window with capture:true (needed to catch scroll on any
-    // non-bubbling scroll target, not just window itself), it closes the
-    // dropdown within the same gesture, before it was ever visibly open -
-    // indistinguishable from the tap not registering at all. This was the
-    // real cause of "Add instrument" still not working after it moved
-    // back inside the scrollable strip; touch-action:none on the trigger
-    // (still needed, see globals.css) only ever addressed a tap being
-    // swallowed as a pan gesture, not this.
-    const dismissOnScroll = (e) => {
-      if (e.target === scrollStripRef.current) return
-      close()
-    }
+    const dismiss = () => close()
     // Width, unlike height, doesn't change when a mobile on-screen
     // keyboard or native <select> picker opens - only for an actual
     // orientation change or window resize, which should still dismiss
     // this. Same guard as TradeForm's tag-suggestions dropdown.
     const initialWidth = window.innerWidth
     const dismissOnResize = () => {
-      if (window.innerWidth !== initialWidth) close()
+      if (window.innerWidth !== initialWidth) dismiss()
     }
     // Deferred a frame: the dropdown mounting right at the edge of the
     // viewport can itself trigger a scroll-into-view (and the resulting
@@ -76,12 +53,12 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
     // seen as "the user scrolled/resized" and close the dropdown before
     // they ever saw it - same reasoning as TradeForm's tag-suggestions.
     const raf = requestAnimationFrame(() => {
-      window.addEventListener('scroll', dismissOnScroll, true)
+      window.addEventListener('scroll', dismiss, true)
       window.addEventListener('resize', dismissOnResize)
     })
     return () => {
       cancelAnimationFrame(raf)
-      window.removeEventListener('scroll', dismissOnScroll, true)
+      window.removeEventListener('scroll', dismiss, true)
       window.removeEventListener('resize', dismissOnResize)
     }
   }, [adding, close])
@@ -92,42 +69,6 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
     const left = Math.min(rect.left, window.innerWidth - DROPDOWN_WIDTH - VIEWPORT_MARGIN)
     setPos({ left: Math.max(left, VIEWPORT_MARGIN), top: rect.bottom + 6 })
     setAdding(true)
-  }
-
-  // touch-action:none (globals.css) and the scroll-dismiss guard above
-  // both addressed real, verified mechanisms, but "Add instrument" still
-  // wasn't reliably opening on a real phone - which points at this
-  // depending, one way or another, on the browser's own synthetic 'click'
-  // actually firing after a touch, rather than on anything specific this
-  // app controls. Handling the tap directly off the raw touchend event
-  // sidesteps that dependency entirely: no waiting on click synthesis, no
-  // gesture-arbitration theory to get right, just "did this touch end
-  // close to where it started." preventDefault on a clean tap also stops
-  // the browser's own default handling for that touch (residual
-  // scroll-momentum included) at the source, rather than reacting to its
-  // side effects afterward the way the scroll-dismiss guard has to.
-  // touchHandledRef then tells the plain onClick fallback (still needed
-  // for desktop mouse clicks, which never fire touch events at all) to
-  // ignore the ghost click a touch device still fires after this.
-  function handleTouchStart(e) {
-    const t = e.touches[0]
-    touchStartRef.current = { x: t.clientX, y: t.clientY }
-  }
-  function handleTouchEnd(e) {
-    const start = touchStartRef.current
-    touchStartRef.current = null
-    if (!start) return
-    const t = e.changedTouches[0]
-    const moved = Math.hypot(t.clientX - start.x, t.clientY - start.y)
-    if (moved < TAP_MOVE_THRESHOLD) {
-      e.preventDefault()
-      touchHandledRef.current = true
-      handleTrigger()
-    }
-  }
-  function handleClick() {
-    if (touchHandledRef.current) { touchHandledRef.current = false; return }
-    handleTrigger()
   }
 
   async function handleAddInstrument(e) {
@@ -154,19 +95,22 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
 
   return (
     <nav className="instrument-nav">
-      {/* Scrollable on mobile (see globals.css) - "Add instrument" is the
-          last item in this same strip, so it scrolls with the instrument
-          pills instead of sitting apart from them as a separately-pinned
-          element. It stays tappable despite living inside a
-          horizontally-scrollable container via touch-action:none on
-          .instrument-nav-add (see globals.css) - without it, the
-          browser's own gesture recognizer can claim a touch that starts on
-          the trigger for panning before any JS ever runs, firing
-          pointercancel instead of a click/pointerup no matter how small
-          the actual finger movement was. Also see scrollStripRef above -
-          its own momentum/rubber-band scroll shouldn't dismiss a dropdown
-          that just opened from a tap on its last item. */}
-      <div className="instrument-nav-scroll" ref={scrollStripRef}>
+      {/* Scrollable on mobile (see globals.css) - "Add instrument" is
+          deliberately NOT inside this wrapper. Five different attempts to
+          keep it tappable while living inside this horizontally-scrollable
+          strip (a movement-threshold check on pointer events, then
+          touch-action:none, then a scroll-dismiss guard, then handling the
+          tap directly off touchend) each addressed a real, verified
+          mechanism and each still failed identically on a real phone -
+          strong enough a pattern to conclude something about being a
+          descendant of an overflow-x:auto row is unreliable here in a way
+          that isn't fully diagnosable without the device itself. Keeping
+          the trigger outside the scrollable region (as a flex-shrink:0
+          sibling) is the one version that's actually been confirmed
+          working, so it stays that way; see .instrument-nav-add-wrap in
+          globals.css for how it's styled to still read as part of the row
+          despite the structural separation. */}
+      <div className="instrument-nav-scroll">
         <a href="/app" className={`instrument-nav-item ${!currentSymbol ? 'instrument-nav-item-active' : ''}`}>
           All instruments
         </a>
@@ -179,38 +123,30 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
             {inst.symbol}
           </a>
         ))}
-        <div className="instrument-nav-add-wrap" ref={addRef}>
-          <span
-            ref={triggerRef}
-            className="instrument-nav-add"
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            onClick={handleClick}
-          >
-            + Add instrument
-          </span>
-          {adding && pos && (
-            <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
-              <form onSubmit={handleAddInstrument} className="instrument-add-form">
-                {/* Not autoFocus: on a real phone, programmatically focusing a
-                    <select> can open the OS's native picker (and scroll it
-                    into view) immediately on mount, before the user ever
-                    sees this dropdown - same class of bug the RAF deferral
-                    above guards against, avoided here at the source instead. */}
-                <select value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} required>
-                  <option value="">Select instrument…</option>
-                  {INSTRUMENT_CATALOG
-                    .filter((i) => !instruments.some((existing) => existing.symbol === i.symbol))
-                    .map((i) => (
-                      <option key={i.symbol} value={i.symbol}>{i.symbol} — {i.display_name}</option>
-                    ))}
-                </select>
-                <button type="submit">Add</button>
-                {addError && <span className="field-error">{addError}</span>}
-              </form>
-            </div>
-          )}
-        </div>
+      </div>
+      <div className="instrument-nav-add-wrap" ref={addRef}>
+        <span ref={triggerRef} className="instrument-nav-add" onClick={handleTrigger}>+ Add instrument</span>
+        {adding && pos && (
+          <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
+            <form onSubmit={handleAddInstrument} className="instrument-add-form">
+              {/* Not autoFocus: on a real phone, programmatically focusing a
+                  <select> can open the OS's native picker (and scroll it
+                  into view) immediately on mount, before the user ever
+                  sees this dropdown - same class of bug the RAF deferral
+                  above guards against, avoided here at the source instead. */}
+              <select value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} required>
+                <option value="">Select instrument…</option>
+                {INSTRUMENT_CATALOG
+                  .filter((i) => !instruments.some((existing) => existing.symbol === i.symbol))
+                  .map((i) => (
+                    <option key={i.symbol} value={i.symbol}>{i.symbol} — {i.display_name}</option>
+                  ))}
+              </select>
+              <button type="submit">Add</button>
+              {addError && <span className="field-error">{addError}</span>}
+            </form>
+          </div>
+        )}
       </div>
     </nav>
   )

@@ -5,41 +5,41 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–301  Base: reset, typography, forms, tables, thumbnails,
+     1–310  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   303  Auth pages
-   355  Top nav
-   370  Instrument nav (topbar pill row)
-   417  Page layout
-   466  Tabs
-   476  Misc form helpers
-   482  Detail view
-   498  Shell layout (sidebar + topbar)
-   711  Expandable trade rows
-   728  Calendar
-   776  Account settings page
-   961  Light theme
-   988  2FA
-   1003  Account fine print
-   1006  Screenshot preview (log new trade)
-   1023  Auth pages always dark
-   1051  Monthly P&L (calendar on Overview)
-   1127  Trade form: sections, validation, currency, screenshots
-   1198  Field tooltips
-   1239  Date/time picker (adds an optional popup to a typed input)
-   1348  In-header column filters (trade log table)
-   1382  Active filter chips
-   1431  Empty states, error banners, skeleton loaders
-   1482  Cross-instrument overview dashboard (/app)
-   1560  Not found / error boundary state pages
-   1573  Toast notifications
-   1601  Public policy pages (Privacy, Terms)
-   1620  Legal links (auth pages + account settings)
-   1659  Economic calendar card (mock - Overview pages)
-   1742  Calendar news badge (Monthly P&L day cells, mock)
-   1763  Streak badge (Overview + strategy detail pages)
-   1772  Market status pill (Overview + strategy detail pages)
-   1798  Volatility, key levels, today's brief (mock cards)
+   312  Auth pages
+   364  Top nav
+   379  Instrument nav (topbar pill row)
+   443  Page layout
+   492  Tabs
+   502  Misc form helpers
+   508  Detail view
+   524  Shell layout (sidebar + topbar)
+   739  Expandable trade rows
+   756  Calendar
+   804  Account settings page
+   980  Light theme
+   1007  2FA
+   1022  Account fine print
+   1025  Screenshot preview (log new trade)
+   1042  Auth pages always dark
+   1070  Monthly P&L (calendar on Overview)
+   1146  Trade form: sections, validation, currency, screenshots
+   1227  Field tooltips
+   1268  Date/time picker (adds an optional popup to a typed input)
+   1377  In-header column filters (trade log table)
+   1411  Active filter chips
+   1460  Empty states, error banners, skeleton loaders
+   1511  Cross-instrument overview dashboard (/app)
+   1640  Not found / error boundary state pages
+   1653  Toast notifications
+   1681  Public policy pages (Privacy, Terms)
+   1700  Legal links (auth pages + account settings)
+   1739  Economic calendar card (mock - Overview pages)
+   1826  Calendar news badge (Monthly P&L day cells, mock)
+   1847  Streak badge (Overview + strategy detail pages)
+   1864  Market status pill (Overview + strategy detail pages)
+   1890  Volatility, key levels, today's brief (mock cards)
    ============================================================ */
 
 :root{
@@ -1558,6 +1558,43 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   font-size:11px; color:var(--muted); margin-top:6px;
 }
 
+/* P&L by instrument + Avg P&L by day of week, side by side beneath the
+   equity curve in the same "Performance breakdown" panel - one card
+   holding several related sub-sections, the same shape Monthly P&L below
+   it already uses (toolbar, stats row and calendar grid all in one panel)
+   rather than each stat getting its own small card. */
+.performance-card-subgrid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:28px;}
+@media (max-width:700px){
+  .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
+}
+
+.pnl-rank-list{display:flex; flex-direction:column;}
+.pnl-rank-item{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); font-size:12.5px;}
+.pnl-rank-item:last-child{border-bottom:none; padding-bottom:0;}
+.pnl-rank-symbol{font-weight:600;}
+.pnl-rank-value{margin-left:auto; font-family:'JetBrains Mono',monospace;}
+
+/* One diverging bar per weekday, split into a lane either side of a fixed
+   center line (zero) - each lane is 50% of the track and a bar grows from
+   the center outward rather than from either end, so magnitude reads
+   correctly regardless of sign. */
+.weekday-chart{display:flex; flex-direction:column; gap:9px;}
+.weekday-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
+.weekday-chart-label{
+  width:30px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
+  font-size:10.5px; color:var(--muted); letter-spacing:.04em;
+}
+.weekday-chart-track{flex:1; display:flex; align-items:center; height:10px; min-width:0;}
+.weekday-chart-lane{flex:1; height:100%; display:flex; min-width:0;}
+.weekday-chart-lane-neg{justify-content:flex-end;}
+.weekday-chart-center{width:1px; height:14px; background:var(--line); flex-shrink:0;}
+.weekday-chart-bar{height:100%; border-radius:3px; min-width:2px;}
+.weekday-chart-bar-pos{background:var(--win);}
+.weekday-chart-bar-neg{background:var(--loss);}
+.weekday-chart-value{
+  width:80px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;
+}
+
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
 .donut-svg{width:160px; height:160px; flex-shrink:0;}
 .donut-arc{cursor:pointer;}
@@ -1569,16 +1606,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    have no arc in the ring, per netSignOnly on PnlDonut) stay legible but
    read as secondary next to the rows the ring actually represents. */
 .donut-legend-item-muted{opacity:.45;}
-/* All Instruments overview only - that card stretches to match the taller
-   equity curve card next to it, so the default 160px ring leaves a lot of
-   dead space at the bottom. The per-instrument dashboard's P&L-by-strategy
-   card doesn't get this - its panel is sized to its own content, not
-   stretched against a taller neighbor. A bigger ring plus a body wrapper
-   that grows to fill the leftover height and centers the donut+legend in
-   it (title stays flush top either way) uses the stretched space instead
-   of leaving it all as dead air below the content. */
-.donut-card-lg .donut-svg{width:230px; height:230px;}
-.donut-card-body{flex:1; display:flex; align-items:center; justify-content:center;}
 @media (max-width:640px){
   /* .donut-wrap needs its own definite width here, not just center-aligned
      shrink-to-fit - otherwise .donut-legend's width:100% (below) has
@@ -1775,8 +1802,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
 /* Only applied when the visible range is more than a single day (see
    isSingleDay in EconomicCalendarCard) - viewing just today alone has
-   nothing to contrast it against, so the highlight would be meaningless. */
-.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:6px; padding-left:8px; padding-right:8px; margin:0 -8px;}
+   nothing to contrast it against, so the highlight would be meaningless.
+   Padding only, no negative margin - the row's own box (and so the
+   highlight painted into it) never extends past where an ordinary row's
+   box already sits, it just insets the impact dot from the highlight's
+   own rounded edge instead of leaving it flush against a straight one. */
+.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:8px; padding-left:10px; padding-right:10px;}
 .econ-calendar-mock-day{
   font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
   width:46px; flex-shrink:0;

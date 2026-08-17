@@ -9,7 +9,8 @@ import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
 import { mockVolatility } from '@/lib/marketContextMock'
 import EquityCurveChart from '@/components/EquityCurveChart'
-import PnlDonut from '@/components/PnlDonut'
+import PnlByInstrumentList from '@/components/PnlByInstrumentList'
+import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import WinRateGauge from '@/components/WinRateGauge'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
@@ -142,6 +143,25 @@ function buildEquityCurve(trades, group) {
   })
 }
 
+// Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
+// Sun-Sat like CAL_HEADINGS. A day with no trades is omitted rather than
+// shown as a zero bar - zero would read as "traded and broke even" instead
+// of "never traded this day of the week."
+function computeWeekdayPnl(trades) {
+  const byDay = new Map()
+  for (const t of trades) {
+    if (!hasResult(t) || !hasDollar(t) || !t.trade_date) continue
+    const day = new Date(t.trade_date + 'T00:00:00').getDay()
+    const entry = byDay.get(day) || { sum: 0, count: 0 }
+    entry.sum += t.pnl
+    entry.count += 1
+    byDay.set(day, entry)
+  }
+  return [0, 1, 2, 3, 4, 5, 6]
+    .filter((day) => byDay.has(day))
+    .map((day) => ({ day, avg: byDay.get(day).sum / byDay.get(day).count, count: byDay.get(day).count }))
+}
+
 function buildCalendarWeeks(year, month, tradesByDate) {
   function makeCell(y, m, d, outside) {
     const dateStr = toDateStr(y, m, d)
@@ -257,6 +277,8 @@ export default function OverviewDashboard({ instruments, strategies }) {
     const trades = allTrades.filter((t) => t.instrument_id === inst.id && hasResult(t) && hasDollar(t))
     return { label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
   })
+
+  const weekdayRows = computeWeekdayPnl(allTrades)
 
   const recentTrades = allTrades
     .filter(hasResult)
@@ -385,37 +407,36 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
           </div>
 
-          <div className="dashboard-split">
-            <div>
-              <div className="panel">
-                <div className="stat-label dashboard-card-title">Equity curve</div>
-                <div className="tabs">
-                  {EQUITY_GROUPS.map((g) => (
-                    <div
-                      key={g.value}
-                      className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
-                      onClick={() => setEquityGroup(g.value)}
-                    >
-                      {g.label}
-                    </div>
-                  ))}
+          <div className="section-heading">Performance breakdown</div>
+          <div className="panel">
+            <div className="stat-label dashboard-card-title">Equity curve</div>
+            <div className="tabs">
+              {EQUITY_GROUPS.map((g) => (
+                <div
+                  key={g.value}
+                  className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
+                  onClick={() => setEquityGroup(g.value)}
+                >
+                  {g.label}
                 </div>
-                <EquityCurveChart points={equityPoints} />
-                {equityPoints.length > 0 && (
-                  <div className="equity-chart-labels">
-                    <span>{equityPoints[0].key}</span>
-                    <span>{equityPoints[equityPoints.length - 1].key}</span>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
+            <EquityCurveChart points={equityPoints} />
+            {equityPoints.length > 0 && (
+              <div className="equity-chart-labels">
+                <span>{equityPoints[0].key}</span>
+                <span>{equityPoints[equityPoints.length - 1].key}</span>
+              </div>
+            )}
 
-            <div>
-              <div className="panel donut-card-lg">
-                <div className="stat-label dashboard-card-title">Cumulative P&amp;L by instrument</div>
-                <div className="donut-card-body">
-                  <PnlDonut segments={instrumentSegments} netSignOnly />
-                </div>
+            <div className="performance-card-subgrid">
+              <div>
+                <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
+                <PnlByInstrumentList segments={instrumentSegments} />
+              </div>
+              <div>
+                <div className="stat-label dashboard-card-title">Avg P&amp;L by day of week</div>
+                <AvgPnlByWeekdayChart rows={weekdayRows} />
               </div>
             </div>
           </div>

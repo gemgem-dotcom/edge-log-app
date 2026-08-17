@@ -77,18 +77,20 @@ Environment Variables). The CI build uses harmless placeholder values, because
 nothing during a build talks to the database.
 
 The Overview pages' "Economic calendar" and key-levels cards, plus three of the five
-"Market context" stat cards (today's range vs. typical, overnight gap, volume vs.
-typical - shown honestly as "Needs Phase 2" rather than invented numbers) currently
-render mock data from `lib/marketContextMock.js` (`components/EconomicCalendarCard.js`
-and the inline key-levels block in `OverviewDashboard.js` and
-`app/app/[instrument]/dashboard/page.js`). These previously ran on a live BLS/FRED/
-FOMC pipeline (`app/api/economic-calendar`, `lib/fredReleases.js`,
-`lib/computedReleases.js`) that was pulled out in favor of a paid market-data
-provider - not yet wired up. `lib/marketContextMock.js`'s exports keep the shape a
-real provider's data would need, so swapping it back to a live source shouldn't
-require touching the cards themselves. The other two Market context stats (days to
-contract rollover, time to next calendar event) are real, not mocked - see
-`lib/contractRollover.js` and `marketContextMock.js`'s `nextEconEvent()`.
+"Market context" stat cards (current session's range vs. typical, overnight gap,
+volume vs. typical - shown honestly as "Needs Phase 2" rather than invented numbers)
+currently render mock data from `lib/marketContextMock.js`
+(`components/EconomicCalendarCard.js` and the inline key-levels block in
+`OverviewDashboard.js` and `app/app/[instrument]/dashboard/page.js`). These previously
+ran on a live BLS/FRED/FOMC pipeline (`app/api/economic-calendar`,
+`lib/fredReleases.js`, `lib/computedReleases.js`) that was pulled out in favor of a
+paid market-data provider - not yet wired up. `lib/marketContextMock.js`'s exports
+keep the shape a real provider's data would need, so swapping it back to a live
+source shouldn't require touching the cards themselves. The other two Market context
+stats (days to contract rollover, time to next calendar event) are real, not mocked -
+see `lib/contractRollover.js` and `marketContextMock.js`'s `nextEconEvent()`. Time to
+next calendar event is per-instrument dashboard only - the all-instruments Overview
+dropped it since a single shared countdown read as redundant repeated once per row.
 
 ## CME holiday calendar
 

@@ -15,33 +15,33 @@
    491  Misc form helpers
    497  Detail view
    513  Holiday notice (site-wide, above the shell)
-   530  Shell layout (sidebar + topbar)
-   745  Expandable trade rows
-   762  Calendar
-   810  Account settings page
-   986  Light theme
-   1013  2FA
-   1028  Account fine print
-   1031  Screenshot preview (log new trade)
-   1048  Auth pages always dark
-   1076  Monthly P&L (calendar on Overview)
-   1152  Trade form: sections, validation, currency, screenshots
-   1233  Field tooltips
-   1274  Date/time picker (adds an optional popup to a typed input)
-   1383  In-header column filters (trade log table)
-   1417  Active filter chips
-   1466  Empty states, error banners, skeleton loaders
-   1517  Cross-instrument overview dashboard (/app)
-   1618  Not found / error boundary state pages
-   1631  Toast notifications
-   1659  Public policy pages (Privacy, Terms)
-   1678  Legal links (auth pages + account settings)
-   1717  Economic calendar card (mock - Overview pages)
-   1800  Calendar news badge (Monthly P&L day cells, mock)
-   1821  Streak badge (Overview + strategy detail pages)
-   1838  Market status pill (Overview + strategy detail pages)
-   1864  Key levels, today's brief (mock cards)
-   1890  Market context cards (all-instruments Overview)
+   538  Shell layout (sidebar + topbar)
+   759  Expandable trade rows
+   776  Calendar
+   824  Account settings page
+   1005  Light theme
+   1032  2FA
+   1047  Account fine print
+   1050  Screenshot preview (log new trade)
+   1067  Auth pages always dark
+   1095  Monthly P&L (calendar on Overview)
+   1171  Trade form: sections, validation, currency, screenshots
+   1252  Field tooltips
+   1293  Date/time picker (adds an optional popup to a typed input)
+   1402  In-header column filters (trade log table)
+   1436  Active filter chips
+   1485  Empty states, error banners, skeleton loaders
+   1536  Cross-instrument overview dashboard (/app)
+   1637  Not found / error boundary state pages
+   1650  Toast notifications
+   1678  Public policy pages (Privacy, Terms)
+   1697  Legal links (auth pages + account settings)
+   1736  Economic calendar card (mock - Overview pages)
+   1819  Calendar news badge (Monthly P&L day cells, mock)
+   1840  Streak badge (Overview + strategy detail pages)
+   1857  Market status pill (Overview + strategy detail pages)
+   1883  Key levels, today's brief (mock cards)
+   1909  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1908,7 +1908,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 /* ---------- Market context cards (all-instruments Overview) ---------- */
 /* Same row-per-instrument shape the old Volatility card used, reused for
-   each of the 5 market-context stats' compact cross-instrument view. */
+   each of the 4 market-context stats' compact cross-instrument view. */
 .context-strip{display:flex; flex-direction:column;}
 .context-strip-row{
   display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -1920,11 +1920,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* stat-placeholder (see below) overrides this for the three stats with
    no data source yet - !important there wins over this font-family. */
 
-/* Same grid shape as .instrument-glance-row, under its own name since
-   this row holds one card per stat (each listing every instrument),
-   rather than one card per instrument like that row does. */
-.market-context-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
-.market-context-row .panel{margin-bottom:0; flex:1;}
+/* Sits as .dashboard-split's right-hand column, opposite Today's brief -
+   a 2x2 grid of the four market-context stats that still have a card
+   here (Next calendar event was dropped from this page; a single shared
+   countdown read as redundant repeated once per instrument row). flex:1
+   fills the column's stretched height the same way .dashboard-split
+   .panel does for the left column, and the same 15px gap this platform's
+   other card grids share (see the comment on .stats above) keeps this
+   row, the row above it, and the row's own margin-bottom to Economic
+   calendar below all reading as one consistently-spaced family. */
+.context-quad{
+  flex:1; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(2,1fr);
+  gap:15px;
+}
 @media (max-width:860px){
-  .market-context-row{grid-template-columns:1fr;}
+  .context-quad{grid-template-columns:1fr;}
 }

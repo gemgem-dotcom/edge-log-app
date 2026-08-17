@@ -373,7 +373,7 @@ return (
     </p>
   </div>
   <div className="panel">
-    <div className="stat-label dashboard-card-title">Today&apos;s range vs. typical</div>
+    <div className="stat-label dashboard-card-title">Current session&apos;s range vs. typical</div>
     <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
   </div>
   <div className="panel">

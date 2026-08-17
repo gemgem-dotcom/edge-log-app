@@ -1532,6 +1532,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:640px){
   .skel-calendar-cell{min-height:44px;}
 }
+/* Pill (MarketStatusPill/StreakBadge in a .header-pills-row) and circle
+   (WinRateGauge, PnlDonut) placeholders - width/height set inline per use
+   since both appear at several different sizes across the skeletons. */
+.skel-pill{height:28px; border-radius:99px;}
+.skel-circle{border-radius:50%;}
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
 /* 15px, not --space-4 (16px) - standardized to match .stats/

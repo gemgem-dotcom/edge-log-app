@@ -27,21 +27,21 @@
    1095  Monthly P&L (calendar on Overview)
    1171  Trade form: sections, validation, currency, screenshots
    1252  Field tooltips
-   1304  Date/time picker (adds an optional popup to a typed input)
-   1413  In-header column filters (trade log table)
-   1447  Active filter chips
-   1496  Empty states, error banners, skeleton loaders
-   1552  Cross-instrument overview dashboard (/app)
-   1653  Not found / error boundary state pages
-   1666  Toast notifications
-   1694  Public policy pages (Privacy, Terms)
-   1713  Legal links (auth pages + account settings)
-   1752  Economic calendar card (mock - Overview pages)
-   1856  Calendar news badge (Monthly P&L day cells, mock)
-   1877  Streak badge (Overview + strategy detail pages)
-   1894  Market status pill (Overview + strategy detail pages)
-   1920  Key levels, today's brief (mock cards)
-   1946  Market context cards (all-instruments Overview)
+   1308  Date/time picker (adds an optional popup to a typed input)
+   1417  In-header column filters (trade log table)
+   1451  Active filter chips
+   1500  Empty states, error banners, skeleton loaders
+   1556  Cross-instrument overview dashboard (/app)
+   1657  Not found / error boundary state pages
+   1670  Toast notifications
+   1698  Public policy pages (Privacy, Terms)
+   1717  Legal links (auth pages + account settings)
+   1756  Economic calendar card (mock - Overview pages)
+   1860  Calendar news badge (Monthly P&L day cells, mock)
+   1881  Streak badge (Overview + strategy detail pages)
+   1898  Market status pill (Overview + strategy detail pages)
+   1924  Key levels, today's brief (mock cards)
+   1950  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1256,10 +1256,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    field's own box. Any field with a FieldTooltip needs the same exemption. */
 .field:has(.field-tooltip),
 .field:has(.dt-picker){overflow-x:visible;}
-/* vertical-align:middle - default baseline alignment sits this against the
-   bottom of adjacent text instead of centering with it, which reads as
-   the "?" circle floating low next to a heading/label. */
-.field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px; vertical-align:middle;}
+/* display:flex rather than vertical-align on the label itself - the same
+   fix as .th-with-tooltip and for the same reason: vertical-align centers
+   against the label's font x-height, not its actual (uppercase, per the
+   base label rule) glyphs, which reads as the "?" circle sitting low next
+   to the label text. :has() rather than a wrapper span in TradeForm's JSX
+   so this applies to every label a FieldTooltip is dropped into. */
+label:has(.field-tooltip){display:flex; align-items:center;}
+.field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;
   background:var(--line); color:var(--muted);

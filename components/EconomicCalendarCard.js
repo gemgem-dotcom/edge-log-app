@@ -154,13 +154,6 @@ export default function EconomicCalendarCard() {
           ))}
         </div>
       )}
-
-      {/* Mock only - a real version would check whether the trader's own
-          strategies (tags, typical session times) line up with this
-          range's high-impact events instead of this hardcoded line. */}
-      <div className="econ-calendar-mock-footer">
-        2 of your strategies trade around high-impact events this week — Powell Mon, Break and Retest
-      </div>
     </>
   )
 }

@@ -314,7 +314,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
         </div>
       ) : (
         <>
-          <div className="dashboard-split">
+          <div className="dashboard-split brief-calendar-row">
             <div>
               <div className="panel">
                 <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
@@ -322,61 +322,61 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </div>
             </div>
             <div>
-              <div className="context-quad">
-                <div className="panel">
-                  <div className="stat-label dashboard-card-title">Current session&apos;s range vs. typical</div>
-                  <div className="context-strip">
-                    {instruments.map((inst) => (
-                      <div className="context-strip-row" key={inst.id}>
-                        <span className="context-strip-symbol">{inst.symbol}</span>
-                        <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="panel">
-                  <div className="stat-label dashboard-card-title">Overnight gap</div>
-                  <div className="context-strip">
-                    {instruments.map((inst) => (
-                      <div className="context-strip-row" key={inst.id}>
-                        <span className="context-strip-symbol">{inst.symbol}</span>
-                        <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="panel">
-                  <div className="stat-label dashboard-card-title">Volume vs. typical</div>
-                  <div className="context-strip">
-                    {instruments.map((inst) => (
-                      <div className="context-strip-row" key={inst.id}>
-                        <span className="context-strip-symbol">{inst.symbol}</span>
-                        <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="panel">
-                  <div className="stat-label dashboard-card-title">Days to rollover</div>
-                  <div className="context-strip">
-                    {instruments.map((inst) => {
-                      const days = daysToRollover(inst.data_symbol || inst.symbol, now)
-                      return (
-                        <div className="context-strip-row" key={inst.id}>
-                          <span className="context-strip-symbol">{inst.symbol}</span>
-                          <span className="context-strip-value">{days === null ? '—' : `${days}d`}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+              <div className="panel">
+                <div className="stat-label dashboard-card-title">Economic calendar</div>
+                <EconomicCalendarCard />
               </div>
             </div>
           </div>
 
-          <div className="panel">
-            <div className="stat-label dashboard-card-title">Economic calendar</div>
-            <EconomicCalendarCard />
+          <div className="market-context-row">
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Current session&apos;s range vs. typical</div>
+              <div className="context-strip">
+                {instruments.map((inst) => (
+                  <div className="context-strip-row" key={inst.id}>
+                    <span className="context-strip-symbol">{inst.symbol}</span>
+                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Overnight gap</div>
+              <div className="context-strip">
+                {instruments.map((inst) => (
+                  <div className="context-strip-row" key={inst.id}>
+                    <span className="context-strip-symbol">{inst.symbol}</span>
+                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Volume vs. typical</div>
+              <div className="context-strip">
+                {instruments.map((inst) => (
+                  <div className="context-strip-row" key={inst.id}>
+                    <span className="context-strip-symbol">{inst.symbol}</span>
+                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Days to rollover</div>
+              <div className="context-strip">
+                {instruments.map((inst) => {
+                  const days = daysToRollover(inst.data_symbol || inst.symbol, now)
+                  return (
+                    <div className="context-strip-row" key={inst.id}>
+                      <span className="context-strip-symbol">{inst.symbol}</span>
+                      <span className="context-strip-value">{days === null ? '—' : `${days}d`}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="section-heading">All-Time Performance</div>

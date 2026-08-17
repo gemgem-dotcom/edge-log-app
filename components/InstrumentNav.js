@@ -27,6 +27,7 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   const [addError, setAddError] = useState(null)
   const [pos, setPos] = useState(null)
   const triggerRef = useRef(null)
+  const scrollStripRef = useRef(null)
   const close = useCallback(() => { setAdding(false); setAddError(null) }, [])
   const addRef = useClickOutside(adding, close)
 
@@ -38,14 +39,31 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   // page moves.
   useEffect(() => {
     if (!adding) return
-    const dismiss = () => close()
+    // Ignores scrolls that originate from .instrument-nav-scroll itself -
+    // the trigger is the last item in that strip (see the JSX below), so
+    // it's exactly where a real touch tends to leave residual momentum/
+    // rubber-band scrolling once the finger lifts. Without this guard,
+    // that settling fires a native 'scroll' event on the strip a moment
+    // after the tap that just opened this, and since this listener is on
+    // window with capture:true (needed to catch scroll on any
+    // non-bubbling scroll target, not just window itself), it closes the
+    // dropdown within the same gesture, before it was ever visibly open -
+    // indistinguishable from the tap not registering at all. This was the
+    // real cause of "Add instrument" still not working after it moved
+    // back inside the scrollable strip; touch-action:none on the trigger
+    // (still needed, see globals.css) only ever addressed a tap being
+    // swallowed as a pan gesture, not this.
+    const dismissOnScroll = (e) => {
+      if (e.target === scrollStripRef.current) return
+      close()
+    }
     // Width, unlike height, doesn't change when a mobile on-screen
     // keyboard or native <select> picker opens - only for an actual
     // orientation change or window resize, which should still dismiss
     // this. Same guard as TradeForm's tag-suggestions dropdown.
     const initialWidth = window.innerWidth
     const dismissOnResize = () => {
-      if (window.innerWidth !== initialWidth) dismiss()
+      if (window.innerWidth !== initialWidth) close()
     }
     // Deferred a frame: the dropdown mounting right at the edge of the
     // viewport can itself trigger a scroll-into-view (and the resulting
@@ -53,12 +71,12 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
     // seen as "the user scrolled/resized" and close the dropdown before
     // they ever saw it - same reasoning as TradeForm's tag-suggestions.
     const raf = requestAnimationFrame(() => {
-      window.addEventListener('scroll', dismiss, true)
+      window.addEventListener('scroll', dismissOnScroll, true)
       window.addEventListener('resize', dismissOnResize)
     })
     return () => {
       cancelAnimationFrame(raf)
-      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('scroll', dismissOnScroll, true)
       window.removeEventListener('resize', dismissOnResize)
     }
   }, [adding, close])
@@ -104,8 +122,10 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
           browser's own gesture recognizer can claim a touch that starts on
           the trigger for panning before any JS ever runs, firing
           pointercancel instead of a click/pointerup no matter how small
-          the actual finger movement was. */}
-      <div className="instrument-nav-scroll">
+          the actual finger movement was. Also see scrollStripRef above -
+          its own momentum/rubber-band scroll shouldn't dismiss a dropdown
+          that just opened from a tap on its last item. */}
+      <div className="instrument-nav-scroll" ref={scrollStripRef}>
         <a href="/app" className={`instrument-nav-item ${!currentSymbol ? 'instrument-nav-item-active' : ''}`}>
           All instruments
         </a>

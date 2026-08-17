@@ -40,6 +40,7 @@
    1802  Streak badge (Overview + strategy detail pages)
    1819  Market status pill (Overview + strategy detail pages)
    1845  Key levels, today's brief (mock cards)
+   1871  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1866,4 +1867,27 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .instrument-glance-row .panel{margin-bottom:0; flex:1;}
 @media (max-width:860px){
   .instrument-glance-row{grid-template-columns:1fr;}
+}
+
+/* ---------- Market context cards (all-instruments Overview) ---------- */
+/* Same row-per-instrument shape the old Volatility card used, reused for
+   each of the 5 market-context stats' compact cross-instrument view. */
+.context-strip{display:flex; flex-direction:column;}
+.context-strip-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.context-strip-row:last-child{border-bottom:none; padding-bottom:0;}
+.context-strip-symbol{font-weight:700; font-family:'JetBrains Mono',monospace;}
+.context-strip-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
+/* stat-placeholder (see below) overrides this for the three stats with
+   no data source yet - !important there wins over this font-family. */
+
+/* Same grid shape as .instrument-glance-row, under its own name since
+   this row holds one card per stat (each listing every instrument),
+   rather than one card per instrument like that row does. */
+.market-context-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
+.market-context-row .panel{margin-bottom:0; flex:1;}
+@media (max-width:860px){
+  .market-context-row{grid-template-columns:1fr;}
 }

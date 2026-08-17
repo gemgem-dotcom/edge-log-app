@@ -7,6 +7,8 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
+import { nextEconEvent } from '@/lib/marketContextMock'
+import { daysToRollover } from '@/lib/contractRollover'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlDonut from '@/components/PnlDonut'
 import WinRateGauge from '@/components/WinRateGauge'
@@ -49,6 +51,16 @@ function colorClass(val) {
 }
 function toDateStr(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+function fmtCountdown(ms) {
+  if (ms === null || ms === undefined) return '—'
+  const totalMinutes = Math.round(ms / 60000)
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 function toneClass(value, count) {
   if (!count) return ''
@@ -244,6 +256,10 @@ export default function OverviewDashboard({ instruments, strategies }) {
     ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep, and CPI drops at 08:30.`
     : 'Markets are active today and CPI drops at 08:30 — worth keeping an eye on.'
 
+  const now = new Date()
+  const upcomingEvent = nextEconEvent(now)
+  const eventCountdown = upcomingEvent ? fmtCountdown(upcomingEvent.timestamp - now) : '—'
+
   const equityPoints = buildEquityCurve(allTrades, equityGroup)
 
   const instrumentSegments = instruments.map((inst, i) => {
@@ -319,6 +335,68 @@ export default function OverviewDashboard({ instruments, strategies }) {
           <div className="panel">
             <div className="stat-label dashboard-card-title">Economic calendar</div>
             <EconomicCalendarCard />
+          </div>
+
+          <div className="section-heading">Market context</div>
+          <div className="market-context-row">
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Today&apos;s range vs. typical</div>
+              <div className="context-strip">
+                {instruments.map((inst) => (
+                  <div className="context-strip-row" key={inst.id}>
+                    <span className="context-strip-symbol">{inst.symbol}</span>
+                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Overnight gap</div>
+              <div className="context-strip">
+                {instruments.map((inst) => (
+                  <div className="context-strip-row" key={inst.id}>
+                    <span className="context-strip-symbol">{inst.symbol}</span>
+                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Volume vs. typical</div>
+              <div className="context-strip">
+                {instruments.map((inst) => (
+                  <div className="context-strip-row" key={inst.id}>
+                    <span className="context-strip-symbol">{inst.symbol}</span>
+                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Days to rollover</div>
+              <div className="context-strip">
+                {instruments.map((inst) => {
+                  const days = daysToRollover(inst.data_symbol || inst.symbol, now)
+                  return (
+                    <div className="context-strip-row" key={inst.id}>
+                      <span className="context-strip-symbol">{inst.symbol}</span>
+                      <span className="context-strip-value">{days === null ? '—' : `${days}d`}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Next calendar event</div>
+              <div className="context-strip">
+                {instruments.map((inst) => (
+                  <div className="context-strip-row" key={inst.id}>
+                    <span className="context-strip-symbol">{inst.symbol}</span>
+                    <span className="context-strip-value">{eventCountdown}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="section-heading">All-Time Performance</div>

@@ -8,7 +8,8 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
-import { mockKeyLevels } from '@/lib/marketContextMock'
+import { mockKeyLevels, nextEconEvent } from '@/lib/marketContextMock'
+import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
 import WinRateGauge from '@/components/WinRateGauge'
 import PnlDonut from '@/components/PnlDonut'
@@ -114,6 +115,16 @@ function colorClass(val) {
 }
 function fmtPrice(val) {
   return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+function fmtCountdown(ms) {
+  if (ms === null || ms === undefined) return '—'
+  const totalMinutes = Math.round(ms / 60000)
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 function toDateStr(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -233,6 +244,9 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const overall = computeStats(classifiedTrades)
   const streak = computeStreak(allTrades)
   const keyLevels = mockKeyLevels(symbol)
+  const now = new Date()
+  const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
+  const upcomingEvent = nextEconEvent(now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
   const strategySegments = strategies.map((s, i) => {
     const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
@@ -253,8 +267,7 @@ const year = calCursor.year
   const monthStats = computeMonthStats(monthTrades)
   const weeks = buildCalendarWeeks(year, month, tradesByDate)
   const selectedTrades = selectedDate ? (tradesByDate[selectedDate] || []) : []
-  const todayNow = new Date()
-  const todayStr = toDateStr(todayNow.getFullYear(), todayNow.getMonth(), todayNow.getDate())
+  const todayStr = toDateStr(now.getFullYear(), now.getMonth(), now.getDate())
 
     function goPrevMonth() {
       setCalCursor((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }))
@@ -358,6 +371,27 @@ return (
     <p className="brief-card-text">
       {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
     </p>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Today&apos;s range vs. typical</div>
+    <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Overnight gap</div>
+    <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Volume vs. typical</div>
+    <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Days to rollover</div>
+    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Next calendar event</div>
+    <div className="stat-value neu">{upcomingEvent ? fmtCountdown(upcomingEvent.timestamp - now) : '—'}</div>
+    {upcomingEvent && <div className="stat-subvalue neu">{upcomingEvent.event}</div>}
   </div>
 </div>
 

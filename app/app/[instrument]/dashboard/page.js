@@ -272,16 +272,14 @@ return (
     <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
-  <div className="page-subtitle-row">
-    <p className="page-subtitle">Your performance overview for {displayName} futures.</p>
-    <div className="header-action-group">
-      <MarketStatusPill />
-      <StreakBadge
-        streak={streak}
-        winLabel={(n) => `${n} ${symbol} win${n === 1 ? '' : 's'} in a row`}
-        lossLabel={(n) => `${n} ${symbol} loss${n === 1 ? '' : 'es'} in a row`}
-      />
-    </div>
+  <p className="page-subtitle page-subtitle-tight">Your performance overview for {displayName} futures.</p>
+  <div className="header-pills-row">
+    <MarketStatusPill />
+    <StreakBadge
+      streak={streak}
+      winLabel={(n) => `${n} ${symbol} win${n === 1 ? '' : 's'} in a row`}
+      lossLabel={(n) => `${n} ${symbol} loss${n === 1 ? '' : 'es'} in a row`}
+    />
   </div>
 
   {unclassifiedCount > 0 && (

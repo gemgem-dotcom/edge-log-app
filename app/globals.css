@@ -632,6 +632,13 @@ a.shell-logo{color:inherit; text-decoration:none;}
    .page-subtitle needs none of its own. */
 .page-subtitle-row{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:-14px; margin-bottom:24px;}
 .page-subtitle-row .page-subtitle{margin-top:0; margin-bottom:0;}
+/* Used on pages where the status pills sit on their own row below the
+   subtitle rather than beside it - shrinks the gap before that row so the
+   pills read as grouped with the subtitle above rather than floating
+   halfway to the content below, while .header-pills-row itself carries the
+   normal 24px before whatever comes next. */
+.page-subtitle-tight{margin-bottom:10px;}
+.header-pills-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px;}
 @media (max-width:640px){
   /* On desktop the header row (title + action button) is a single line and
      .page-subtitle rides up under the title on a negative margin. Once the
@@ -1802,17 +1809,25 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 
 /* ---------- Streak badge (Overview + strategy detail pages) ---------- */
+/* border:1px solid transparent (not omitted) so this reserves the same
+   1px of box height/width that .market-status-pill's real border takes up
+   - without it the two pills, despite matching padding/font/radius, render
+   2px shorter and narrower than the market status pill next to them. */
 .streak-badge{
-  display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+  display:inline-flex; align-items:center; gap:7px; padding:6px 14px;
   border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap;
+  border:1px solid transparent;
 }
 .streak-badge-win{background:rgba(51,193,122,.14); color:var(--win);}
 .streak-badge-loss{background:rgba(225,92,92,.14); color:var(--loss);}
-.streak-badge-fire{font-size:13px;}
+/* line-height:1 keeps the emoji glyph's own taller leading from inflating
+   the flex item (and so the whole pill) a pixel taller than its sibling
+   pill, which has no emoji to do the same. */
+.streak-badge-fire{font-size:13px; line-height:1;}
 
 /* ---------- Market status pill (Overview + strategy detail pages) ---------- */
-/* Same padding/font-size/radius as .streak-badge so the two pills read as
-   one cohesive set when they sit side by side in .header-action-group. */
+/* Same padding/font-size/radius/border-width as .streak-badge so the two
+   pills read as one cohesive set when they sit side by side. */
 .market-status-pill{
   display:inline-flex; align-items:center; gap:7px; padding:6px 14px;
   border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap;

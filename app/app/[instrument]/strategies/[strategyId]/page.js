@@ -214,16 +214,14 @@ Delete strategy
   </form>
 )}
 
-<div className="page-subtitle-row">
-  <p className="page-subtitle">See how your strategy has performed.</p>
-  <div className="header-action-group">
-    <MarketStatusPill />
-    <StreakBadge
-      streak={streak}
-      winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
-      lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
-    />
-  </div>
+<p className="page-subtitle page-subtitle-tight">See how your strategy has performed.</p>
+<div className="header-pills-row">
+  <MarketStatusPill />
+  <StreakBadge
+    streak={streak}
+    winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
+    lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
+  />
 </div>
 
 <div className="section-heading">Performance</div>

@@ -27,21 +27,21 @@
    1095  Monthly P&L (calendar on Overview)
    1171  Trade form: sections, validation, currency, screenshots
    1252  Field tooltips
-   1293  Date/time picker (adds an optional popup to a typed input)
-   1402  In-header column filters (trade log table)
-   1436  Active filter chips
-   1485  Empty states, error banners, skeleton loaders
-   1541  Cross-instrument overview dashboard (/app)
-   1642  Not found / error boundary state pages
-   1655  Toast notifications
-   1683  Public policy pages (Privacy, Terms)
-   1702  Legal links (auth pages + account settings)
-   1741  Economic calendar card (mock - Overview pages)
-   1845  Calendar news badge (Monthly P&L day cells, mock)
-   1866  Streak badge (Overview + strategy detail pages)
-   1883  Market status pill (Overview + strategy detail pages)
-   1909  Key levels, today's brief (mock cards)
-   1935  Market context cards (all-instruments Overview)
+   1302  Date/time picker (adds an optional popup to a typed input)
+   1411  In-header column filters (trade log table)
+   1445  Active filter chips
+   1494  Empty states, error banners, skeleton loaders
+   1550  Cross-instrument overview dashboard (/app)
+   1651  Not found / error boundary state pages
+   1664  Toast notifications
+   1692  Public policy pages (Privacy, Terms)
+   1711  Legal links (auth pages + account settings)
+   1750  Economic calendar card (mock - Overview pages)
+   1854  Calendar news badge (Monthly P&L day cells, mock)
+   1875  Streak badge (Overview + strategy detail pages)
+   1892  Market status pill (Overview + strategy detail pages)
+   1918  Key levels, today's brief (mock cards)
+   1944  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1284,6 +1284,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 .field-tooltip:hover .field-tooltip-bubble,
 .field-tooltip-bubble-open{opacity:1; visibility:visible;}
+/* TableHeaderTooltip's variant - position:fixed instead of absolute so a
+   scrollable ancestor (.table-scroll's overflow-x:auto, same clipping
+   gotcha #tableWrap has for ColumnFilter's menu) can't clip it, with top/
+   left set inline from a measured rect instead of this rule's own bottom/
+   left. Chained with the base class (specificity over a lone
+   .field-tooltip-bubble selector) so it isn't quietly undone by the
+   mobile override below, which only ever applies to FieldTooltip's own
+   absolute bubble. */
+.field-tooltip-bubble.field-tooltip-bubble-fixed{position:fixed; bottom:auto; transform:translateX(-50%);}
 
 /* Near the right edge the bubble would overflow the form, so nudge it in. */
 @media (max-width:640px){

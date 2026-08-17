@@ -396,20 +396,26 @@ table{min-width:640px;}
 .instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
 /* flex-shrink:0 so the trigger's own label never gets squeezed by
    .instrument-nav-scroll's default shrink behavior - it should scroll
-   into/out of view at full size, not compress. touch-action:manipulation
-   is what actually keeps it tappable now that it's back inside an
-   overflow-x:auto strip: without it, a touch starting on this element can
-   get claimed by the browser's own gesture recognizer for horizontal
-   panning before any JS runs at all, which fires pointercancel instead of
-   a click/pointerup no matter how small the finger's actual movement was
-   - a JS-side movement-threshold check never gets the chance to run
-   because the event it needs never arrives. This tells the browser up
-   front that this specific element isn't a panning surface, so a genuine
-   tap here still resolves to a normal click. */
-.instrument-nav-add-wrap{position:relative; flex-shrink:0; touch-action:manipulation;}
+   into/out of view at full size, not compress. */
+.instrument-nav-add-wrap{position:relative; flex-shrink:0;}
+/* touch-action:none is what actually keeps this tappable now that it's
+   back inside an overflow-x:auto strip: without it, a touch starting on
+   this element can get claimed by the browser's own gesture recognizer
+   for horizontal panning before any JS runs at all, which fires
+   pointercancel instead of a click/pointerup no matter how small the
+   finger's actual movement was - a JS-side movement-threshold check never
+   gets the chance to run because the event it needs never arrives.
+   `manipulation` (tried first) does NOT fix this - despite the name, it
+   only disables double-tap-to-zoom and still permits panning, so the
+   ancestor scroller could still claim the touch. `none` is what actually
+   opts an element out of panning, so a genuine tap here resolves to a
+   normal click instead. Scoped to the trigger itself, not the whole
+   .instrument-nav-add-wrap, so it doesn't also reach into the dropdown
+   (the <select>/button below) that mounts as its sibling. */
 .instrument-nav-add{
   display:inline-block; padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
   font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color .15s ease;
+  touch-action:none;
 }
 .instrument-nav-add:hover{background:var(--line);}
 /* Fixed rather than absolute, and positioned inline from a measured rect

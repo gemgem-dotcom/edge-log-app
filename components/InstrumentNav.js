@@ -99,8 +99,8 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
           last item in this same strip, so it scrolls with the instrument
           pills instead of sitting apart from them as a separately-pinned
           element. It stays tappable despite living inside a
-          horizontally-scrollable container via touch-action:manipulation
-          on .instrument-nav-add-wrap (see globals.css) - without it, the
+          horizontally-scrollable container via touch-action:none on
+          .instrument-nav-add (see globals.css) - without it, the
           browser's own gesture recognizer can claim a touch that starts on
           the trigger for panning before any JS ever runs, firing
           pointercancel instead of a click/pointerup no matter how small

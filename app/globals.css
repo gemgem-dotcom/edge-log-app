@@ -381,9 +381,13 @@ table{min-width:640px;}
    the pill, logo/icons included) - this is just the row of items inside
    it, each its own smaller pill on hover/active. */
 .instrument-nav{display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-width:0;}
-/* Holds just the instrument pills - the part that scrolls on mobile (see
-   the @media rule below). "Add instrument" lives outside this as its own
-   flex-shrink:0 sibling; see the comment in InstrumentNav.js for why. */
+/* Holds the instrument pills AND the "Add instrument" trigger - the part
+   that scrolls together as one strip on mobile (see the @media rule
+   below). Add instrument used to live outside this as its own sibling so
+   it could never be mistaken for the start of a scroll gesture, but that
+   read as the button floating apart from the list it belongs to; see the
+   pointer handlers in InstrumentNav.js for how it stays tappable now that
+   it's back inside. */
 .instrument-nav-scroll{display:flex; align-items:center; gap:10px; min-width:0;}
 .instrument-nav-item{
   padding:7px 14px; border-radius:100px; font-size:13px; font-weight:600;
@@ -392,6 +396,9 @@ table{min-width:640px;}
 }
 .instrument-nav-item:hover{color:var(--text); background:var(--line);}
 .instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
+/* flex-shrink:0 so the trigger's own label never gets squeezed by
+   .instrument-nav-scroll's default shrink behavior - it should scroll
+   into/out of view at full size, not compress. */
 .instrument-nav-add-wrap{position:relative; flex-shrink:0;}
 .instrument-nav-add{
   display:inline-block; padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
@@ -399,11 +406,12 @@ table{min-width:640px;}
 }
 .instrument-nav-add:hover{background:var(--line);}
 /* Fixed rather than absolute, and positioned inline from a measured rect
-   (see InstrumentNav.js) - the trigger sits outside .instrument-nav-scroll
-   precisely so it's never a descendant of that overflow-x:auto strip, but
-   position:fixed is kept regardless since it's already proven correct and
-   an absolute menu would still need the same viewport-edge clamping this
-   already does. */
+   (see InstrumentNav.js) - the trigger sits inside .instrument-nav-scroll,
+   an overflow-x:auto strip on mobile, which would clip an absolutely
+   positioned menu the same way #tableWrap clips ColumnFilter's. Fixed
+   positioning escapes that regardless of where the trigger ends up
+   scrolled to, with the same viewport-edge clamping either approach would
+   need anyway. */
 .instrument-dropdown{
   position:fixed; background:var(--panel);
   border:1px solid var(--line); border-radius:9px; min-width:220px; z-index:60;

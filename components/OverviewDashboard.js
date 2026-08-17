@@ -331,36 +331,27 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
           <div className="market-context-row">
             <div className="panel">
-              <div className="stat-label dashboard-card-title">Current session&apos;s range vs. typical</div>
-              <div className="context-strip">
-                {instruments.map((inst) => (
-                  <div className="context-strip-row" key={inst.id}>
-                    <span className="context-strip-symbol">{inst.symbol}</span>
-                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="panel">
-              <div className="stat-label dashboard-card-title">Overnight gap</div>
-              <div className="context-strip">
-                {instruments.map((inst) => (
-                  <div className="context-strip-row" key={inst.id}>
-                    <span className="context-strip-symbol">{inst.symbol}</span>
-                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="panel">
-              <div className="stat-label dashboard-card-title">Volume vs. typical</div>
-              <div className="context-strip">
-                {instruments.map((inst) => (
-                  <div className="context-strip-row" key={inst.id}>
-                    <span className="context-strip-symbol">{inst.symbol}</span>
-                    <span className="context-strip-value stat-placeholder">Needs Phase 2</span>
-                  </div>
-                ))}
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Instrument</th>
+                      <th>Range vs. typical</th>
+                      <th>Overnight gap</th>
+                      <th>Volume vs. typical</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {instruments.map((inst) => (
+                      <tr key={inst.id}>
+                        <td>{inst.symbol}</td>
+                        <td className="stat-placeholder">Needs Phase 2</td>
+                        <td className="stat-placeholder">Needs Phase 2</td>
+                        <td className="stat-placeholder">Needs Phase 2</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
             <div className="panel">

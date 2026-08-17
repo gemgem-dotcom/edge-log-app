@@ -31,17 +31,17 @@
    1402  In-header column filters (trade log table)
    1436  Active filter chips
    1485  Empty states, error banners, skeleton loaders
-   1536  Cross-instrument overview dashboard (/app)
-   1637  Not found / error boundary state pages
-   1650  Toast notifications
-   1678  Public policy pages (Privacy, Terms)
-   1697  Legal links (auth pages + account settings)
-   1736  Economic calendar card (mock - Overview pages)
-   1819  Calendar news badge (Monthly P&L day cells, mock)
-   1840  Streak badge (Overview + strategy detail pages)
-   1857  Market status pill (Overview + strategy detail pages)
-   1883  Key levels, today's brief (mock cards)
-   1909  Market context cards (all-instruments Overview)
+   1541  Cross-instrument overview dashboard (/app)
+   1642  Not found / error boundary state pages
+   1655  Toast notifications
+   1683  Public policy pages (Privacy, Terms)
+   1702  Legal links (auth pages + account settings)
+   1741  Economic calendar card (mock - Overview pages)
+   1845  Calendar news badge (Monthly P&L day cells, mock)
+   1866  Streak badge (Overview + strategy detail pages)
+   1883  Market status pill (Overview + strategy detail pages)
+   1909  Key levels, today's brief (mock cards)
+   1935  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1934,7 +1934,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 /* ---------- Market context cards (all-instruments Overview) ---------- */
 /* Same row-per-instrument shape the old Volatility card used, reused for
-   each of the 4 market-context stats' compact cross-instrument view. */
+   Days to rollover's compact cross-instrument view - the row's other
+   card (range/gap/volume) is a plain table instead, see the JSX. */
 .context-strip{display:flex; flex-direction:column;}
 .context-strip-row{
   display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -1943,8 +1944,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .context-strip-row:last-child{border-bottom:none; padding-bottom:0;}
 .context-strip-symbol{font-weight:700; font-family:'JetBrains Mono',monospace;}
 .context-strip-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
-/* stat-placeholder (see below) overrides this for the three stats with
-   no data source yet - !important there wins over this font-family. */
 
 /* Today's brief + Economic calendar row - 1/3 + 2/3 rather than
    .dashboard-split's usual even halves, since the calendar card carries
@@ -1955,21 +1954,27 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:1100px){
   .brief-calendar-row{grid-template-columns:1fr;}
 }
-/* Same grid shape as .instrument-glance-row, under its own name since
-   this row holds one card per stat (each listing every instrument),
-   rather than one card per instrument like that row does. 4 columns, not
-   3 - exactly one row for the 4 stats that still have a card here (Next
-   calendar event was dropped from this page; a single shared countdown
-   read as redundant repeated once per instrument row). No section-heading
-   above this one (unlike every other row on this page) - it sits directly
-   under .brief-calendar-row, so margin-bottom on both sides is what keeps
-   the gap above and below this row the same 15px as its own internal
-   gap, rather than a heading's own margin doing that job. */
-.market-context-row{display:grid; grid-template-columns:repeat(4,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
+/* Range/overnight gap/volume vs. typical collapsed into one combined
+   table card (they were three separate cards each showing the identical
+   "Needs Phase 2" placeholder per instrument, which read as more cards
+   than there was actually distinct information - a table with one column
+   per stat keeps them visually grouped without the repetition three
+   separate cards had). 3fr/1fr rather than an even split - the table
+   naturally wants more width than Days to rollover's plain symbol/value
+   list, the only other stat still on this page (Next calendar event was
+   dropped earlier, a single shared countdown read as redundant repeated
+   once per instrument row). No section-heading above this row (unlike
+   every other row on this page) - it sits directly under
+   .brief-calendar-row, so margin-bottom on both sides is what keeps the
+   gap above and below this row the same 15px as its own internal gap,
+   rather than a heading's own margin doing that job. minmax(0, ...), not
+   bare 3fr/1fr - a plain fr track's implicit minimum is its content's own
+   max-content width, so without this the table (even inside its own
+   .table-scroll) forced the whole row wider than its container at
+   narrower viewports, pushing Days to rollover half off-screen instead of
+   the table scrolling internally the way .table-scroll is meant to. */
+.market-context-row{display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
 .market-context-row .panel{margin-bottom:0; flex:1;}
-@media (max-width:1100px){
-  .market-context-row{grid-template-columns:repeat(2,1fr);}
-}
-@media (max-width:640px){
+@media (max-width:900px){
   .market-context-row{grid-template-columns:1fr;}
 }

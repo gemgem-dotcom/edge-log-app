@@ -39,11 +39,23 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   useEffect(() => {
     if (!adding) return
     const dismiss = () => close()
+    // The <select> below is autoFocus'd, and on a real phone tapping it
+    // opens the OS's own native picker UI, which shrinks the visual
+    // viewport (like an on-screen keyboard does) and fires a 'resize' on
+    // most mobile browsers - a plain dismiss-on-any-resize closed this
+    // dropdown, "Add" button included, the instant the user tried to pick
+    // an instrument. Width, unlike height, doesn't change for that - only
+    // for an actual orientation change or window resize, which should
+    // still dismiss it. Same guard as TradeForm's tag-suggestions dropdown.
+    const initialWidth = window.innerWidth
+    const dismissOnResize = () => {
+      if (window.innerWidth !== initialWidth) dismiss()
+    }
     window.addEventListener('scroll', dismiss, true)
-    window.addEventListener('resize', dismiss)
+    window.addEventListener('resize', dismissOnResize)
     return () => {
       window.removeEventListener('scroll', dismiss, true)
-      window.removeEventListener('resize', dismiss)
+      window.removeEventListener('resize', dismissOnResize)
     }
   }, [adding, close])
 

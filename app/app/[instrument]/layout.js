@@ -40,6 +40,20 @@ export default function InstrumentLayout({ children, params }) {
         if (window.innerWidth <= 900) setStrategiesExpanded(false)
   }, [])
 
+  // Below 900px .sidebar-substrategies becomes a floating position:absolute
+  // dropdown (see globals.css) rather than inline sidebar content, so it
+  // needs the same dismiss-on-scroll treatment as the app's other floating
+  // menus (ColumnFilter, InstrumentNav's add-instrument dropdown) - above
+  // that width it's just normal in-flow content and scrolling shouldn't
+  // collapse it.
+  useEffect(() => {
+        if (!strategiesExpanded) return
+        if (window.innerWidth > 900) return
+        const dismiss = () => setStrategiesExpanded(false)
+        window.addEventListener('scroll', dismiss, true)
+        return () => window.removeEventListener('scroll', dismiss, true)
+  }, [strategiesExpanded])
+
   useEffect(() => {
         loadData()
   }, [currentSymbol])

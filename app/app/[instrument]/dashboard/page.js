@@ -354,7 +354,45 @@ return (
   </select>
   </div>
 
-  <div className="stats">
+{strategies.length === 0 ? (
+  <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
+) : (
+  <table className="perf-table">
+  <thead>
+  <tr>
+  <th>Strategy</th><th>Trades</th><th>Win rate</th>
+  <th>Expectancy</th><th>Profit factor</th>
+  </tr>
+  </thead>
+<tbody>
+{strategies.map((s, i) => {
+  const stats = computeStats(tradesByStrategy[s.id] || [])
+  return (
+    <tr
+  key={s.id}
+                className={`clickable-row ${perfStrategy !== 'all' && s.id !== perfStrategy ? 'perf-row-dim' : ''}`}
+onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
+>
+  <td className="strategy-name-cell">
+  <span className="strategy-dot" style={{ background: strategyColor(i) }} />
+{s.name}
+</td>
+<td>{stats.n.toLocaleString('en-US')}</td>
+<td className={stats.winRate !== null && stats.winRate < 50 ? 'neg' : ''}>
+{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
+</td>
+<td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
+<td>{fmtPF(stats.profitFactor)}</td>
+  </tr>
+)
+})}
+</tbody>
+  </table>
+)}
+
+  <div className="performance-card-subgrid">
+  <div>
+  <div className="stats stats-2">
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -382,45 +420,12 @@ return (
   <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
   </div>
   </div>
-
-{strategies.length === 0 ? (
-  <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
-) : (
-  <table className="perf-table">
-  <thead>
-  <tr>
-  <th>Strategy</th><th>Trades</th><th>Win rate</th>
-  <th>Expectancy</th><th>Profit factor</th>
-  </tr>
-  </thead>
-<tbody>
-{strategies.map((s, i) => {
-  const stats = computeStats(tradesByStrategy[s.id] || [])
-  return (
-    <tr
-  key={s.id}
-                className="clickable-row"
-onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
->
-  <td className="strategy-name-cell">
-  <span className="strategy-dot" style={{ background: strategyColor(i) }} />
-{s.name}
-</td>
-<td>{stats.n.toLocaleString('en-US')}</td>
-<td className={stats.winRate !== null && stats.winRate < 50 ? 'neg' : ''}>
-{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
-</td>
-<td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
-<td>{fmtPF(stats.profitFactor)}</td>
-  </tr>
-)
-})}
-</tbody>
-  </table>
-)}
-
-  <div className="stat-label dashboard-card-title performance-card-subheading">Avg P&amp;L by day of week</div>
+  </div>
+  <div>
+  <div className="stat-label dashboard-card-title">Avg P&amp;L by day of week</div>
   <AvgPnlByWeekdayChart rows={weekdayRows} />
+  </div>
+  </div>
   </div>
 
 <div className="section-heading">Economic calendar</div>

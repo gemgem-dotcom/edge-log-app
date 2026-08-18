@@ -105,6 +105,13 @@ export default function StrategiesPage({ params }) {
   if (loading) return <StrategiesSkeleton />
   if (error) return <div className="page-container"><PageError message={`Couldn't load your strategies — ${error}`} onRetry={loadStrategies} /></div>
 
+  // Active before archived (unchanged grouping), alphabetical by name
+  // within each group instead of creation order.
+  const sortedStrategies = strategies.slice().sort((a, b) => {
+    if (a.archived !== b.archived) return a.archived ? 1 : -1
+    return a.name.localeCompare(b.name)
+  })
+
   return (
     <div className="page-container">
       <div className="strategy-header-row">
@@ -142,7 +149,7 @@ export default function StrategiesPage({ params }) {
               <tr><th>Name</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
-              {strategies.map((s) => (
+              {sortedStrategies.map((s) => (
                 <tr key={s.id} style={{ opacity: s.archived ? 0.5 : 1 }}>
                   <td>
                     {editingId === s.id ? (

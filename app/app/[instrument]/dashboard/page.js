@@ -319,6 +319,7 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
 
 const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
+  const sortedStrategies = strategies.slice().sort((a, b) => a.name.localeCompare(b.name))
   const perfTrades = perfStrategy === 'all' ? classifiedTrades : classifiedTrades.filter((t) => t.strategy_id === perfStrategy)
   const overall = computeStats(perfTrades)
   const weekdayRows = computeWeekdayPnl(perfTrades)
@@ -342,19 +343,22 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
     stats: computeStats(tradesByStrategy[s.id] || []),
   }))
 
+  // Alphabetical by strategy name in every view (not ranked by that view's
+  // own metric) - strategies stay in the same order regardless of which
+  // face is showing, matching how they're ordered everywhere else in the
+  // app (sidebar, filter dropdowns).
+  const alphaStrategySegments = strategySegments.slice().sort((a, b) => a.label.localeCompare(b.label))
+  const alphaPerStrategyStats = perStrategyStats.slice().sort((a, b) => a.label.localeCompare(b.label))
+
   const flipViews = [
     {
-      label: 'P&L by strategy',
-      segments: strategySegments
-        .slice()
-        .sort((a, b) => b.value - a.value)
+      label: 'Total P&L',
+      segments: alphaStrategySegments
         .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
     },
     {
-      label: 'Expectancy by strategy',
-      segments: perStrategyStats
-        .slice()
-        .sort((a, b) => (b.stats.expectancyD ?? b.stats.expectancy ?? -Infinity) - (a.stats.expectancyD ?? a.stats.expectancy ?? -Infinity))
+      label: 'Expectancy',
+      segments: alphaPerStrategyStats
         .map(({ id, label, color, stats }) => ({
           id, label, color,
           value: stats.expectancyD !== null ? `${fmtD(stats.expectancyD)} (${fmtR(stats.expectancy)})` : fmtR(stats.expectancy),
@@ -362,10 +366,8 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
         })),
     },
     {
-      label: 'Win rate by strategy',
-      segments: perStrategyStats
-        .slice()
-        .sort((a, b) => (b.stats.winRate ?? -Infinity) - (a.stats.winRate ?? -Infinity))
+      label: 'Win rate',
+      segments: alphaPerStrategyStats
         .map(({ id, label, color, stats }) => ({
           id, label, color,
           value: stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%',
@@ -373,17 +375,13 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
         })),
     },
     {
-      label: 'Profit factor by strategy',
-      segments: perStrategyStats
-        .slice()
-        .sort((a, b) => (b.stats.profitFactor ?? -Infinity) - (a.stats.profitFactor ?? -Infinity))
+      label: 'Profit factor',
+      segments: alphaPerStrategyStats
         .map(({ id, label, color, stats }) => ({ id, label, color, value: fmtPF(stats.profitFactor), tone: 'neu' })),
     },
     {
-      label: 'Total trades by strategy',
-      segments: perStrategyStats
-        .slice()
-        .sort((a, b) => b.stats.n - a.stats.n)
+      label: 'Total trades',
+      segments: alphaPerStrategyStats
         .map(({ id, label, color, stats }) => ({ id, label, color, value: stats.n.toLocaleString('en-US'), tone: 'neu' })),
     },
   ]
@@ -453,7 +451,7 @@ return (
   </div>
 ) : (
   <>
-<div className="section-heading">Overview</div>
+<div className="section-heading">All-Time Performance</div>
   <div className="panel">
   <div className="calendar-toolbar">
   <select
@@ -462,7 +460,7 @@ return (
     onChange={(e) => setPerfStrategy(e.target.value)}
   >
     <option value="all">All strategies</option>
-    {strategies.map((s) => (
+    {sortedStrategies.map((s) => (
       <option key={s.id} value={s.id}>{s.name}</option>
     ))}
   </select>
@@ -585,7 +583,7 @@ value={calStrategy}
 onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
   >
   <option value="all">All strategies</option>
-{strategies.map((s) => (
+{sortedStrategies.map((s) => (
   <option key={s.id} value={s.id}>{s.name}</option>
 ))}
   </select>

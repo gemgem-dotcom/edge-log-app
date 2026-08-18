@@ -201,10 +201,12 @@ export default function TradeLogTable({
     ...strategies.map((s) => s.id),
     ...[...present(strategyKey)].filter((key) => !strategies.some((s) => s.id === key)),
   ]
-  const strategyOptions = strategyKeys.map((key) => ({
-    value: key,
-    label: key === UNCLASSIFIED ? 'Unassigned' : (strategyNameById?.(key) || '—'),
-  }))
+  const strategyOptions = strategyKeys
+    .map((key) => ({
+      value: key,
+      label: key === UNCLASSIFIED ? 'Unassigned' : (strategyNameById?.(key) || '—'),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
   const directionOptions = [
     { value: 'all', label: 'All' },
     ...['long', 'short'].map((d) => ({ value: d, label: DIRECTION_LABELS[d] })),

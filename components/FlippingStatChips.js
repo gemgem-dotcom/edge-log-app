@@ -31,6 +31,7 @@ export default function FlippingStatChips({ views }) {
   const elRef = useRef(null)
   const phaseRef = useRef('idle')
   const timeoutRef = useRef(null)
+  const pausedRef = useRef(false)
 
   function triggerFlip() {
     const el = elRef.current
@@ -41,9 +42,12 @@ export default function FlippingStatChips({ views }) {
 
   // Self-rescheduling rather than setInterval, so a manual click (below)
   // can restart the countdown instead of leaving a stale timer that fires
-  // again moments after the user just triggered one by hand.
+  // again moments after the user just triggered one by hand. No-ops while
+  // paused (hover / touch-hold) - resuming (handlePauseEnd) is what restarts
+  // the countdown.
   function scheduleNext() {
     clearTimeout(timeoutRef.current)
+    if (pausedRef.current) return
     timeoutRef.current = setTimeout(() => {
       triggerFlip()
       scheduleNext()
@@ -57,6 +61,22 @@ export default function FlippingStatChips({ views }) {
 
   function handleClick() {
     triggerFlip()
+    scheduleNext()
+  }
+
+  // Mouse hover pauses/resumes directly. Touch has no hover state, so we
+  // treat a held finger the same way: pause on touchstart, resume on
+  // touchend/touchcancel. preventDefault is deliberately never called here -
+  // doing so would suppress the browser's synthetic click that fires after a
+  // tap, which is what makes tap-to-flip (handleClick) work on touch devices
+  // too.
+  function handlePauseStart() {
+    pausedRef.current = true
+    clearTimeout(timeoutRef.current)
+  }
+
+  function handlePauseEnd() {
+    pausedRef.current = false
     scheduleNext()
   }
 
@@ -84,7 +104,15 @@ export default function FlippingStatChips({ views }) {
   const view = views[index % views.length]
 
   return (
-    <div className="flip-cube-wrap" onClick={handleClick}>
+    <div
+      className="flip-cube-wrap"
+      onClick={handleClick}
+      onMouseEnter={handlePauseStart}
+      onMouseLeave={handlePauseEnd}
+      onTouchStart={handlePauseStart}
+      onTouchEnd={handlePauseEnd}
+      onTouchCancel={handlePauseEnd}
+    >
       <div
         ref={elRef}
         className="flip-cube-face"

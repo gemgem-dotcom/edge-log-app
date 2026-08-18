@@ -297,14 +297,14 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
   const flipViews = [
     {
-      label: 'P&L by instrument',
+      label: 'Total P&L',
       segments: instrumentSegments
         .slice()
         .sort((a, b) => b.value - a.value)
         .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
     },
     {
-      label: 'Expectancy by instrument',
+      label: 'Expectancy',
       segments: perInstrumentStats
         .slice()
         .sort((a, b) => (b.stats.expectancyD ?? b.stats.expectancy ?? -Infinity) - (a.stats.expectancyD ?? a.stats.expectancy ?? -Infinity))
@@ -315,7 +315,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
         })),
     },
     {
-      label: 'Win rate by instrument',
+      label: 'Win rate',
       segments: perInstrumentStats
         .slice()
         .sort((a, b) => (b.stats.winRate ?? -Infinity) - (a.stats.winRate ?? -Infinity))
@@ -326,14 +326,14 @@ export default function OverviewDashboard({ instruments, strategies }) {
         })),
     },
     {
-      label: 'Profit factor by instrument',
+      label: 'Profit factor',
       segments: perInstrumentStats
         .slice()
         .sort((a, b) => (b.stats.profitFactor ?? -Infinity) - (a.stats.profitFactor ?? -Infinity))
         .map(({ id, label, color, stats }) => ({ id, label, color, value: fmtPF(stats.profitFactor), tone: 'neu' })),
     },
     {
-      label: 'Total trades by instrument',
+      label: 'Total trades',
       segments: perInstrumentStats
         .slice()
         .sort((a, b) => b.stats.n - a.stats.n)

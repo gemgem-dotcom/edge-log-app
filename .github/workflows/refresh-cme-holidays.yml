@@ -54,13 +54,17 @@ jobs:
       - name: Regenerate lib/cmeHolidays.json
         run: python3 scripts/generate_cme_holidays.py
 
+      # git status --porcelain, not git diff --quiet - the latter is blind
+      # to a brand new untracked file, which matters the very first time
+      # this workflow runs against a checkout that doesn't have
+      # lib/cmeHolidays.json yet.
       - name: Check whether the calendar actually changed
         id: diff
         run: |
-          if git diff --quiet -- lib/cmeHolidays.json; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
+          if [ -n "$(git status --porcelain -- lib/cmeHolidays.json)" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Node

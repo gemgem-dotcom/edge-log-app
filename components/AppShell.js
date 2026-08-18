@@ -37,6 +37,18 @@ export default function AppShell({ instruments, strategies = [], active, childre
   const instrumentById = {}
   instruments.forEach((inst, i) => { instrumentById[inst.id] = { ...inst, color: strategyColor(i) } })
 
+  // Grouped by instrument (in the same order the topbar's instrument pills
+  // use), then alphabetically by name within each instrument - the flat
+  // creation-date order this list otherwise inherits from the API mixes
+  // every instrument's strategies together with no way to tell at a
+  // glance which belong to which.
+  const instrumentOrder = {}
+  instruments.forEach((inst, i) => { instrumentOrder[inst.id] = i })
+  const sortedStrategies = strategies.slice().sort((a, b) => {
+    const order = (instrumentOrder[a.instrument_id] ?? 0) - (instrumentOrder[b.instrument_id] ?? 0)
+    return order !== 0 ? order : a.name.localeCompare(b.name)
+  })
+
   return (
     <div className="shell">
       <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
@@ -66,7 +78,7 @@ export default function AppShell({ instruments, strategies = [], active, childre
               {strategies.length === 0 && (
                 <div className="sidebar-substrategy-empty">No strategies yet</div>
               )}
-              {strategies.map((s) => {
+              {sortedStrategies.map((s) => {
                 const inst = instrumentById[s.instrument_id]
                 return (
                   <a key={s.id} href={`/app/${inst?.symbol}/strategies/${s.id}`} className="sidebar-substrategy">

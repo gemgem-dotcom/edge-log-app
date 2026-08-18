@@ -9,9 +9,13 @@ import InstrumentNav from '@/components/InstrumentNav'
 // Shell for the two pages with no single instrument in view - the
 // cross-instrument Dashboard and the all-instruments Trades page. Mirrors
 // [instrument]/layout.js's shell (topbar + sidebar) but the sidebar
-// aggregates strategies across every instrument instead of one, has no
+// aggregates strategies across every instrument instead of one, and has no
 // "Add new" strategy option (that only makes sense scoped to one
-// instrument), and has no Insights link.
+// instrument). Insights has no instrument-agnostic route of its own (it's
+// still just a placeholder page either way - see app/app/[instrument]/
+// insights/page.js), so this links to the first instrument's copy, same
+// arbitrary-first-instrument fallback OverviewDashboard's own empty state
+// already uses for its Log New Trade link.
 export default function AppShell({ instruments, strategies = [], active, children }) {
   const [theme, setTheme] = useState('dark')
   const [strategiesExpanded, setStrategiesExpanded] = useState(true)
@@ -77,6 +81,9 @@ export default function AppShell({ instruments, strategies = [], active, childre
 
           <a href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
             Trade Log
+          </a>
+          <a href={`/app/${instruments[0]?.symbol}/insights`} className="sidebar-item">
+            Insights
           </a>
         </aside>
 

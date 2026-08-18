@@ -7,7 +7,7 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
-import { daysToRollover } from '@/lib/contractRollover'
+import { daysToRollover, nextRolloverDate } from '@/lib/contractRollover'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlByInstrumentList from '@/components/PnlByInstrumentList'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
@@ -399,11 +399,20 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="stat-label dashboard-card-title">Days to rollover</div>
               <div className="context-strip">
                 {instruments.map((inst) => {
-                  const days = daysToRollover(inst.data_symbol || inst.symbol, now)
+                  const dataSymbol = inst.data_symbol || inst.symbol
+                  const days = daysToRollover(dataSymbol, now)
+                  const rolloverDate = nextRolloverDate(dataSymbol, now)
                   return (
                     <div className="context-strip-row" key={inst.id}>
                       <span className="context-strip-symbol">{inst.symbol}</span>
-                      <span className="context-strip-value">{days === null ? '—' : `${days}d`}</span>
+                      <span className="context-strip-right">
+                        {rolloverDate && (
+                          <span className="context-strip-date">
+                            {new Date(rolloverDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                        <span className="context-strip-value">{days === null ? '—' : `${days}d`}</span>
+                      </span>
                     </div>
                   )
                 })}

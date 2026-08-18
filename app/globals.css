@@ -2009,6 +2009,8 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 }
 .context-strip-row:last-child{border-bottom:none; padding-bottom:0;}
 .context-strip-symbol{font-weight:700; font-family:'JetBrains Mono',monospace;}
+.context-strip-right{display:flex; align-items:baseline; gap:16px;}
+.context-strip-date{font-family:'JetBrains Mono',monospace; color:var(--muted);}
 .context-strip-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
 
 /* Today's brief + Economic calendar row - 1/3 + 2/3 rather than

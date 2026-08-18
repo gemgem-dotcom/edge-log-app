@@ -284,7 +284,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
     .filter(hasResult)
     .slice()
     .sort((a, b) => b.trade_date.localeCompare(a.trade_date) || (b.trade_time || '').localeCompare(a.trade_time || ''))
-    .slice(0, 8)
+    .slice(0, 6)
 
   const calTrades = calInstrument === 'all' ? allTrades : allTrades.filter((t) => t.instrument_id === calInstrument)
   const tradesByDate = {}

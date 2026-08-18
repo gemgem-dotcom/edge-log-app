@@ -16,32 +16,32 @@
    510  Detail view
    526  Holiday notice (site-wide, above the shell)
    551  Shell layout (sidebar + topbar)
-   772  Expandable trade rows
-   789  Calendar
-   837  Account settings page
-   1027  Light theme
-   1054  2FA
-   1069  Account fine print
-   1072  Screenshot preview (log new trade)
-   1089  Auth pages always dark
-   1117  Monthly P&L (calendar on Overview)
-   1193  Trade form: sections, validation, currency, screenshots
-   1274  Field tooltips
-   1330  Date/time picker (adds an optional popup to a typed input)
-   1439  In-header column filters (trade log table)
-   1473  Active filter chips
-   1522  Empty states, error banners, skeleton loaders
-   1578  Cross-instrument overview dashboard (/app)
-   1714  Not found / error boundary state pages
-   1727  Toast notifications
-   1755  Public policy pages (Privacy, Terms)
-   1774  Legal links (auth pages + account settings)
-   1813  Economic calendar card (mock - Overview pages)
-   1920  Calendar news badge (Monthly P&L day cells, mock)
-   1941  Streak badge (Overview + strategy detail pages)
-   1958  Market status pill (Overview + strategy detail pages)
-   1984  Key levels, today's brief (mock cards)
-   2010  Market context cards (all-instruments Overview)
+   777  Expandable trade rows
+   794  Calendar
+   842  Account settings page
+   1040  Light theme
+   1067  2FA
+   1082  Account fine print
+   1085  Screenshot preview (log new trade)
+   1102  Auth pages always dark
+   1130  Monthly P&L (calendar on Overview)
+   1206  Trade form: sections, validation, currency, screenshots
+   1287  Field tooltips
+   1343  Date/time picker (adds an optional popup to a typed input)
+   1452  In-header column filters (trade log table)
+   1486  Active filter chips
+   1535  Empty states, error banners, skeleton loaders
+   1591  Cross-instrument overview dashboard (/app)
+   1727  Not found / error boundary state pages
+   1740  Toast notifications
+   1768  Public policy pages (Privacy, Terms)
+   1787  Legal links (auth pages + account settings)
+   1826  Economic calendar card (mock - Overview pages)
+   1933  Calendar news badge (Monthly P&L day cells, mock)
+   1954  Streak badge (Overview + strategy detail pages)
+   1971  Market status pill (Overview + strategy detail pages)
+   1997  Key levels, today's brief (mock cards)
+   2023  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -693,6 +693,11 @@ a.shell-logo{color:inherit; text-decoration:none;}
      identity as the row's primary action. */
   .page-header-row{row-gap:10px;}
   .page-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
+  /* The instrument-picker wrapper, not just the button inside it, needs
+     to go full width here too - otherwise it stays content-sized and the
+     dropdown (right:0 within it) stays pinned to a narrow trigger instead
+     of spanning the same width the button visually fills. */
+  .log-trade-menu-wrap{width:100%;}
   .page-subtitle{margin-top:8px;}
   /* Title and the ⋮ menu button stay on one line (menu belongs next to the
      name it acts on); only the action button - which has nowhere left to go
@@ -1018,6 +1023,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .strategy-menu-item{padding:10px 14px; font-size:13px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
 .strategy-menu-item:hover{background:var(--panel-2);}
 .strategy-menu-item-danger{color:var(--loss);}
+/* LogTradeMenu.js's instrument-picker dropdown, on the all-instruments
+   Overview page - same shape as strategy-menu-dropdown, but right-
+   aligned under its trigger (which sits at the row's right edge via
+   .page-header-row's space-between) instead of left:0, so it opens
+   toward the page rather than off the right edge of the viewport. */
+.log-trade-menu-wrap{position:relative; flex-shrink:0;}
+.log-trade-dropdown{left:auto; right:0; min-width:120px;}
+.log-trade-dropdown .strategy-menu-item{text-decoration:none; display:block; font-family:'JetBrains Mono',monospace; font-weight:600;}
 .strategy-rename-form{display:flex; gap:8px; margin-top:2px; align-items:center; margin-bottom:20px;}
 .strategy-rename-form input{max-width:280px;}
 .unclassified-note{font-size:12.5px; color:var(--muted); margin-top:-14px; margin-bottom:20px;}

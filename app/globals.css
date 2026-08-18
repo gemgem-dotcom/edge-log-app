@@ -32,16 +32,16 @@
    1468  Active filter chips
    1517  Empty states, error banners, skeleton loaders
    1573  Cross-instrument overview dashboard (/app)
-   1720  Not found / error boundary state pages
-   1733  Toast notifications
-   1761  Public policy pages (Privacy, Terms)
-   1780  Legal links (auth pages + account settings)
-   1819  Economic calendar card (mock - Overview pages)
-   1926  Calendar news badge (Monthly P&L day cells, mock)
-   1947  Streak badge (Overview + strategy detail pages)
-   1964  Market status pill (Overview + strategy detail pages)
-   1990  Key levels, today's brief (mock cards)
-   2016  Market context cards (all-instruments Overview)
+   1723  Not found / error boundary state pages
+   1736  Toast notifications
+   1764  Public policy pages (Privacy, Terms)
+   1783  Legal links (auth pages + account settings)
+   1822  Economic calendar card (mock - Overview pages)
+   1929  Calendar news badge (Monthly P&L day cells, mock)
+   1950  Streak badge (Overview + strategy detail pages)
+   1967  Market status pill (Overview + strategy detail pages)
+   1993  Key levels, today's brief (mock cards)
+   2019  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1629,23 +1629,38 @@ label:has(.field-tooltip){display:flex; align-items:center;}
   .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
 }
 
-/* P&L by instrument sits inline with the All-Time Performance toolbar's
-   own instrument filter (.calendar-toolbar's flex row) rather than on
-   its own line below it - the label's default margin-bottom (sized for
-   sitting above its own block of content) would misalign it against
-   the select beside it, so that's zeroed here. */
-.perf-pnl-inline{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
-.perf-pnl-inline .stat-label{margin-bottom:0;}
+/* FlippingStatChips - sits inline with the toolbar's own filter select
+   (.calendar-toolbar's flex row), left-aligned right after it rather than
+   pushed to the row's far edge - see the :has() override on
+   .calendar-toolbar below. perspective on the wrap, not the face itself,
+   is what gives the face's rotateX a vanishing point instead of looking
+   like a flat vertical squash. flex-wrap on the face (not just the chip
+   strip inside it) lets the label drop above the chips on narrow screens
+   without the rotation clipping it. 450ms, not left as an inline style -
+   FlippingStatChips.js's instant-reset trick toggles transition-duration
+   directly, which needs a real value to reset back *to*; leaving it
+   inline would mean overwriting the same property React thinks it still
+   owns, and React skips reapplying an unchanged inline style on re-render. */
+.flip-cube-wrap{perspective:900px;}
+.flip-cube-face{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  backface-visibility:hidden; transform:rotateX(0deg);
+  transition:transform 450ms cubic-bezier(.45,0,.55,1);
+}
+.flip-cube-face .stat-label{margin-bottom:0;}
+/* All-Time Performance / per-instrument Overview toolbars: the filter
+   select and FlippingStatChips sit left-aligned as one group (with the
+   row's own gap providing the space between them) instead of
+   .calendar-toolbar's usual space-between, which the Monthly P&L
+   toolbar elsewhere still wants (select on the left, month nav pinned
+   to the right). */
+.calendar-toolbar:has(.flip-cube-wrap){justify-content:flex-start;}
 
 /* P&L by instrument: a horizontal strip of compact chips rather than a
    full-height list - it only needs a symbol, a dot and a dollar figure
    per instrument, not a whole column's worth of vertical space. */
 .pnl-rank-strip{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px; margin-bottom:4px;}
 .pnl-rank-chip{display:flex; align-items:center; gap:7px; font-size:12.5px;}
-/* The chips for every instrument other than the one the card's own
-   filter is scoped to - dimmed rather than removed, so their totals stay
-   visible for comparison against the active instrument. */
-.pnl-rank-chip-dim{opacity:.45;}
 .pnl-rank-symbol{font-weight:600;}
 .pnl-rank-value{font-family:'JetBrains Mono',monospace;}
 

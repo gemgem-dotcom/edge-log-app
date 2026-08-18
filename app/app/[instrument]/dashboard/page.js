@@ -15,7 +15,7 @@ import InstrumentMenu from '@/components/InstrumentMenu'
 import WinRateGauge from '@/components/WinRateGauge'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import EquityCurveChart from '@/components/EquityCurveChart'
-import PnlByInstrumentList from '@/components/PnlByInstrumentList'
+import FlippingStatChips from '@/components/FlippingStatChips'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
@@ -331,6 +331,62 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
     const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
     return { id: s.id, label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
   })
+
+  // Full per-strategy stats (from every trade, independent of perfStrategy -
+  // same reasoning as strategySegments above) - feeds the 4 other faces
+  // FlippingStatChips cycles through beside P&L.
+  const perStrategyStats = strategies.map((s, i) => ({
+    id: s.id,
+    label: s.name,
+    color: strategyColor(i),
+    stats: computeStats(tradesByStrategy[s.id] || []),
+  }))
+
+  const flipViews = [
+    {
+      label: 'P&L by strategy',
+      segments: strategySegments
+        .slice()
+        .sort((a, b) => b.value - a.value)
+        .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
+    },
+    {
+      label: 'Expectancy by strategy',
+      segments: perStrategyStats
+        .slice()
+        .sort((a, b) => (b.stats.expectancyD ?? b.stats.expectancy ?? -Infinity) - (a.stats.expectancyD ?? a.stats.expectancy ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.expectancyD !== null ? `${fmtD(stats.expectancyD)} (${fmtR(stats.expectancy)})` : fmtR(stats.expectancy),
+          tone: colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy),
+        })),
+    },
+    {
+      label: 'Win rate by strategy',
+      segments: perStrategyStats
+        .slice()
+        .sort((a, b) => (b.stats.winRate ?? -Infinity) - (a.stats.winRate ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%',
+          tone: stats.winRate !== null && stats.winRate < 50 ? 'neg' : 'neu',
+        })),
+    },
+    {
+      label: 'Profit factor by strategy',
+      segments: perStrategyStats
+        .slice()
+        .sort((a, b) => (b.stats.profitFactor ?? -Infinity) - (a.stats.profitFactor ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: fmtPF(stats.profitFactor), tone: 'neu' })),
+    },
+    {
+      label: 'Total trades by strategy',
+      segments: perStrategyStats
+        .slice()
+        .sort((a, b) => b.stats.n - a.stats.n)
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: stats.n.toLocaleString('en-US'), tone: 'neu' })),
+    },
+  ]
   const streak = computeStreak(allTrades)
   const keyLevels = mockKeyLevels(symbol)
   const now = new Date()
@@ -410,10 +466,7 @@ return (
       <option key={s.id} value={s.id}>{s.name}</option>
     ))}
   </select>
-  <div className="perf-pnl-inline">
-    <span className="stat-label">P&amp;L by strategy</span>
-    <PnlByInstrumentList segments={strategySegments} activeId={perfStrategy === 'all' ? null : perfStrategy} />
-  </div>
+  <FlippingStatChips views={flipViews} />
   </div>
 
   <div className="stats stats-5">

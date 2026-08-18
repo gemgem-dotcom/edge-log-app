@@ -9,7 +9,7 @@ import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
 import { daysToRollover, nextRolloverDate } from '@/lib/contractRollover'
 import EquityCurveChart from '@/components/EquityCurveChart'
-import PnlByInstrumentList from '@/components/PnlByInstrumentList'
+import FlippingStatChips from '@/components/FlippingStatChips'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import WinRateGauge from '@/components/WinRateGauge'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
@@ -285,6 +285,62 @@ export default function OverviewDashboard({ instruments, strategies }) {
     return { id: inst.id, label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
   })
 
+  // Full per-instrument stats (independent of allTrades filtering by
+  // perfInstrument, same reasoning as instrumentSegments above) - feeds
+  // the 4 other faces FlippingStatChips cycles through beside P&L.
+  const perInstrumentStats = instruments.map((inst, i) => ({
+    id: inst.id,
+    label: inst.symbol,
+    color: strategyColor(i),
+    stats: computeOverallStats(allTrades.filter((t) => t.instrument_id === inst.id)),
+  }))
+
+  const flipViews = [
+    {
+      label: 'P&L by instrument',
+      segments: instrumentSegments
+        .slice()
+        .sort((a, b) => b.value - a.value)
+        .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
+    },
+    {
+      label: 'Expectancy by instrument',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => (b.stats.expectancyD ?? b.stats.expectancy ?? -Infinity) - (a.stats.expectancyD ?? a.stats.expectancy ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.expectancyD !== null ? `${fmtD(stats.expectancyD)} (${fmtR(stats.expectancy)})` : fmtR(stats.expectancy),
+          tone: colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy),
+        })),
+    },
+    {
+      label: 'Win rate by instrument',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => (b.stats.winRate ?? -Infinity) - (a.stats.winRate ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%',
+          tone: stats.winRate !== null && stats.winRate < 50 ? 'neg' : 'neu',
+        })),
+    },
+    {
+      label: 'Profit factor by instrument',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => (b.stats.profitFactor ?? -Infinity) - (a.stats.profitFactor ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: fmtPF(stats.profitFactor), tone: 'neu' })),
+    },
+    {
+      label: 'Total trades by instrument',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => b.stats.n - a.stats.n)
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: stats.n.toLocaleString('en-US'), tone: 'neu' })),
+    },
+  ]
+
   const recentTrades = allTrades
     .filter(hasResult)
     .slice()
@@ -439,10 +495,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
                   <option key={inst.id} value={inst.id}>{inst.symbol}</option>
                 ))}
               </select>
-              <div className="perf-pnl-inline">
-                <span className="stat-label">P&amp;L by instrument</span>
-                <PnlByInstrumentList segments={instrumentSegments} activeId={perfInstrument === 'all' ? null : perfInstrument} />
-              </div>
+              <FlippingStatChips views={flipViews} />
             </div>
 
             <div className="stats stats-5">

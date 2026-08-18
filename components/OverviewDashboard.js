@@ -448,6 +448,13 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
             <div className="performance-card-subgrid">
               <div>
+                <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
+                <PnlByInstrumentList segments={instrumentSegments} />
+
+                <div className="stat-label dashboard-card-title performance-card-subheading">Avg P&amp;L by day of week</div>
+                <AvgPnlByWeekdayChart rows={weekdayRows} />
+              </div>
+              <div>
                 <div className="stat-label dashboard-card-title">Equity curve</div>
                 <div className="tabs">
                   {EQUITY_GROUPS.map((g) => (
@@ -467,13 +474,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
                     <span>{equityPoints[equityPoints.length - 1].key}</span>
                   </div>
                 )}
-              </div>
-              <div>
-                <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
-                <PnlByInstrumentList segments={instrumentSegments} />
-
-                <div className="stat-label dashboard-card-title performance-card-subheading">Avg P&amp;L by day of week</div>
-                <AvgPnlByWeekdayChart rows={weekdayRows} />
               </div>
             </div>
           </div>

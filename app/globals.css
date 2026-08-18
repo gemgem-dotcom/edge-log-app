@@ -37,11 +37,11 @@
    1746  Public policy pages (Privacy, Terms)
    1765  Legal links (auth pages + account settings)
    1804  Economic calendar card (mock - Overview pages)
-   1912  Calendar news badge (Monthly P&L day cells, mock)
-   1933  Streak badge (Overview + strategy detail pages)
-   1950  Market status pill (Overview + strategy detail pages)
-   1976  Key levels, today's brief (mock cards)
-   2002  Market context cards (all-instruments Overview)
+   1911  Calendar news badge (Monthly P&L day cells, mock)
+   1932  Streak badge (Overview + strategy detail pages)
+   1949  Market status pill (Overview + strategy detail pages)
+   1975  Key levels, today's brief (mock cards)
+   2001  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1629,7 +1629,7 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    week) from the P&L-by-instrument strip above it - dashboard-card-title
    only carries a bottom margin, sized for sitting right under a panel's
    own top edge, not for following another sub-section. */
-.performance-card-subheading{margin-top:20px;}
+.performance-card-subheading{margin-top:40px;}
 
 /* P&L by instrument: a horizontal strip of compact chips rather than a
    full-height list - it only needs a symbol, a dot and a dollar figure
@@ -1880,19 +1880,18 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .econ-calendar-mock-list::-webkit-scrollbar-track{background:transparent;}
 .econ-calendar-mock-list::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
 .econ-calendar-mock-list::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
+/* Left/right padding, not just top/bottom - every row carries this, not
+   only the highlighted one below, so every impact dot lines up at the same
+   x-position regardless of which row (if any) is highlighted. */
 .econ-calendar-mock-row{
-  display:flex; align-items:center; gap:12px; padding:10px 0;
+  display:flex; align-items:center; gap:12px; padding:10px;
   border-bottom:1px solid var(--line); font-size:13px;
 }
 .econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
 /* Only applied when the visible range is more than a single day (see
    isSingleDay in EconomicCalendarCard) - viewing just today alone has
-   nothing to contrast it against, so the highlight would be meaningless.
-   Padding only, no negative margin - the row's own box (and so the
-   highlight painted into it) never extends past where an ordinary row's
-   box already sits, it just insets the impact dot from the highlight's
-   own rounded edge instead of leaving it flush against a straight one. */
-.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:8px; padding-left:10px; padding-right:10px;}
+   nothing to contrast it against, so the highlight would be meaningless. */
+.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:8px;}
 .econ-calendar-mock-day{
   font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
   width:46px; flex-shrink:0;

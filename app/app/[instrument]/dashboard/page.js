@@ -341,19 +341,6 @@ return (
   <>
 <div className="section-heading">Overview</div>
   <div className="panel">
-  <div className="calendar-toolbar">
-  <select
-    className="calendar-strategy-filter"
-    value={perfStrategy}
-    onChange={(e) => setPerfStrategy(e.target.value)}
-  >
-    <option value="all">All strategies</option>
-    {strategies.map((s) => (
-      <option key={s.id} value={s.id}>{s.name}</option>
-    ))}
-  </select>
-  </div>
-
 {strategies.length === 0 ? (
   <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
 ) : (
@@ -389,6 +376,21 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
 </tbody>
   </table>
 )}
+  </div>
+
+  <div className="panel">
+  <div className="calendar-toolbar">
+  <select
+    className="calendar-strategy-filter"
+    value={perfStrategy}
+    onChange={(e) => setPerfStrategy(e.target.value)}
+  >
+    <option value="all">All strategies</option>
+    {strategies.map((s) => (
+      <option key={s.id} value={s.id}>{s.name}</option>
+    ))}
+  </select>
+  </div>
 
   <div className="performance-card-subgrid">
   <div>

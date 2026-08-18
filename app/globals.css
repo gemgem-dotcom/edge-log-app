@@ -19,29 +19,29 @@
    772  Expandable trade rows
    789  Calendar
    837  Account settings page
-   1018  Light theme
-   1045  2FA
-   1060  Account fine print
-   1063  Screenshot preview (log new trade)
-   1080  Auth pages always dark
-   1108  Monthly P&L (calendar on Overview)
-   1184  Trade form: sections, validation, currency, screenshots
-   1265  Field tooltips
-   1321  Date/time picker (adds an optional popup to a typed input)
-   1430  In-header column filters (trade log table)
-   1464  Active filter chips
-   1513  Empty states, error banners, skeleton loaders
-   1569  Cross-instrument overview dashboard (/app)
-   1705  Not found / error boundary state pages
-   1718  Toast notifications
-   1746  Public policy pages (Privacy, Terms)
-   1765  Legal links (auth pages + account settings)
-   1804  Economic calendar card (mock - Overview pages)
-   1911  Calendar news badge (Monthly P&L day cells, mock)
-   1932  Streak badge (Overview + strategy detail pages)
-   1949  Market status pill (Overview + strategy detail pages)
-   1975  Key levels, today's brief (mock cards)
-   2001  Market context cards (all-instruments Overview)
+   1022  Light theme
+   1049  2FA
+   1064  Account fine print
+   1067  Screenshot preview (log new trade)
+   1084  Auth pages always dark
+   1112  Monthly P&L (calendar on Overview)
+   1188  Trade form: sections, validation, currency, screenshots
+   1269  Field tooltips
+   1325  Date/time picker (adds an optional popup to a typed input)
+   1434  In-header column filters (trade log table)
+   1468  Active filter chips
+   1517  Empty states, error banners, skeleton loaders
+   1573  Cross-instrument overview dashboard (/app)
+   1709  Not found / error boundary state pages
+   1722  Toast notifications
+   1750  Public policy pages (Privacy, Terms)
+   1769  Legal links (auth pages + account settings)
+   1808  Economic calendar card (mock - Overview pages)
+   1915  Calendar news badge (Monthly P&L day cells, mock)
+   1936  Streak badge (Overview + strategy detail pages)
+   1953  Market status pill (Overview + strategy detail pages)
+   1979  Key levels, today's brief (mock cards)
+   2005  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -987,6 +987,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .unclassified-tag{color:var(--loss); font-weight:600;}
 
+/* Despite the name, this row + menu pair is shared by every page with a
+   title + kebab menu + action button, not just the strategy detail page -
+   InstrumentMenu.js reuses it verbatim on the three per-instrument pages
+   (Overview, Trade Log, Strategies) rather than duplicating the CSS. */
 .strategy-header-row{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
 /* h1 carries a global margin-top:4px, which the flex row centres along with
    the text and leaves the menu button sitting high next to the name. */

@@ -31,6 +31,7 @@ export default function NewTradePage({ params }) {
         .select('*')
         .eq('user_id', user.id)
         .eq('symbol', symbol)
+        .eq('archived', false)
         .single()
       if (!instrument) return
       setInstrumentId(instrument.id)

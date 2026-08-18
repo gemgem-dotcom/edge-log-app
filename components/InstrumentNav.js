@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
+import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
+import { addOrRestoreInstrument } from '@/lib/instruments'
 import { useClickOutside } from '@/lib/useClickOutside'
 
 const DROPDOWN_WIDTH = 220
@@ -76,13 +77,7 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
     if (!newSymbol) return
     setAddError(null)
     const { data: { user } } = await supabase.auth.getUser()
-    const catalogEntry = catalogEntryFor(newSymbol)
-    const { error } = await supabase.from('instruments').insert([{
-      user_id: user.id,
-      symbol: newSymbol,
-      data_symbol: catalogEntry?.data_symbol || newSymbol,
-      display_name: catalogEntry?.display_name || null,
-    }])
+    const { error } = await addOrRestoreInstrument(user.id, newSymbol)
     if (!error) {
       const addedSymbol = newSymbol
       setNewSymbol('')

@@ -74,6 +74,7 @@ export default function InstrumentLayout({ children, params }) {
           .from('instruments')
           .select('*')
           .eq('user_id', user.id)
+          .eq('archived', false)
           .order('created_at', { ascending: true })
         setInstruments(instrumentData || [])
 

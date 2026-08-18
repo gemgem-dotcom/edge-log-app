@@ -11,6 +11,7 @@ import { computeStreak } from '@/lib/streak'
 import { mockKeyLevels, nextEconEvent } from '@/lib/marketContextMock'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
+import InstrumentMenu from '@/components/InstrumentMenu'
 import WinRateGauge from '@/components/WinRateGauge'
 import PnlDonut from '@/components/PnlDonut'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
@@ -196,6 +197,7 @@ export default function DashboardPage({ params }) {
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
   const [tradesByStrategy, setTradesByStrategy] = useState({})
   const [allTrades, setAllTrades] = useState([])
@@ -213,8 +215,9 @@ async function loadData() {
   try {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: instrument } = await supabase
-    .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).single()
+    .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).eq('archived', false).single()
     if (!instrument) { setLoading(false); return }
+    setInstrumentId(instrument.id)
 
     const { data: stratData, error: stratError } = await supabase
     .from('strategies').select('*').eq('instrument_id', instrument.id).eq('archived', false)
@@ -284,8 +287,9 @@ const year = calCursor.year
 
 return (
   <div className="page-container">
-  <div className="page-header-row">
+  <div className="strategy-header-row">
     <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
+    {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
   <p className="page-subtitle page-subtitle-tight">Your performance overview for {displayName} futures.</p>

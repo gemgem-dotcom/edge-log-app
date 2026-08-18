@@ -45,6 +45,7 @@ lib/
   strategyColor.js                 strategy colour assignment
   validatePassword.js              signup password rules
   instrumentCatalog.js             fixed instrument list + data_symbol mapping (mini/micro → shared symbol)
+  instruments.js                   addOrRestoreInstrument() - add/re-add an instrument, see below
   tradeMath.js                     stop/target distance → price, R-multiple and R:R calc
   tradeForm.js                     trade-form validation + currency parse/format
   screenshots.js                   screenshot upload, throws so callers word their own errors
@@ -121,6 +122,21 @@ closure back to the prior actual trading day before returning it (early closes a
 alone - the exchange is still open then). This runs automatically at read time against
 whatever `cmeHolidays.json` currently holds, so it stays correct as that file gets
 refreshed - no extra step needed when the yearly workflow above updates it.
+
+## Removing an instrument
+
+The kebab menu next to the title on each per-instrument page (Overview, Trade Log,
+Strategies - `components/InstrumentMenu.js`) can "remove" an instrument. It's a soft
+hide, not a delete: `instruments.archived` flips to `true`, and every `instruments`
+query across the app filters on it, so the instrument and everything under it
+(trades, strategies, stats) disappears everywhere - the sidebar switcher, the
+all-instruments Overview, the all-trades log, direct links to its own pages - without
+touching a single trade or strategy row. `unique(user_id, symbol)` means there's only
+ever one row per symbol per user regardless of archived state, so re-adding the same
+symbol from "+ Add instrument" (`lib/instruments.js`'s `addOrRestoreInstrument()`,
+shared by that button and onboarding) un-archives the same row instead of inserting a
+fresh one - the trades and strategies still point at that same `instrument_id`, so
+they come back exactly as they were, not re-created.
 `lib/contractRollover.json`'s per-underlying rollover dates are still hand-maintained,
 though - extend or regenerate it once the last listed date per symbol gets close.
 

@@ -28,7 +28,7 @@ export default function AllTradesPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: instrumentData, error: instError } = await supabase
-        .from('instruments').select('*').eq('user_id', user.id).order('created_at', { ascending: true })
+        .from('instruments').select('*').eq('user_id', user.id).eq('archived', false).order('created_at', { ascending: true })
       if (instError) throw instError
       const ids = (instrumentData || []).map((i) => i.id)
 

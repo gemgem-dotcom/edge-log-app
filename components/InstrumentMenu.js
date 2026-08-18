@@ -26,7 +26,7 @@ export default function InstrumentMenu({ instrumentId, symbol }) {
     setMenuOpen(false)
     const sure = await confirm({
       title: 'Remove instrument',
-      message: `This hides ${symbol} and everything under it — trades, strategies, stats — everywhere in EdgeLog, as if it were deleted. Nothing is actually deleted: add ${symbol} back later from "+ Add instrument" and it all reappears exactly as it was.`,
+      message: `This hides ${symbol} and archives all its strategies, trades, and stats. Nothing is deleted. Adding ${symbol} back later from "+ Add Instrument" will restore ${symbol} and all its related data.`,
       confirmLabel: 'Remove instrument',
       danger: true,
     })

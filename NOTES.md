@@ -93,10 +93,15 @@ It also doesn't need a human to re-run it: `.github/workflows/refresh-cme-holida
 runs the script on a yearly schedule (Jan 2nd, plus manual `workflow_dispatch`), and
 if the calendar actually changed, builds the app against the regenerated data (the
 same `npm run build` the Build check runs) and only opens + merges a PR if that
-passes - no review step, by design. See the comment at the top of that workflow file
-for the one-time-setup caveat around `CME_HOLIDAY_REFRESH_TOKEN` (pushes made with
-the default `GITHUB_TOKEN` don't retrigger `ci.yml`'s Build check, which matters if
-main's branch protection ever requires that specific check to merge).
+passes - no review step, by design. A live test (2026-08-18) confirmed this needs a
+one-time repo setting first: the default `GITHUB_TOKEN` can't open the PR as-is
+(`GitHub Actions is not permitted to create or approve pull requests`) until
+**Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to
+create and approve pull requests"** is checked, or a `CME_HOLIDAY_REFRESH_TOKEN`
+repo secret (a PAT) is added instead - see the comment at the top of that workflow
+file for the tradeoff between the two, plus a second, separate caveat that matters
+only if main's branch protection ever requires `ci.yml`'s own Build check status
+specifically before merging.
 
 Nothing in the app reads this file yet - it's not wired into trading-session logic
 or any UI card. That integration (plus a holiday-adjustment step for contract

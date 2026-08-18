@@ -68,7 +68,7 @@ function computeMonthStats(allTrades) {
   const trades = allTrades.filter(hasResult)
   const n = trades.length
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
-  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
+  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -84,6 +84,10 @@ const totalR = trades.reduce((s, t) => s + t.r_multiple, 0)
   const avgLossR = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
   const expectancyR = wr * avgWinR + (1 - wr) * avgLossR
 
+  const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
+
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
@@ -93,7 +97,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
+return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {
@@ -454,7 +458,7 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
   </div>
   </div>
 
-<div className="stats">
+<div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Monthly P&L</div>
 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalR)}`}>
@@ -465,10 +469,14 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
 )}
 </div>
 <div className="stat">
-  <div className="stat-label">Total trades</div>
-<div className="stat-value neu">{monthStats.n}</div>
-<div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
-  </div>
+  <div className="stat-label">Expectancy</div>
+<div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancyR)}`}>
+{monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancyR)}
+</div>
+{monthStats.expectancyD !== null && (
+  <div className={`stat-subvalue ${colorClass(monthStats.expectancyR)}`}>{fmtR(monthStats.expectancyR)}</div>
+)}
+</div>
 <div className="stat stat-gauge">
   <div className="stat-label">Win rate</div>
 <WinRateGauge
@@ -478,14 +486,14 @@ winRate={monthStats.winRate}
 />
   </div>
 <div className="stat">
-  <div className="stat-label">Expectancy</div>
-<div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancyR)}`}>
-{monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancyR)}
-</div>
-{monthStats.expectancyD !== null && (
-  <div className={`stat-subvalue ${colorClass(monthStats.expectancyR)}`}>{fmtR(monthStats.expectancyR)}</div>
-)}
-</div>
+  <div className="stat-label">Profit factor</div>
+<div className="stat-value neu">{fmtPF(monthStats.profitFactor)}</div>
+  </div>
+<div className="stat">
+  <div className="stat-label">Total trades</div>
+<div className="stat-value neu">{monthStats.n}</div>
+<div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
+  </div>
   </div>
 
 <div className="calendar-scroll">

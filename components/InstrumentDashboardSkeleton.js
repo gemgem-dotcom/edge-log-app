@@ -95,13 +95,17 @@ export default function InstrumentDashboardSkeleton() {
       <div className="section-heading">Monthly P&L</div>
       <div className="panel">
         <div className="skel skel-line" style={{ width: '160px', height: '32px', marginBottom: '18px' }} />
-        <div className="stats">
+        <div className="stats stats-5">
           {Array.from({ length: 4 }).map((_, i) => (
             <div className="stat" key={i}>
               <div className="skel skel-line" style={{ width: '60%' }} />
               <div className="skel skel-value" />
             </div>
           ))}
+          <div className="stat stat-gauge">
+            <div className="skel skel-line" style={{ width: '55%' }} />
+            <div className="skel skel-circle" style={{ width: '110px', height: '110px', margin: '10px auto 0' }} />
+          </div>
         </div>
         <div className="skel-calendar-grid">
           {Array.from({ length: 35 }).map((_, i) => (

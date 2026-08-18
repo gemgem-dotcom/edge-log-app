@@ -508,7 +508,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </div>
             </div>
 
-            <div className="stats">
+            <div className="stats stats-5">
               <div className="stat">
                 <div className="stat-label">Monthly P&L</div>
                 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalPnl)}`}>
@@ -519,15 +519,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
                 )}
               </div>
               <div className="stat">
-                <div className="stat-label">Total trades</div>
-                <div className="stat-value neu">{monthStats.n}</div>
-                <div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
-              </div>
-              <div className="stat stat-gauge">
-                <div className="stat-label">Win rate</div>
-                <WinRateGauge wins={monthStats.wins} losses={monthStats.losses} winRate={monthStats.winRate} />
-              </div>
-              <div className="stat">
                 <div className="stat-label">Expectancy</div>
                 <div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancy)}`}>
                   {monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancy)}
@@ -535,6 +526,19 @@ export default function OverviewDashboard({ instruments, strategies }) {
                 {monthStats.expectancyD !== null && (
                   <div className={`stat-subvalue ${colorClass(monthStats.expectancy)}`}>{fmtR(monthStats.expectancy)}</div>
                 )}
+              </div>
+              <div className="stat stat-gauge">
+                <div className="stat-label">Win rate</div>
+                <WinRateGauge wins={monthStats.wins} losses={monthStats.losses} winRate={monthStats.winRate} />
+              </div>
+              <div className="stat">
+                <div className="stat-label">Profit factor</div>
+                <div className="stat-value neu">{fmtPF(monthStats.profitFactor)}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-label">Total trades</div>
+                <div className="stat-value neu">{monthStats.n}</div>
+                <div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
               </div>
             </div>
 

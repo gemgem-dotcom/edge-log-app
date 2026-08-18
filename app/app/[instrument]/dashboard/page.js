@@ -13,7 +13,6 @@ import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
 import InstrumentMenu from '@/components/InstrumentMenu'
 import WinRateGauge from '@/components/WinRateGauge'
-import PnlDonut from '@/components/PnlDonut'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
@@ -255,10 +254,6 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const upcomingEvent = nextEconEvent(now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
-  const strategySegments = strategies.map((s, i) => {
-    const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
-    return { label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
-  })
 
 const calTrades = calStrategy === 'all' ? allTrades : allTrades.filter((t) => t.strategy_id === calStrategy)
   const tradesByDate = {}
@@ -288,7 +283,7 @@ const year = calCursor.year
 return (
   <div className="page-container">
   <div className="strategy-header-row">
-    <h1 className="page-title">{displayName} futures</h1>
+    <h1 className="page-title">{displayName} Futures</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
@@ -353,8 +348,41 @@ return (
   </div>
   <div>
   <div className="panel">
-  <div className="stat-label dashboard-card-title">Cumulative P&amp;L by strategy</div>
-  <PnlDonut segments={strategySegments} netSignOnly />
+{strategies.length === 0 ? (
+  <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
+) : (
+  <table className="perf-table">
+  <thead>
+  <tr>
+  <th>Strategy</th><th>Trades</th><th>Win rate</th>
+  <th>Expectancy</th><th>Profit factor</th>
+  </tr>
+  </thead>
+<tbody>
+{strategies.map((s, i) => {
+  const stats = computeStats(tradesByStrategy[s.id] || [])
+  return (
+    <tr
+  key={s.id}
+                className="clickable-row"
+onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
+>
+  <td className="strategy-name-cell">
+  <span className="strategy-dot" style={{ background: strategyColor(i) }} />
+{s.name}
+</td>
+<td>{stats.n.toLocaleString('en-US')}</td>
+<td className={stats.winRate !== null && stats.winRate < 50 ? 'neg' : ''}>
+{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
+</td>
+<td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
+<td>{fmtPF(stats.profitFactor)}</td>
+  </tr>
+)
+})}
+</tbody>
+  </table>
+)}
   </div>
   </div>
   </div>
@@ -401,45 +429,6 @@ return (
     <div className="stat-value neu">{upcomingEvent ? fmtCountdown(upcomingEvent.timestamp - now) : '—'}</div>
     {upcomingEvent && <div className="stat-subvalue neu">{upcomingEvent.event}</div>}
   </div>
-</div>
-
-<div className="section-heading">Strategy performance</div>
-<div className="panel">
-{strategies.length === 0 ? (
-  <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
-) : (
-  <table className="perf-table">
-  <thead>
-  <tr>
-  <th>Strategy</th><th>Trades</th><th>Win rate</th>
-  <th>Expectancy</th><th>Profit factor</th>
-  </tr>
-  </thead>
-<tbody>
-{strategies.map((s, i) => {
-  const stats = computeStats(tradesByStrategy[s.id] || [])
-  return (
-    <tr
-  key={s.id}
-                className="clickable-row"
-onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
->
-  <td className="strategy-name-cell">
-  <span className="strategy-dot" style={{ background: strategyColor(i) }} />
-{s.name}
-</td>
-<td>{stats.n.toLocaleString('en-US')}</td>
-<td className={stats.winRate !== null && stats.winRate < 50 ? 'neg' : ''}>
-{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
-</td>
-<td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
-<td>{fmtPF(stats.profitFactor)}</td>
-  </tr>
-)
-})}
-</tbody>
-  </table>
-)}
 </div>
 
 <div className="section-heading">Monthly P&L</div>

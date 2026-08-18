@@ -32,16 +32,16 @@
    1485  Active filter chips
    1534  Empty states, error banners, skeleton loaders
    1590  Cross-instrument overview dashboard (/app)
-   1726  Not found / error boundary state pages
-   1739  Toast notifications
-   1767  Public policy pages (Privacy, Terms)
-   1786  Legal links (auth pages + account settings)
-   1825  Economic calendar card (mock - Overview pages)
-   1932  Calendar news badge (Monthly P&L day cells, mock)
-   1953  Streak badge (Overview + strategy detail pages)
-   1970  Market status pill (Overview + strategy detail pages)
-   1996  Key levels, today's brief (mock cards)
-   2022  Market context cards (all-instruments Overview)
+   1731  Not found / error boundary state pages
+   1744  Toast notifications
+   1772  Public policy pages (Privacy, Terms)
+   1791  Legal links (auth pages + account settings)
+   1830  Economic calendar card (mock - Overview pages)
+   1937  Calendar news badge (Monthly P&L day cells, mock)
+   1958  Streak badge (Overview + strategy detail pages)
+   1975  Market status pill (Overview + strategy detail pages)
+   2001  Key levels, today's brief (mock cards)
+   2027  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1595,7 +1595,12 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    between its two cards instead of whatever the panels' own
    margin-bottom happens to add up to - see the .panel override below. */
 .dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:15px; align-items:stretch; margin-bottom:15px;}
-.dashboard-split > div{display:flex; flex-direction:column;}
+/* min-width:0 - a grid track defaults to fitting its item's intrinsic
+   min-content width, so the strategy performance table's min-width:480px
+   (see .perf-table below) would otherwise force this column wider than
+   the row itself instead of letting the panel's own overflow-x:auto
+   scroll it. */
+.dashboard-split > div{display:flex; flex-direction:column; min-width:0;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
    both cards to the row's height so the shorter one isn't visibly shorter.
    flex-start (not center) so each card's title stays flush with the top

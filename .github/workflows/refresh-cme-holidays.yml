@@ -1,0 +1,106 @@
+# Refresh CME holiday calendar
+#
+# Regenerates lib/cmeHolidays.json from pandas_market_calendars once a year
+# and merges the update with no human step - see NOTES.md's "CME holiday
+# calendar" section for the full picture. Safe to run unattended because:
+#   - the underlying schedule is published by CME a year in advance and
+#     essentially never changes after the fact
+#   - this workflow builds the app against the regenerated data itself
+#     (the same command .github/workflows/ci.yml's Build check runs) and
+#     only proceeds to merge if that build succeeds
+#   - every run still lands as a normal merged pull request, not a bare
+#     push to main, so there's a clean commit + PR history to look back at
+#
+# One-time setup note: pushes/PRs made with the default GITHUB_TOKEN don't
+# retrigger other workflows (GitHub's own recursion guard), so ci.yml's
+# Build check won't show up as a status on these PRs, and if main's branch
+# protection ever requires that specific check before merging, this
+# workflow's own merge step will fail. If that happens, add a repo secret
+# named CME_HOLIDAY_REFRESH_TOKEN (a PAT with repo write access) - the step
+# below picks it up automatically and its pushes/PRs will trigger ci.yml
+# normally. Until then this just uses the default token.
+
+name: Refresh CME holiday calendar
+
+on:
+  schedule:
+    # 06:00 UTC, Jan 2nd - a day after CME's own new-year calendar
+    # publication, well ahead of the script's END_YEAR (this year + 1)
+    # ever running short.
+    - cron: '0 6 2 1 *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CME_HOLIDAY_REFRESH_TOKEN || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pandas_market_calendars
+        run: pip install pandas pandas_market_calendars
+
+      - name: Regenerate lib/cmeHolidays.json
+        run: python3 scripts/generate_cme_holidays.py
+
+      # git status --porcelain, not git diff --quiet - the latter is blind
+      # to a brand new untracked file, which matters the very first time
+      # this workflow runs against a checkout that doesn't have
+      # lib/cmeHolidays.json yet.
+      - name: Check whether the calendar actually changed
+        id: diff
+        run: |
+          if [ -n "$(git status --porcelain -- lib/cmeHolidays.json)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.diff.outputs.changed == 'true'
+        run: npm install
+
+      # Same build ci.yml's Build check runs, with the same placeholder
+      # env vars - this is the gate that makes merging without a human
+      # here safe: a script bug or a library change that broke something
+      # fails right here and nothing gets pushed.
+      - name: Build with the regenerated calendar
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+        run: npm run build
+
+      - name: Open and merge the update
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CME_HOLIDAY_REFRESH_TOKEN || github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BRANCH="cme-holidays-$(date +%Y%m%d)"
+          git checkout -b "$BRANCH"
+          git add lib/cmeHolidays.json
+          git commit -m "Refresh CME holiday calendar"
+          git push -u origin "$BRANCH"
+          gh pr create --title "Refresh CME holiday calendar" \
+            --body "Automated run of scripts/generate_cme_holidays.py on schedule. \`npm run build\` passed against the regenerated data in this same workflow run before the PR was opened." \
+            --base main --head "$BRANCH"
+          gh pr merge "$BRANCH" --squash --delete-branch

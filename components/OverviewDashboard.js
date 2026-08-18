@@ -145,9 +145,10 @@ function buildEquityCurve(trades, group) {
 }
 
 // Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
-// Sun-Sat like CAL_HEADINGS. A day with no trades is omitted rather than
-// shown as a zero bar - zero would read as "traded and broke even" instead
-// of "never traded this day of the week."
+// Sun-Fri - Saturday is skipped entirely, since none of these instruments'
+// sessions land on it in any timezone. Every weekday is always included,
+// even with zero trades - AvgPnlByWeekdayChart renders those as a flat
+// $0 with no bar rather than omitting the row.
 function computeWeekdayPnl(trades) {
   const byDay = new Map()
   for (const t of trades) {
@@ -158,9 +159,10 @@ function computeWeekdayPnl(trades) {
     entry.count += 1
     byDay.set(day, entry)
   }
-  return [0, 1, 2, 3, 4, 5, 6]
-    .filter((day) => byDay.has(day))
-    .map((day) => ({ day, avg: byDay.get(day).sum / byDay.get(day).count, count: byDay.get(day).count }))
+  return [0, 1, 2, 3, 4, 5].map((day) => {
+    const entry = byDay.get(day)
+    return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
+  })
 }
 
 function buildCalendarWeeks(year, month, tradesByDate) {
@@ -409,69 +411,68 @@ export default function OverviewDashboard({ instruments, strategies }) {
           </div>
 
           <div className="section-heading">All-Time Performance</div>
-          <div className="stats stats-5">
-            <div className="stat">
-              <div className="stat-label">Total P&amp;L</div>
-              <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
-                {overall.hasD ? fmtD(overall.totalD) : fmtR(overall.totalPnl)}
-              </div>
-              {overall.hasD && (
-                <div className={`stat-subvalue ${colorClass(overall.totalPnl)}`}>{fmtR(overall.totalPnl)}</div>
-              )}
-            </div>
-            <div className="stat">
-              <div className="stat-label">Expectancy</div>
-              <div className={`stat-value ${colorClass(overall.expectancyD !== null ? overall.expectancyD : overall.expectancy)}`}>
-                {overall.expectancyD !== null ? fmtD(overall.expectancyD) : fmtR(overall.expectancy)}
-              </div>
-              {overall.expectancyD !== null && (
-                <div className={`stat-subvalue ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
-              )}
-            </div>
-            <div className="stat stat-gauge">
-              <div className="stat-label">Win rate</div>
-              <WinRateGauge wins={overall.wins} losses={overall.losses} winRate={overall.winRate} />
-            </div>
-            <div className="stat">
-              <div className="stat-label">Profit factor</div>
-              <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
-            </div>
-            <div className="stat">
-              <div className="stat-label">Total trades</div>
-              <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
-              <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
-            </div>
-          </div>
-
-          <div className="section-heading">Performance breakdown</div>
           <div className="panel">
-            <div className="stat-label dashboard-card-title">Equity curve</div>
-            <div className="tabs">
-              {EQUITY_GROUPS.map((g) => (
-                <div
-                  key={g.value}
-                  className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
-                  onClick={() => setEquityGroup(g.value)}
-                >
-                  {g.label}
+            <div className="stats stats-5">
+              <div className="stat">
+                <div className="stat-label">Total P&amp;L</div>
+                <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
+                  {overall.hasD ? fmtD(overall.totalD) : fmtR(overall.totalPnl)}
                 </div>
-              ))}
-            </div>
-            <EquityCurveChart points={equityPoints} />
-            {equityPoints.length > 0 && (
-              <div className="equity-chart-labels">
-                <span>{equityPoints[0].key}</span>
-                <span>{equityPoints[equityPoints.length - 1].key}</span>
+                {overall.hasD && (
+                  <div className={`stat-subvalue ${colorClass(overall.totalPnl)}`}>{fmtR(overall.totalPnl)}</div>
+                )}
               </div>
-            )}
+              <div className="stat">
+                <div className="stat-label">Expectancy</div>
+                <div className={`stat-value ${colorClass(overall.expectancyD !== null ? overall.expectancyD : overall.expectancy)}`}>
+                  {overall.expectancyD !== null ? fmtD(overall.expectancyD) : fmtR(overall.expectancy)}
+                </div>
+                {overall.expectancyD !== null && (
+                  <div className={`stat-subvalue ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
+                )}
+              </div>
+              <div className="stat stat-gauge">
+                <div className="stat-label">Win rate</div>
+                <WinRateGauge wins={overall.wins} losses={overall.losses} winRate={overall.winRate} />
+              </div>
+              <div className="stat">
+                <div className="stat-label">Profit factor</div>
+                <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-label">Total trades</div>
+                <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
+                <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
+              </div>
+            </div>
 
             <div className="performance-card-subgrid">
               <div>
-                <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
-                <PnlByInstrumentList segments={instrumentSegments} />
+                <div className="stat-label dashboard-card-title">Equity curve</div>
+                <div className="tabs">
+                  {EQUITY_GROUPS.map((g) => (
+                    <div
+                      key={g.value}
+                      className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
+                      onClick={() => setEquityGroup(g.value)}
+                    >
+                      {g.label}
+                    </div>
+                  ))}
+                </div>
+                <EquityCurveChart points={equityPoints} />
+                {equityPoints.length > 0 && (
+                  <div className="equity-chart-labels">
+                    <span>{equityPoints[0].key}</span>
+                    <span>{equityPoints[equityPoints.length - 1].key}</span>
+                  </div>
+                )}
               </div>
               <div>
-                <div className="stat-label dashboard-card-title">Avg P&amp;L by day of week</div>
+                <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
+                <PnlByInstrumentList segments={instrumentSegments} />
+
+                <div className="stat-label dashboard-card-title performance-card-subheading">Avg P&amp;L by day of week</div>
                 <AvgPnlByWeekdayChart rows={weekdayRows} />
               </div>
             </div>

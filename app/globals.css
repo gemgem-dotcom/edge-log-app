@@ -32,16 +32,16 @@
    1468  Active filter chips
    1517  Empty states, error banners, skeleton loaders
    1573  Cross-instrument overview dashboard (/app)
-   1713  Not found / error boundary state pages
-   1726  Toast notifications
-   1754  Public policy pages (Privacy, Terms)
-   1773  Legal links (auth pages + account settings)
-   1812  Economic calendar card (mock - Overview pages)
-   1919  Calendar news badge (Monthly P&L day cells, mock)
-   1940  Streak badge (Overview + strategy detail pages)
-   1957  Market status pill (Overview + strategy detail pages)
-   1983  Key levels, today's brief (mock cards)
-   2009  Market context cards (all-instruments Overview)
+   1720  Not found / error boundary state pages
+   1733  Toast notifications
+   1761  Public policy pages (Privacy, Terms)
+   1780  Legal links (auth pages + account settings)
+   1819  Economic calendar card (mock - Overview pages)
+   1926  Calendar news badge (Monthly P&L day cells, mock)
+   1947  Streak badge (Overview + strategy detail pages)
+   1964  Market status pill (Overview + strategy detail pages)
+   1990  Key levels, today's brief (mock cards)
+   2016  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1618,6 +1618,13 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    (see .performance-card-subgrid above) instead of leaving dead space
    under its own naturally shorter content. */
 .performance-card-subgrid > div{display:flex; flex-direction:column;}
+/* Matches the "no data" message's baseline to the equity curve's own
+   "no data" message beside it. The equity curve column always has a
+   Day/Week/Month .tabs row above its chart (30px tall + 16px
+   margin-bottom = 46px) that pushes its empty-state text down by that
+   much; the weekday side has no equivalent row, so without this its
+   empty state would sit 46px higher than its neighbor. */
+.performance-card-subgrid > div:first-child .empty{margin-top:46px;}
 @media (max-width:700px){
   .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
 }

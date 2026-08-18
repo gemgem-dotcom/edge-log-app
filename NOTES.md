@@ -102,16 +102,17 @@ source for CME-specific rules (not just a copy of NYSE's calendar). There's no l
 API for this; holiday schedules are published a year in advance and barely change,
 so it doesn't need a runtime network call.
 
-It also no longer needs a human to re-run it: `.github/workflows/refresh-cme-holidays.yml`
-runs the script on a yearly schedule (Jan 2nd), and if the calendar actually changed,
-builds the app against the regenerated data (the same `npm run build` the Build check
-runs) and only opens + merges a PR if that passes - no review step, by design. See
-the comment at the top of that workflow file for the one-time-setup caveat around
-`CME_HOLIDAY_REFRESH_TOKEN` (pushes made with the default `GITHUB_TOKEN` don't
-retrigger `ci.yml`'s Build check, which matters if main's branch protection ever
-requires that specific check to merge). `lib/contractRollover.json`'s per-underlying
-rollover dates are still hand-maintained, though - extend or regenerate it once the
-last listed date per symbol gets close.
+It also doesn't need a human to re-run it: `.github/workflows/refresh-cme-holidays.yml`
+runs the script on a yearly schedule (Jan 2nd, plus manual `workflow_dispatch`), and if
+the calendar actually changed, builds the app against the regenerated data (the same
+`npm run build` the Build check runs) and only opens + squash-merges a PR if that
+passes - no review step, by design. This has been proven end-to-end on a live run: the
+PR it opened was merged with zero human clicks. Getting there needed one-time setup -
+see the comment at the top of that workflow file for the full story - a
+`CME_HOLIDAY_REFRESH_TOKEN` repo secret (a PAT with Contents + Pull requests write
+access on this repo specifically) to get past a repo-wide "Actions can't create PRs"
+setting that's off by default, and a `github.run_id` suffix on the branch name to avoid
+same-day collisions with a leftover branch from an earlier run.
 
 Rollover dates are calendar rules ("3rd Friday of the month", etc.) that don't
 themselves know about holidays, so a listed date can land on one - `lib/contractRollover.js`'s
@@ -120,6 +121,8 @@ closure back to the prior actual trading day before returning it (early closes a
 alone - the exchange is still open then). This runs automatically at read time against
 whatever `cmeHolidays.json` currently holds, so it stays correct as that file gets
 refreshed - no extra step needed when the yearly workflow above updates it.
+`lib/contractRollover.json`'s per-underlying rollover dates are still hand-maintained,
+though - extend or regenerate it once the last listed date per symbol gets close.
 
 ## Database
 

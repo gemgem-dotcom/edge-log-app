@@ -11,14 +11,26 @@
 #   - every run still lands as a normal merged pull request, not a bare
 #     push to main, so there's a clean commit + PR history to look back at
 #
-# One-time setup note: pushes/PRs made with the default GITHUB_TOKEN don't
-# retrigger other workflows (GitHub's own recursion guard), so ci.yml's
-# Build check won't show up as a status on these PRs, and if main's branch
-# protection ever requires that specific check before merging, this
-# workflow's own merge step will fail. If that happens, add a repo secret
-# named CME_HOLIDAY_REFRESH_TOKEN (a PAT with repo write access) - the step
-# below picks it up automatically and its pushes/PRs will trigger ci.yml
-# normally. Until then this just uses the default token.
+# One-time setup required: a live test (2026-08-18, run #2) confirmed the
+# default GITHUB_TOKEN can't actually open the PR this workflow needs -
+# `gh pr create` failed with "GitHub Actions is not permitted to create or
+# approve pull requests (createPullRequest)". That's a separate repo-wide
+# setting from this file's own `permissions:` block, off by default:
+#   Settings -> Actions -> General -> Workflow permissions -> check
+#   "Allow GitHub Actions to create and approve pull requests" -> Save
+# Flip that on and this workflow works as-is. If you'd rather not grant
+# every workflow in the repo that ability, add a repo secret named
+# CME_HOLIDAY_REFRESH_TOKEN (a PAT with repo write access) instead - the
+# steps below already pick it up automatically, and using a real PAT
+# sidesteps this restriction (it only applies to the built-in token).
+#
+# Separately, and regardless of which fix above you use: pushes/PRs made
+# with the default GITHUB_TOKEN don't retrigger other workflows (GitHub's
+# own recursion guard), so ci.yml's Build check won't show up as a status
+# on these PRs. That's fine on its own (this workflow validates the build
+# itself before ever pushing), but if main's branch protection ever
+# requires that specific check to merge, only the PAT-secret route above
+# fixes it - flipping the Actions setting alone would not.
 
 name: Refresh CME holiday calendar
 
@@ -95,7 +107,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          BRANCH="cme-holidays-$(date +%Y%m%d)"
+          # run_id, not just the date - a day-only name collides (non-fast-
+          # forward push rejection) with a leftover branch from any earlier
+          # run that day, including a previous failed attempt whose branch
+          # never got merged/deleted. Confirmed live (2026-08-18, run #5).
+          BRANCH="cme-holidays-$(date +%Y%m%d)-${{ github.run_id }}"
           git checkout -b "$BRANCH"
           git add lib/cmeHolidays.json
           git commit -m "Refresh CME holiday calendar"

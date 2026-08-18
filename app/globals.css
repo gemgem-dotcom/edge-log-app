@@ -32,16 +32,16 @@
    1485  Active filter chips
    1534  Empty states, error banners, skeleton loaders
    1590  Cross-instrument overview dashboard (/app)
-   1730  Not found / error boundary state pages
-   1743  Toast notifications
-   1771  Public policy pages (Privacy, Terms)
-   1790  Legal links (auth pages + account settings)
-   1829  Economic calendar card (mock - Overview pages)
-   1936  Calendar news badge (Monthly P&L day cells, mock)
-   1957  Streak badge (Overview + strategy detail pages)
-   1974  Market status pill (Overview + strategy detail pages)
-   2000  Key levels, today's brief (mock cards)
-   2026  Market context cards (all-instruments Overview)
+   1752  Not found / error boundary state pages
+   1765  Toast notifications
+   1793  Public policy pages (Privacy, Terms)
+   1812  Legal links (auth pages + account settings)
+   1851  Economic calendar card (mock - Overview pages)
+   1958  Calendar news badge (Monthly P&L day cells, mock)
+   1979  Streak badge (Overview + strategy detail pages)
+   1996  Market status pill (Overview + strategy detail pages)
+   2022  Key levels, today's brief (mock cards)
+   2048  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1635,7 +1635,11 @@ label:has(.field-tooltip){display:flex; align-items:center;}
   .dashboard-split{grid-template-columns:1fr;}
 }
 .equity-chart-wrap{width:100%;}
-.equity-chart-svg{display:block; width:100%; height:180px;}
+/* 130, not the taller 180 this used to be - shortened so the curve
+   doesn't run noticeably taller than Avg P&L by day of week beside it
+   (see .performance-card-subgrid > div and .weekday-chart below, which
+   stretch that chart's rows to close the rest of the gap). */
+.equity-chart-svg{display:block; width:100%; height:130px;}
 .equity-chart-labels{
   display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace;
   font-size:11px; color:var(--muted); margin-top:6px;
@@ -1648,9 +1652,22 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    stats row and calendar grid all in one panel) rather than each stat
    getting its own small card. */
 .performance-card-subgrid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:28px;}
+/* Flex column, not the plain block box a grid item defaults to - lets
+   .weekday-chart below grow into the rest of the stretched row height
+   (see .performance-card-subgrid above) instead of leaving dead space
+   under its own naturally shorter content. */
+.performance-card-subgrid > div{display:flex; flex-direction:column;}
 @media (max-width:700px){
   .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
 }
+
+/* P&L by instrument sits inline with the All-Time Performance toolbar's
+   own instrument filter (.calendar-toolbar's flex row) rather than on
+   its own line below it - the label's default margin-bottom (sized for
+   sitting above its own block of content) would misalign it against
+   the select beside it, so that's zeroed here. */
+.perf-pnl-inline{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+.perf-pnl-inline .stat-label{margin-bottom:0;}
 
 /* P&L by instrument: a horizontal strip of compact chips rather than a
    full-height list - it only needs a symbol, a dot and a dollar figure
@@ -1667,8 +1684,13 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 /* One diverging bar per weekday, split into a lane either side of a fixed
    center line (zero) - each lane is 50% of the track and a bar grows from
    the center outward rather than from either end, so magnitude reads
-   correctly regardless of sign. */
-.weekday-chart{display:flex; flex-direction:column; gap:9px;}
+   correctly regardless of sign. flex:1 + space-between (rather than
+   relying on the 9px gap alone) spreads the six rows across the whole
+   stretched column height (see .performance-card-subgrid > div above),
+   so this chart's own content reaches as far down as the equity curve
+   beside it instead of leaving empty space under a shorter natural
+   height. */
+.weekday-chart{display:flex; flex-direction:column; gap:9px; flex:1; justify-content:space-between;}
 .weekday-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
 .weekday-chart-label{
   width:30px; flex-shrink:0; font-family:'JetBrains Mono',monospace;

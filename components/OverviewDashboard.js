@@ -439,10 +439,11 @@ export default function OverviewDashboard({ instruments, strategies }) {
                   <option key={inst.id} value={inst.id}>{inst.symbol}</option>
                 ))}
               </select>
+              <div className="perf-pnl-inline">
+                <span className="stat-label">P&amp;L by instrument</span>
+                <PnlByInstrumentList segments={instrumentSegments} activeId={perfInstrument === 'all' ? null : perfInstrument} />
+              </div>
             </div>
-
-            <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
-            <PnlByInstrumentList segments={instrumentSegments} activeId={perfInstrument === 'all' ? null : perfInstrument} />
 
             <div className="stats stats-5">
               <div className="stat">

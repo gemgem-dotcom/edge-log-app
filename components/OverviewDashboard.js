@@ -16,6 +16,7 @@ import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
 import TableHeaderTooltip from '@/components/TableHeaderTooltip'
+import TradeLogTable from '@/components/TradeLogTable'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
@@ -572,63 +573,31 @@ export default function OverviewDashboard({ instruments, strategies }) {
             {selectedDate && (
               <>
                 <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr><th>Instrument</th><th>Strategy</th><th>Direction</th><th>R</th><th>P&amp;L</th></tr>
-                    </thead>
-                    <tbody>
-                      {selectedTrades.map((t) => {
-                        const inst = instrumentById[t.instrument_id]
-                        const closed = hasResult(t)
-                        const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
-                        return (
-                          <tr key={t.id}>
-                            <td>
-                              <span className="strategy-dot" style={{ background: inst?.color, marginRight: '8px', verticalAlign: 'middle' }} />
-                              {inst?.symbol || '—'}
-                            </td>
-                            <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
-                            <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{t.direction.toUpperCase()}</td>
-                            <td>{closed ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</td>
-                            <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <TradeLogTable
+                  trades={selectedTrades}
+                  strategyNameById={strategyName}
+                  showStrategyColumn
+                  showDayColumn={false}
+                  showInstrumentColumn
+                  instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
+                  instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
+                />
               </>
             )}
           </div>
 
           <div className="section-heading">Recent trades</div>
           <div className="panel">
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>Time</th><th>Instrument</th><th>Strategy</th><th>R</th><th>P&amp;L</th></tr>
-                </thead>
-                <tbody>
-                  {recentTrades.map((t) => {
-                    const inst = instrumentById[t.instrument_id]
-                    const rClass = t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
-                    return (
-                      <tr key={t.id}>
-                        <td>{t.trade_date}{t.trade_time ? ` ${t.trade_time}` : ''}</td>
-                        <td>
-                          <span className="strategy-dot" style={{ background: inst?.color, marginRight: '8px', verticalAlign: 'middle' }} />
-                          {inst?.symbol || '—'}
-                        </td>
-                        <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
-                        <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span></td>
-                        <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <TradeLogTable
+              trades={recentTrades}
+              strategyNameById={strategyName}
+              showStrategyColumn
+              showDayColumn={false}
+              showInstrumentColumn
+              instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
+              instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
+              showTimeInDate
+            />
             <div className="panel-link-row">
               <a href="/app/log" className="panel-link">View all trades</a>
             </div>

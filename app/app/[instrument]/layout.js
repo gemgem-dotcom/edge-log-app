@@ -116,6 +116,15 @@ export default function InstrumentLayout({ children, params }) {
 
   const isActive = (href) => pathname === href
 
+  // Alphabetical for display, but strategyColor still keys off each
+  // strategy's position in the creation-date-ordered `strategies` state
+  // (not its position in this sorted copy) - that index is what keeps a
+  // strategy's dot the same color here and on the dashboard's strategy
+  // performance table, per the comment on strategyColor itself.
+  const colorIndexById = {}
+  strategies.forEach((s, i) => { colorIndexById[s.id] = i })
+  const sortedStrategies = strategies.slice().sort((a, b) => a.name.localeCompare(b.name))
+
   return (
         <div className="shell">
           <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
@@ -144,13 +153,13 @@ export default function InstrumentLayout({ children, params }) {
 </div>
  {strategiesExpanded && (
                <div className="sidebar-substrategies">
- {strategies.map((s, i) => (
+ {sortedStrategies.map((s) => (
                    <a
                                    key={s.id}
                    href={`/app/${currentSymbol}/strategies/${s.id}`}
                   className={`sidebar-substrategy ${isActive(`/app/${currentSymbol}/strategies/${s.id}`) ? 'sidebar-substrategy-active' : ''}`}
                 >
-                                      <span className="strategy-dot" style={{ background: strategyColor(i) }} />
+                                      <span className="strategy-dot" style={{ background: strategyColor(colorIndexById[s.id]) }} />
 {s.name}
 </a>
               ))}

@@ -182,7 +182,7 @@ return (
   <div className="page-container">
   <ErrorBanner message={formError} />
   <div className="strategy-header-row">
-  <h1 className="page-title" style={{ marginBottom: 0 }}>{strategy.name}</h1>
+  <h1 className="page-title">{strategy.name}</h1>
 <div className="strategy-menu-wrap" ref={menuRef}>
   <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
 <MoreVertical size={17} />

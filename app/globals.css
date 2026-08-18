@@ -19,29 +19,29 @@
    772  Expandable trade rows
    789  Calendar
    837  Account settings page
-   1022  Light theme
-   1049  2FA
-   1064  Account fine print
-   1067  Screenshot preview (log new trade)
-   1084  Auth pages always dark
-   1112  Monthly P&L (calendar on Overview)
-   1188  Trade form: sections, validation, currency, screenshots
-   1269  Field tooltips
-   1325  Date/time picker (adds an optional popup to a typed input)
-   1434  In-header column filters (trade log table)
-   1468  Active filter chips
-   1517  Empty states, error banners, skeleton loaders
-   1573  Cross-instrument overview dashboard (/app)
-   1709  Not found / error boundary state pages
-   1722  Toast notifications
-   1750  Public policy pages (Privacy, Terms)
-   1769  Legal links (auth pages + account settings)
-   1808  Economic calendar card (mock - Overview pages)
-   1915  Calendar news badge (Monthly P&L day cells, mock)
-   1936  Streak badge (Overview + strategy detail pages)
-   1953  Market status pill (Overview + strategy detail pages)
-   1979  Key levels, today's brief (mock cards)
-   2005  Market context cards (all-instruments Overview)
+   1027  Light theme
+   1054  2FA
+   1069  Account fine print
+   1072  Screenshot preview (log new trade)
+   1089  Auth pages always dark
+   1117  Monthly P&L (calendar on Overview)
+   1193  Trade form: sections, validation, currency, screenshots
+   1274  Field tooltips
+   1330  Date/time picker (adds an optional popup to a typed input)
+   1439  In-header column filters (trade log table)
+   1473  Active filter chips
+   1522  Empty states, error banners, skeleton loaders
+   1578  Cross-instrument overview dashboard (/app)
+   1714  Not found / error boundary state pages
+   1727  Toast notifications
+   1755  Public policy pages (Privacy, Terms)
+   1774  Legal links (auth pages + account settings)
+   1813  Economic calendar card (mock - Overview pages)
+   1920  Calendar news badge (Monthly P&L day cells, mock)
+   1941  Streak badge (Overview + strategy detail pages)
+   1958  Market status pill (Overview + strategy detail pages)
+   1984  Key levels, today's brief (mock cards)
+   2010  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -992,9 +992,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    InstrumentMenu.js reuses it verbatim on the three per-instrument pages
    (Overview, Trade Log, Strategies) rather than duplicating the CSS. */
 .strategy-header-row{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
-/* h1 carries a global margin-top:4px, which the flex row centres along with
-   the text and leaves the menu button sitting high next to the name. */
-.strategy-header-row h1{margin-top:0;}
+/* h1/.page-title carry margin-top:4px/margin-bottom:20px globally - align-
+   items:center centers each flex item's margin box, not its content, so
+   either one left in place throws the visible text off-center against a
+   zero-margin sibling like the menu button. Both need zeroing here, not
+   just margin-top - a page whose h1 is .page-title (the three per-
+   instrument pages) only has the margin-bottom half of this problem, but
+   a plain h1 (the strategy detail page) has both. */
+.strategy-header-row h1{margin-top:0; margin-bottom:0;}
 /* strategy-header-row has no justify-content:space-between (unlike
    page-header-row), so the action button pushes itself right on its own. */
 .strategy-header-row .new-trade-btn{margin-left:auto;}

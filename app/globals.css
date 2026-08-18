@@ -32,16 +32,16 @@
    1485  Active filter chips
    1534  Empty states, error banners, skeleton loaders
    1590  Cross-instrument overview dashboard (/app)
-   1752  Not found / error boundary state pages
-   1765  Toast notifications
-   1793  Public policy pages (Privacy, Terms)
-   1812  Legal links (auth pages + account settings)
-   1851  Economic calendar card (mock - Overview pages)
-   1958  Calendar news badge (Monthly P&L day cells, mock)
-   1979  Streak badge (Overview + strategy detail pages)
-   1996  Market status pill (Overview + strategy detail pages)
-   2022  Key levels, today's brief (mock cards)
-   2048  Market context cards (all-instruments Overview)
+   1737  Not found / error boundary state pages
+   1750  Toast notifications
+   1778  Public policy pages (Privacy, Terms)
+   1797  Legal links (auth pages + account settings)
+   1836  Economic calendar card (mock - Overview pages)
+   1943  Calendar news badge (Monthly P&L day cells, mock)
+   1964  Streak badge (Overview + strategy detail pages)
+   1981  Market status pill (Overview + strategy detail pages)
+   2007  Key levels, today's brief (mock cards)
+   2033  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1609,28 +1609,13 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    left as-is, the row's trailing space would be whatever that margin
    happens to be instead of the row's own gap above. */
 .dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start; margin-bottom:0;}
-/* Per-instrument Overview: the stat-card stack sits opposite a taller
-   panel (P&L by strategy) - grow the stack and its two rows to fill the
-   row's full stretched height instead of leaving blank space beneath it.
-   margin-bottom:0 cancels .stats' own 24px - flex:1 already sizes this
-   to the full stretched row height, but that 24px was still carved out
-   of it, leaving a gap the same size beneath the stat cards instead of
-   letting them actually grow into the space this was meant to give them.
-   .stats' own gap is 15px too now (see above), so this stack, the two
-   stat rows within it, and the donut card beside it all read as one
-   family of cards with a single consistent gap. */
-.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
-/* flex-start, not center - same reasoning as .dashboard-split .panel
-   above: centering split the extra stretched height evenly above and
-   below each stat's label+value, reading as if the card had more
-   padding than every other card in this family. flex-start keeps each
-   label flush with its cell's top edge instead, with any leftover
-   height landing below the value where it doesn't stand out.
-   padding matches .panel's own 20px (up from .stat's usual 14px 16px) -
-   otherwise a stat's label still sat 6px higher than the donut card's
-   title beside it, both flush-top within boxes with different padding. */
-.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:flex-start; padding:20px;}
 .dashboard-card-title{margin-bottom:16px;}
+/* Spaces the Avg P&L by day of week heading (per-instrument dashboard's
+   Overview panel) from the strategy performance table above it -
+   dashboard-card-title only carries a bottom margin, sized for sitting
+   right under a panel's own top edge, not for following another
+   sub-section. */
+.performance-card-subheading{margin-top:40px;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}
 }
@@ -2068,14 +2053,6 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .brief-calendar-row{grid-template-columns:1fr 2fr;}
 @media (max-width:1100px){
   .brief-calendar-row{grid-template-columns:1fr;}
-}
-/* Per-instrument Overview: stat cards + strategy performance table -
-   2/5 + 3/5, less lopsided than .brief-calendar-row's 1/3 + 2/3 above
-   since the stat cards (a 2x2 grid, not a single column) need more
-   room than Today's brief does. */
-.stats-strategy-row{grid-template-columns:2fr 3fr;}
-@media (max-width:1100px){
-  .stats-strategy-row{grid-template-columns:1fr;}
 }
 /* Range/overnight gap/volume vs. typical collapsed into one combined
    table card (they were three separate cards each showing the identical

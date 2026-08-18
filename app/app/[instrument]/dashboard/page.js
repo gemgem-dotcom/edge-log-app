@@ -13,6 +13,7 @@ import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
 import InstrumentMenu from '@/components/InstrumentMenu'
 import WinRateGauge from '@/components/WinRateGauge'
+import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
@@ -62,6 +63,27 @@ return { n, winRate, expectancy, totalPnl, profitFactor, totalD, hasD, expectanc
 
 function hasDollar(t) {
   return t.pnl !== null && t.pnl !== undefined
+}
+
+// Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
+// Sun-Fri - Saturday is skipped entirely, since none of these instruments'
+// sessions land on it in any timezone. Every weekday is always included,
+// even with zero trades - AvgPnlByWeekdayChart renders those as a flat
+// $0 with no bar rather than omitting the row.
+function computeWeekdayPnl(trades) {
+  const byDay = new Map()
+  for (const t of trades) {
+    if (!hasResult(t) || !hasDollar(t) || !t.trade_date) continue
+    const day = new Date(t.trade_date + 'T00:00:00').getDay()
+    const entry = byDay.get(day) || { sum: 0, count: 0 }
+    entry.sum += t.pnl
+    entry.count += 1
+    byDay.set(day, entry)
+  }
+  return [0, 1, 2, 3, 4, 5].map((day) => {
+    const entry = byDay.get(day)
+    return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
+  })
 }
 
 function computeMonthStats(allTrades) {
@@ -202,6 +224,7 @@ export default function DashboardPage({ params }) {
   const [allTrades, setAllTrades] = useState([])
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
   const [calStrategy, setCalStrategy] = useState('all')
+  const [perfStrategy, setPerfStrategy] = useState('all')
   const [selectedDate, setSelectedDate] = useState(null)
 
 useEffect(() => {
@@ -247,7 +270,9 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
 
 const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
-  const overall = computeStats(classifiedTrades)
+  const perfTrades = perfStrategy === 'all' ? classifiedTrades : classifiedTrades.filter((t) => t.strategy_id === perfStrategy)
+  const overall = computeStats(perfTrades)
+  const weekdayRows = computeWeekdayPnl(perfTrades)
   const streak = computeStreak(allTrades)
   const keyLevels = mockKeyLevels(symbol)
   const now = new Date()
@@ -315,9 +340,21 @@ return (
 ) : (
   <>
 <div className="section-heading">Overview</div>
-  <div className="dashboard-split stats-strategy-row">
-  <div>
-  <div className="stats stats-2">
+  <div className="panel">
+  <div className="calendar-toolbar">
+  <select
+    className="calendar-strategy-filter"
+    value={perfStrategy}
+    onChange={(e) => setPerfStrategy(e.target.value)}
+  >
+    <option value="all">All strategies</option>
+    {strategies.map((s) => (
+      <option key={s.id} value={s.id}>{s.name}</option>
+    ))}
+  </select>
+  </div>
+
+  <div className="stats">
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -345,9 +382,7 @@ return (
   <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
   </div>
   </div>
-  </div>
-  <div>
-  <div className="panel">
+
 {strategies.length === 0 ? (
   <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
 ) : (
@@ -383,8 +418,9 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
 </tbody>
   </table>
 )}
-  </div>
-  </div>
+
+  <div className="stat-label dashboard-card-title performance-card-subheading">Avg P&amp;L by day of week</div>
+  <AvgPnlByWeekdayChart rows={weekdayRows} />
   </div>
 
 <div className="section-heading">Economic calendar</div>

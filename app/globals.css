@@ -32,16 +32,16 @@
    1485  Active filter chips
    1534  Empty states, error banners, skeleton loaders
    1590  Cross-instrument overview dashboard (/app)
-   1731  Not found / error boundary state pages
-   1744  Toast notifications
-   1772  Public policy pages (Privacy, Terms)
-   1791  Legal links (auth pages + account settings)
-   1830  Economic calendar card (mock - Overview pages)
-   1937  Calendar news badge (Monthly P&L day cells, mock)
-   1958  Streak badge (Overview + strategy detail pages)
-   1975  Market status pill (Overview + strategy detail pages)
-   2001  Key levels, today's brief (mock cards)
-   2027  Market context cards (all-instruments Overview)
+   1730  Not found / error boundary state pages
+   1743  Toast notifications
+   1771  Public policy pages (Privacy, Terms)
+   1790  Legal links (auth pages + account settings)
+   1829  Economic calendar card (mock - Overview pages)
+   1936  Calendar news badge (Monthly P&L day cells, mock)
+   1957  Streak badge (Overview + strategy detail pages)
+   1974  Market status pill (Overview + strategy detail pages)
+   2000  Key levels, today's brief (mock cards)
+   2026  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1641,27 +1641,26 @@ label:has(.field-tooltip){display:flex; align-items:center;}
   font-size:11px; color:var(--muted); margin-top:6px;
 }
 
-/* Equity curve on one side, P&L by instrument + Avg P&L by day of week
-   stacked on the other, in the same All-Time Performance panel - one card
-   holding several related sub-sections (the stat tiles above this row,
-   too), the same shape Monthly P&L below it already uses (toolbar, stats
-   row and calendar grid all in one panel) rather than each stat getting
-   its own small card. */
+/* Equity curve on one side, Avg P&L by day of week on the other, in the
+   same All-Time Performance panel - one card holding several related
+   sub-sections (the stat tiles and P&L-by-instrument strip above this
+   row, too), the same shape Monthly P&L below it already uses (toolbar,
+   stats row and calendar grid all in one panel) rather than each stat
+   getting its own small card. */
 .performance-card-subgrid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:28px;}
 @media (max-width:700px){
   .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
 }
-/* Spaces the second heading in that stacked column (Avg P&L by day of
-   week) from the P&L-by-instrument strip above it - dashboard-card-title
-   only carries a bottom margin, sized for sitting right under a panel's
-   own top edge, not for following another sub-section. */
-.performance-card-subheading{margin-top:40px;}
 
 /* P&L by instrument: a horizontal strip of compact chips rather than a
    full-height list - it only needs a symbol, a dot and a dollar figure
    per instrument, not a whole column's worth of vertical space. */
 .pnl-rank-strip{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px; margin-bottom:4px;}
 .pnl-rank-chip{display:flex; align-items:center; gap:7px; font-size:12.5px;}
+/* The chips for every instrument other than the one the card's own
+   filter is scoped to - dimmed rather than removed, so their totals stay
+   visible for comparison against the active instrument. */
+.pnl-rank-chip-dim{opacity:.45;}
 .pnl-rank-symbol{font-weight:600;}
 .pnl-rank-value{font-family:'JetBrains Mono',monospace;}
 

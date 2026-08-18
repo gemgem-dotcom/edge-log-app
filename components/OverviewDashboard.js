@@ -225,6 +225,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const [allTrades, setAllTrades] = useState([])
   const [greeting, setGreeting] = useState('')
   const [equityGroup, setEquityGroup] = useState('day')
+  const [perfInstrument, setPerfInstrument] = useState('all')
   const [calInstrument, setCalInstrument] = useState('all')
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
   const [selectedDate, setSelectedDate] = useState(null)
@@ -263,7 +264,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
   instruments.forEach((inst, i) => { instrumentById[inst.id] = { ...inst, color: strategyColor(i) } })
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
-  const overall = computeOverallStats(allTrades)
   const streak = computeStreak(allTrades)
 
   const briefText = streak
@@ -272,14 +272,18 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
   const now = new Date()
 
-  const equityPoints = buildEquityCurve(allTrades, equityGroup)
+  const perfTrades = perfInstrument === 'all' ? allTrades : allTrades.filter((t) => t.instrument_id === perfInstrument)
+  const overall = computeOverallStats(perfTrades)
+  const equityPoints = buildEquityCurve(perfTrades, equityGroup)
+  const weekdayRows = computeWeekdayPnl(perfTrades)
 
+  // Always every instrument's own total, regardless of perfInstrument -
+  // the filter dims the others in the list rather than removing them, so
+  // their totals need to stay on screen to dim.
   const instrumentSegments = instruments.map((inst, i) => {
     const trades = allTrades.filter((t) => t.instrument_id === inst.id && hasResult(t) && hasDollar(t))
-    return { label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
+    return { id: inst.id, label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
   })
-
-  const weekdayRows = computeWeekdayPnl(allTrades)
 
   const recentTrades = allTrades
     .filter(hasResult)
@@ -424,6 +428,22 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
           <div className="section-heading">All-Time Performance</div>
           <div className="panel">
+            <div className="calendar-toolbar">
+              <select
+                className="calendar-strategy-filter"
+                value={perfInstrument}
+                onChange={(e) => setPerfInstrument(e.target.value)}
+              >
+                <option value="all">All instruments</option>
+                {instruments.map((inst) => (
+                  <option key={inst.id} value={inst.id}>{inst.symbol}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
+            <PnlByInstrumentList segments={instrumentSegments} activeId={perfInstrument === 'all' ? null : perfInstrument} />
+
             <div className="stats stats-5">
               <div className="stat">
                 <div className="stat-label">Total P&amp;L</div>
@@ -460,10 +480,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
             <div className="performance-card-subgrid">
               <div>
-                <div className="stat-label dashboard-card-title">P&amp;L by instrument</div>
-                <PnlByInstrumentList segments={instrumentSegments} />
-
-                <div className="stat-label dashboard-card-title performance-card-subheading">Avg P&amp;L by day of week</div>
+                <div className="stat-label dashboard-card-title">Avg P&amp;L by day of week</div>
                 <AvgPnlByWeekdayChart rows={weekdayRows} />
               </div>
               <div>

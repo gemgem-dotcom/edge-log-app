@@ -14,6 +14,7 @@ import TradeLogTable from '@/components/TradeLogTable'
 import InstrumentMenu from '@/components/InstrumentMenu'
 import WinRateGauge from '@/components/WinRateGauge'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
+import PnlByInstrumentList from '@/components/PnlByInstrumentList'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
@@ -273,6 +274,14 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const perfTrades = perfStrategy === 'all' ? classifiedTrades : classifiedTrades.filter((t) => t.strategy_id === perfStrategy)
   const overall = computeStats(perfTrades)
   const weekdayRows = computeWeekdayPnl(perfTrades)
+  // Always every strategy's own total, regardless of perfStrategy - the
+  // filter dims the others in the list rather than removing them, so
+  // their totals need to stay on screen to dim (same as instrumentSegments
+  // on the all-instruments page).
+  const strategySegments = strategies.map((s, i) => {
+    const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
+    return { id: s.id, label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
+  })
   const streak = computeStreak(allTrades)
   const keyLevels = mockKeyLevels(symbol)
   const now = new Date()
@@ -390,6 +399,10 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
       <option key={s.id} value={s.id}>{s.name}</option>
     ))}
   </select>
+  <div className="perf-pnl-inline">
+    <span className="stat-label">P&amp;L by strategy</span>
+    <PnlByInstrumentList segments={strategySegments} activeId={perfStrategy === 'all' ? null : perfStrategy} />
+  </div>
   </div>
 
   <div className="performance-card-subgrid">

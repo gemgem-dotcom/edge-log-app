@@ -288,7 +288,7 @@ const year = calCursor.year
 return (
   <div className="page-container">
   <div className="strategy-header-row">
-    <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
+    <h1 className="page-title">{displayName} futures</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>

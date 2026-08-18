@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
 
@@ -13,7 +13,22 @@ import { useClickOutside } from '@/lib/useClickOutside'
 // ever renders once the user has added one (see app/app/page.js).
 export default function LogTradeMenu({ instruments }) {
   const [open, setOpen] = useState(false)
-  const menuRef = useClickOutside(open, useCallback(() => setOpen(false), []))
+  const close = useCallback(() => setOpen(false), [])
+  const menuRef = useClickOutside(open, close)
+
+  // Dropdown isn't repositioned on scroll, so close it rather than let it
+  // drift away from the button (same scroll-dismiss pattern as
+  // InstrumentNav's "Add instrument" menu).
+  useEffect(() => {
+    if (!open) return
+    const raf = requestAnimationFrame(() => {
+      window.addEventListener('scroll', close, true)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', close, true)
+    }
+  }, [open, close])
 
   return (
     <div className="log-trade-menu-wrap" ref={menuRef}>

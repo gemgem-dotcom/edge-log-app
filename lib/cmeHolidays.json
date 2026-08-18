@@ -105,9 +105,5 @@
     "type": "early_close",
     "name": "Black Friday",
     "closeTime": "13:00"
-  },
-  "2027-12-24": {
-    "type": "closed",
-    "name": "Christmas"
   }
 }

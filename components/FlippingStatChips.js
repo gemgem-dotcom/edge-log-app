@@ -7,10 +7,10 @@ const HALF_FLIP_MS = 450 // must match .flip-cube-face's transition-duration in 
 
 // views: [{ label, segments: [{ id, label, color, value, tone }] }] - each
 // entry is one full "face" (a label plus a chip strip), cycled through on a
-// timer. tone is 'pos'|'neg'|'neu', applied to the chip's value the same way
-// PnlByInstrumentList (which this replaces) did. Every chip stays full
-// color regardless of the card's own filter - unlike the static list this
-// replaced, nothing here dims.
+// timer (and on click - see handleClick) . tone is 'pos'|'neg'|'neu',
+// applied to the chip's value the same way PnlByInstrumentList (which this
+// replaces) did. Every chip stays full color regardless of the card's own
+// filter - unlike the static list this replaced, nothing here dims.
 //
 // The flip: a single face rotates up to rotateX(90deg) (edge-on, so
 // backface-visibility:hidden makes it vanish), and only once that motion
@@ -30,16 +30,35 @@ export default function FlippingStatChips({ views }) {
   const [index, setIndex] = useState(0)
   const elRef = useRef(null)
   const phaseRef = useRef('idle')
+  const timeoutRef = useRef(null)
+
+  function triggerFlip() {
+    const el = elRef.current
+    if (!el || phaseRef.current !== 'idle') return
+    phaseRef.current = 'up'
+    el.style.transform = 'rotateX(90deg)'
+  }
+
+  // Self-rescheduling rather than setInterval, so a manual click (below)
+  // can restart the countdown instead of leaving a stale timer that fires
+  // again moments after the user just triggered one by hand.
+  function scheduleNext() {
+    clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(() => {
+      triggerFlip()
+      scheduleNext()
+    }, CYCLE_MS)
+  }
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const el = elRef.current
-      if (!el || phaseRef.current !== 'idle') return
-      phaseRef.current = 'up'
-      el.style.transform = 'rotateX(90deg)'
-    }, CYCLE_MS)
-    return () => clearInterval(id)
+    scheduleNext()
+    return () => clearTimeout(timeoutRef.current)
   }, [])
+
+  function handleClick() {
+    triggerFlip()
+    scheduleNext()
+  }
 
   function handleTransitionEnd(e) {
     if (e.propertyName !== 'transform') return
@@ -65,7 +84,7 @@ export default function FlippingStatChips({ views }) {
   const view = views[index % views.length]
 
   return (
-    <div className="flip-cube-wrap">
+    <div className="flip-cube-wrap" onClick={handleClick}>
       <div
         ref={elRef}
         className="flip-cube-face"

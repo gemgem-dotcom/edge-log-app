@@ -1641,13 +1641,19 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    directly, which needs a real value to reset back *to*; leaving it
    inline would mean overwriting the same property React thinks it still
    owns, and React skips reapplying an unchanged inline style on re-render. */
-.flip-cube-wrap{perspective:900px;}
+.flip-cube-wrap{perspective:900px; cursor:pointer;}
 .flip-cube-face{
   display:flex; align-items:center; gap:14px; flex-wrap:wrap;
   backface-visibility:hidden; transform:rotateX(0deg);
   transition:transform 450ms cubic-bezier(.45,0,.55,1);
 }
-.flip-cube-face .stat-label{margin-bottom:0;}
+/* top:-2px - the label's smaller font-size (10.5px vs the chip strip's
+   12.5px) gives its line box different ascent/descent proportions, so
+   flex's align-items:center (which centers each item's own box, not its
+   glyphs) leaves the label's text sitting visibly below the chips'
+   optical center even though both boxes are centered correctly on
+   paper. Nudged up by eye to match. */
+.flip-cube-face .stat-label{margin-bottom:0; position:relative; top:-2px;}
 /* All-Time Performance / per-instrument Overview toolbars: the filter
    select and FlippingStatChips sit left-aligned as one group (with the
    row's own gap providing the space between them) instead of

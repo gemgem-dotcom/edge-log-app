@@ -16,32 +16,32 @@
    509  Detail view
    525  Holiday notice (site-wide, above the shell)
    550  Shell layout (sidebar + topbar)
-   781  Expandable trade rows
-   798  Calendar
-   846  Account settings page
-   1044  Light theme
-   1071  2FA
-   1086  Account fine print
-   1089  Screenshot preview (log new trade)
-   1106  Auth pages always dark
-   1134  Monthly P&L (calendar on Overview)
-   1210  Trade form: sections, validation, currency, screenshots
-   1291  Field tooltips
-   1347  Date/time picker (adds an optional popup to a typed input)
-   1456  In-header column filters (trade log table)
-   1490  Active filter chips
-   1539  Empty states, error banners, skeleton loaders
-   1595  Cross-instrument overview dashboard (/app)
-   1742  Not found / error boundary state pages
-   1755  Toast notifications
-   1783  Public policy pages (Privacy, Terms)
-   1802  Legal links (auth pages + account settings)
-   1841  Economic calendar card (mock - Overview pages)
-   1948  Calendar news badge (Monthly P&L day cells, mock)
-   1969  Streak badge (Overview + strategy detail pages)
-   1986  Market status pill (Overview + strategy detail pages)
-   2012  Key levels, today's brief (mock cards)
-   2038  Market context cards (all-instruments Overview)
+   759  Expandable trade rows
+   776  Calendar
+   824  Account settings page
+   1022  Light theme
+   1049  2FA
+   1064  Account fine print
+   1067  Screenshot preview (log new trade)
+   1084  Auth pages always dark
+   1112  Monthly P&L (calendar on Overview)
+   1188  Trade form: sections, validation, currency, screenshots
+   1269  Field tooltips
+   1325  Date/time picker (adds an optional popup to a typed input)
+   1434  In-header column filters (trade log table)
+   1468  Active filter chips
+   1517  Empty states, error banners, skeleton loaders
+   1573  Cross-instrument overview dashboard (/app)
+   1713  Not found / error boundary state pages
+   1726  Toast notifications
+   1754  Public policy pages (Privacy, Terms)
+   1773  Legal links (auth pages + account settings)
+   1812  Economic calendar card (mock - Overview pages)
+   1919  Calendar news badge (Monthly P&L day cells, mock)
+   1940  Streak badge (Overview + strategy detail pages)
+   1957  Market status pill (Overview + strategy detail pages)
+   1983  Key levels, today's brief (mock cards)
+   2009  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -719,20 +719,6 @@ a.shell-logo{color:inherit; text-decoration:none;}
 
 .stats-6{grid-template-columns:repeat(6,1fr);}
 
-.perf-table{width:100%;}
-.perf-table th{font-size:10.5px;}
-/* Carries no font or colour of its own so the strategy name matches every
-   other cell in the row. Must also stay a real table cell — display:flex
-   here drops it out of the table's column-width algorithm, so the body
-   column stops matching the header and the vertical dividers misalign.
-   The dot is laid out inline for the same reason. */
-.strategy-name-cell .strategy-dot{margin-right:10px; vertical-align:middle;}
-/* Rows for every strategy other than the one the Overview panel's own
-   filter is scoped to - dimmed rather than hidden, so their numbers stay
-   available to compare against the active strategy (same treatment as
-   .pnl-rank-chip-dim on the all-instruments page). */
-.perf-row-dim{opacity:.45;}
-
 .simple-page-wrap{max-width:800px; margin:0 auto; padding:32px 24px 60px;}
 
 @media (max-width:900px){
@@ -768,14 +754,6 @@ a.shell-logo{color:inherit; text-decoration:none;}
   .shell-topbar{padding:12px 16px; margin:12px 12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap; border-radius:24px;}
   .shell-topbar .instrument-nav{order:3; flex-basis:100%;}
   .new-trade-btn span{display:none;}
-  /* Scroll instead of shrinking columns to fit - min-width:0 + fixed
-     layout used to force every row to fit the card width, which kept the
-     table scroll-free but squeezed Profit factor off-screen entirely.
-     A real min-width plus overflow-x on the card lets every column stay
-     legible and reachable by horizontal scroll instead. */
-  .perf-table{min-width:480px;}
-  .perf-table th, .perf-table td{padding:8px 8px; font-size:10.5px; white-space:nowrap;}
-  .panel:has(.perf-table){overflow-x:auto; -webkit-overflow-scrolling:touch;}
 }
 
 /* ---------- Expandable trade rows ---------- */
@@ -1601,10 +1579,9 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    margin-bottom happens to add up to - see the .panel override below. */
 .dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:15px; align-items:stretch; margin-bottom:15px;}
 /* min-width:0 - a grid track defaults to fitting its item's intrinsic
-   min-content width, so the strategy performance table's min-width:480px
-   (see .perf-table below) would otherwise force this column wider than
-   the row itself instead of letting the panel's own overflow-x:auto
-   scroll it. */
+   min-content width, so a wide child (a table with its own min-width,
+   for instance) would otherwise force this column wider than the row
+   itself instead of letting the panel's own overflow-x handle it. */
 .dashboard-split > div{display:flex; flex-direction:column; min-width:0;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
    both cards to the row's height so the shorter one isn't visibly shorter.
@@ -1615,12 +1592,6 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    happens to be instead of the row's own gap above. */
 .dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start; margin-bottom:0;}
 .dashboard-card-title{margin-bottom:16px;}
-/* Spaces the Avg P&L by day of week heading (per-instrument dashboard's
-   Overview panel) from the strategy performance table above it -
-   dashboard-card-title only carries a bottom margin, sized for sitting
-   right under a panel's own top edge, not for following another
-   sub-section. */
-.performance-card-subheading{margin-top:40px;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}
 }

@@ -14,6 +14,7 @@ import TradeLogTable from '@/components/TradeLogTable'
 import InstrumentMenu from '@/components/InstrumentMenu'
 import WinRateGauge from '@/components/WinRateGauge'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
+import EquityCurveChart from '@/components/EquityCurveChart'
 import PnlByInstrumentList from '@/components/PnlByInstrumentList'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
@@ -25,13 +26,19 @@ import PageError from '@/components/PageError'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
+const EQUITY_GROUPS = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+]
 
 function computeStats(allTrades) {
   // Open trades (no exit price, so no R yet) can't be scored — leaving them
   // in would count them as breakeven and drag every average down.
   const trades = allTrades.filter(hasResult)
   const n = trades.length
-  if (n === 0) return { n, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null }
+  const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
+  if (n === 0) return { n, tradingDays, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -59,7 +66,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, expectancy, totalPnl, profitFactor, totalD, hasD, expectancyD }
+return { n, tradingDays, winRate, expectancy, totalPnl, profitFactor, totalD, hasD, expectancyD, wins: wins.length, losses: losses.length }
 }
 
 function hasDollar(t) {
@@ -84,6 +91,46 @@ function computeWeekdayPnl(trades) {
   return [0, 1, 2, 3, 4, 5].map((day) => {
     const entry = byDay.get(day)
     return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
+  })
+}
+
+// Monday of the ISO week containing dateStr, used as the bucket key when
+// the equity curve is grouped by week.
+function weekStart(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  const day = d.getDay()
+  d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function bucketKey(dateStr, group) {
+  if (group === 'month') return dateStr.slice(0, 7)
+  if (group === 'week') return weekStart(dateStr)
+  return dateStr
+}
+
+// Cumulative $ P&L, ordered by trade_date. Every trade always has a final
+// result, so there's no open-trade state to filter around - only trades
+// with a recorded $ amount (hasDollar) contribute, since R-only trades
+// have nothing to add to a dollar curve.
+function buildEquityCurve(trades, group) {
+  const withD = trades
+    .filter(hasResult)
+    .filter(hasDollar)
+    .slice()
+    .sort((a, b) => a.trade_date.localeCompare(b.trade_date) || (a.trade_time || '').localeCompare(b.trade_time || ''))
+
+  const byBucket = new Map()
+  for (const t of withD) {
+    const key = bucketKey(t.trade_date, group)
+    byBucket.set(key, (byBucket.get(key) || 0) + t.pnl)
+  }
+
+  const keys = [...byBucket.keys()].sort()
+  let running = 0
+  return keys.map((key) => {
+    running += byBucket.get(key)
+    return { key, cumulative: running }
   })
 }
 
@@ -226,6 +273,7 @@ export default function DashboardPage({ params }) {
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
   const [calStrategy, setCalStrategy] = useState('all')
   const [perfStrategy, setPerfStrategy] = useState('all')
+  const [equityGroup, setEquityGroup] = useState('day')
   const [selectedDate, setSelectedDate] = useState(null)
 
 useEffect(() => {
@@ -274,6 +322,7 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const perfTrades = perfStrategy === 'all' ? classifiedTrades : classifiedTrades.filter((t) => t.strategy_id === perfStrategy)
   const overall = computeStats(perfTrades)
   const weekdayRows = computeWeekdayPnl(perfTrades)
+  const equityPoints = buildEquityCurve(perfTrades, equityGroup)
   // Always every strategy's own total, regardless of perfStrategy - the
   // filter dims the others in the list rather than removing them, so
   // their totals need to stay on screen to dim (same as instrumentSegments
@@ -350,44 +399,6 @@ return (
   <>
 <div className="section-heading">Overview</div>
   <div className="panel">
-{strategies.length === 0 ? (
-  <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
-) : (
-  <table className="perf-table">
-  <thead>
-  <tr>
-  <th>Strategy</th><th>Trades</th><th>Win rate</th>
-  <th>Expectancy</th><th>Profit factor</th>
-  </tr>
-  </thead>
-<tbody>
-{strategies.map((s, i) => {
-  const stats = computeStats(tradesByStrategy[s.id] || [])
-  return (
-    <tr
-  key={s.id}
-                className={`clickable-row ${perfStrategy !== 'all' && s.id !== perfStrategy ? 'perf-row-dim' : ''}`}
-onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
->
-  <td className="strategy-name-cell">
-  <span className="strategy-dot" style={{ background: strategyColor(i) }} />
-{s.name}
-</td>
-<td>{stats.n.toLocaleString('en-US')}</td>
-<td className={stats.winRate !== null && stats.winRate < 50 ? 'neg' : ''}>
-{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
-</td>
-<td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
-<td>{fmtPF(stats.profitFactor)}</td>
-  </tr>
-)
-})}
-</tbody>
-  </table>
-)}
-  </div>
-
-  <div className="panel">
   <div className="calendar-toolbar">
   <select
     className="calendar-strategy-filter"
@@ -405,9 +416,7 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
   </div>
   </div>
 
-  <div className="performance-card-subgrid">
-  <div>
-  <div className="stats stats-2">
+  <div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -426,19 +435,46 @@ onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
   <div className={`stat-subvalue ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
   )}
   </div>
+  <div className="stat stat-gauge">
+  <div className="stat-label">Win rate</div>
+  <WinRateGauge wins={overall.wins} losses={overall.losses} winRate={overall.winRate} />
+  </div>
 <div className="stat">
   <div className="stat-label">Profit factor</div>
 <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
   </div>
   <div className="stat">
-  <div className="stat-label">Win rate</div>
-  <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
+  <div className="stat-label">Total trades</div>
+  <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
+  <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
   </div>
   </div>
-  </div>
+
+  <div className="performance-card-subgrid">
   <div>
   <div className="stat-label dashboard-card-title">Avg P&amp;L by day of week</div>
   <AvgPnlByWeekdayChart rows={weekdayRows} />
+  </div>
+  <div>
+  <div className="stat-label dashboard-card-title">Equity curve</div>
+  <div className="tabs">
+  {EQUITY_GROUPS.map((g) => (
+    <div
+      key={g.value}
+      className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
+      onClick={() => setEquityGroup(g.value)}
+    >
+      {g.label}
+    </div>
+  ))}
+  </div>
+  <EquityCurveChart points={equityPoints} />
+  {equityPoints.length > 0 && (
+  <div className="equity-chart-labels">
+    <span>{equityPoints[0].key}</span>
+    <span>{equityPoints[equityPoints.length - 1].key}</span>
+  </div>
+  )}
   </div>
   </div>
   </div>

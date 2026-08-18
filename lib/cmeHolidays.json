@@ -1,0 +1,113 @@
+{
+  "2026-01-01": {
+    "type": "closed",
+    "name": "New Year's Day"
+  },
+  "2026-01-19": {
+    "type": "early_close",
+    "name": "Dr. Martin Luther King Jr. Day",
+    "closeTime": "13:00"
+  },
+  "2026-02-16": {
+    "type": "early_close",
+    "name": "Washington's Birthday",
+    "closeTime": "13:00"
+  },
+  "2026-04-03": {
+    "type": "early_close",
+    "name": "Good Friday",
+    "closeTime": "09:15"
+  },
+  "2026-05-25": {
+    "type": "early_close",
+    "name": "Memorial Day",
+    "closeTime": "13:00"
+  },
+  "2026-06-19": {
+    "type": "early_close",
+    "name": "Juneteenth",
+    "closeTime": "13:00"
+  },
+  "2026-07-03": {
+    "type": "early_close",
+    "name": "July 4th",
+    "closeTime": "13:00"
+  },
+  "2026-09-07": {
+    "type": "early_close",
+    "name": "Labor Day",
+    "closeTime": "13:00"
+  },
+  "2026-11-26": {
+    "type": "early_close",
+    "name": "Thanksgiving Day",
+    "closeTime": "13:00"
+  },
+  "2026-11-27": {
+    "type": "early_close",
+    "name": "Black Friday",
+    "closeTime": "13:00"
+  },
+  "2026-12-24": {
+    "type": "early_close",
+    "name": "Christmas Eve",
+    "closeTime": "13:00"
+  },
+  "2026-12-25": {
+    "type": "closed",
+    "name": "Christmas"
+  },
+  "2027-01-01": {
+    "type": "closed",
+    "name": "New Year's Day"
+  },
+  "2027-01-18": {
+    "type": "early_close",
+    "name": "Dr. Martin Luther King Jr. Day",
+    "closeTime": "13:00"
+  },
+  "2027-02-15": {
+    "type": "early_close",
+    "name": "Washington's Birthday",
+    "closeTime": "13:00"
+  },
+  "2027-03-26": {
+    "type": "early_close",
+    "name": "Good Friday",
+    "closeTime": "09:15"
+  },
+  "2027-05-31": {
+    "type": "early_close",
+    "name": "Memorial Day",
+    "closeTime": "13:00"
+  },
+  "2027-06-18": {
+    "type": "early_close",
+    "name": "Juneteenth",
+    "closeTime": "13:00"
+  },
+  "2027-07-05": {
+    "type": "early_close",
+    "name": "July 4th",
+    "closeTime": "13:00"
+  },
+  "2027-09-06": {
+    "type": "early_close",
+    "name": "Labor Day",
+    "closeTime": "13:00"
+  },
+  "2027-11-25": {
+    "type": "early_close",
+    "name": "Thanksgiving Day",
+    "closeTime": "13:00"
+  },
+  "2027-11-26": {
+    "type": "early_close",
+    "name": "Black Friday",
+    "closeTime": "13:00"
+  },
+  "2027-12-24": {
+    "type": "closed",
+    "name": "Christmas"
+  }
+}

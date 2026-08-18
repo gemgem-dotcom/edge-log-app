@@ -315,7 +315,7 @@ return (
 ) : (
   <>
 <div className="section-heading">Overview</div>
-  <div className="dashboard-split">
+  <div className="dashboard-split stats-strategy-row">
   <div>
   <div className="stats stats-2">
   <div className="stat">

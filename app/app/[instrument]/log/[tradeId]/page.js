@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, planAdherence, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
 import { toast } from '@/lib/toast'
@@ -27,7 +28,7 @@ export default function TradeDetailPage({ params }) {
   const [loading, setLoading] = useState(true)
   const [trade, setTrade] = useState(null)
   const [strategyName, setStrategyName] = useState('')
-  const [previewUrl, setPreviewUrl] = useState(null)
+  const [previewIndex, setPreviewIndex] = useState(null)
   const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function TradeDetailPage({ params }) {
                 alt={`Trade screenshot ${i + 1}`}
                 className="thumb"
                 style={{ width: '80px', height: '80px' }}
-                onClick={() => setPreviewUrl(url)}
+                onClick={() => setPreviewIndex(i)}
               />
             ))}
           </div>
@@ -137,11 +138,29 @@ export default function TradeDetailPage({ params }) {
         <span className="del" style={{ fontSize: '13px' }} onClick={handleDelete}>Delete this trade</span>
       </div>
 
-      {previewUrl && (
-        <div className="modal-overlay" onClick={() => setPreviewUrl(null)}>
+      {previewIndex !== null && (
+        <div className="modal-overlay" onClick={() => setPreviewIndex(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-close" onClick={() => setPreviewUrl(null)}>✕</div>
-            <img src={previewUrl} alt="Trade screenshot full view" />
+            <div className="modal-close" onClick={() => setPreviewIndex(null)}>✕</div>
+            {shots.length > 1 && (
+              <>
+                <div
+                  className="modal-nav modal-nav-prev"
+                  onClick={() => setPreviewIndex((i) => (i - 1 + shots.length) % shots.length)}
+                  aria-label="Previous screenshot"
+                >
+                  <ChevronLeft size={20} />
+                </div>
+                <div
+                  className="modal-nav modal-nav-next"
+                  onClick={() => setPreviewIndex((i) => (i + 1) % shots.length)}
+                  aria-label="Next screenshot"
+                >
+                  <ChevronRight size={20} />
+                </div>
+              </>
+            )}
+            <img src={shots[previewIndex]} alt={`Trade screenshot ${previewIndex + 1} of ${shots.length}`} />
           </div>
         </div>
       )}

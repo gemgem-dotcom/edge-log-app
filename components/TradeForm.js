@@ -13,6 +13,7 @@ import DatePicker from './DatePicker'
 import TimePicker from './TimePicker'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
+const SCREENSHOT_PASTE_HINT = 'You can also paste a screenshot directly from your clipboard (Ctrl+V / Cmd+V) instead of choosing a file.'
 
 export const EMPTY_TRADE_FORM = {
   direction: 'long',
@@ -44,8 +45,15 @@ export default function TradeForm({
   showEmptyStrategyMessage = false,
   submitLabel = 'Save',
   footerLeft = null,
+  allowDiscard = false,
   onSubmit,
 }) {
+  // Only the edit-trade page passes allowDiscard - tracking every field
+  // that could make the form "dirty" is only worth doing where there's a
+  // saved trade underneath to discard back to.
+  const [dirty, setDirty] = useState(false)
+  const reasoningRef = useRef(null)
+
   const [strategyId, setStrategyId] = useState(initial.strategyId)
   const [addingStrategy, setAddingStrategy] = useState(false)
   const [newStrategyName, setNewStrategyName] = useState('')
@@ -210,6 +218,7 @@ export default function TradeForm({
   }, [showSuggestions])
 
   function updateSetup(field, value) {
+    setDirty(true)
     setSetup((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
     // Entry price feeds the $ P&L calc - editing it is as much a signal to
@@ -219,6 +228,7 @@ export default function TradeForm({
   }
 
   function updateExecution(field, value) {
+    setDirty(true)
     setExecution((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
     // Editing any input the $ P&L calc actually depends on re-enables
@@ -231,6 +241,7 @@ export default function TradeForm({
   }
 
   function handleDirectionChange(value) {
+    setDirty(true)
     setDirection(value)
     setPnlManual(false)
   }
@@ -252,6 +263,7 @@ export default function TradeForm({
     setNewStrategyName('')
     setAddingStrategy(false)
     await onStrategyAdded?.()
+    setDirty(true)
     setStrategyId(data.id)
     setErrors((prev) => ({ ...prev, strategy: undefined }))
   }
@@ -259,6 +271,7 @@ export default function TradeForm({
   function handleScreenshotChange(e) {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
+    setDirty(true)
     setScreenshots((prev) => [
       ...prev,
       ...files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
@@ -267,7 +280,33 @@ export default function TradeForm({
     e.target.value = ''
   }
 
+  // Fires on paste anywhere in the form, not just the file input - a
+  // screenshot copied from a snipping tool is usually pasted with focus
+  // wherever the trader last clicked, not after hunting down "Choose
+  // files" first. Only acts when the clipboard actually holds image data,
+  // so pasting text into any other field (price, reasoning, a tag) is
+  // completely unaffected.
+  function handlePaste(e) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const files = []
+    for (const item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) files.push(file)
+      }
+    }
+    if (files.length === 0) return
+    e.preventDefault()
+    setDirty(true)
+    setScreenshots((prev) => [
+      ...prev,
+      ...files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
+    ])
+  }
+
   function handleRemoveScreenshot(index) {
+    setDirty(true)
     setScreenshots((prev) => {
       const target = prev[index]
       if (target) URL.revokeObjectURL(target.previewUrl)
@@ -276,6 +315,7 @@ export default function TradeForm({
   }
 
   function handleRemoveExistingScreenshot(index) {
+    setDirty(true)
     setExistingScreenshots((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -288,6 +328,7 @@ export default function TradeForm({
   function handleAddTag(tagText) {
     const trimmed = (tagText ?? newTagName).trim()
     if (!trimmed) return
+    setDirty(true)
     setTags((prev) => (prev.some((t) => t.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, trimmed]))
     setNewTagName('')
   }
@@ -301,6 +342,7 @@ export default function TradeForm({
   }
 
   function handleRemoveTag(tag) {
+    setDirty(true)
     setTags((prev) => prev.filter((t) => t !== tag))
   }
 
@@ -310,6 +352,7 @@ export default function TradeForm({
   }
 
   function handlePnlChange(value) {
+    setDirty(true)
     setPnlInput(value)
     // Clearing the field hands control back to the auto-calculation.
     setPnlManual(!isBlank(value))
@@ -318,6 +361,30 @@ export default function TradeForm({
   function handlePnlBlur() {
     const parsed = parseCurrency(pnlInput)
     setPnlInput(parsed === null ? '' : formatCurrency(parsed))
+  }
+
+  // Puts every piece of form state back exactly where it started, rather
+  // than navigating away - the trader stays on the edit page with the
+  // saved trade's original values restored. Screenshots picked since
+  // mount get their object URLs revoked like unmount cleanup does, since
+  // discarding drops them the same way closing the page would.
+  function handleDiscard() {
+    setStrategyId(initial.strategyId)
+    setDirection(initial.direction)
+    setSetup(initial.setup)
+    setExecution(initial.execution)
+    setPnlInput(initial.pnl == null ? '' : formatCurrency(initial.pnl))
+    setPnlManual(initial.pnl != null && (initialComputed === null || Math.abs(initialComputed - initial.pnl) > 0.005))
+    setExistingScreenshots(initial.existingScreenshots)
+    setScreenshots((prev) => {
+      prev.forEach((s) => URL.revokeObjectURL(s.previewUrl))
+      return []
+    })
+    setTags(initial.tags || [])
+    setErrors({})
+    setFormError(null)
+    if (reasoningRef.current) reasoningRef.current.value = initial.reasoning
+    setDirty(false)
   }
 
   async function handleSubmit(e) {
@@ -383,7 +450,7 @@ export default function TradeForm({
   return (
     <>
       <div className="panel">
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} onPaste={handlePaste} noValidate>
 
           {formError && (
             <div className="field full">
@@ -403,7 +470,7 @@ export default function TradeForm({
             {showEmptyStrategyMessage && strategies.length === 0 && !addingStrategy ? (
               <div className="empty" style={{ padding: '10px' }}>No strategies yet.</div>
             ) : (
-              <select value={strategyId} onChange={(e) => { setStrategyId(e.target.value); setErrors((prev) => ({ ...prev, strategy: undefined })) }}>
+              <select value={strategyId} onChange={(e) => { setDirty(true); setStrategyId(e.target.value); setErrors((prev) => ({ ...prev, strategy: undefined })) }}>
                 {strategyId === '' && <option value="">Select a strategy…</option>}
                 {strategies.slice().sort((a, b) => a.name.localeCompare(b.name)).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
@@ -524,7 +591,7 @@ export default function TradeForm({
             </div>
           </div>
           <div className="field full">
-            <label>Screenshot(s)</label>
+            <label>Screenshot(s) <FieldTooltip text={SCREENSHOT_PASTE_HINT} /></label>
             <input type="file" accept="image/*" multiple onChange={handleScreenshotChange} />
             {(existingScreenshots.length > 0 || screenshots.length > 0) && (
               <div className="screenshot-grid">
@@ -612,12 +679,25 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
-            <textarea name="reasoning" defaultValue={initial.reasoning} aria-label="Why did you take it?" />
+            <textarea
+              ref={reasoningRef}
+              name="reasoning"
+              defaultValue={initial.reasoning}
+              aria-label="Why did you take it?"
+              onChange={() => setDirty(true)}
+            />
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>
             {footerLeft}
-            <button type="submit" disabled={saving}>{saving ? 'Saving…' : submitLabel}</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {allowDiscard && dirty && (
+                <button type="button" className="discard-btn" onClick={handleDiscard} disabled={saving}>
+                  Discard changes
+                </button>
+              )}
+              <button type="submit" disabled={saving}>{saving ? 'Saving…' : submitLabel}</button>
+            </div>
           </div>
         </form>
       </div>

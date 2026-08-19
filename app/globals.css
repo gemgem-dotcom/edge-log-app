@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–313  Base: reset, typography, forms, tables, thumbnails,
+     1–327  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   314  Auth pages
-   366  Top nav
-   381  Instrument nav (topbar pill row)
-   445  Page layout
-   493  Tabs
-   503  Misc form helpers
-   509  Detail view
-   525  Holiday notice (site-wide, above the shell)
-   550  Shell layout (sidebar + topbar)
-   759  Expandable trade rows
-   776  Calendar
-   824  Account settings page
-   1022  Light theme
-   1049  2FA
-   1064  Account fine print
-   1067  Screenshot preview (log new trade)
-   1084  Auth pages always dark
-   1112  Monthly P&L (calendar on Overview)
-   1188  Trade form: sections, validation, currency, screenshots
-   1269  Field tooltips
-   1325  Date/time picker (adds an optional popup to a typed input)
-   1434  In-header column filters (trade log table)
-   1468  Active filter chips
-   1517  Empty states, error banners, skeleton loaders
-   1573  Cross-instrument overview dashboard (/app)
-   1723  Not found / error boundary state pages
-   1736  Toast notifications
-   1764  Public policy pages (Privacy, Terms)
-   1783  Legal links (auth pages + account settings)
-   1822  Economic calendar card (mock - Overview pages)
-   1929  Calendar news badge (Monthly P&L day cells, mock)
-   1950  Streak badge (Overview + strategy detail pages)
-   1967  Market status pill (Overview + strategy detail pages)
-   1993  Key levels, today's brief (mock cards)
-   2019  Market context cards (all-instruments Overview)
+   328  Auth pages
+   380  Top nav
+   395  Instrument nav (topbar pill row)
+   459  Page layout
+   507  Tabs
+   517  Misc form helpers
+   523  Detail view
+   539  Holiday notice (site-wide, above the shell)
+   564  Shell layout (sidebar + topbar)
+   773  Expandable trade rows
+   790  Calendar
+   838  Account settings page
+   1036  Light theme
+   1063  2FA
+   1078  Account fine print
+   1081  Screenshot preview (log new trade)
+   1098  Auth pages always dark
+   1126  Monthly P&L (calendar on Overview)
+   1202  Trade form: sections, validation, currency, screenshots
+   1283  Field tooltips
+   1339  Date/time picker (adds an optional popup to a typed input)
+   1448  In-header column filters (trade log table)
+   1482  Active filter chips
+   1531  Empty states, error banners, skeleton loaders
+   1587  Cross-instrument overview dashboard (/app)
+   1755  Not found / error boundary state pages
+   1768  Toast notifications
+   1796  Public policy pages (Privacy, Terms)
+   1815  Legal links (auth pages + account settings)
+   1854  Economic calendar card (mock - Overview pages)
+   1961  Calendar news badge (Monthly P&L day cells, mock)
+   1982  Streak badge (Overview + strategy detail pages)
+   1999  Market status pill (Overview + strategy detail pages)
+   2025  Key levels, today's brief (mock cards)
+   2051  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -203,10 +203,15 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
    the plain hover background. */
 .dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
 
-.submit-row{grid-column:span 6; display:flex; justify-content:flex-end; margin-top:4px;}
+.submit-row{grid-column:span 6; display:flex; justify-content:flex-end; align-items:center; gap:16px; margin-top:4px;}
 button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; transition:filter .15s ease, background-color .15s ease, opacity .15s ease;}
 button:hover{filter:brightness(1.08);}
 button:disabled{opacity:.5; cursor:not-allowed;}
+/* Undoes the pill treatment above - plain grey text next to Save changes,
+   only shown once the edit-trade form is actually dirty. Blue on hover
+   (not .del's red) since discarding is a neutral action, not a delete. */
+.discard-btn{background:none; color:var(--muted); border:none; border-radius:0; padding:0; font-weight:600; font-size:13px;}
+.discard-btn:hover{filter:none; color:var(--accent);}
 
 table{width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:12.5px;}
 th{text-align:left; font-family:'Inter',sans-serif; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; padding:8px 10px; border-bottom:1px solid var(--line);}
@@ -247,6 +252,20 @@ tr:last-child td{border-bottom:none;}
   display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;
 }
 .modal-close:hover{color:var(--loss); border-color:var(--loss);}
+/* Only rendered when a trade has more than one screenshot - prev/next sit
+   just inside the image's left/right edges rather than mirroring
+   .modal-close's outside-the-corner placement, since two of those per side
+   would collide with the image at typical screenshot aspect ratios. */
+.modal-nav{
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:36px; height:36px; border-radius:50%;
+  background:var(--panel); border:1px solid var(--line); color:var(--text);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  opacity:.85;
+}
+.modal-nav:hover{opacity:1; color:var(--accent); border-color:var(--accent);}
+.modal-nav-prev{left:12px;}
+.modal-nav-next{right:12px;}
 
 #tableWrap, .table-scroll{
   overflow-x:auto;

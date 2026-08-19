@@ -137,6 +137,7 @@ export default function EditTradePage({ params }) {
         onStrategyAdded={() => loadStrategies()}
         initial={initial}
         submitLabel="Save changes"
+        allowDiscard
         footerLeft={
           <span className="del" style={{ fontSize: '13px', alignSelf: 'center' }} onClick={handleDelete}>
             Delete this trade

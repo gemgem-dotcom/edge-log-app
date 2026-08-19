@@ -45,13 +45,13 @@ export default function TradeForm({
   submitLabel = 'Save',
   footerLeft = null,
   allowDiscard = false,
+  onCancel = null,
   onSubmit,
 }) {
-  // Only the edit-trade page passes allowDiscard - tracking every field
-  // that could make the form "dirty" is only worth doing where there's a
-  // saved trade underneath to discard back to.
+  // Only the edit-trade page passes allowDiscard - dirty just picks the
+  // label on the button that leaves the page (Cancel vs Discard changes,
+  // see onCancel below), so it's not worth tracking anywhere else.
   const [dirty, setDirty] = useState(false)
-  const reasoningRef = useRef(null)
 
   const [strategyId, setStrategyId] = useState(initial.strategyId)
   const [addingStrategy, setAddingStrategy] = useState(false)
@@ -362,30 +362,6 @@ export default function TradeForm({
     setPnlInput(parsed === null ? '' : formatCurrency(parsed))
   }
 
-  // Puts every piece of form state back exactly where it started, rather
-  // than navigating away - the trader stays on the edit page with the
-  // saved trade's original values restored. Screenshots picked since
-  // mount get their object URLs revoked like unmount cleanup does, since
-  // discarding drops them the same way closing the page would.
-  function handleDiscard() {
-    setStrategyId(initial.strategyId)
-    setDirection(initial.direction)
-    setSetup(initial.setup)
-    setExecution(initial.execution)
-    setPnlInput(initial.pnl == null ? '' : formatCurrency(initial.pnl))
-    setPnlManual(initial.pnl != null && (initialComputed === null || Math.abs(initialComputed - initial.pnl) > 0.005))
-    setExistingScreenshots(initial.existingScreenshots)
-    setScreenshots((prev) => {
-      prev.forEach((s) => URL.revokeObjectURL(s.previewUrl))
-      return []
-    })
-    setTags(initial.tags || [])
-    setErrors({})
-    setFormError(null)
-    if (reasoningRef.current) reasoningRef.current.value = initial.reasoning
-    setDirty(false)
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -680,7 +656,6 @@ export default function TradeForm({
 
           <div className="field full">
             <textarea
-              ref={reasoningRef}
               name="reasoning"
               defaultValue={initial.reasoning}
               aria-label="Why did you take it?"
@@ -691,9 +666,9 @@ export default function TradeForm({
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>
             {footerLeft}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              {allowDiscard && dirty && (
-                <button type="button" className="discard-btn" onClick={handleDiscard} disabled={saving}>
-                  Discard changes
+              {allowDiscard && onCancel && (
+                <button type="button" className="discard-btn" onClick={onCancel} disabled={saving}>
+                  {dirty ? 'Discard changes' : 'Cancel'}
                 </button>
               )}
               <button type="submit" disabled={saving}>{saving ? 'Saving…' : submitLabel}</button>

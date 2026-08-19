@@ -138,6 +138,7 @@ export default function EditTradePage({ params }) {
         initial={initial}
         submitLabel="Save changes"
         allowDiscard
+        onCancel={() => router.back()}
         footerLeft={
           <span className="del" style={{ fontSize: '13px', alignSelf: 'center' }} onClick={handleDelete}>
             Delete this trade

@@ -31,17 +31,17 @@
    1466  In-header column filters (trade log table)
    1500  Active filter chips
    1549  Empty states, error banners, skeleton loaders
-   1605  Cross-instrument overview dashboard (/app)
-   1773  Not found / error boundary state pages
-   1786  Toast notifications
-   1814  Public policy pages (Privacy, Terms)
-   1833  Legal links (auth pages + account settings)
-   1872  Economic calendar card (mock - Overview pages)
-   1979  Calendar news badge (Monthly P&L day cells, mock)
-   2000  Streak badge (Overview + strategy detail pages)
-   2017  Market status pill (Overview + strategy detail pages)
-   2043  Key levels, today's brief (mock cards)
-   2069  Market context cards (all-instruments Overview)
+   1620  Cross-instrument overview dashboard (/app)
+   1788  Not found / error boundary state pages
+   1801  Toast notifications
+   1829  Public policy pages (Privacy, Terms)
+   1848  Legal links (auth pages + account settings)
+   1887  Economic calendar card (mock - Overview pages)
+   1994  Calendar news badge (Monthly P&L day cells, mock)
+   2015  Streak badge (Overview + strategy detail pages)
+   2032  Market status pill (Overview + strategy detail pages)
+   2058  Key levels, today's brief (mock cards)
+   2084  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1601,6 +1601,21 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    since both appear at several different sizes across the skeletons. */
 .skel-pill{height:28px; border-radius:99px;}
 .skel-circle{border-radius:50%;}
+
+/* Embedded loading treatment for the content below a skeleton's header -
+   used where the eventual content shape is too unpredictable to mimic
+   (the per-instrument dashboard and cross-instrument Overview: an
+   instrument/account with zero trades renders one small EmptyState panel
+   where one with trades renders several stat sections, so guessing
+   either shape is wrong about as often as it's right). Reuses
+   .page-loading-bars/.page-loading-label's animated dots rather than
+   redefining them, just without .page-loading's own min-height:100vh -
+   this sits under an already-rendered header instead of owning the
+   whole viewport. */
+.content-loading{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; padding:80px 20px;
+}
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
 /* 15px, not --space-4 (16px) - standardized to match .stats/

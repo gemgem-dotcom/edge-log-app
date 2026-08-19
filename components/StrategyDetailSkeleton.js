@@ -7,13 +7,14 @@ export default function StrategyDetailSkeleton() {
     <div className="page-container">
       <div className="strategy-header-row">
         <div className="skel skel-title" style={{ width: '260px', marginBottom: 0 }} />
-        <div className="skel skel-circle" style={{ width: '26px', height: '26px' }} />
         <div className="skel skel-pill" style={{ width: '150px', marginLeft: 'auto' }} />
       </div>
       <div className="skel skel-subtitle" />
       <div className="header-pills-row">
+        {/* MarketStatusPill only - StreakBadge renders nothing without an
+            active 2+ streak, which is the common case, so guessing a
+            second pill here would be wrong more often than right. */}
         <div className="skel skel-pill" style={{ width: '120px' }} />
-        <div className="skel skel-pill" style={{ width: '170px' }} />
       </div>
 
       <div className="section-heading">Performance</div>

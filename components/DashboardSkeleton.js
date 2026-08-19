@@ -1,91 +1,36 @@
 // Shimmering placeholder for the per-instrument dashboard
 // (app/[instrument]/dashboard), shown instead of PageLoading while the
-// initial fetch is in flight - mirrors this page's actual section order
-// (header pills, All-Time Performance, At a glance, Monthly P&L) so the
-// loaded content doesn't jump into a noticeably different shape.
+// initial fetch is in flight. Only the header (title, subtitle, market
+// status pill) is skeletoned - that part renders identically whether or
+// not the instrument turns out to have any trades. The content below it
+// doesn't: zero trades collapses to one small EmptyState panel, where any
+// trades at all bring the full All-Time Performance/At a glance/Monthly
+// P&L stack, and there's no way to know which is coming until the fetch
+// resolves. Guessing either shape would be wrong about as often as it's
+// right, so that part falls back to the plain animated-bars loading
+// treatment instead (see .content-loading).
 export default function DashboardSkeleton() {
   return (
     <div className="page-container">
       <div className="strategy-header-row">
         <div className="skel skel-title" style={{ marginBottom: 0 }} />
-        <div className="skel skel-circle" style={{ width: '26px', height: '26px' }} />
         <div className="skel skel-pill" style={{ width: '150px', marginLeft: 'auto' }} />
       </div>
       <div className="skel skel-subtitle" />
       <div className="header-pills-row">
+        {/* MarketStatusPill only - StreakBadge renders nothing without an
+            active 2+ streak, which is the common case, so guessing a
+            second pill here would be wrong more often than right. */}
         <div className="skel skel-pill" style={{ width: '120px' }} />
-        <div className="skel skel-pill" style={{ width: '170px' }} />
       </div>
 
-      <div className="section-heading">All-Time Performance</div>
-      <div className="panel">
-        <div className="skel skel-line" style={{ width: '160px', height: '32px', marginBottom: '18px' }} />
-        <div className="stats stats-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className={`stat${i === 2 ? ' stat-gauge' : ''}`} key={i}>
-              <div className="skel skel-line" style={{ width: '60%' }} />
-              {i === 2 ? (
-                <div className="skel skel-circle" style={{ width: '100px', height: '52px', margin: '4px auto 0' }} />
-              ) : (
-                <div className="skel skel-value" />
-              )}
-            </div>
+      <div className="content-loading">
+        <div className="page-loading-bars">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span key={i} />
           ))}
         </div>
-        <div className="performance-card-subgrid">
-          <div>
-            <div className="skel skel-line" style={{ width: '160px', height: '12px', marginBottom: '16px' }} />
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div className="skel skel-line" key={i} style={{ marginBottom: '12px' }} />
-            ))}
-          </div>
-          <div>
-            <div className="skel skel-line" style={{ width: '110px', height: '12px', marginBottom: '16px' }} />
-            <div className="skel" style={{ height: '130px', borderRadius: '10px' }} />
-          </div>
-        </div>
-      </div>
-
-      <div className="section-heading">At a glance</div>
-      <div className="instrument-glance-row">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div className="panel" key={i}>
-            <div className="skel skel-line" style={{ width: '120px', height: '12px', marginBottom: '16px' }} />
-            {Array.from({ length: 3 }).map((_, j) => (
-              <div className="skel skel-row" key={j} />
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="market-context-row">
-        <div className="panel">
-          <div className="skel skel-line" style={{ width: '160px', height: '12px', marginBottom: '16px' }} />
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div className="skel skel-row" key={i} />
-          ))}
-        </div>
-        <div className="panel">
-          <div className="skel skel-line" style={{ width: '110px', height: '12px', marginBottom: '16px' }} />
-          <div className="skel skel-value" />
-        </div>
-      </div>
-
-      <div className="section-heading">Monthly P&L</div>
-      <div className="panel">
-        <div className="skel skel-line" style={{ width: '160px', height: '32px', marginBottom: '18px' }} />
-        <div className="stats stats-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className="stat" key={i}>
-              <div className="skel skel-line" style={{ width: '60%' }} />
-              <div className="skel skel-value" />
-            </div>
-          ))}
-        </div>
-        <div className="skel-calendar-grid">
-          {Array.from({ length: 35 }).map((_, i) => (
-            <div className="skel skel-calendar-cell" key={i} />
-          ))}
-        </div>
+        <div className="page-loading-label">Loading</div>
       </div>
     </div>
   )

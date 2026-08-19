@@ -2051,7 +2051,7 @@ label:has(.field-tooltip){display:flex; align-items:center;}
   padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
 }
 .key-levels-row:last-child{border-bottom:none; padding-bottom:0;}
-.key-levels-row span:first-child{color:var(--accent);}
+.key-levels-row span:first-child{color:var(--text);}
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
 /* Per-instrument Overview's Today's brief/Key levels/Session stats row.
@@ -2108,7 +2108,11 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    max-content width, so without this the table (even inside its own
    .table-scroll) forced the whole row wider than its container at
    narrower viewports, pushing Days to rollover half off-screen instead of
-   the table scrolling internally the way .table-scroll is meant to. */
+   the table scrolling internally the way .table-scroll is meant to.
+   Reused (same 3fr/1fr shape) by the per-instrument dashboard's own Next
+   calendar event/Days to rollover row - same relationship, a
+   variable-length list next to a single short stat, so no separate class
+   was worth adding. */
 .market-context-row{display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
 .market-context-row .panel{margin-bottom:0; flex:1;}
 @media (max-width:900px){

@@ -574,25 +574,26 @@ return (
   </div>
 </div>
 
-<div className="panel">
-  <div className="stat-label dashboard-card-title">Next calendar event</div>
-  {upcomingEvents.length > 0 ? (
-    <div className="key-levels-list">
-      {upcomingEvents.map((e, i) => (
-        <div className="key-levels-row" key={i}>
-          <span>{e.event}</span>
-          <span>{fmtCountdown(e.timestamp - now)}</span>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p className="brief-card-text">No events in the next 24 hours.</p>
-  )}
-</div>
-
-<div className="panel">
-  <div className="stat-label dashboard-card-title">Days to rollover</div>
-  <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
+<div className="market-context-row">
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Next calendar event</div>
+    {upcomingEvents.length > 0 ? (
+      <div className="key-levels-list">
+        {upcomingEvents.map((e, i) => (
+          <div className="key-levels-row" key={i}>
+            <span>{e.event}</span>
+            <span>{fmtCountdown(e.timestamp - now)}</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="brief-card-text">No events in the next 24 hours.</p>
+    )}
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Days to rollover</div>
+    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
+  </div>
 </div>
 
 <div className="section-heading">Monthly P&L</div>

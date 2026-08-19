@@ -456,28 +456,28 @@ export default function TradeLogTable({
 
       {preview && (
         <div className="modal-overlay" onClick={() => setPreview(null)}>
+          {preview.shots.length > 1 && (
+            <div
+              className="modal-nav modal-nav-prev"
+              onClick={(e) => { e.stopPropagation(); setPreview((p) => ({ ...p, index: (p.index - 1 + p.shots.length) % p.shots.length })) }}
+              aria-label="Previous screenshot"
+            >
+              <ChevronLeft size={20} />
+            </div>
+          )}
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-close" onClick={() => setPreview(null)}>✕</div>
-            {preview.shots.length > 1 && (
-              <>
-                <div
-                  className="modal-nav modal-nav-prev"
-                  onClick={() => setPreview((p) => ({ ...p, index: (p.index - 1 + p.shots.length) % p.shots.length }))}
-                  aria-label="Previous screenshot"
-                >
-                  <ChevronLeft size={20} />
-                </div>
-                <div
-                  className="modal-nav modal-nav-next"
-                  onClick={() => setPreview((p) => ({ ...p, index: (p.index + 1) % p.shots.length }))}
-                  aria-label="Next screenshot"
-                >
-                  <ChevronRight size={20} />
-                </div>
-              </>
-            )}
             <img src={preview.shots[preview.index]} alt={`Trade screenshot ${preview.index + 1} of ${preview.shots.length}`} />
           </div>
+          {preview.shots.length > 1 && (
+            <div
+              className="modal-nav modal-nav-next"
+              onClick={(e) => { e.stopPropagation(); setPreview((p) => ({ ...p, index: (p.index + 1) % p.shots.length })) }}
+              aria-label="Next screenshot"
+            >
+              <ChevronRight size={20} />
+            </div>
+          )}
         </div>
       )}
       {confirmModal}

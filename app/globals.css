@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–327  Base: reset, typography, forms, tables, thumbnails,
+     1–335  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   328  Auth pages
-   380  Top nav
-   395  Instrument nav (topbar pill row)
-   459  Page layout
-   507  Tabs
-   517  Misc form helpers
-   523  Detail view
-   539  Holiday notice (site-wide, above the shell)
-   564  Shell layout (sidebar + topbar)
-   773  Expandable trade rows
-   790  Calendar
-   838  Account settings page
-   1036  Light theme
-   1063  2FA
-   1078  Account fine print
-   1081  Screenshot preview (log new trade)
-   1098  Auth pages always dark
-   1126  Monthly P&L (calendar on Overview)
-   1202  Trade form: sections, validation, currency, screenshots
-   1283  Field tooltips
-   1339  Date/time picker (adds an optional popup to a typed input)
-   1448  In-header column filters (trade log table)
-   1482  Active filter chips
-   1531  Empty states, error banners, skeleton loaders
-   1587  Cross-instrument overview dashboard (/app)
-   1755  Not found / error boundary state pages
-   1768  Toast notifications
-   1796  Public policy pages (Privacy, Terms)
-   1815  Legal links (auth pages + account settings)
-   1854  Economic calendar card (mock - Overview pages)
-   1961  Calendar news badge (Monthly P&L day cells, mock)
-   1982  Streak badge (Overview + strategy detail pages)
-   1999  Market status pill (Overview + strategy detail pages)
-   2025  Key levels, today's brief (mock cards)
-   2051  Market context cards (all-instruments Overview)
+   336  Auth pages
+   388  Top nav
+   403  Instrument nav (topbar pill row)
+   467  Page layout
+   515  Tabs
+   525  Misc form helpers
+   531  Detail view
+   547  Holiday notice (site-wide, above the shell)
+   572  Shell layout (sidebar + topbar)
+   781  Expandable trade rows
+   798  Calendar
+   846  Account settings page
+   1044  Light theme
+   1071  2FA
+   1086  Account fine print
+   1089  Screenshot preview (log new trade)
+   1106  Auth pages always dark
+   1134  Monthly P&L (calendar on Overview)
+   1210  Trade form: sections, validation, currency, screenshots
+   1291  Field tooltips
+   1347  Date/time picker (adds an optional popup to a typed input)
+   1456  In-header column filters (trade log table)
+   1490  Active filter chips
+   1539  Empty states, error banners, skeleton loaders
+   1595  Cross-instrument overview dashboard (/app)
+   1763  Not found / error boundary state pages
+   1776  Toast notifications
+   1804  Public policy pages (Privacy, Terms)
+   1823  Legal links (auth pages + account settings)
+   1862  Economic calendar card (mock - Overview pages)
+   1969  Calendar news badge (Monthly P&L day cells, mock)
+   1990  Streak badge (Overview + strategy detail pages)
+   2007  Market status pill (Overview + strategy detail pages)
+   2033  Key levels, today's brief (mock cards)
+   2059  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -252,20 +252,23 @@ tr:last-child td{border-bottom:none;}
   display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;
 }
 .modal-close:hover{color:var(--loss); border-color:var(--loss);}
-/* Only rendered when a trade has more than one screenshot - prev/next sit
-   just inside the image's left/right edges rather than mirroring
-   .modal-close's outside-the-corner placement, since two of those per side
-   would collide with the image at typical screenshot aspect ratios. */
+/* Only rendered when a trade has more than one screenshot - a sibling of
+   .modal-content rather than a child of it, pinned to the overlay's own
+   edges instead of the image's. Screenshots are usually wide landscape
+   captures that already fill most of the 90vw cap, so anchoring to the
+   image edge (as a first attempt did) sat the arrows on top of the image
+   instead of beside it; anchoring to the overlay is invariant to the
+   image's actual width. */
 .modal-nav{
   position:absolute; top:50%; transform:translateY(-50%);
-  width:36px; height:36px; border-radius:50%;
+  width:40px; height:40px; border-radius:50%;
   background:var(--panel); border:1px solid var(--line); color:var(--text);
   display:flex; align-items:center; justify-content:center; cursor:pointer;
-  opacity:.85;
+  opacity:.85; z-index:1;
 }
 .modal-nav:hover{opacity:1; color:var(--accent); border-color:var(--accent);}
-.modal-nav-prev{left:12px;}
-.modal-nav-next{right:12px;}
+.modal-nav-prev{left:16px;}
+.modal-nav-next{right:16px;}
 
 #tableWrap, .table-scroll{
   overflow-x:auto;

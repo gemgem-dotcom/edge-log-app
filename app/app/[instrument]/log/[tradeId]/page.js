@@ -140,28 +140,28 @@ export default function TradeDetailPage({ params }) {
 
       {previewIndex !== null && (
         <div className="modal-overlay" onClick={() => setPreviewIndex(null)}>
+          {shots.length > 1 && (
+            <div
+              className="modal-nav modal-nav-prev"
+              onClick={(e) => { e.stopPropagation(); setPreviewIndex((i) => (i - 1 + shots.length) % shots.length) }}
+              aria-label="Previous screenshot"
+            >
+              <ChevronLeft size={20} />
+            </div>
+          )}
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-close" onClick={() => setPreviewIndex(null)}>✕</div>
-            {shots.length > 1 && (
-              <>
-                <div
-                  className="modal-nav modal-nav-prev"
-                  onClick={() => setPreviewIndex((i) => (i - 1 + shots.length) % shots.length)}
-                  aria-label="Previous screenshot"
-                >
-                  <ChevronLeft size={20} />
-                </div>
-                <div
-                  className="modal-nav modal-nav-next"
-                  onClick={() => setPreviewIndex((i) => (i + 1) % shots.length)}
-                  aria-label="Next screenshot"
-                >
-                  <ChevronRight size={20} />
-                </div>
-              </>
-            )}
             <img src={shots[previewIndex]} alt={`Trade screenshot ${previewIndex + 1} of ${shots.length}`} />
           </div>
+          {shots.length > 1 && (
+            <div
+              className="modal-nav modal-nav-next"
+              onClick={(e) => { e.stopPropagation(); setPreviewIndex((i) => (i + 1) % shots.length) }}
+              aria-label="Next screenshot"
+            >
+              <ChevronRight size={20} />
+            </div>
+          )}
         </div>
       )}
       {confirmModal}

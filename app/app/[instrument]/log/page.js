@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeLogTable from '@/components/TradeLogTable'
-import InstrumentMenu from '@/components/InstrumentMenu'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -18,7 +17,6 @@ export default function LogPage({ params }) {
 
 const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
   const [trades, setTrades] = useState([])
 
@@ -34,7 +32,6 @@ async function loadData() {
     const { data: instrument } = await supabase
     .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).eq('archived', false).single()
     if (!instrument) { setLoading(false); return }
-    setInstrumentId(instrument.id)
 
     const { data: stratData, error: stratError } = await supabase
     .from('strategies').select('*').eq('instrument_id', instrument.id).order('created_at', { ascending: true })
@@ -63,7 +60,6 @@ return (
   <div className="page-container">
   <div className="strategy-header-row">
     <h1 className="page-title">Trade log</h1>
-    {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
   <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>

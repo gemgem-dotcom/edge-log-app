@@ -5,7 +5,6 @@ import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
-import InstrumentMenu from '@/components/InstrumentMenu'
 import StrategiesSkeleton from '@/components/StrategiesSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -116,7 +115,6 @@ export default function StrategiesPage({ params }) {
     <div className="page-container">
       <div className="strategy-header-row">
         <h1 className="page-title">Strategies</h1>
-        {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
         <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
       </div>
 

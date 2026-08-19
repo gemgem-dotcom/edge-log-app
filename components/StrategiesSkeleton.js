@@ -3,7 +3,10 @@
 export default function StrategiesSkeleton() {
   return (
     <div className="page-container">
-      <div className="skel skel-title" />
+      <div className="strategy-header-row">
+        <div className="skel skel-title" style={{ marginBottom: 0 }} />
+        <div className="skel skel-pill" style={{ width: '150px', marginLeft: 'auto' }} />
+      </div>
 
       <div className="panel">
         <div className="skel skel-line" style={{ width: '140px', height: '12px', marginBottom: '16px' }} />

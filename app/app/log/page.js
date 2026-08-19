@@ -52,7 +52,11 @@ export default function AllTradesPage() {
     }
   }
 
-  if (loading) return <AppShell instruments={instruments} strategies={strategies} active="trades"><TradeLogSkeleton /></AppShell>
+  if (loading) return (
+    <AppShell instruments={instruments} strategies={strategies} active="trades">
+      <TradeLogSkeleton showInstrumentColumn showHeaderButton={false} />
+    </AppShell>
+  )
   if (error) {
     return (
       <AppShell instruments={instruments} strategies={strategies} active="trades">

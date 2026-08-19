@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, planAdherence, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
 import PageLoading from '@/components/PageLoading'
+import ScreenshotLightbox from '@/components/ScreenshotLightbox'
 
 // Plain thousands-grouped number, no sign/currency - for raw prices and
 // point distances, which are now stored to two decimal places (see
@@ -139,30 +139,12 @@ export default function TradeDetailPage({ params }) {
       </div>
 
       {previewIndex !== null && (
-        <div className="modal-overlay" onClick={() => setPreviewIndex(null)}>
-          {shots.length > 1 && (
-            <div
-              className="modal-nav modal-nav-prev"
-              onClick={(e) => { e.stopPropagation(); setPreviewIndex((i) => (i - 1 + shots.length) % shots.length) }}
-              aria-label="Previous screenshot"
-            >
-              <ChevronLeft size={20} />
-            </div>
-          )}
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-close" onClick={() => setPreviewIndex(null)}>✕</div>
-            <img src={shots[previewIndex]} alt={`Trade screenshot ${previewIndex + 1} of ${shots.length}`} />
-          </div>
-          {shots.length > 1 && (
-            <div
-              className="modal-nav modal-nav-next"
-              onClick={(e) => { e.stopPropagation(); setPreviewIndex((i) => (i + 1) % shots.length) }}
-              aria-label="Next screenshot"
-            >
-              <ChevronRight size={20} />
-            </div>
-          )}
-        </div>
+        <ScreenshotLightbox
+          shots={shots}
+          index={previewIndex}
+          onIndexChange={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+        />
       )}
       {confirmModal}
     </div>

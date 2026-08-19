@@ -13,7 +13,6 @@ import DatePicker from './DatePicker'
 import TimePicker from './TimePicker'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
-const SCREENSHOT_PASTE_HINT = 'You can also paste a screenshot directly from your clipboard (Ctrl+V / Cmd+V) instead of choosing a file.'
 
 export const EMPTY_TRADE_FORM = {
   direction: 'long',
@@ -591,8 +590,9 @@ export default function TradeForm({
             </div>
           </div>
           <div className="field full">
-            <label>Screenshot(s) <FieldTooltip text={SCREENSHOT_PASTE_HINT} /></label>
+            <label>Screenshot(s)</label>
             <input type="file" accept="image/*" multiple onChange={handleScreenshotChange} />
+            <span className="field-hint">or paste from clipboard</span>
             {(existingScreenshots.length > 0 || screenshots.length > 0) && (
               <div className="screenshot-grid">
                 {existingScreenshots.map((url, i) => (

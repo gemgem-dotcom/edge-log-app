@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
+import InstrumentMenu from '@/components/InstrumentMenu'
 import StrategiesSkeleton from '@/components/StrategiesSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -36,6 +37,7 @@ export default function StrategiesPage({ params }) {
         .select('*')
         .eq('user_id', user.id)
         .eq('symbol', symbol)
+        .eq('archived', false)
         .single()
 
       if (!instrument) {
@@ -103,10 +105,18 @@ export default function StrategiesPage({ params }) {
   if (loading) return <StrategiesSkeleton />
   if (error) return <div className="page-container"><PageError message={`Couldn't load your strategies — ${error}`} onRetry={loadStrategies} /></div>
 
+  // Active before archived (unchanged grouping), alphabetical by name
+  // within each group instead of creation order.
+  const sortedStrategies = strategies.slice().sort((a, b) => {
+    if (a.archived !== b.archived) return a.archived ? 1 : -1
+    return a.name.localeCompare(b.name)
+  })
+
   return (
     <div className="page-container">
-      <div className="page-header-row">
+      <div className="strategy-header-row">
         <h1 className="page-title">Strategies</h1>
+        {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
         <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
       </div>
 
@@ -139,7 +149,7 @@ export default function StrategiesPage({ params }) {
               <tr><th>Name</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
-              {strategies.map((s) => (
+              {sortedStrategies.map((s) => (
                 <tr key={s.id} style={{ opacity: s.archived ? 0.5 : 1 }}>
                   <td>
                     {editingId === s.id ? (

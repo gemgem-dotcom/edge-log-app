@@ -8,10 +8,14 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
-import { mockVolatility, mockKeyLevels } from '@/lib/marketContextMock'
+import { mockKeyLevels, nextEconEvent } from '@/lib/marketContextMock'
+import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
+import InstrumentMenu from '@/components/InstrumentMenu'
 import WinRateGauge from '@/components/WinRateGauge'
-import PnlDonut from '@/components/PnlDonut'
+import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
+import EquityCurveChart from '@/components/EquityCurveChart'
+import FlippingStatChips from '@/components/FlippingStatChips'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
@@ -22,13 +26,19 @@ import PageError from '@/components/PageError'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
+const EQUITY_GROUPS = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+]
 
 function computeStats(allTrades) {
   // Open trades (no exit price, so no R yet) can't be scored — leaving them
   // in would count them as breakeven and drag every average down.
   const trades = allTrades.filter(hasResult)
   const n = trades.length
-  if (n === 0) return { n, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null }
+  const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
+  if (n === 0) return { n, tradingDays, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -56,18 +66,79 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, expectancy, totalPnl, profitFactor, totalD, hasD, expectancyD }
+return { n, tradingDays, winRate, expectancy, totalPnl, profitFactor, totalD, hasD, expectancyD, wins: wins.length, losses: losses.length }
 }
 
 function hasDollar(t) {
   return t.pnl !== null && t.pnl !== undefined
 }
 
+// Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
+// Sun-Fri - Saturday is skipped entirely, since none of these instruments'
+// sessions land on it in any timezone. Every weekday is always included,
+// even with zero trades - AvgPnlByWeekdayChart renders those as a flat
+// $0 with no bar rather than omitting the row.
+function computeWeekdayPnl(trades) {
+  const byDay = new Map()
+  for (const t of trades) {
+    if (!hasResult(t) || !hasDollar(t) || !t.trade_date) continue
+    const day = new Date(t.trade_date + 'T00:00:00').getDay()
+    const entry = byDay.get(day) || { sum: 0, count: 0 }
+    entry.sum += t.pnl
+    entry.count += 1
+    byDay.set(day, entry)
+  }
+  return [0, 1, 2, 3, 4, 5].map((day) => {
+    const entry = byDay.get(day)
+    return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
+  })
+}
+
+// Monday of the ISO week containing dateStr, used as the bucket key when
+// the equity curve is grouped by week.
+function weekStart(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  const day = d.getDay()
+  d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function bucketKey(dateStr, group) {
+  if (group === 'month') return dateStr.slice(0, 7)
+  if (group === 'week') return weekStart(dateStr)
+  return dateStr
+}
+
+// Cumulative $ P&L, ordered by trade_date. Every trade always has a final
+// result, so there's no open-trade state to filter around - only trades
+// with a recorded $ amount (hasDollar) contribute, since R-only trades
+// have nothing to add to a dollar curve.
+function buildEquityCurve(trades, group) {
+  const withD = trades
+    .filter(hasResult)
+    .filter(hasDollar)
+    .slice()
+    .sort((a, b) => a.trade_date.localeCompare(b.trade_date) || (a.trade_time || '').localeCompare(b.trade_time || ''))
+
+  const byBucket = new Map()
+  for (const t of withD) {
+    const key = bucketKey(t.trade_date, group)
+    byBucket.set(key, (byBucket.get(key) || 0) + t.pnl)
+  }
+
+  const keys = [...byBucket.keys()].sort()
+  let running = 0
+  return keys.map((key) => {
+    running += byBucket.get(key)
+    return { key, cumulative: running }
+  })
+}
+
 function computeMonthStats(allTrades) {
   const trades = allTrades.filter(hasResult)
   const n = trades.length
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
-  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, wins: 0, losses: 0 }
+  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
@@ -83,6 +154,10 @@ const totalR = trades.reduce((s, t) => s + t.r_multiple, 0)
   const avgLossR = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
   const expectancyR = wr * avgWinR + (1 - wr) * avgLossR
 
+  const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
+
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
@@ -92,7 +167,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, wins: wins.length, losses: losses.length }
+return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {
@@ -114,6 +189,16 @@ function colorClass(val) {
 }
 function fmtPrice(val) {
   return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+function fmtCountdown(ms) {
+  if (ms === null || ms === undefined) return '—'
+  const totalMinutes = Math.round(ms / 60000)
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 function toDateStr(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -181,11 +266,14 @@ export default function DashboardPage({ params }) {
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
   const [tradesByStrategy, setTradesByStrategy] = useState({})
   const [allTrades, setAllTrades] = useState([])
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
   const [calStrategy, setCalStrategy] = useState('all')
+  const [perfStrategy, setPerfStrategy] = useState('all')
+  const [equityGroup, setEquityGroup] = useState('day')
   const [selectedDate, setSelectedDate] = useState(null)
 
 useEffect(() => {
@@ -198,8 +286,9 @@ async function loadData() {
   try {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: instrument } = await supabase
-    .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).single()
+    .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).eq('archived', false).single()
     if (!instrument) { setLoading(false); return }
+    setInstrumentId(instrument.id)
 
     const { data: stratData, error: stratError } = await supabase
     .from('strategies').select('*').eq('instrument_id', instrument.id).eq('archived', false)
@@ -230,15 +319,78 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
 
 const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
-  const overall = computeStats(classifiedTrades)
-  const streak = computeStreak(allTrades)
-  const volatility = mockVolatility(symbol)
-  const keyLevels = mockKeyLevels(symbol)
-  const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
+  const sortedStrategies = strategies.slice().sort((a, b) => a.name.localeCompare(b.name))
+  const perfTrades = perfStrategy === 'all' ? classifiedTrades : classifiedTrades.filter((t) => t.strategy_id === perfStrategy)
+  const overall = computeStats(perfTrades)
+  const weekdayRows = computeWeekdayPnl(perfTrades)
+  const equityPoints = buildEquityCurve(perfTrades, equityGroup)
+  // Always every strategy's own total, regardless of perfStrategy - the
+  // filter dims the others in the list rather than removing them, so
+  // their totals need to stay on screen to dim (same as instrumentSegments
+  // on the all-instruments page).
   const strategySegments = strategies.map((s, i) => {
     const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
-    return { label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
+    return { id: s.id, label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
   })
+
+  // Full per-strategy stats (from every trade, independent of perfStrategy -
+  // same reasoning as strategySegments above) - feeds the 4 other faces
+  // FlippingStatChips cycles through beside P&L.
+  const perStrategyStats = strategies.map((s, i) => ({
+    id: s.id,
+    label: s.name,
+    color: strategyColor(i),
+    stats: computeStats(tradesByStrategy[s.id] || []),
+  }))
+
+  // Alphabetical by strategy name in every view (not ranked by that view's
+  // own metric) - strategies stay in the same order regardless of which
+  // face is showing, matching how they're ordered everywhere else in the
+  // app (sidebar, filter dropdowns).
+  const alphaStrategySegments = strategySegments.slice().sort((a, b) => a.label.localeCompare(b.label))
+  const alphaPerStrategyStats = perStrategyStats.slice().sort((a, b) => a.label.localeCompare(b.label))
+
+  const flipViews = [
+    {
+      label: 'Total P&L',
+      segments: alphaStrategySegments
+        .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
+    },
+    {
+      label: 'Expectancy',
+      segments: alphaPerStrategyStats
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.expectancyD !== null ? `${fmtD(stats.expectancyD)} (${fmtR(stats.expectancy)})` : fmtR(stats.expectancy),
+          tone: colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy),
+        })),
+    },
+    {
+      label: 'Win rate',
+      segments: alphaPerStrategyStats
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%',
+          tone: stats.winRate !== null && stats.winRate < 50 ? 'neg' : 'neu',
+        })),
+    },
+    {
+      label: 'Profit factor',
+      segments: alphaPerStrategyStats
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: fmtPF(stats.profitFactor), tone: 'neu' })),
+    },
+    {
+      label: 'Total trades',
+      segments: alphaPerStrategyStats
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: stats.n.toLocaleString('en-US'), tone: 'neu' })),
+    },
+  ]
+  const streak = computeStreak(allTrades)
+  const keyLevels = mockKeyLevels(symbol)
+  const now = new Date()
+  const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
+  const upcomingEvent = nextEconEvent(now)
+  const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
 const calTrades = calStrategy === 'all' ? allTrades : allTrades.filter((t) => t.strategy_id === calStrategy)
   const tradesByDate = {}
@@ -254,8 +406,7 @@ const year = calCursor.year
   const monthStats = computeMonthStats(monthTrades)
   const weeks = buildCalendarWeeks(year, month, tradesByDate)
   const selectedTrades = selectedDate ? (tradesByDate[selectedDate] || []) : []
-  const todayNow = new Date()
-  const todayStr = toDateStr(todayNow.getFullYear(), todayNow.getMonth(), todayNow.getDate())
+  const todayStr = toDateStr(now.getFullYear(), now.getMonth(), now.getDate())
 
     function goPrevMonth() {
       setCalCursor((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }))
@@ -268,8 +419,9 @@ const year = calCursor.year
 
 return (
   <div className="page-container">
-  <div className="page-header-row">
-    <h1 className="page-title"><span className="page-title-symbol">{symbol}</span> DASHBOARD</h1>
+  <div className="strategy-header-row">
+    <h1 className="page-title">{displayName} Futures</h1>
+    {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
   <p className="page-subtitle page-subtitle-tight">Your performance overview for {displayName} futures.</p>
@@ -299,10 +451,23 @@ return (
   </div>
 ) : (
   <>
-<div className="section-heading">Overview</div>
-  <div className="dashboard-split">
-  <div>
-  <div className="stats stats-2">
+<div className="section-heading">All-Time Performance</div>
+  <div className="panel">
+  <div className="calendar-toolbar">
+  <select
+    className="calendar-strategy-filter"
+    value={perfStrategy}
+    onChange={(e) => setPerfStrategy(e.target.value)}
+  >
+    <option value="all">All strategies</option>
+    {sortedStrategies.map((s) => (
+      <option key={s.id} value={s.id}>{s.name}</option>
+    ))}
+  </select>
+  <FlippingStatChips views={flipViews} />
+  </div>
+
+  <div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -321,20 +486,46 @@ return (
   <div className={`stat-subvalue ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
   )}
   </div>
+  <div className="stat stat-gauge">
+  <div className="stat-label">Win rate</div>
+  <WinRateGauge wins={overall.wins} losses={overall.losses} winRate={overall.winRate} />
+  </div>
 <div className="stat">
   <div className="stat-label">Profit factor</div>
 <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
   </div>
   <div className="stat">
-  <div className="stat-label">Win rate</div>
-  <div className="stat-value neu">{overall.winRate === null ? '—' : overall.winRate.toFixed(1) + '%'}</div>
+  <div className="stat-label">Total trades</div>
+  <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
+  <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
   </div>
   </div>
+
+  <div className="performance-card-subgrid">
+  <div>
+  <div className="stat-label dashboard-card-title">Avg P&amp;L by day of week</div>
+  <AvgPnlByWeekdayChart rows={weekdayRows} />
   </div>
   <div>
-  <div className="panel">
-  <div className="stat-label dashboard-card-title">Cumulative P&amp;L by strategy</div>
-  <PnlDonut segments={strategySegments} netSignOnly />
+  <div className="stat-label dashboard-card-title">Equity curve</div>
+  <div className="tabs">
+  {EQUITY_GROUPS.map((g) => (
+    <div
+      key={g.value}
+      className={`tab ${equityGroup === g.value ? 'tab-active' : ''}`}
+      onClick={() => setEquityGroup(g.value)}
+    >
+      {g.label}
+    </div>
+  ))}
+  </div>
+  <EquityCurveChart points={equityPoints} />
+  {equityPoints.length > 0 && (
+  <div className="equity-chart-labels">
+    <span>{equityPoints[0].key}</span>
+    <span>{equityPoints[equityPoints.length - 1].key}</span>
+  </div>
+  )}
   </div>
   </div>
   </div>
@@ -347,16 +538,6 @@ return (
 <div className="section-heading">At a glance</div>
 <div className="instrument-glance-row">
   <div className="panel">
-    <div className="stat-label dashboard-card-title">Volatility — {symbol}</div>
-    <div className="volatility-card-value">{volatility.multiplier}x<span className="volatility-card-unit">normal</span></div>
-    {volatility.elevated && <span className="volatility-card-badge">Elevated</span>}
-    <p className="volatility-card-text">
-      {volatility.elevated
-        ? `${symbol} is running hot today — wider range than usual. Worth sizing with that in mind.`
-        : `${symbol} is trading within its normal range today.`}
-    </p>
-  </div>
-  <div className="panel">
     <div className="stat-label dashboard-card-title">Key levels</div>
     <div className="key-levels-list">
       <div className="key-levels-row"><span>Prior day high</span><span>{fmtPrice(keyLevels.priorHigh)}</span></div>
@@ -367,48 +548,30 @@ return (
   <div className="panel">
     <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
     <p className="brief-card-text">
-      {symbol}&apos;s volatile{streak ? `, you're on a streak trading it,` : ','} and CPI lands at 08:30.
+      {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
     </p>
   </div>
-</div>
-
-<div className="section-heading">Strategy performance</div>
-<div className="panel">
-{strategies.length === 0 ? (
-  <div className="empty">No strategies yet for {symbol}. Add one from the Strategies page.</div>
-) : (
-  <table className="perf-table">
-  <thead>
-  <tr>
-  <th>Strategy</th><th>Trades</th><th>Win rate</th>
-  <th>Expectancy</th><th>Profit factor</th>
-  </tr>
-  </thead>
-<tbody>
-{strategies.map((s, i) => {
-  const stats = computeStats(tradesByStrategy[s.id] || [])
-  return (
-    <tr
-  key={s.id}
-                className="clickable-row"
-onClick={() => window.location.href = `/app/${symbol}/strategies/${s.id}`}
->
-  <td className="strategy-name-cell">
-  <span className="strategy-dot" style={{ background: strategyColor(i) }} />
-{s.name}
-</td>
-<td>{stats.n.toLocaleString('en-US')}</td>
-<td className={stats.winRate !== null && stats.winRate < 50 ? 'neg' : ''}>
-{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}
-</td>
-<td className={colorClass(stats.expectancy)}>{fmtR(stats.expectancy)}</td>
-<td>{fmtPF(stats.profitFactor)}</td>
-  </tr>
-)
-})}
-</tbody>
-  </table>
-)}
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Current session&apos;s range vs. typical</div>
+    <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Overnight gap</div>
+    <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Volume vs. typical</div>
+    <div className="stat-value neu stat-placeholder">Needs Phase 2</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Days to rollover</div>
+    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Next calendar event</div>
+    <div className="stat-value neu">{upcomingEvent ? fmtCountdown(upcomingEvent.timestamp - now) : '—'}</div>
+    {upcomingEvent && <div className="stat-subvalue neu">{upcomingEvent.event}</div>}
+  </div>
 </div>
 
 <div className="section-heading">Monthly P&L</div>
@@ -420,7 +583,7 @@ value={calStrategy}
 onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
   >
   <option value="all">All strategies</option>
-{strategies.map((s) => (
+{sortedStrategies.map((s) => (
   <option key={s.id} value={s.id}>{s.name}</option>
 ))}
   </select>
@@ -431,7 +594,7 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
   </div>
   </div>
 
-<div className="stats">
+<div className="stats stats-5">
   <div className="stat">
   <div className="stat-label">Monthly P&L</div>
 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalR)}`}>
@@ -442,10 +605,14 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
 )}
 </div>
 <div className="stat">
-  <div className="stat-label">Total trades</div>
-<div className="stat-value neu">{monthStats.n}</div>
-<div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
-  </div>
+  <div className="stat-label">Expectancy</div>
+<div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancyR)}`}>
+{monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancyR)}
+</div>
+{monthStats.expectancyD !== null && (
+  <div className={`stat-subvalue ${colorClass(monthStats.expectancyR)}`}>{fmtR(monthStats.expectancyR)}</div>
+)}
+</div>
 <div className="stat stat-gauge">
   <div className="stat-label">Win rate</div>
 <WinRateGauge
@@ -455,14 +622,14 @@ winRate={monthStats.winRate}
 />
   </div>
 <div className="stat">
-  <div className="stat-label">Expectancy</div>
-<div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancyR)}`}>
-{monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancyR)}
-</div>
-{monthStats.expectancyD !== null && (
-  <div className={`stat-subvalue ${colorClass(monthStats.expectancyR)}`}>{fmtR(monthStats.expectancyR)}</div>
-)}
-</div>
+  <div className="stat-label">Profit factor</div>
+<div className="stat-value neu">{fmtPF(monthStats.profitFactor)}</div>
+  </div>
+<div className="stat">
+  <div className="stat-label">Total trades</div>
+<div className="stat-value neu">{monthStats.n}</div>
+<div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
+  </div>
   </div>
 
 <div className="calendar-scroll">

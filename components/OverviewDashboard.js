@@ -7,13 +7,17 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
-import { mockVolatility } from '@/lib/marketContextMock'
+import { daysToRollover, nextRolloverDate } from '@/lib/contractRollover'
 import EquityCurveChart from '@/components/EquityCurveChart'
-import PnlDonut from '@/components/PnlDonut'
+import FlippingStatChips from '@/components/FlippingStatChips'
+import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import WinRateGauge from '@/components/WinRateGauge'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import StreakBadge from '@/components/StreakBadge'
+import TableHeaderTooltip from '@/components/TableHeaderTooltip'
+import TradeLogTable from '@/components/TradeLogTable'
+import LogTradeMenu from '@/components/LogTradeMenu'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
@@ -142,6 +146,27 @@ function buildEquityCurve(trades, group) {
   })
 }
 
+// Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
+// Sun-Fri - Saturday is skipped entirely, since none of these instruments'
+// sessions land on it in any timezone. Every weekday is always included,
+// even with zero trades - AvgPnlByWeekdayChart renders those as a flat
+// $0 with no bar rather than omitting the row.
+function computeWeekdayPnl(trades) {
+  const byDay = new Map()
+  for (const t of trades) {
+    if (!hasResult(t) || !hasDollar(t) || !t.trade_date) continue
+    const day = new Date(t.trade_date + 'T00:00:00').getDay()
+    const entry = byDay.get(day) || { sum: 0, count: 0 }
+    entry.sum += t.pnl
+    entry.count += 1
+    byDay.set(day, entry)
+  }
+  return [0, 1, 2, 3, 4, 5].map((day) => {
+    const entry = byDay.get(day)
+    return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
+  })
+}
+
 function buildCalendarWeeks(year, month, tradesByDate) {
   function makeCell(y, m, d, outside) {
     const dateStr = toDateStr(y, m, d)
@@ -200,6 +225,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const [allTrades, setAllTrades] = useState([])
   const [greeting, setGreeting] = useState('')
   const [equityGroup, setEquityGroup] = useState('day')
+  const [perfInstrument, setPerfInstrument] = useState('all')
   const [calInstrument, setCalInstrument] = useState('all')
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
   const [selectedDate, setSelectedDate] = useState(null)
@@ -238,31 +264,88 @@ export default function OverviewDashboard({ instruments, strategies }) {
   instruments.forEach((inst, i) => { instrumentById[inst.id] = { ...inst, color: strategyColor(i) } })
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
-  const overall = computeOverallStats(allTrades)
   const streak = computeStreak(allTrades)
 
-  // Mock only - real version should weigh actual volatility/calendar data,
-  // not just restate the streak badge and the calendar card's first row.
-  const topVolInstrument = instruments.reduce((best, inst) => {
-    const v = mockVolatility(inst.symbol).multiplier
-    return !best || v > best.v ? { symbol: inst.symbol, v } : best
-  }, null)
   const briefText = streak
-    ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep${topVolInstrument ? `, ${topVolInstrument.symbol}'s volatile,` : ','} and CPI drops at 08:30.`
-    : `${topVolInstrument ? `${topVolInstrument.symbol}'s volatile today` : 'Markets are active today'} and CPI drops at 08:30 — worth keeping an eye on.`
+    ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep, and CPI drops at 08:30.`
+    : 'Markets are active today and CPI drops at 08:30 — worth keeping an eye on.'
 
-  const equityPoints = buildEquityCurve(allTrades, equityGroup)
+  const now = new Date()
 
+  const perfTrades = perfInstrument === 'all' ? allTrades : allTrades.filter((t) => t.instrument_id === perfInstrument)
+  const overall = computeOverallStats(perfTrades)
+  const equityPoints = buildEquityCurve(perfTrades, equityGroup)
+  const weekdayRows = computeWeekdayPnl(perfTrades)
+
+  // Always every instrument's own total, regardless of perfInstrument -
+  // the filter dims the others in the list rather than removing them, so
+  // their totals need to stay on screen to dim.
   const instrumentSegments = instruments.map((inst, i) => {
     const trades = allTrades.filter((t) => t.instrument_id === inst.id && hasResult(t) && hasDollar(t))
-    return { label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
+    return { id: inst.id, label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
   })
+
+  // Full per-instrument stats (independent of allTrades filtering by
+  // perfInstrument, same reasoning as instrumentSegments above) - feeds
+  // the 4 other faces FlippingStatChips cycles through beside P&L.
+  const perInstrumentStats = instruments.map((inst, i) => ({
+    id: inst.id,
+    label: inst.symbol,
+    color: strategyColor(i),
+    stats: computeOverallStats(allTrades.filter((t) => t.instrument_id === inst.id)),
+  }))
+
+  const flipViews = [
+    {
+      label: 'Total P&L',
+      segments: instrumentSegments
+        .slice()
+        .sort((a, b) => b.value - a.value)
+        .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
+    },
+    {
+      label: 'Expectancy',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => (b.stats.expectancyD ?? b.stats.expectancy ?? -Infinity) - (a.stats.expectancyD ?? a.stats.expectancy ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.expectancyD !== null ? `${fmtD(stats.expectancyD)} (${fmtR(stats.expectancy)})` : fmtR(stats.expectancy),
+          tone: colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy),
+        })),
+    },
+    {
+      label: 'Win rate',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => (b.stats.winRate ?? -Infinity) - (a.stats.winRate ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({
+          id, label, color,
+          value: stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%',
+          tone: stats.winRate !== null && stats.winRate < 50 ? 'neg' : 'neu',
+        })),
+    },
+    {
+      label: 'Profit factor',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => (b.stats.profitFactor ?? -Infinity) - (a.stats.profitFactor ?? -Infinity))
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: fmtPF(stats.profitFactor), tone: 'neu' })),
+    },
+    {
+      label: 'Total trades',
+      segments: perInstrumentStats
+        .slice()
+        .sort((a, b) => b.stats.n - a.stats.n)
+        .map(({ id, label, color, stats }) => ({ id, label, color, value: stats.n.toLocaleString('en-US'), tone: 'neu' })),
+    },
+  ]
 
   const recentTrades = allTrades
     .filter(hasResult)
     .slice()
     .sort((a, b) => b.trade_date.localeCompare(a.trade_date) || (b.trade_time || '').localeCompare(a.trade_time || ''))
-    .slice(0, 8)
+    .slice(0, 5)
 
   const calTrades = calInstrument === 'all' ? allTrades : allTrades.filter((t) => t.instrument_id === calInstrument)
   const tradesByDate = {}
@@ -296,6 +379,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
     <div className="page-container">
       <div className="page-header-row">
         <h1 className="page-title">{greeting}</h1>
+        <LogTradeMenu instruments={instruments} />
       </div>
       <p className="page-subtitle page-subtitle-tight">Here&apos;s what you need to know.</p>
       <div className="header-pills-row">
@@ -318,7 +402,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
         </div>
       ) : (
         <>
-          <div className="dashboard-split">
+          <div className="dashboard-split brief-calendar-row">
             <div>
               <div className="panel">
                 <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
@@ -327,67 +411,133 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
             <div>
               <div className="panel">
-                <div className="stat-label dashboard-card-title">Volatility</div>
-                <div className="volatility-strip">
-                  {instruments.map((inst) => {
-                    const v = mockVolatility(inst.symbol)
-                    return (
-                      <div className="volatility-strip-row" key={inst.id}>
-                        <span className="volatility-strip-symbol">{inst.symbol}</span>
-                        <span className="volatility-strip-value">
-                          {v.multiplier}x<span className="volatility-strip-tag">{v.elevated ? 'elevated' : 'normal'}</span>
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
+                <div className="stat-label dashboard-card-title">Economic calendar</div>
+                <EconomicCalendarCard />
               </div>
             </div>
           </div>
 
-          <div className="panel">
-            <div className="stat-label dashboard-card-title">Economic calendar</div>
-            <EconomicCalendarCard />
+          <div className="market-context-row">
+            <div className="panel">
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Instrument</th>
+                      <th>
+                        <span className="th-with-tooltip">
+                          Overnight gap
+                          <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
+                        </span>
+                      </th>
+                      <th>
+                        <span className="th-with-tooltip">
+                          Range vs. typical
+                          <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
+                        </span>
+                      </th>
+                      <th>
+                        <span className="th-with-tooltip">
+                          Volume vs. typical
+                          <TableHeaderTooltip text="How much volume has traded so far this session, compared to the average volume at this same point across the last 20 sessions." />
+                        </span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {instruments.map((inst) => (
+                      <tr key={inst.id}>
+                        <td>{inst.symbol}</td>
+                        <td className="stat-placeholder">Needs Phase 2</td>
+                        <td className="stat-placeholder">Needs Phase 2</td>
+                        <td className="stat-placeholder">Needs Phase 2</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="panel">
+              <div className="stat-label dashboard-card-title">Days to rollover</div>
+              <div className="context-strip">
+                {instruments.map((inst) => {
+                  const dataSymbol = inst.data_symbol || inst.symbol
+                  const days = daysToRollover(dataSymbol, now)
+                  const rolloverDate = nextRolloverDate(dataSymbol, now)
+                  return (
+                    <div className="context-strip-row" key={inst.id}>
+                      <span className="context-strip-symbol">{inst.symbol}</span>
+                      <span className="context-strip-right">
+                        {rolloverDate && (
+                          <span className="context-strip-date">
+                            {new Date(rolloverDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                        <span className="context-strip-value">{days === null ? '—' : `${days}d`}</span>
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="section-heading">All-Time Performance</div>
-          <div className="stats stats-5">
-            <div className="stat">
-              <div className="stat-label">Total P&amp;L</div>
-              <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
-                {overall.hasD ? fmtD(overall.totalD) : fmtR(overall.totalPnl)}
-              </div>
-              {overall.hasD && (
-                <div className={`stat-subvalue ${colorClass(overall.totalPnl)}`}>{fmtR(overall.totalPnl)}</div>
-              )}
+          <div className="panel">
+            <div className="calendar-toolbar">
+              <select
+                className="calendar-strategy-filter"
+                value={perfInstrument}
+                onChange={(e) => setPerfInstrument(e.target.value)}
+              >
+                <option value="all">All instruments</option>
+                {instruments.map((inst) => (
+                  <option key={inst.id} value={inst.id}>{inst.symbol}</option>
+                ))}
+              </select>
+              <FlippingStatChips views={flipViews} />
             </div>
-            <div className="stat">
-              <div className="stat-label">Expectancy</div>
-              <div className={`stat-value ${colorClass(overall.expectancyD !== null ? overall.expectancyD : overall.expectancy)}`}>
-                {overall.expectancyD !== null ? fmtD(overall.expectancyD) : fmtR(overall.expectancy)}
-              </div>
-              {overall.expectancyD !== null && (
-                <div className={`stat-subvalue ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
-              )}
-            </div>
-            <div className="stat stat-gauge">
-              <div className="stat-label">Win rate</div>
-              <WinRateGauge wins={overall.wins} losses={overall.losses} winRate={overall.winRate} />
-            </div>
-            <div className="stat">
-              <div className="stat-label">Profit factor</div>
-              <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
-            </div>
-            <div className="stat">
-              <div className="stat-label">Total trades</div>
-              <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
-              <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
-            </div>
-          </div>
 
-          <div className="dashboard-split">
-            <div>
-              <div className="panel">
+            <div className="stats stats-5">
+              <div className="stat">
+                <div className="stat-label">Total P&amp;L</div>
+                <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
+                  {overall.hasD ? fmtD(overall.totalD) : fmtR(overall.totalPnl)}
+                </div>
+                {overall.hasD && (
+                  <div className={`stat-subvalue ${colorClass(overall.totalPnl)}`}>{fmtR(overall.totalPnl)}</div>
+                )}
+              </div>
+              <div className="stat">
+                <div className="stat-label">Expectancy</div>
+                <div className={`stat-value ${colorClass(overall.expectancyD !== null ? overall.expectancyD : overall.expectancy)}`}>
+                  {overall.expectancyD !== null ? fmtD(overall.expectancyD) : fmtR(overall.expectancy)}
+                </div>
+                {overall.expectancyD !== null && (
+                  <div className={`stat-subvalue ${colorClass(overall.expectancy)}`}>{fmtR(overall.expectancy)}</div>
+                )}
+              </div>
+              <div className="stat stat-gauge">
+                <div className="stat-label">Win rate</div>
+                <WinRateGauge wins={overall.wins} losses={overall.losses} winRate={overall.winRate} />
+              </div>
+              <div className="stat">
+                <div className="stat-label">Profit factor</div>
+                <div className="stat-value neu">{fmtPF(overall.profitFactor)}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-label">Total trades</div>
+                <div className="stat-value neu">{overall.n.toLocaleString('en-US')}</div>
+                <div className="stat-subvalue neu">{overall.tradingDays} trading day{overall.tradingDays === 1 ? '' : 's'}</div>
+              </div>
+            </div>
+
+            <div className="performance-card-subgrid">
+              <div>
+                <div className="stat-label dashboard-card-title">Avg P&amp;L by day of week</div>
+                <AvgPnlByWeekdayChart rows={weekdayRows} />
+              </div>
+              <div>
                 <div className="stat-label dashboard-card-title">Equity curve</div>
                 <div className="tabs">
                   {EQUITY_GROUPS.map((g) => (
@@ -407,15 +557,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
                     <span>{equityPoints[equityPoints.length - 1].key}</span>
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div>
-              <div className="panel donut-card-lg">
-                <div className="stat-label dashboard-card-title">Cumulative P&amp;L by instrument</div>
-                <div className="donut-card-body">
-                  <PnlDonut segments={instrumentSegments} netSignOnly />
-                </div>
               </div>
             </div>
           </div>
@@ -440,7 +581,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </div>
             </div>
 
-            <div className="stats">
+            <div className="stats stats-5">
               <div className="stat">
                 <div className="stat-label">Monthly P&L</div>
                 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalPnl)}`}>
@@ -451,15 +592,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
                 )}
               </div>
               <div className="stat">
-                <div className="stat-label">Total trades</div>
-                <div className="stat-value neu">{monthStats.n}</div>
-                <div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
-              </div>
-              <div className="stat stat-gauge">
-                <div className="stat-label">Win rate</div>
-                <WinRateGauge wins={monthStats.wins} losses={monthStats.losses} winRate={monthStats.winRate} />
-              </div>
-              <div className="stat">
                 <div className="stat-label">Expectancy</div>
                 <div className={`stat-value ${colorClass(monthStats.expectancyD !== null ? monthStats.expectancyD : monthStats.expectancy)}`}>
                   {monthStats.expectancyD !== null ? fmtD(monthStats.expectancyD) : fmtR(monthStats.expectancy)}
@@ -467,6 +599,19 @@ export default function OverviewDashboard({ instruments, strategies }) {
                 {monthStats.expectancyD !== null && (
                   <div className={`stat-subvalue ${colorClass(monthStats.expectancy)}`}>{fmtR(monthStats.expectancy)}</div>
                 )}
+              </div>
+              <div className="stat stat-gauge">
+                <div className="stat-label">Win rate</div>
+                <WinRateGauge wins={monthStats.wins} losses={monthStats.losses} winRate={monthStats.winRate} />
+              </div>
+              <div className="stat">
+                <div className="stat-label">Profit factor</div>
+                <div className="stat-value neu">{fmtPF(monthStats.profitFactor)}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-label">Total trades</div>
+                <div className="stat-value neu">{monthStats.n}</div>
+                <div className="stat-subvalue neu">{monthStats.tradingDays} trading day{monthStats.tradingDays === 1 ? '' : 's'}</div>
               </div>
             </div>
 
@@ -514,63 +659,31 @@ export default function OverviewDashboard({ instruments, strategies }) {
             {selectedDate && (
               <>
                 <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr><th>Instrument</th><th>Strategy</th><th>Direction</th><th>R</th><th>P&amp;L</th></tr>
-                    </thead>
-                    <tbody>
-                      {selectedTrades.map((t) => {
-                        const inst = instrumentById[t.instrument_id]
-                        const closed = hasResult(t)
-                        const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
-                        return (
-                          <tr key={t.id}>
-                            <td>
-                              <span className="strategy-dot" style={{ background: inst?.color, marginRight: '8px', verticalAlign: 'middle' }} />
-                              {inst?.symbol || '—'}
-                            </td>
-                            <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
-                            <td style={{ color: t.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{t.direction.toUpperCase()}</td>
-                            <td>{closed ? <span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</td>
-                            <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <TradeLogTable
+                  trades={selectedTrades}
+                  strategyNameById={strategyName}
+                  showStrategyColumn
+                  showDayColumn={false}
+                  showInstrumentColumn
+                  instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
+                  instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
+                />
               </>
             )}
           </div>
 
           <div className="section-heading">Recent trades</div>
           <div className="panel">
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>Time</th><th>Instrument</th><th>Strategy</th><th>R</th><th>P&amp;L</th></tr>
-                </thead>
-                <tbody>
-                  {recentTrades.map((t) => {
-                    const inst = instrumentById[t.instrument_id]
-                    const rClass = t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
-                    return (
-                      <tr key={t.id}>
-                        <td>{t.trade_date}{t.trade_time ? ` ${t.trade_time}` : ''}</td>
-                        <td>
-                          <span className="strategy-dot" style={{ background: inst?.color, marginRight: '8px', verticalAlign: 'middle' }} />
-                          {inst?.symbol || '—'}
-                        </td>
-                        <td>{t.strategy_id ? strategyName(t.strategy_id) : <span className="unclassified-tag">Unassigned</span>}</td>
-                        <td><span className={`r-pill ${rClass}`}>{(t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span></td>
-                        <td className={t.pnl == null ? '' : t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}>{fmtD(t.pnl)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <TradeLogTable
+              trades={recentTrades}
+              strategyNameById={strategyName}
+              showStrategyColumn
+              showDayColumn={false}
+              showInstrumentColumn
+              instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
+              instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
+              showTimeInDate
+            />
             <div className="panel-link-row">
               <a href="/app/log" className="panel-link">View all trades</a>
             </div>

@@ -12,6 +12,11 @@ const IMPACT_OPTIONS = [
   { value: 'low', label: 'Low impact' },
 ]
 
+// Shared across every EconomicCalendarCard instance (both dashboards render
+// one with no distinguishing props) - one filter setting for "the economic
+// calendar", not a separate one per page it happens to appear on.
+const IMPACT_FILTER_STORAGE_KEY = 'econCalendarImpactFilter'
+
 // Long enough for any range someone would plausibly pick in this card, and
 // a hard stop against an accidental multi-year range (e.g. a typo'd year
 // in the date input) turning into a very long loop.
@@ -25,6 +30,19 @@ function toDateStr(d) {
 }
 function todayStr() {
   return toDateStr(new Date())
+}
+// Sunday and Saturday of the current week, in the visitor's local time -
+// the default range this card opens to, so it reads as "what's happening
+// this week" rather than just today.
+function weekStartStr() {
+  const d = new Date()
+  d.setDate(d.getDate() - d.getDay())
+  return toDateStr(d)
+}
+function weekEndStr() {
+  const d = new Date()
+  d.setDate(d.getDate() + (6 - d.getDay()))
+  return toDateStr(d)
 }
 
 const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -119,9 +137,31 @@ function ImpactChecklist({ selected, onChange }) {
 // underlying currency/market instead of always showing the same US-wide
 // list - no such filtering exists yet.
 export default function EconomicCalendarCard() {
-  const [fromDate, setFromDate] = useState(todayStr)
-  const [toDate, setToDate] = useState(todayStr)
+  const [fromDate, setFromDate] = useState(weekStartStr)
+  const [toDate, setToDate] = useState(weekEndStr)
   const [impactSelected, setImpactSelected] = useState(['high', 'medium', 'low'])
+
+  // Restores whatever the trader last set, rather than resetting to
+  // High+Medium+Low on every visit - this component only ever mounts
+  // client-side (both dashboards gate it behind their own loading state),
+  // so there's no SSR/hydration mismatch to guard against by deferring
+  // this to an effect the way HolidayNotice's localStorage read does.
+  useEffect(() => {
+    const saved = localStorage.getItem(IMPACT_FILTER_STORAGE_KEY)
+    if (!saved) return
+    try {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed)) setImpactSelected(parsed)
+    } catch {
+      // Malformed value from an older version of this key, or manual
+      // tampering - fall back to the default already set above.
+    }
+  }, [])
+
+  function handleImpactChange(next) {
+    setImpactSelected(next)
+    localStorage.setItem(IMPACT_FILTER_STORAGE_KEY, JSON.stringify(next))
+  }
 
   const isSingleDay = fromDate === toDate
   const today = todayStr()
@@ -133,7 +173,7 @@ export default function EconomicCalendarCard() {
   return (
     <>
       <div className="calendar-toolbar">
-        <ImpactChecklist selected={impactSelected} onChange={setImpactSelected} />
+        <ImpactChecklist selected={impactSelected} onChange={handleImpactChange} />
         <DateRangePicker from={fromDate} to={toDate} onChange={(f, t) => { setFromDate(f); setToDate(t) }} />
       </div>
 
@@ -154,13 +194,6 @@ export default function EconomicCalendarCard() {
           ))}
         </div>
       )}
-
-      {/* Mock only - a real version would check whether the trader's own
-          strategies (tags, typical session times) line up with this
-          range's high-impact events instead of this hardcoded line. */}
-      <div className="econ-calendar-mock-footer">
-        2 of your strategies trade around high-impact events this week — Powell Mon, Break and Retest
-      </div>
     </>
   )
 }

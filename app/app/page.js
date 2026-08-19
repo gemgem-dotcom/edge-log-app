@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { INSTRUMENT_CATALOG, catalogEntryFor } from '@/lib/instrumentCatalog'
+import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
+import { addOrRestoreInstrument } from '@/lib/instruments'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 import AppShell from '@/components/AppShell'
@@ -41,6 +42,7 @@ export default function AppHome() {
       .from('instruments')
       .select('*')
       .eq('user_id', user.id)
+      .eq('archived', false)
       .order('created_at', { ascending: true })
 
     setInstruments(data || [])
@@ -74,18 +76,8 @@ export default function AppHome() {
     setSaving(true)
 
     const { data: { user } } = await supabase.auth.getUser()
-    const catalogEntry = catalogEntryFor(symbol)
 
-    const { data: instrument, error: instrError } = await supabase
-      .from('instruments')
-      .insert([{
-        user_id: user.id,
-        symbol,
-        data_symbol: catalogEntry?.data_symbol || symbol,
-        display_name: catalogEntry?.display_name || null,
-      }])
-      .select()
-      .single()
+    const { data: instrument, error: instrError, restored } = await addOrRestoreInstrument(user.id, symbol)
 
     if (instrError) {
       setError(instrError.message)
@@ -93,14 +85,20 @@ export default function AppHome() {
       return
     }
 
-    const { error: stratError } = await supabase
-      .from('strategies')
-      .insert([{ user_id: user.id, instrument_id: instrument.id, name: strategyName.trim() }])
+    // A restored instrument brings its old strategies back with it, so the
+    // "first strategy" field here is only meaningful for a genuinely new
+    // one - skip it on a restore rather than risk hitting strategies' own
+    // unique(instrument_id, name) with a name that's already there.
+    if (!restored) {
+      const { error: stratError } = await supabase
+        .from('strategies')
+        .insert([{ user_id: user.id, instrument_id: instrument.id, name: strategyName.trim() }])
 
-    if (stratError) {
-      setError(stratError.message)
-      setSaving(false)
-      return
+      if (stratError) {
+        setError(stratError.message)
+        setSaving(false)
+        return
+      }
     }
 
     router.replace(`/app/${symbol}/dashboard`)

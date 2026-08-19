@@ -18,7 +18,11 @@ export default function FieldTooltip({ text }) {
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="field-tooltip-glyph">?</span>
+        <span className="field-tooltip-glyph" aria-hidden="true">
+          <svg viewBox="0 0 14 14">
+            <text x="7" y="7.3" textAnchor="middle" dominantBaseline="central">?</text>
+          </svg>
+        </span>
       </button>
       <span className={`field-tooltip-bubble ${open ? 'field-tooltip-bubble-open' : ''}`} role="tooltip">
         {text}

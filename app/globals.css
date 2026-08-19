@@ -5,41 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–301  Base: reset, typography, forms, tables, thumbnails,
+     1–313  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   303  Auth pages
-   355  Top nav
-   370  Instrument nav (topbar pill row)
-   417  Page layout
-   466  Tabs
-   476  Misc form helpers
-   482  Detail view
-   498  Shell layout (sidebar + topbar)
-   711  Expandable trade rows
-   728  Calendar
-   776  Account settings page
-   961  Light theme
-   988  2FA
-   1003  Account fine print
-   1006  Screenshot preview (log new trade)
-   1023  Auth pages always dark
-   1051  Monthly P&L (calendar on Overview)
-   1127  Trade form: sections, validation, currency, screenshots
-   1198  Field tooltips
-   1239  Date/time picker (adds an optional popup to a typed input)
-   1348  In-header column filters (trade log table)
-   1382  Active filter chips
-   1431  Empty states, error banners, skeleton loaders
-   1482  Cross-instrument overview dashboard (/app)
-   1560  Not found / error boundary state pages
-   1573  Toast notifications
-   1601  Public policy pages (Privacy, Terms)
-   1620  Legal links (auth pages + account settings)
-   1659  Economic calendar card (mock - Overview pages)
-   1742  Calendar news badge (Monthly P&L day cells, mock)
-   1763  Streak badge (Overview + strategy detail pages)
-   1772  Market status pill (Overview + strategy detail pages)
-   1798  Volatility, key levels, today's brief (mock cards)
+   314  Auth pages
+   366  Top nav
+   381  Instrument nav (topbar pill row)
+   445  Page layout
+   493  Tabs
+   503  Misc form helpers
+   509  Detail view
+   525  Holiday notice (site-wide, above the shell)
+   550  Shell layout (sidebar + topbar)
+   759  Expandable trade rows
+   776  Calendar
+   824  Account settings page
+   1022  Light theme
+   1049  2FA
+   1064  Account fine print
+   1067  Screenshot preview (log new trade)
+   1084  Auth pages always dark
+   1112  Monthly P&L (calendar on Overview)
+   1188  Trade form: sections, validation, currency, screenshots
+   1269  Field tooltips
+   1325  Date/time picker (adds an optional popup to a typed input)
+   1434  In-header column filters (trade log table)
+   1468  Active filter chips
+   1517  Empty states, error banners, skeleton loaders
+   1573  Cross-instrument overview dashboard (/app)
+   1723  Not found / error boundary state pages
+   1736  Toast notifications
+   1764  Public policy pages (Privacy, Terms)
+   1783  Legal links (auth pages + account settings)
+   1822  Economic calendar card (mock - Overview pages)
+   1929  Calendar news badge (Monthly P&L day cells, mock)
+   1950  Streak badge (Overview + strategy detail pages)
+   1967  Market status pill (Overview + strategy detail pages)
+   1993  Key levels, today's brief (mock cards)
+   2019  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -109,10 +111,10 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .progress-note{font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4;}
 
 /* 15px, not --space-3 (12px) - every card-family grid on the platform
-   (this, .dashboard-split, .instrument-glance-row/.strategy-glance-row)
-   was standardized to a uniform 15px gap by explicit request, off the
-   4/8/12/16/24/32 scale above on purpose rather than snapping to its
-   nearest step. margin-bottom matches the gap for the same reason
+   (this, .dashboard-split, .instrument-glance-row) was standardized to a
+   uniform 15px gap by explicit request, off the 4/8/12/16/24/32 scale
+   above on purpose rather than snapping to its nearest step. margin-bottom
+   matches the gap for the same reason
    .dashboard-split's does - the space to whatever card follows should
    read the same as the space between the cards in this row. Untouched
    where a .section-heading follows instead: its own 24px margin-top
@@ -457,9 +459,8 @@ table{min-width:640px;}
 .page-header-row .page-title{margin-bottom:0;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
-   Archivo weight, and would visibly mismatch the 800 symbol beside it. */
+   Archivo weight. */
 .page-title{font-family:'Archivo',sans-serif; font-size:26px; font-weight:500; margin-bottom:20px; letter-spacing:-.01em;}
-.page-title-symbol{font-weight:800;}
 .page-loading{
   min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:14px; background:var(--bg);
@@ -521,6 +522,31 @@ table{min-width:640px;}
   .topnav-links{width:100%; overflow-x:auto; padding-bottom:4px;}
 }
 
+/* ---------- Holiday notice (site-wide, above the shell) ---------- */
+/* Rendered by app/app/layout.js, a parent of [instrument]/layout.js's
+   shell - so this sits above the topbar rather than inside .main-area,
+   styled as a slim full-width announcement bar rather than a card.
+   position:fixed (z-index above the topbar's 90) since the topbar is
+   fixed regardless of where this sits in document flow - a merely
+   in-flow banner here would still get visually covered at the very top
+   of the viewport. HolidayNotice.js measures its own rendered height and
+   writes --holiday-notice-height, which .shell-topbar/.account-topbar's
+   `top` (and useStickyTopbar's spacer) read to make room below this
+   instead of underneath it. */
+.holiday-notice{
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  position:fixed; top:0; left:0; right:0; z-index:95;
+  background:rgba(59,167,255,.12); border-bottom:1px solid rgba(59,167,255,.25);
+  color:var(--text); padding:10px 44px; font-size:13px; font-weight:600; text-align:center;
+}
+.holiday-notice-dismiss{
+  position:absolute; right:16px; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;
+  display:flex; align-items:center; justify-content:center; transition:color .15s ease;
+}
+.holiday-notice-dismiss:hover{color:var(--text);}
+.holiday-notice-dismiss svg{width:14px; height:14px; flex-shrink:0;}
+
 /* ---------- Shell layout (sidebar + topbar) ---------- */
 .shell{min-height:100vh; display:flex; flex-direction:column;}
 /* .shell-topbar is always position:fixed (see its rule below) so it can
@@ -542,7 +568,13 @@ table{min-width:640px;}
   display:flex; align-items:center; gap:20px; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel);
   border:1px solid var(--line); flex-shrink:0;
-  position:fixed; top:0; left:0; right:0; z-index:90;
+  /* var(--holiday-notice-height) - see the comment on .holiday-notice -
+     makes room below that banner instead of sitting under it. Not in the
+     transition list below on purpose: useStickyTopbar's spacer measures
+     this element's real position via getBoundingClientRect() the instant
+     it changes, and an animated `top` would have that measurement land
+     mid-transition instead of at the settled value. */
+  position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
   transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .shell-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
@@ -660,6 +692,11 @@ a.shell-logo{color:inherit; text-decoration:none;}
      identity as the row's primary action. */
   .page-header-row{row-gap:10px;}
   .page-header-row .new-trade-btn{margin-left:0 !important; width:100%; justify-content:center;}
+  /* The instrument-picker wrapper, not just the button inside it, needs
+     to go full width here too - otherwise it stays content-sized and the
+     dropdown (right:0 within it) stays pinned to a narrow trigger instead
+     of spanning the same width the button visually fills. */
+  .log-trade-menu-wrap{width:100%;}
   .page-subtitle{margin-top:8px;}
   /* Title and the ⋮ menu button stay on one line (menu belongs next to the
      name it acts on); only the action button - which has nowhere left to go
@@ -671,25 +708,16 @@ a.shell-logo{color:inherit; text-decoration:none;}
    is always the same distance from whatever it follows regardless of
    what that is - a plain .panel/.stats already carries a 24px
    margin-bottom of its own, which this collapses with harmlessly (still
-   24, same as before), but .dashboard-split/.instrument-glance-row/
-   .strategy-glance-row only carry their own internal gap (16px) on
-   their margin-bottom, which used to leave less space before the next
-   heading than every other section gets. */
+   24, same as before), but .dashboard-split/.instrument-glance-row only
+   carry their own internal gap (16px) on their margin-bottom, which used
+   to leave less space before the next heading than every other section
+   gets. */
 .section-heading{
   font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
   font-weight:700; margin-bottom:12px; margin-top:24px;
 }
 
 .stats-6{grid-template-columns:repeat(6,1fr);}
-
-.perf-table{width:100%;}
-.perf-table th{font-size:10.5px;}
-/* Carries no font or colour of its own so the strategy name matches every
-   other cell in the row. Must also stay a real table cell — display:flex
-   here drops it out of the table's column-width algorithm, so the body
-   column stops matching the header and the vertical dividers misalign.
-   The dot is laid out inline for the same reason. */
-.strategy-name-cell .strategy-dot{margin-right:10px; vertical-align:middle;}
 
 .simple-page-wrap{max-width:800px; margin:0 auto; padding:32px 24px 60px;}
 
@@ -726,14 +754,6 @@ a.shell-logo{color:inherit; text-decoration:none;}
   .shell-topbar{padding:12px 16px; margin:12px 12px 16px; gap:10px; flex-direction:row; flex-wrap:wrap; border-radius:24px;}
   .shell-topbar .instrument-nav{order:3; flex-basis:100%;}
   .new-trade-btn span{display:none;}
-  /* Scroll instead of shrinking columns to fit - min-width:0 + fixed
-     layout used to force every row to fit the card width, which kept the
-     table scroll-free but squeezed Profit factor off-screen entirely.
-     A real min-width plus overflow-x on the card lets every column stay
-     legible and reachable by horizontal scroll instead. */
-  .perf-table{min-width:480px;}
-  .perf-table th, .perf-table td{padding:8px 8px; font-size:10.5px; white-space:nowrap;}
-  .panel:has(.perf-table){overflow-x:auto; -webkit-overflow-scrolling:touch;}
 }
 
 /* ---------- Expandable trade rows ---------- */
@@ -808,7 +828,12 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .account-topbar{
   display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
   margin:16px 24px 20px; border-radius:100px; background:var(--panel); border:1px solid var(--line);
-  position:fixed; top:0; left:0; right:0; z-index:90;
+  /* var(--holiday-notice-height) - see the comment on .holiday-notice.
+     Not in the transition list below - see the comment on .shell-topbar's
+     own `top`. In practice HolidayNotice never renders on this page, but
+     the variable can still be transiently non-zero right as the trader
+     navigates here away from a page where it was showing. */
+  position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
   transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
@@ -949,10 +974,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .unclassified-tag{color:var(--loss); font-weight:600;}
 
+/* Despite the name, this row + menu pair is shared by every page with a
+   title + kebab menu + action button, not just the strategy detail page -
+   InstrumentMenu.js reuses it verbatim on the three per-instrument pages
+   (Overview, Trade Log, Strategies) rather than duplicating the CSS. */
 .strategy-header-row{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
-/* h1 carries a global margin-top:4px, which the flex row centres along with
-   the text and leaves the menu button sitting high next to the name. */
-.strategy-header-row h1{margin-top:0;}
+/* h1/.page-title carry margin-top:4px/margin-bottom:20px globally - align-
+   items:center centers each flex item's margin box, not its content, so
+   either one left in place throws the visible text off-center against a
+   zero-margin sibling like the menu button. Both need zeroing here, not
+   just margin-top - a page whose h1 is .page-title (the three per-
+   instrument pages) only has the margin-bottom half of this problem, but
+   a plain h1 (the strategy detail page) has both. */
+.strategy-header-row h1{margin-top:0; margin-bottom:0;}
 /* strategy-header-row has no justify-content:space-between (unlike
    page-header-row), so the action button pushes itself right on its own. */
 .strategy-header-row .new-trade-btn{margin-left:auto;}
@@ -971,6 +1005,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .strategy-menu-item{padding:10px 14px; font-size:13px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
 .strategy-menu-item:hover{background:var(--panel-2);}
 .strategy-menu-item-danger{color:var(--loss);}
+/* LogTradeMenu.js's instrument-picker dropdown, on the all-instruments
+   Overview page - same shape as strategy-menu-dropdown, but right-
+   aligned under its trigger (which sits at the row's right edge via
+   .page-header-row's space-between) instead of left:0, so it opens
+   toward the page rather than off the right edge of the viewport. */
+.log-trade-menu-wrap{position:relative; flex-shrink:0;}
+.log-trade-dropdown{left:auto; right:0; min-width:120px;}
+.log-trade-dropdown .strategy-menu-item{text-decoration:none; display:block; font-family:'JetBrains Mono',monospace; font-weight:600;}
 .strategy-rename-form{display:flex; gap:8px; margin-top:2px; align-items:center; margin-bottom:20px;}
 .strategy-rename-form input{max-width:280px;}
 .unclassified-note{font-size:12.5px; color:var(--muted); margin-top:-14px; margin-bottom:20px;}
@@ -1231,22 +1273,28 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    field's own box. Any field with a FieldTooltip needs the same exemption. */
 .field:has(.field-tooltip),
 .field:has(.dt-picker){overflow-x:visible;}
+/* display:flex rather than vertical-align on the label itself - the same
+   fix as .th-with-tooltip and for the same reason: vertical-align centers
+   against the label's font x-height, not its actual (uppercase, per the
+   base label rule) glyphs, which reads as the "?" circle sitting low next
+   to the label text. :has() rather than a wrapper span in TradeForm's JSX
+   so this applies to every label a FieldTooltip is dropped into. */
+label:has(.field-tooltip){display:flex; align-items:center;}
 .field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;
   background:var(--line); color:var(--muted);
-  font-size:9.5px; font-weight:700; line-height:14px; text-align:center;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   transition:background-color .15s ease, color .15s ease;
 }
-/* transform on .field-tooltip-btn itself would move the circle and the
-   glyph together as one rigid unit - it can't change the glyph's position
-   relative to its own circle, which is the actual problem: the "?" glyph's
-   ink isn't centered in its character box (heavier top, tail leaning
-   right), so box-model centering still reads as off even once the box
-   itself is centered. Nudging this inner span moves the glyph relative to
-   the (already-centered) circle instead. */
-.field-tooltip-glyph{display:block; transform:translate(0.1px, 1.4px);}
+/* The "?" is drawn as SVG text rather than a plain HTML character - the
+   SVG centers itself in the circle exactly (an svg's own text-anchor/
+   dominantBaseline positioning doesn't depend on the surrounding page's
+   line-height/vertical-align stack the way an HTML glyph did), while still
+   rendering the real character shape instead of a custom icon. */
+.field-tooltip-glyph{display:flex;}
+.field-tooltip-glyph svg{width:14px; height:14px; display:block;}
+.field-tooltip-glyph svg text{font-family:'Inter',sans-serif; font-size:10px; font-weight:800; fill:currentColor;}
 .field-tooltip-btn:hover{background:var(--accent); color:#04121f; filter:none;}
 .field-tooltip-bubble{
   position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
@@ -1259,6 +1307,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 .field-tooltip:hover .field-tooltip-bubble,
 .field-tooltip-bubble-open{opacity:1; visibility:visible;}
+/* TableHeaderTooltip's variant - position:fixed instead of absolute so a
+   scrollable ancestor (.table-scroll's overflow-x:auto, same clipping
+   gotcha #tableWrap has for ColumnFilter's menu) can't clip it, with top/
+   left set inline from a measured rect instead of this rule's own bottom/
+   left. Chained with the base class (specificity over a lone
+   .field-tooltip-bubble selector) so it isn't quietly undone by the
+   mobile override below, which only ever applies to FieldTooltip's own
+   absolute bubble. */
+.field-tooltip-bubble.field-tooltip-bubble-fixed{position:fixed; bottom:auto; transform:translateX(-50%);}
 
 /* Near the right edge the bubble would overflow the form, so nudge it in. */
 @media (max-width:640px){
@@ -1507,6 +1564,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:640px){
   .skel-calendar-cell{min-height:44px;}
 }
+/* Pill (MarketStatusPill/StreakBadge in a .header-pills-row) and circle
+   (WinRateGauge, PnlDonut) placeholders - width/height set inline per use
+   since both appear at several different sizes across the skeletons. */
+.skel-pill{height:28px; border-radius:99px;}
+.skel-circle{border-radius:50%;}
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
 /* 15px, not --space-4 (16px) - standardized to match .stats/
@@ -1516,7 +1578,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    between its two cards instead of whatever the panels' own
    margin-bottom happens to add up to - see the .panel override below. */
 .dashboard-split{display:grid; grid-template-columns:1fr 1fr; gap:15px; align-items:stretch; margin-bottom:15px;}
-.dashboard-split > div{display:flex; flex-direction:column;}
+/* min-width:0 - a grid track defaults to fitting its item's intrinsic
+   min-content width, so a wide child (a table with its own min-width,
+   for instance) would otherwise force this column wider than the row
+   itself instead of letting the panel's own overflow-x handle it. */
+.dashboard-split > div{display:flex; flex-direction:column; min-width:0;}
 /* Equity curve's chart+tabs naturally run taller than the donut - stretch
    both cards to the row's height so the shorter one isn't visibly shorter.
    flex-start (not center) so each card's title stays flush with the top
@@ -1525,37 +1591,109 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    left as-is, the row's trailing space would be whatever that margin
    happens to be instead of the row's own gap above. */
 .dashboard-split .panel{flex:1; display:flex; flex-direction:column; justify-content:flex-start; margin-bottom:0;}
-/* Per-instrument Overview: the stat-card stack sits opposite a taller
-   panel (P&L by strategy) - grow the stack and its two rows to fill the
-   row's full stretched height instead of leaving blank space beneath it.
-   margin-bottom:0 cancels .stats' own 24px - flex:1 already sizes this
-   to the full stretched row height, but that 24px was still carved out
-   of it, leaving a gap the same size beneath the stat cards instead of
-   letting them actually grow into the space this was meant to give them.
-   .stats' own gap is 15px too now (see above), so this stack, the two
-   stat rows within it, and the donut card beside it all read as one
-   family of cards with a single consistent gap, same as the Today's
-   brief/Volatility pairing on the all-instruments Overview page. */
-.dashboard-split .stats-2{flex:1; grid-template-rows:repeat(2,1fr); margin-bottom:0;}
-/* flex-start, not center - same reasoning as .dashboard-split .panel
-   above: centering split the extra stretched height evenly above and
-   below each stat's label+value, reading as if the card had more
-   padding than every other card in this family. flex-start keeps each
-   label flush with its cell's top edge instead, with any leftover
-   height landing below the value where it doesn't stand out.
-   padding matches .panel's own 20px (up from .stat's usual 14px 16px) -
-   otherwise a stat's label still sat 6px higher than the donut card's
-   title beside it, both flush-top within boxes with different padding. */
-.dashboard-split .stats-2 .stat{display:flex; flex-direction:column; justify-content:flex-start; padding:20px;}
 .dashboard-card-title{margin-bottom:16px;}
 @media (max-width:1100px){
   .dashboard-split{grid-template-columns:1fr;}
 }
 .equity-chart-wrap{width:100%;}
-.equity-chart-svg{display:block; width:100%; height:180px;}
+/* 130, not the taller 180 this used to be - shortened so the curve
+   doesn't run noticeably taller than Avg P&L by day of week beside it
+   (see .performance-card-subgrid > div and .weekday-chart below, which
+   stretch that chart's rows to close the rest of the gap). */
+.equity-chart-svg{display:block; width:100%; height:130px;}
 .equity-chart-labels{
   display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace;
   font-size:11px; color:var(--muted); margin-top:6px;
+}
+
+/* Equity curve on one side, Avg P&L by day of week on the other, in the
+   same All-Time Performance panel - one card holding several related
+   sub-sections (the stat tiles and P&L-by-instrument strip above this
+   row, too), the same shape Monthly P&L below it already uses (toolbar,
+   stats row and calendar grid all in one panel) rather than each stat
+   getting its own small card. */
+.performance-card-subgrid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:28px;}
+/* Flex column, not the plain block box a grid item defaults to - lets
+   .weekday-chart below grow into the rest of the stretched row height
+   (see .performance-card-subgrid above) instead of leaving dead space
+   under its own naturally shorter content. */
+.performance-card-subgrid > div{display:flex; flex-direction:column;}
+/* Matches the "no data" message's baseline to the equity curve's own
+   "no data" message beside it. The equity curve column always has a
+   Day/Week/Month .tabs row above its chart (30px tall + 16px
+   margin-bottom = 46px) that pushes its empty-state text down by that
+   much; the weekday side has no equivalent row, so without this its
+   empty state would sit 46px higher than its neighbor. */
+.performance-card-subgrid > div:first-child .empty{margin-top:46px;}
+@media (max-width:700px){
+  .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
+}
+
+/* FlippingStatChips - sits inline with the toolbar's own filter select
+   (.calendar-toolbar's flex row), left-aligned right after it rather than
+   pushed to the row's far edge - see the :has() override on
+   .calendar-toolbar below. perspective on the wrap, not the face itself,
+   is what gives the face's rotateX a vanishing point instead of looking
+   like a flat vertical squash. flex-wrap on the face (not just the chip
+   strip inside it) lets the label drop above the chips on narrow screens
+   without the rotation clipping it. 450ms, not left as an inline style -
+   FlippingStatChips.js's instant-reset trick toggles transition-duration
+   directly, which needs a real value to reset back *to*; leaving it
+   inline would mean overwriting the same property React thinks it still
+   owns, and React skips reapplying an unchanged inline style on re-render. */
+.flip-cube-wrap{perspective:900px; cursor:pointer;}
+.flip-cube-face{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  backface-visibility:hidden; transform:rotateX(0deg);
+  transition:transform 450ms cubic-bezier(.45,0,.55,1);
+}
+/* top:-2px - the label's smaller font-size (10.5px vs the chip strip's
+   12.5px) gives its line box different ascent/descent proportions, so
+   flex's align-items:center (which centers each item's own box, not its
+   glyphs) leaves the label's text sitting visibly below the chips'
+   optical center even though both boxes are centered correctly on
+   paper. Nudged up by eye to match. */
+.flip-cube-face .stat-label{margin-bottom:0; position:relative; top:-2px;}
+/* All-Time Performance / per-instrument Overview toolbars: the filter
+   select and FlippingStatChips sit left-aligned as one group (with the
+   row's own gap providing the space between them) instead of
+   .calendar-toolbar's usual space-between, which the Monthly P&L
+   toolbar elsewhere still wants (select on the left, month nav pinned
+   to the right). */
+.calendar-toolbar:has(.flip-cube-wrap){justify-content:flex-start;}
+
+/* P&L by instrument: a horizontal strip of compact chips rather than a
+   full-height list - it only needs a symbol, a dot and a dollar figure
+   per instrument, not a whole column's worth of vertical space. */
+.pnl-rank-strip{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px; margin-bottom:4px;}
+.pnl-rank-chip{display:flex; align-items:center; gap:7px; font-size:12.5px;}
+.pnl-rank-symbol{font-weight:600;}
+.pnl-rank-value{font-family:'JetBrains Mono',monospace;}
+
+/* One diverging bar per weekday, split into a lane either side of a fixed
+   center line (zero) - each lane is 50% of the track and a bar grows from
+   the center outward rather than from either end, so magnitude reads
+   correctly regardless of sign. flex:1 + space-between (rather than
+   relying on the 9px gap alone) spreads the six rows across the whole
+   stretched column height (see .performance-card-subgrid > div above),
+   so this chart's own content reaches as far down as the equity curve
+   beside it instead of leaving empty space under a shorter natural
+   height. */
+.weekday-chart{display:flex; flex-direction:column; gap:9px; flex:1; justify-content:space-between;}
+.weekday-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
+.weekday-chart-label{
+  width:30px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
+  font-size:10.5px; color:var(--muted); letter-spacing:.04em;
+}
+.weekday-chart-track{flex:1; display:flex; align-items:center; height:10px; min-width:0;}
+.weekday-chart-lane{flex:1; height:100%; display:flex; min-width:0;}
+.weekday-chart-lane-neg{justify-content:flex-end;}
+.weekday-chart-center{width:1px; height:14px; background:var(--line); flex-shrink:0;}
+.weekday-chart-bar{height:100%; border-radius:3px; min-width:2px;}
+.weekday-chart-bar-pos{background:var(--win);}
+.weekday-chart-bar-neg{background:var(--loss);}
+.weekday-chart-value{
+  width:80px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;
 }
 
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
@@ -1565,28 +1703,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .donut-legend-item{display:flex; align-items:center; gap:8px; font-size:12.5px;}
 .donut-legend-symbol{font-weight:600; min-width:44px;}
 .donut-legend-value{margin-left:auto; font-family:'JetBrains Mono',monospace;}
-/* P&L by instrument: rows whose sign is opposite the net total (so they
-   have no arc in the ring, per netSignOnly on PnlDonut) stay legible but
-   read as secondary next to the rows the ring actually represents. */
+/* P&L by strategy (the only remaining PnlDonut usage - Overview's old P&L
+   by instrument card was replaced by a ranked strip of chips, see
+   .pnl-rank-strip below): rows whose sign is opposite the net total (so
+   they have no arc in the ring, per netSignOnly on PnlDonut) stay legible
+   but read as secondary next to the rows the ring actually represents. */
 .donut-legend-item-muted{opacity:.45;}
-/* All Instruments overview only - that card stretches to match the taller
-   equity curve card next to it, so the default 160px ring leaves a lot of
-   dead space at the bottom. The per-instrument dashboard's P&L-by-strategy
-   card doesn't get this - its panel is sized to its own content, not
-   stretched against a taller neighbor. A bigger ring plus a body wrapper
-   that grows to fill the leftover height and centers the donut+legend in
-   it (title stays flush top either way) uses the stretched space instead
-   of leaving it all as dead air below the content. */
-.donut-card-lg .donut-svg{width:230px; height:230px;}
-.donut-card-body{flex:1; display:flex; align-items:center; justify-content:center;}
 @media (max-width:640px){
   /* .donut-wrap needs its own definite width here, not just center-aligned
      shrink-to-fit - otherwise .donut-legend's width:100% (below) has
-     nothing to resolve against inside .donut-card-body's centered flex
-     context (align-items:center, no stretch), and the legend collapses to
-     a tight content-sized block instead of spanning the card edge-to-edge
-     the way it does without that wrapper (donut-card-lg / All Instruments
-     only - the per-instrument card was never affected). */
+     nothing to resolve against in the centered flex row, and the legend
+     collapses to a tight content-sized block instead of spanning the
+     card edge-to-edge. */
   .donut-wrap{flex-direction:column; align-items:center; width:100%;}
   .donut-legend{width:100%;}
 }
@@ -1767,31 +1895,55 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 .econ-today-btn:hover{color:var(--accent);}
 .econ-today-btn svg{width:12px; height:12px; flex-shrink:0;}
-.econ-calendar-mock-list{display:flex; flex-direction:column;}
+/* max-height caps this at exactly 5 rows (36px measured per row - padding
+   plus the 13px line, border included) regardless of how many events the
+   selected range actually has, so the card's height stays predictable
+   instead of growing arbitrarily tall for a busy week. Scrolls internally
+   past 5 rather than pushing the rest of the page down. overflow-x:hidden
+   since the vertical scrollbar itself narrows the available row width by
+   its own width - without min-width:0 on .econ-calendar-mock-event below,
+   that's just enough to force the row wider than the list and produce an
+   unwanted second, horizontal scrollbar along the bottom of the card.
+   padding-right is a gutter between the rightmost column (figures) and
+   the scrollbar track, so a full-width OS scrollbar doesn't read as
+   sitting right on top of that text; the thin custom scrollbar below
+   also narrows the track itself so there's less of it to crowd in. */
+.econ-calendar-mock-list{
+  display:flex; flex-direction:column; max-height:180px; overflow-y:auto; overflow-x:hidden;
+  padding-right:10px; scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+}
+.econ-calendar-mock-list::-webkit-scrollbar{width:6px;}
+.econ-calendar-mock-list::-webkit-scrollbar-track{background:transparent;}
+.econ-calendar-mock-list::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+.econ-calendar-mock-list::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
+/* Left/right padding, not just top/bottom - every row carries this, not
+   only the highlighted one below, so every impact dot lines up at the same
+   x-position regardless of which row (if any) is highlighted. */
 .econ-calendar-mock-row{
-  display:flex; align-items:center; gap:12px; padding:10px 0;
+  display:flex; align-items:center; gap:12px; padding:10px;
   border-bottom:1px solid var(--line); font-size:13px;
 }
 .econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
 /* Only applied when the visible range is more than a single day (see
    isSingleDay in EconomicCalendarCard) - viewing just today alone has
    nothing to contrast it against, so the highlight would be meaningless. */
-.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:6px; padding-left:8px; padding-right:8px; margin:0 -8px;}
+.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:8px;}
 .econ-calendar-mock-day{
   font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
   width:46px; flex-shrink:0;
 }
 .econ-calendar-mock-time{font-family:'JetBrains Mono',monospace; color:var(--muted); width:44px; flex-shrink:0;}
-.econ-calendar-mock-event{flex:1; font-weight:600;}
+/* min-width:0 overrides the flex item default of min-width:auto (= its
+   own content's intrinsic width), which otherwise refuses to let this
+   shrink below that no matter how little room flex:1 actually leaves it -
+   exactly what was forcing the row (and the whole list) wider than the
+   panel once the vertical scrollbar took a few px off the available
+   width. */
+.econ-calendar-mock-event{flex:1; min-width:0; font-weight:600;}
 .econ-calendar-mock-figures{
   font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);
   white-space:nowrap; flex-shrink:0;
 }
-.econ-calendar-mock-footer{
-  margin-top:12px; padding-top:12px; border-top:1px solid var(--line);
-  font-size:12.5px; color:var(--accent);
-}
-
 /* ---------- Calendar news badge (Monthly P&L day cells, mock) ---------- */
 .calendar-news-badge-wrap{position:absolute; top:5px; right:5px;}
 .calendar-news-badge{
@@ -1856,26 +2008,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 .market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
 
-/* ---------- Volatility, key levels, today's brief (mock cards) ---------- */
-.volatility-strip{display:flex; flex-direction:column;}
-.volatility-strip-row{
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
-}
-.volatility-strip-row:last-child{border-bottom:none; padding-bottom:0;}
-.volatility-strip-symbol{font-weight:700; font-family:'JetBrains Mono',monospace;}
-.volatility-strip-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
-.volatility-strip-tag{color:var(--muted); font-family:'Inter',sans-serif; margin-left:4px;}
-
-.volatility-card-value{
-  font-family:'Archivo',sans-serif; font-size:32px; font-weight:800; margin-bottom:6px;
-}
-.volatility-card-unit{font-size:15px; font-weight:500; color:var(--muted); margin-left:6px;}
-.volatility-card-badge{
-  display:inline-block; padding:3px 10px; border-radius:99px; font-size:11.5px;
-  font-weight:600; background:rgba(225,92,92,.14); color:var(--loss); margin-bottom:12px;
-}
-.volatility-card-text, .brief-card-text, .strategy-context-text{
+/* ---------- Key levels, today's brief (mock cards) ---------- */
+.brief-card-text, .strategy-context-text{
   font-size:13px; line-height:1.55; color:var(--text);
 }
 
@@ -1888,16 +2022,69 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .key-levels-row span:first-child{color:var(--accent);}
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
-/* Per-instrument Overview's Volatility/Key levels/Today's brief row, and
-   the per-strategy detail page's streak-adjacent card row. 15px, not
+/* Per-instrument Overview's Key levels/Today's brief row. 15px, not
    --space-4 (16px) - see the comment on .stats above. margin-bottom
    matches this grid's own gap, same reasoning as .dashboard-split above -
    its panels already zero out their own margin-bottom, but nothing filled
    in the resulting gap, leaving less space before whatever follows than
    this row's own internal gap. */
-.instrument-glance-row, .strategy-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
-.instrument-glance-row .panel, .strategy-glance-row .panel{margin-bottom:0; flex:1;}
-.strategy-glance-row{grid-template-columns:repeat(2,1fr);}
+.instrument-glance-row{display:grid; grid-template-columns:repeat(3,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
+.instrument-glance-row .panel{margin-bottom:0; flex:1;}
 @media (max-width:860px){
-  .instrument-glance-row, .strategy-glance-row{grid-template-columns:1fr;}
+  .instrument-glance-row{grid-template-columns:1fr;}
 }
+
+/* ---------- Market context cards (all-instruments Overview) ---------- */
+/* Same row-per-instrument shape the old Volatility card used, reused for
+   Days to rollover's compact cross-instrument view - the row's other
+   card (range/gap/volume) is a plain table instead, see the JSX. */
+.context-strip{display:flex; flex-direction:column;}
+.context-strip-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.context-strip-row:last-child{border-bottom:none; padding-bottom:0;}
+.context-strip-symbol{font-weight:700; font-family:'JetBrains Mono',monospace;}
+.context-strip-right{display:flex; align-items:baseline; gap:16px;}
+.context-strip-date{font-family:'JetBrains Mono',monospace; color:var(--muted);}
+.context-strip-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
+
+/* Today's brief + Economic calendar row - 1/3 + 2/3 rather than
+   .dashboard-split's usual even halves, since the calendar card carries
+   far more content. Same grid otherwise (15px gap, stretched to equal
+   height), so it still reads as the same card family as the Equity
+   curve/P&L-by-instrument row further down. */
+.brief-calendar-row{grid-template-columns:1fr 2fr;}
+@media (max-width:1100px){
+  .brief-calendar-row{grid-template-columns:1fr;}
+}
+/* Range/overnight gap/volume vs. typical collapsed into one combined
+   table card (they were three separate cards each showing the identical
+   "Needs Phase 2" placeholder per instrument, which read as more cards
+   than there was actually distinct information - a table with one column
+   per stat keeps them visually grouped without the repetition three
+   separate cards had). 3fr/1fr rather than an even split - the table
+   naturally wants more width than Days to rollover's plain symbol/value
+   list, the only other stat still on this page (Next calendar event was
+   dropped earlier, a single shared countdown read as redundant repeated
+   once per instrument row). No section-heading above this row (unlike
+   every other row on this page) - it sits directly under
+   .brief-calendar-row, so margin-bottom on both sides is what keeps the
+   gap above and below this row the same 15px as its own internal gap,
+   rather than a heading's own margin doing that job. minmax(0, ...), not
+   bare 3fr/1fr - a plain fr track's implicit minimum is its content's own
+   max-content width, so without this the table (even inside its own
+   .table-scroll) forced the whole row wider than its container at
+   narrower viewports, pushing Days to rollover half off-screen instead of
+   the table scrolling internally the way .table-scroll is meant to. */
+.market-context-row{display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
+.market-context-row .panel{margin-bottom:0; flex:1;}
+@media (max-width:900px){
+  .market-context-row{grid-template-columns:1fr;}
+}
+/* Wraps a <th>'s text + TableHeaderTooltip so they can be centered against
+   each other directly (align-items:center) instead of via vertical-align,
+   which centers against the parent font's x-height rather than the
+   actual rendered (uppercase, per the base th rule) glyphs - close enough
+   normally, but visibly off once compared side-by-side across a header row. */
+.th-with-tooltip{display:inline-flex; align-items:center;}

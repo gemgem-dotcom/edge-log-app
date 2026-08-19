@@ -118,6 +118,10 @@ export default function TradeLogTable({
   showInstrumentColumn = false,
   instrumentSymbolFor = null,
   instrumentColorFor = null,
+  // The Overview page's Recent trades list has no Day column (so the date
+  // needs to carry the time itself) - every other caller leaves this off
+  // and gets the plain date, unchanged.
+  showTimeInDate = false,
   // Overrides the default "no trades at all" message below - callers pass
   // a tailored EmptyState (with a page-appropriate call to action) instead
   // of this component hardcoding one copy for every context it's reused in.
@@ -197,10 +201,12 @@ export default function TradeLogTable({
     ...strategies.map((s) => s.id),
     ...[...present(strategyKey)].filter((key) => !strategies.some((s) => s.id === key)),
   ]
-  const strategyOptions = strategyKeys.map((key) => ({
-    value: key,
-    label: key === UNCLASSIFIED ? 'Unassigned' : (strategyNameById?.(key) || '—'),
-  }))
+  const strategyOptions = strategyKeys
+    .map((key) => ({
+      value: key,
+      label: key === UNCLASSIFIED ? 'Unassigned' : (strategyNameById?.(key) || '—'),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
   const directionOptions = [
     { value: 'all', label: 'All' },
     ...['long', 'short'].map((d) => ({ value: d, label: DIRECTION_LABELS[d] })),
@@ -346,7 +352,7 @@ export default function TradeLogTable({
             return (
               <Fragment key={t.id}>
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
-                  <td>{t.trade_date}</td>
+                  <td>{t.trade_date}{showTimeInDate && t.trade_time ? ` ${t.trade_time}` : ''}</td>
                   {showDayColumn && <td>{dayOf(t).toUpperCase()}</td>}
                   {showInstrumentColumn && (
                     <td>

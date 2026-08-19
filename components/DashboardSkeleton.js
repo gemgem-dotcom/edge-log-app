@@ -7,7 +7,7 @@ export default function DashboardSkeleton() {
       <div className="skel skel-title" />
       <div className="skel skel-subtitle" />
 
-      <div className="section-heading">Overview</div>
+      <div className="section-heading">All-Time Performance</div>
       <div className="stats stats-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div className="stat" key={i}>

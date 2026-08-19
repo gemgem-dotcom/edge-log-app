@@ -274,3 +274,11 @@ $$;
 -- No separate tags table: there's no shared/managed tag list (unlike
 -- strategies), so a plain array on the trade itself is all this needs.
 alter table trades add column if not exists tags text[];
+
+-- "Remove instrument" (the instrument-page kebab menu) is a soft hide, not
+-- a delete - trades and strategies stay exactly as they are, still keyed
+-- to this same instruments row, so re-adding the same symbol later from
+-- "+ Add instrument" can just flip this back to false instead of losing
+-- history or hitting the unique(user_id, symbol) constraint with a fresh
+-- insert. Every instruments query across the app filters on this.
+alter table instruments add column if not exists archived boolean not null default false;

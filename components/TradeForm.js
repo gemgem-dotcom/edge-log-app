@@ -405,7 +405,7 @@ export default function TradeForm({
             ) : (
               <select value={strategyId} onChange={(e) => { setStrategyId(e.target.value); setErrors((prev) => ({ ...prev, strategy: undefined })) }}>
                 {strategyId === '' && <option value="">Select a strategy…</option>}
-                {strategies.map((s) => (
+                {strategies.slice().sort((a, b) => a.name.localeCompare(b.name)).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>

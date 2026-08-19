@@ -520,7 +520,7 @@ export default function TradeForm({
             {errors.stop_distance && <span className="field-error">{errors.stop_distance}</span>}
           </div>
           <div className="field wide">
-            <label>Risk-to-Reward ratio</label>
+            <label>Risk-to-Reward</label>
             <input type="text" readOnly tabIndex={-1} className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
           </div>
 

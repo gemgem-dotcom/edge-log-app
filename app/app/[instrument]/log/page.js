@@ -62,7 +62,7 @@ const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 return (
   <div className="page-container">
   <div className="strategy-header-row">
-    <h1 className="page-title">TRADE LOG</h1>
+    <h1 className="page-title">Trade log</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>

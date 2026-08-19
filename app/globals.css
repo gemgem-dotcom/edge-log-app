@@ -26,22 +26,22 @@
    1109  Auth pages always dark
    1137  Monthly P&L (calendar on Overview)
    1213  Trade form: sections, validation, currency, screenshots
-   1294  Field tooltips
-   1350  Date/time picker (adds an optional popup to a typed input)
-   1459  In-header column filters (trade log table)
-   1493  Active filter chips
-   1542  Empty states, error banners, skeleton loaders
-   1598  Cross-instrument overview dashboard (/app)
-   1766  Not found / error boundary state pages
-   1779  Toast notifications
-   1807  Public policy pages (Privacy, Terms)
-   1826  Legal links (auth pages + account settings)
-   1865  Economic calendar card (mock - Overview pages)
-   1972  Calendar news badge (Monthly P&L day cells, mock)
-   1993  Streak badge (Overview + strategy detail pages)
-   2010  Market status pill (Overview + strategy detail pages)
-   2036  Key levels, today's brief (mock cards)
-   2062  Market context cards (all-instruments Overview)
+   1298  Field tooltips
+   1354  Date/time picker (adds an optional popup to a typed input)
+   1463  In-header column filters (trade log table)
+   1497  Active filter chips
+   1546  Empty states, error banners, skeleton loaders
+   1602  Cross-instrument overview dashboard (/app)
+   1770  Not found / error boundary state pages
+   1783  Toast notifications
+   1811  Public policy pages (Privacy, Terms)
+   1830  Legal links (auth pages + account settings)
+   1869  Economic calendar card (mock - Overview pages)
+   1976  Calendar news badge (Monthly P&L day cells, mock)
+   1997  Streak badge (Overview + strategy detail pages)
+   2014  Market status pill (Overview + strategy detail pages)
+   2040  Key levels, today's brief (mock cards)
+   2066  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1226,10 +1226,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   line-height:1.35;
 }
 
-/* Auto-derived, non-editable values (the Risk-to-Reward readout). */
+/* Auto-derived, non-editable values (the Risk-to-Reward readout). Nothing
+   to type here, so the shared input:focus accent border (below) would
+   just be a false "you can edit this" signal on click - overridden back
+   to the plain resting border. */
 .readonly-field{
   background:rgba(255,255,255,.04); color:var(--muted); cursor:default;
 }
+.readonly-field:focus{border-color:var(--line);}
 
 /* $ Profit or Loss input, with the currency symbol pinned inside the box. */
 .currency-field{position:relative; display:flex; align-items:center;}

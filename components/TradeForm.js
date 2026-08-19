@@ -667,7 +667,7 @@ export default function TradeForm({
             {footerLeft}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               {allowDiscard && onCancel && (
-                <button type="button" className="discard-btn" onClick={onCancel} disabled={saving}>
+                <button type="button" className={`discard-btn${dirty ? ' dirty' : ''}`} onClick={onCancel} disabled={saving}>
                   {dirty ? 'Discard changes' : 'Cancel'}
                 </button>
               )}

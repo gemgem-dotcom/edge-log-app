@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–335  Base: reset, typography, forms, tables, thumbnails,
+     1–338  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   336  Auth pages
-   388  Top nav
-   403  Instrument nav (topbar pill row)
-   467  Page layout
-   515  Tabs
-   525  Misc form helpers
-   531  Detail view
-   547  Holiday notice (site-wide, above the shell)
-   572  Shell layout (sidebar + topbar)
-   781  Expandable trade rows
-   798  Calendar
-   846  Account settings page
-   1044  Light theme
-   1071  2FA
-   1086  Account fine print
-   1089  Screenshot preview (log new trade)
-   1106  Auth pages always dark
-   1134  Monthly P&L (calendar on Overview)
-   1210  Trade form: sections, validation, currency, screenshots
-   1291  Field tooltips
-   1347  Date/time picker (adds an optional popup to a typed input)
-   1456  In-header column filters (trade log table)
-   1490  Active filter chips
-   1539  Empty states, error banners, skeleton loaders
-   1595  Cross-instrument overview dashboard (/app)
-   1763  Not found / error boundary state pages
-   1776  Toast notifications
-   1804  Public policy pages (Privacy, Terms)
-   1823  Legal links (auth pages + account settings)
-   1862  Economic calendar card (mock - Overview pages)
-   1969  Calendar news badge (Monthly P&L day cells, mock)
-   1990  Streak badge (Overview + strategy detail pages)
-   2007  Market status pill (Overview + strategy detail pages)
-   2033  Key levels, today's brief (mock cards)
-   2059  Market context cards (all-instruments Overview)
+   339  Auth pages
+   391  Top nav
+   406  Instrument nav (topbar pill row)
+   470  Page layout
+   518  Tabs
+   528  Misc form helpers
+   534  Detail view
+   550  Holiday notice (site-wide, above the shell)
+   575  Shell layout (sidebar + topbar)
+   784  Expandable trade rows
+   801  Calendar
+   849  Account settings page
+   1047  Light theme
+   1074  2FA
+   1089  Account fine print
+   1092  Screenshot preview (log new trade)
+   1109  Auth pages always dark
+   1137  Monthly P&L (calendar on Overview)
+   1213  Trade form: sections, validation, currency, screenshots
+   1294  Field tooltips
+   1350  Date/time picker (adds an optional popup to a typed input)
+   1459  In-header column filters (trade log table)
+   1493  Active filter chips
+   1542  Empty states, error banners, skeleton loaders
+   1598  Cross-instrument overview dashboard (/app)
+   1766  Not found / error boundary state pages
+   1779  Toast notifications
+   1807  Public policy pages (Privacy, Terms)
+   1826  Legal links (auth pages + account settings)
+   1865  Economic calendar card (mock - Overview pages)
+   1972  Calendar news badge (Monthly P&L day cells, mock)
+   1993  Streak badge (Overview + strategy detail pages)
+   2010  Market status pill (Overview + strategy detail pages)
+   2036  Key levels, today's brief (mock cards)
+   2062  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -207,11 +207,14 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
 button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; transition:filter .15s ease, background-color .15s ease, opacity .15s ease;}
 button:hover{filter:brightness(1.08);}
 button:disabled{opacity:.5; cursor:not-allowed;}
-/* Undoes the pill treatment above - plain grey text next to Save changes,
-   only shown once the edit-trade form is actually dirty. Blue on hover
-   (not .del's red) since discarding is a neutral action, not a delete. */
+/* Undoes the pill treatment above - plain grey text next to Save changes
+   on the edit-trade form. Blue on hover as "Cancel", before there's
+   anything to lose; once the form is actually dirty the label switches to
+   "Discard changes" and .dirty pushes the hover to .del's red instead,
+   since only then does clicking it actually throw work away. */
 .discard-btn{background:none; color:var(--muted); border:none; border-radius:0; padding:0; font-weight:600; font-size:13px;}
 .discard-btn:hover{filter:none; color:var(--accent);}
+.discard-btn.dirty:hover{color:var(--loss);}
 
 table{width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:12.5px;}
 th{text-align:left; font-family:'Inter',sans-serif; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; padding:8px 10px; border-bottom:1px solid var(--line);}

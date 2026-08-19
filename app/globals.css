@@ -2054,8 +2054,8 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .key-levels-row span:first-child{color:var(--accent);}
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
-/* Per-instrument Overview's Key levels/Today's brief row. 15px, not
-   --space-4 (16px) - see the comment on .stats above. margin-bottom
+/* Per-instrument Overview's Today's brief/Key levels/Session stats row.
+   15px, not --space-4 (16px) - see the comment on .stats above. margin-bottom
    matches this grid's own gap, same reasoning as .dashboard-split above -
    its panels already zero out their own margin-bottom, but nothing filled
    in the resulting gap, leaving less space before whatever follows than

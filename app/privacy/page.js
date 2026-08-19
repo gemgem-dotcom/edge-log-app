@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage({ searchParams }) {
         <a href={backLink.href} className="policy-back-link">{backLink.label}</a>
       </div>
 
-      <h1 className="page-title">PRIVACY POLICY</h1>
+      <h1 className="page-title">Privacy policy</h1>
       <p className="page-subtitle">Last updated: August 11, 2026</p>
 
       <div className="panel policy-content">

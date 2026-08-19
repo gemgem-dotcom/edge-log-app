@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–313  Base: reset, typography, forms, tables, thumbnails,
+     1–341  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   314  Auth pages
-   366  Top nav
-   381  Instrument nav (topbar pill row)
-   445  Page layout
-   493  Tabs
-   503  Misc form helpers
-   509  Detail view
-   525  Holiday notice (site-wide, above the shell)
-   550  Shell layout (sidebar + topbar)
-   759  Expandable trade rows
-   776  Calendar
-   824  Account settings page
-   1022  Light theme
-   1049  2FA
-   1064  Account fine print
-   1067  Screenshot preview (log new trade)
-   1084  Auth pages always dark
-   1112  Monthly P&L (calendar on Overview)
-   1188  Trade form: sections, validation, currency, screenshots
-   1269  Field tooltips
-   1325  Date/time picker (adds an optional popup to a typed input)
-   1434  In-header column filters (trade log table)
-   1468  Active filter chips
-   1517  Empty states, error banners, skeleton loaders
-   1573  Cross-instrument overview dashboard (/app)
-   1723  Not found / error boundary state pages
-   1736  Toast notifications
-   1764  Public policy pages (Privacy, Terms)
-   1783  Legal links (auth pages + account settings)
-   1822  Economic calendar card (mock - Overview pages)
-   1929  Calendar news badge (Monthly P&L day cells, mock)
-   1950  Streak badge (Overview + strategy detail pages)
-   1967  Market status pill (Overview + strategy detail pages)
-   1993  Key levels, today's brief (mock cards)
-   2019  Market context cards (all-instruments Overview)
+   342  Auth pages
+   394  Top nav
+   409  Instrument nav (topbar pill row)
+   473  Page layout
+   521  Tabs
+   531  Misc form helpers
+   537  Detail view
+   553  Holiday notice (site-wide, above the shell)
+   578  Shell layout (sidebar + topbar)
+   787  Expandable trade rows
+   804  Calendar
+   852  Account settings page
+   1050  Light theme
+   1077  2FA
+   1092  Account fine print
+   1095  Screenshot preview (log new trade)
+   1112  Auth pages always dark
+   1140  Monthly P&L (calendar on Overview)
+   1216  Trade form: sections, validation, currency, screenshots
+   1301  Field tooltips
+   1357  Date/time picker (adds an optional popup to a typed input)
+   1466  In-header column filters (trade log table)
+   1500  Active filter chips
+   1549  Empty states, error banners, skeleton loaders
+   1620  Cross-instrument overview dashboard (/app)
+   1788  Not found / error boundary state pages
+   1801  Toast notifications
+   1829  Public policy pages (Privacy, Terms)
+   1848  Legal links (auth pages + account settings)
+   1887  Economic calendar card (mock - Overview pages)
+   1994  Calendar news badge (Monthly P&L day cells, mock)
+   2015  Streak badge (Overview + strategy detail pages)
+   2032  Market status pill (Overview + strategy detail pages)
+   2058  Key levels, today's brief (mock cards)
+   2084  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -203,10 +203,18 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
    the plain hover background. */
 .dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
 
-.submit-row{grid-column:span 6; display:flex; justify-content:flex-end; margin-top:4px;}
+.submit-row{grid-column:span 6; display:flex; justify-content:flex-end; align-items:center; gap:16px; margin-top:4px;}
 button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; transition:filter .15s ease, background-color .15s ease, opacity .15s ease;}
 button:hover{filter:brightness(1.08);}
 button:disabled{opacity:.5; cursor:not-allowed;}
+/* Undoes the pill treatment above - plain grey text next to Save changes
+   on the edit-trade form. Blue on hover as "Cancel", before there's
+   anything to lose; once the form is actually dirty the label switches to
+   "Discard changes" and .dirty pushes the hover to .del's red instead,
+   since only then does clicking it actually throw work away. */
+.discard-btn{background:none; color:var(--muted); border:none; border-radius:0; padding:0; font-weight:600; font-size:13px;}
+.discard-btn:hover{filter:none; color:var(--accent);}
+.discard-btn.dirty:hover{color:var(--loss);}
 
 table{width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:12.5px;}
 th{text-align:left; font-family:'Inter',sans-serif; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; padding:8px 10px; border-bottom:1px solid var(--line);}
@@ -232,21 +240,41 @@ tr:last-child td{border-bottom:none;}
 
 .modal-overlay{
   position:fixed; inset:0; background:rgba(6,7,9,.85); backdrop-filter:blur(2px);
-  display:flex; align-items:center; justify-content:center; z-index:100; padding:40px;
+  display:flex; align-items:center; justify-content:center; gap:16px; z-index:100; padding:40px;
 }
 .modal-content{
   position:relative; max-width:90vw; max-height:90vh;
 }
+/* Two earlier attempts positioned the nav arrows with position:absolute and
+   JS-measured pixel math (image-edge-relative, then viewport-edge-relative)
+   chasing a left/right gap that looked uneven in practice. Plain flex
+   layout - the arrows as ordinary siblings of .modal-content, centered by
+   .modal-overlay's own align-items - sidesteps that whole class of bug:
+   the browser's layout engine can't compute a lopsided gap for two flex
+   siblings the way ad-hoc getBoundingClientRect()/window.innerWidth math
+   apparently could. has-nav narrows the image's own cap so the whole row
+   (arrow + gap + image + gap + arrow) still fits within the viewport
+   instead of overflowing past where 90vw alone would allow. */
+.modal-content.has-nav{max-width:calc(90vw - 144px);}
 .modal-content img{
   max-width:90vw; max-height:90vh; border-radius:10px; border:1px solid var(--line);
   display:block;
 }
+.modal-content.has-nav img{max-width:calc(90vw - 144px);}
 .modal-close{
   position:absolute; top:-14px; right:-14px; width:30px; height:30px; border-radius:50%;
   background:var(--panel); border:1px solid var(--line); color:var(--text);
   display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;
 }
 .modal-close:hover{color:var(--loss); border-color:var(--loss);}
+.modal-nav{
+  flex-shrink:0;
+  width:40px; height:40px; border-radius:50%;
+  background:var(--panel); border:1px solid var(--line); color:var(--text);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  opacity:.85;
+}
+.modal-nav:hover{opacity:1; color:var(--accent); border-color:var(--accent);}
 
 #tableWrap, .table-scroll{
   overflow-x:auto;
@@ -887,7 +915,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; align-items:center; justify-content:center; transition:color .15s ease;
 }
 .eye-btn:hover{color:var(--text);}
-.field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px;}
+.field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px; margin-bottom:10px;}
 
 .danger-panel{border-color:rgba(225,92,92,.35);}
 .danger-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
@@ -1201,10 +1229,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   line-height:1.35;
 }
 
-/* Auto-derived, non-editable values (the Risk-to-Reward readout). */
+/* Auto-derived, non-editable values (the Risk-to-Reward readout). Nothing
+   to type here, so the shared input:focus accent border (below) would
+   just be a false "you can edit this" signal on click - overridden back
+   to the plain resting border. */
 .readonly-field{
   background:rgba(255,255,255,.04); color:var(--muted); cursor:default;
 }
+.readonly-field:focus{border-color:var(--line);}
 
 /* $ Profit or Loss input, with the currency symbol pinned inside the box. */
 .currency-field{position:relative; display:flex; align-items:center;}
@@ -1569,6 +1601,21 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    since both appear at several different sizes across the skeletons. */
 .skel-pill{height:28px; border-radius:99px;}
 .skel-circle{border-radius:50%;}
+
+/* Embedded loading treatment for the content below a skeleton's header -
+   used where the eventual content shape is too unpredictable to mimic
+   (the per-instrument dashboard and cross-instrument Overview: an
+   instrument/account with zero trades renders one small EmptyState panel
+   where one with trades renders several stat sections, so guessing
+   either shape is wrong about as often as it's right). Reuses
+   .page-loading-bars/.page-loading-label's animated dots rather than
+   redefining them, just without .page-loading's own min-height:100vh -
+   this sits under an already-rendered header instead of owning the
+   whole viewport. */
+.content-loading{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; padding:80px 20px;
+}
 
 /* ---------- Cross-instrument overview dashboard (/app) ---------- */
 /* 15px, not --space-4 (16px) - standardized to match .stats/
@@ -2019,11 +2066,11 @@ label:has(.field-tooltip){display:flex; align-items:center;}
   padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
 }
 .key-levels-row:last-child{border-bottom:none; padding-bottom:0;}
-.key-levels-row span:first-child{color:var(--accent);}
+.key-levels-row span:first-child{color:var(--text);}
 .key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
-/* Per-instrument Overview's Key levels/Today's brief row. 15px, not
-   --space-4 (16px) - see the comment on .stats above. margin-bottom
+/* Per-instrument Overview's Today's brief/Key levels/Session stats row.
+   15px, not --space-4 (16px) - see the comment on .stats above. margin-bottom
    matches this grid's own gap, same reasoning as .dashboard-split above -
    its panels already zero out their own margin-bottom, but nothing filled
    in the resulting gap, leaving less space before whatever follows than
@@ -2076,7 +2123,11 @@ label:has(.field-tooltip){display:flex; align-items:center;}
    max-content width, so without this the table (even inside its own
    .table-scroll) forced the whole row wider than its container at
    narrower viewports, pushing Days to rollover half off-screen instead of
-   the table scrolling internally the way .table-scroll is meant to. */
+   the table scrolling internally the way .table-scroll is meant to.
+   Reused (same 3fr/1fr shape) by the per-instrument dashboard's own Next
+   calendar event/Days to rollover row - same relationship, a
+   variable-length list next to a single short stat, so no separate class
+   was worth adding. */
 .market-context-row{display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:15px; align-items:stretch; margin-bottom:15px;}
 .market-context-row .panel{margin-bottom:0; flex:1;}
 @media (max-width:900px){

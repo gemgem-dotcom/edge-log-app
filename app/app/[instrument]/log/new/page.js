@@ -6,13 +6,18 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
-import TradeForm from '@/components/TradeForm'
+import TradeForm, { EMPTY_TRADE_FORM } from '@/components/TradeForm'
 import ErrorBanner from '@/components/ErrorBanner'
 
-export default function NewTradePage({ params }) {
+export default function NewTradePage({ params, searchParams }) {
   usePageTitle('Log New Trade')
   const symbol = params.instrument
   const router = useRouter()
+  // Arriving from a strategy's own page (its "Log new trade" button)
+  // preselects that strategy instead of auto-selecting the first one -
+  // the trader already told us which strategy this trade belongs to just
+  // by where they clicked from.
+  const preselectedStrategyId = searchParams?.strategy || null
 
   const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
@@ -80,7 +85,7 @@ export default function NewTradePage({ params }) {
   return (
     <div className="page-container">
       <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
-      <h1 className="page-title">LOG NEW TRADE</h1>
+      <h1 className="page-title">Log new trade</h1>
 
       <ErrorBanner message={strategiesError} />
 
@@ -89,7 +94,8 @@ export default function NewTradePage({ params }) {
         instrumentId={instrumentId}
         strategies={strategies}
         onStrategyAdded={loadStrategies}
-        autoSelectFirstStrategy
+        initial={preselectedStrategyId ? { ...EMPTY_TRADE_FORM, strategyId: preselectedStrategyId } : undefined}
+        autoSelectFirstStrategy={!preselectedStrategyId}
         showEmptyStrategyMessage
         submitLabel="Log trade"
         onSubmit={handleSubmit}

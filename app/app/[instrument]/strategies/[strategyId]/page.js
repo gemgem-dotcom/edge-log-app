@@ -196,7 +196,7 @@ Delete strategy
   </div>
 )}
 </div>
-<a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+<a href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
 
 {renaming && (
@@ -287,7 +287,7 @@ Delete strategy
       <EmptyState
         title="No trades yet"
         message={`No trades have been logged against "${strategy.name}" yet.`}
-        actionHref={`/app/${symbol}/log/new`}
+        actionHref={`/app/${symbol}/log/new?strategy=${strategyId}`}
         actionLabel="Log new trade"
       />
     }

@@ -126,7 +126,7 @@ export default function EditTradePage({ params }) {
   return (
     <div className="page-container">
       <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
-      <h1 className="page-title">EDIT TRADE</h1>
+      <h1 className="page-title">Edit trade</h1>
 
       <ErrorBanner message={deleteError} />
 
@@ -137,6 +137,8 @@ export default function EditTradePage({ params }) {
         onStrategyAdded={() => loadStrategies()}
         initial={initial}
         submitLabel="Save changes"
+        allowDiscard
+        onCancel={() => router.back()}
         footerLeft={
           <span className="del" style={{ fontSize: '13px', alignSelf: 'center' }} onClick={handleDelete}>
             Delete this trade

@@ -44,8 +44,15 @@ export default function TradeForm({
   showEmptyStrategyMessage = false,
   submitLabel = 'Save',
   footerLeft = null,
+  allowDiscard = false,
+  onCancel = null,
   onSubmit,
 }) {
+  // Only the edit-trade page passes allowDiscard - dirty just picks the
+  // label on the button that leaves the page (Cancel vs Discard changes,
+  // see onCancel below), so it's not worth tracking anywhere else.
+  const [dirty, setDirty] = useState(false)
+
   const [strategyId, setStrategyId] = useState(initial.strategyId)
   const [addingStrategy, setAddingStrategy] = useState(false)
   const [newStrategyName, setNewStrategyName] = useState('')
@@ -210,6 +217,7 @@ export default function TradeForm({
   }, [showSuggestions])
 
   function updateSetup(field, value) {
+    setDirty(true)
     setSetup((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
     // Entry price feeds the $ P&L calc - editing it is as much a signal to
@@ -219,6 +227,7 @@ export default function TradeForm({
   }
 
   function updateExecution(field, value) {
+    setDirty(true)
     setExecution((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev))
     // Editing any input the $ P&L calc actually depends on re-enables
@@ -231,6 +240,7 @@ export default function TradeForm({
   }
 
   function handleDirectionChange(value) {
+    setDirty(true)
     setDirection(value)
     setPnlManual(false)
   }
@@ -252,6 +262,7 @@ export default function TradeForm({
     setNewStrategyName('')
     setAddingStrategy(false)
     await onStrategyAdded?.()
+    setDirty(true)
     setStrategyId(data.id)
     setErrors((prev) => ({ ...prev, strategy: undefined }))
   }
@@ -259,6 +270,7 @@ export default function TradeForm({
   function handleScreenshotChange(e) {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
+    setDirty(true)
     setScreenshots((prev) => [
       ...prev,
       ...files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
@@ -267,7 +279,33 @@ export default function TradeForm({
     e.target.value = ''
   }
 
+  // Fires on paste anywhere in the form, not just the file input - a
+  // screenshot copied from a snipping tool is usually pasted with focus
+  // wherever the trader last clicked, not after hunting down "Choose
+  // files" first. Only acts when the clipboard actually holds image data,
+  // so pasting text into any other field (price, reasoning, a tag) is
+  // completely unaffected.
+  function handlePaste(e) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const files = []
+    for (const item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) files.push(file)
+      }
+    }
+    if (files.length === 0) return
+    e.preventDefault()
+    setDirty(true)
+    setScreenshots((prev) => [
+      ...prev,
+      ...files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
+    ])
+  }
+
   function handleRemoveScreenshot(index) {
+    setDirty(true)
     setScreenshots((prev) => {
       const target = prev[index]
       if (target) URL.revokeObjectURL(target.previewUrl)
@@ -276,6 +314,7 @@ export default function TradeForm({
   }
 
   function handleRemoveExistingScreenshot(index) {
+    setDirty(true)
     setExistingScreenshots((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -288,6 +327,7 @@ export default function TradeForm({
   function handleAddTag(tagText) {
     const trimmed = (tagText ?? newTagName).trim()
     if (!trimmed) return
+    setDirty(true)
     setTags((prev) => (prev.some((t) => t.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, trimmed]))
     setNewTagName('')
   }
@@ -301,6 +341,7 @@ export default function TradeForm({
   }
 
   function handleRemoveTag(tag) {
+    setDirty(true)
     setTags((prev) => prev.filter((t) => t !== tag))
   }
 
@@ -310,6 +351,7 @@ export default function TradeForm({
   }
 
   function handlePnlChange(value) {
+    setDirty(true)
     setPnlInput(value)
     // Clearing the field hands control back to the auto-calculation.
     setPnlManual(!isBlank(value))
@@ -383,7 +425,7 @@ export default function TradeForm({
   return (
     <>
       <div className="panel">
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} onPaste={handlePaste} noValidate>
 
           {formError && (
             <div className="field full">
@@ -403,7 +445,7 @@ export default function TradeForm({
             {showEmptyStrategyMessage && strategies.length === 0 && !addingStrategy ? (
               <div className="empty" style={{ padding: '10px' }}>No strategies yet.</div>
             ) : (
-              <select value={strategyId} onChange={(e) => { setStrategyId(e.target.value); setErrors((prev) => ({ ...prev, strategy: undefined })) }}>
+              <select value={strategyId} onChange={(e) => { setDirty(true); setStrategyId(e.target.value); setErrors((prev) => ({ ...prev, strategy: undefined })) }}>
                 {strategyId === '' && <option value="">Select a strategy…</option>}
                 {strategies.slice().sort((a, b) => a.name.localeCompare(b.name)).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
@@ -478,7 +520,7 @@ export default function TradeForm({
             {errors.stop_distance && <span className="field-error">{errors.stop_distance}</span>}
           </div>
           <div className="field wide">
-            <label>Risk-to-Reward ratio</label>
+            <label>Risk-to-Reward</label>
             <input type="text" readOnly tabIndex={-1} className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
           </div>
 
@@ -526,6 +568,7 @@ export default function TradeForm({
           <div className="field full">
             <label>Screenshot(s)</label>
             <input type="file" accept="image/*" multiple onChange={handleScreenshotChange} />
+            <span className="field-hint">or paste from clipboard</span>
             {(existingScreenshots.length > 0 || screenshots.length > 0) && (
               <div className="screenshot-grid">
                 {existingScreenshots.map((url, i) => (
@@ -612,12 +655,24 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
-            <textarea name="reasoning" defaultValue={initial.reasoning} aria-label="Why did you take it?" />
+            <textarea
+              name="reasoning"
+              defaultValue={initial.reasoning}
+              aria-label="Why did you take it?"
+              onChange={() => setDirty(true)}
+            />
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>
             {footerLeft}
-            <button type="submit" disabled={saving}>{saving ? 'Saving…' : submitLabel}</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {allowDiscard && onCancel && (
+                <button type="button" className={`discard-btn${dirty ? ' dirty' : ''}`} onClick={onCancel} disabled={saving}>
+                  {dirty ? 'Discard changes' : 'Cancel'}
+                </button>
+              )}
+              <button type="submit" disabled={saving}>{saving ? 'Saving…' : submitLabel}</button>
+            </div>
           </div>
         </form>
       </div>

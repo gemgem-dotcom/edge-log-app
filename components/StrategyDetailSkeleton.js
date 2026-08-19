@@ -1,20 +1,37 @@
 // Shimmering placeholder for a single strategy's detail page, shown
 // instead of PageLoading while the strategy and its trades are still
-// loading - mimics the eventual header, stat cards and trade table.
+// loading - mimics the eventual header, stat cards, At a glance card and
+// trade table.
 export default function StrategyDetailSkeleton() {
   return (
     <div className="page-container">
-      <div className="skel skel-title" style={{ width: '260px' }} />
+      <div className="strategy-header-row">
+        <div className="skel skel-title" style={{ width: '260px', marginBottom: 0 }} />
+        <div className="skel skel-pill" style={{ width: '150px', marginLeft: 'auto' }} />
+      </div>
       <div className="skel skel-subtitle" />
+      <div className="header-pills-row">
+        {/* MarketStatusPill only - StreakBadge renders nothing without an
+            active 2+ streak, which is the common case, so guessing a
+            second pill here would be wrong more often than right. */}
+        <div className="skel skel-pill" style={{ width: '120px' }} />
+      </div>
 
       <div className="section-heading">Performance</div>
-      <div className="stats stats-6">
+      <div className="stats strategy-perf-stats">
         {Array.from({ length: 8 }).map((_, i) => (
           <div className="stat" key={i}>
             <div className="skel skel-line" style={{ width: '60%' }} />
             <div className="skel skel-value" />
           </div>
         ))}
+      </div>
+
+      <div className="section-heading">At a glance</div>
+      <div className="panel">
+        <div className="skel skel-line" style={{ width: '200px', height: '12px', marginBottom: '16px' }} />
+        <div className="skel skel-line" />
+        <div className="skel skel-line" style={{ width: '70%' }} />
       </div>
 
       <div className="section-heading">Trade log</div>

@@ -8,6 +8,7 @@ import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
 import PageLoading from '@/components/PageLoading'
+import ScreenshotLightbox from '@/components/ScreenshotLightbox'
 
 // Plain thousands-grouped number, no sign/currency - for raw prices and
 // point distances, which are now stored to two decimal places (see
@@ -27,7 +28,7 @@ export default function TradeDetailPage({ params }) {
   const [loading, setLoading] = useState(true)
   const [trade, setTrade] = useState(null)
   const [strategyName, setStrategyName] = useState('')
-  const [previewUrl, setPreviewUrl] = useState(null)
+  const [previewIndex, setPreviewIndex] = useState(null)
   const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function TradeDetailPage({ params }) {
                 alt={`Trade screenshot ${i + 1}`}
                 className="thumb"
                 style={{ width: '80px', height: '80px' }}
-                onClick={() => setPreviewUrl(url)}
+                onClick={() => setPreviewIndex(i)}
               />
             ))}
           </div>
@@ -137,13 +138,13 @@ export default function TradeDetailPage({ params }) {
         <span className="del" style={{ fontSize: '13px' }} onClick={handleDelete}>Delete this trade</span>
       </div>
 
-      {previewUrl && (
-        <div className="modal-overlay" onClick={() => setPreviewUrl(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-close" onClick={() => setPreviewUrl(null)}>✕</div>
-            <img src={previewUrl} alt="Trade screenshot full view" />
-          </div>
-        </div>
+      {previewIndex !== null && (
+        <ScreenshotLightbox
+          shots={shots}
+          index={previewIndex}
+          onIndexChange={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+        />
       )}
       {confirmModal}
     </div>

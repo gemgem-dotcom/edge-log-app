@@ -19,7 +19,7 @@ import TableHeaderTooltip from '@/components/TableHeaderTooltip'
 import TradeLogTable from '@/components/TradeLogTable'
 import LogTradeMenu from '@/components/LogTradeMenu'
 import MarketStatusPill from '@/components/MarketStatusPill'
-import DashboardSkeleton from '@/components/DashboardSkeleton'
+import OverviewSkeleton from '@/components/OverviewSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
@@ -257,7 +257,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
     }
   }
 
-  if (loading) return <DashboardSkeleton />
+  if (loading) return <OverviewSkeleton />
   if (error) return <div className="page-container"><PageError message={`Couldn't load your dashboard — ${error}`} onRetry={loadData} /></div>
 
   const instrumentById = {}

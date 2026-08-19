@@ -8,6 +8,7 @@ import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
+import ScreenshotLightbox from './ScreenshotLightbox'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
@@ -129,7 +130,11 @@ export default function TradeLogTable({
 }) {
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState(null)
+  // Holds both the clicked row's screenshot array and the index within it -
+  // unlike the single trade detail page, every row here has its own shots
+  // array computed inline in the map below, so the modal needs a reference
+  // to the right one, not just a bare URL.
+  const [preview, setPreview] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
   const { confirm, modal: confirmModal } = useConfirm()
 
@@ -436,7 +441,7 @@ export default function TradeLogTable({
                               alt={`Trade screenshot ${i + 1}`}
                               className="thumb"
                               style={{ width: '70px', height: '70px' }}
-                              onClick={(e) => { e.stopPropagation(); setPreviewUrl(url) }}
+                              onClick={(e) => { e.stopPropagation(); setPreview({ shots, index: i }) }}
                             />
                           ))}
                         </div>
@@ -450,13 +455,13 @@ export default function TradeLogTable({
         </tbody>
       </table>
 
-      {previewUrl && (
-        <div className="modal-overlay" onClick={() => setPreviewUrl(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-close" onClick={() => setPreviewUrl(null)}>✕</div>
-            <img src={previewUrl} alt="Trade screenshot full view" />
-          </div>
-        </div>
+      {preview && (
+        <ScreenshotLightbox
+          shots={preview.shots}
+          index={preview.index}
+          onIndexChange={(i) => setPreview((p) => ({ ...p, index: i }))}
+          onClose={() => setPreview(null)}
+        />
       )}
       {confirmModal}
     </div>

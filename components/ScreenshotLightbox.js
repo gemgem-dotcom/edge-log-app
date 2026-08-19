@@ -46,6 +46,19 @@ export default function ScreenshotLightbox({ shots, index, onIndexChange, onClos
     return () => window.removeEventListener('resize', measure)
   })
 
+  // Left/right arrow keys step through the screenshots the same as
+  // clicking the on-screen arrows - only wired up while there's more than
+  // one to step through, matching when the arrows themselves render.
+  useEffect(() => {
+    if (!shots || shots.length <= 1) return
+    function onKeyDown(e) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); onIndexChange((index - 1 + shots.length) % shots.length) }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); onIndexChange((index + 1) % shots.length) }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [shots, index, onIndexChange])
+
   if (!shots || shots.length === 0) return null
   const hasMultiple = shots.length > 1
 

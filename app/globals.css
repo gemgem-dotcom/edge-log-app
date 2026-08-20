@@ -32,16 +32,16 @@
    1490  Active filter chips
    1539  Empty states, error banners, skeleton loaders
    1610  Cross-instrument overview dashboard (/app)
-   1802  Not found / error boundary state pages
-   1815  Toast notifications
-   1843  Public policy pages (Privacy, Terms)
-   1862  Legal links (auth pages + account settings)
-   1901  Economic calendar card (mock - Overview pages)
-   2008  Calendar news badge (Monthly P&L day cells, mock)
-   2029  Streak badge (Overview + strategy detail pages)
-   2046  Market status pill (Overview + strategy detail pages)
-   2072  Key levels, today's brief (mock cards)
-   2098  Market context cards (all-instruments Overview)
+   1816  Not found / error boundary state pages
+   1829  Toast notifications
+   1857  Public policy pages (Privacy, Terms)
+   1876  Legal links (auth pages + account settings)
+   1915  Economic calendar card (mock - Overview pages)
+   2022  Calendar news badge (Monthly P&L day cells, mock)
+   2043  Streak badge (Overview + strategy detail pages)
+   2060  Market status pill (Overview + strategy detail pages)
+   2086  Key levels, today's brief (mock cards)
+   2112  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1736,14 +1736,23 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 /* Strategy detail page's Performance card - the duration histogram sits
    below the stats-5 row, inside the same panel (see .performance-card-
    subgrid above for the equivalent two-column layout other pages use;
-   this one's a single full-width chart, so it doesn't need a grid). */
-.performance-duration-chart{margin-top:28px;}
+   this one's a single chart rather than two side by side, so it doesn't
+   need a grid - width:50% instead keeps it from stretching bar labels/
+   tracks across the panel's full width, which read as too sparse for
+   what's usually a handful of buckets). Back to full width once 50%
+   would squeeze the 96px label column against a narrow track. */
+.performance-duration-chart{margin-top:28px; width:50%;}
+@media (max-width:900px){
+  .performance-duration-chart{width:100%;}
+}
 /* One bar per duration bucket - unlike .weekday-chart's diverging lanes
    either side of a zero line, a trade count has no negative direction,
    so this is a single bar growing from the label outward, split into
    win/loss (and, if any, neutral - breakeven or still-unresolved)
    segments. .duration-chart-track's own background is the "full width"
-   reference the fill (scaled to the busiest bucket) sits inside. */
+   reference the fill sits inside, scaled against the shared axis below
+   (see .duration-chart-axis) rather than a per-row number - bars read
+   against that axis, exact counts are a hover away. */
 .duration-chart{display:flex; flex-direction:column; gap:9px;}
 .duration-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
 .duration-chart-label{
@@ -1755,7 +1764,19 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .duration-chart-seg-win{background:var(--win);}
 .duration-chart-seg-loss{background:var(--loss);}
 .duration-chart-seg-neu{background:var(--muted-2);}
-.duration-chart-value{width:28px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;}
+/* Axis row - a spacer matching .duration-chart-label's own width keeps
+   its track aligned under the bars above, the same trick
+   .duration-chart-row's flex layout uses. Tick labels are positioned
+   absolutely by percentage (not a flex row) since they need to sit at
+   exact fractions of the track's width to line up with where each
+   bar's own percentage-width would reach, not spaced evenly by count. */
+.duration-chart-axis{display:flex; align-items:center; gap:10px; margin-top:4px;}
+.duration-chart-axis-spacer{width:96px; flex-shrink:0;}
+.duration-chart-axis-track{position:relative; flex:1; min-width:0; height:14px;}
+.duration-chart-axis-tick{
+  position:absolute; top:0; font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--muted);
+}
 
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
 .donut-svg{width:160px; height:160px; flex-shrink:0;}

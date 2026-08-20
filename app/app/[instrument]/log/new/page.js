@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
+import { computeTradeSessions } from '@/lib/tradeSessions'
+import { browserOffsetGuess } from '@/lib/timezone'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm, { EMPTY_TRADE_FORM } from '@/components/TradeForm'
@@ -66,12 +68,17 @@ export default function NewTradePage({ params, searchParams }) {
         : 'Screenshot upload failed: ' + uploadError.message
     }
 
+    const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
+    const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
+
     const { error } = await supabase.from('trades').insert([{
       ...values,
       user_id: user.id,
       instrument_id: instrumentId,
       screenshot_urls,
       screenshot_url: screenshot_urls[0] || null,
+      session,
+      continued_sessions: continuedSessions,
     }])
 
     if (error) {

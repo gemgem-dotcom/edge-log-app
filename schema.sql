@@ -282,3 +282,112 @@ alter table trades add column if not exists tags text[];
 -- history or hitting the unique(user_id, symbol) constraint with a fresh
 -- insert. Every instruments query across the app filters on this.
 alter table instruments add column if not exists archived boolean not null default false;
+
+-- Trade session metadata (hidden - no page surfaces this yet, see
+-- lib/tradeSessions.js) computed once at write time from each trade's own
+-- entry time: `session` is the named session (lib/marketHours.js's
+-- sessionFor: London session, US pre-market, New York AM, Midday lull,
+-- New York PM, Asian session) the trade was opened in; `continued_sessions`
+-- is every other session boundary crossed, in order, before it closed -
+-- always empty for a trade with no exit_time recorded, since duration
+-- (and so whether it crossed into another session at all) can't be known
+-- without one.
+alter table trades add column if not exists session text;
+alter table trades add column if not exists continued_sessions text[];
+
+-- Backfill for trades logged before this feature existed, mirroring
+-- lib/tradeSessions.js's own logic (same session boundaries, same
+-- wall-clock-has-no-timezone-of-its-own interpretation shift_trade_times
+-- above already relies on) as closely as SQL allows. Two known, accepted
+-- gaps against the JS live path: (1) a trader who's never saved an
+-- explicit timezone gets UTC+0 here rather than their browser's own
+-- offset - this backfill has no browser to ask, unlike a trade being
+-- logged live; (2) the continued-sessions walk advances the
+-- already-ET-converted wall clock by whole minutes rather than
+-- re-deriving each minute from the underlying UTC instant the way
+-- computeTradeSessions does, so a trade that happens to span the exact
+-- hour of a DST transition could land in the wrong session for that hour.
+-- Both are vanishingly rare edge cases on metadata no trader ever sees, so
+-- not worth the extra complexity of matching the JS path exactly. Only
+-- touches rows where session is still null, so it's safe to run again
+-- (e.g. after restoring trades some other way that skipped the app).
+create or replace function _session_for_et_minutes(minutes_of_day int)
+returns text
+language sql
+immutable
+as $$
+  select case
+    when minutes_of_day >= 1080 or minutes_of_day < 180 then 'Asian session'
+    when minutes_of_day < 510 then 'London session'
+    when minutes_of_day < 570 then 'US pre-market'
+    when minutes_of_day < 690 then 'New York AM'
+    when minutes_of_day < 810 then 'Midday lull'
+    else 'New York PM'
+  end
+$$;
+
+create or replace function _continued_sessions_walk(entry_et_ts timestamp, duration_min int, entry_session text)
+returns text[]
+language plpgsql
+immutable
+as $$
+declare
+  result text[] := '{}';
+  last_label text := entry_session;
+  cur_label text;
+  m int;
+begin
+  if duration_min is null or duration_min <= 0 then
+    return result;
+  end if;
+  for m in 1..duration_min loop
+    cur_label := _session_for_et_minutes(
+      (extract(hour from entry_et_ts + (m * interval '1 minute')) * 60
+        + extract(minute from entry_et_ts + (m * interval '1 minute')))::int
+    );
+    if cur_label <> last_label then
+      result := array_append(result, cur_label);
+      last_label := cur_label;
+    end if;
+  end loop;
+  return result;
+end;
+$$;
+
+with tz as (
+  select id as user_id, coalesce((raw_user_meta_data->>'timezone')::numeric, 0) as offset_hours
+  from auth.users
+),
+entry as (
+  select
+    t.id,
+    t.trade_time,
+    t.exit_time,
+    (((t.trade_date + t.trade_time)::timestamp - (tz.offset_hours * interval '1 hour'))
+      at time zone 'UTC' at time zone 'America/New_York') as entry_et_ts
+  from trades t
+  join tz on tz.user_id = t.user_id
+  where t.session is null
+),
+computed as (
+  select
+    id,
+    entry_et_ts,
+    _session_for_et_minutes(
+      (extract(hour from entry_et_ts) * 60 + extract(minute from entry_et_ts))::int
+    ) as session,
+    case when exit_time is null then null else (
+      select case when d < 0 then d + 1440 else d end
+      from (select (extract(epoch from (exit_time - trade_time)) / 60)::int as d) x
+    ) end as duration_min
+  from entry
+)
+update trades t
+set
+  session = c.session,
+  continued_sessions = _continued_sessions_walk(c.entry_et_ts, c.duration_min, c.session)
+from computed c
+where t.id = c.id;
+
+drop function _continued_sessions_walk(timestamp, int, text);
+drop function _session_for_et_minutes(int);

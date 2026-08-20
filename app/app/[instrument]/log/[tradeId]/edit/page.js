@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
+import { computeTradeSessions } from '@/lib/tradeSessions'
+import { browserOffsetGuess } from '@/lib/timezone'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -67,10 +69,16 @@ export default function EditTradePage({ params }) {
     }
     const screenshot_urls = [...existingScreenshots, ...uploaded]
 
+    const { data: { user } } = await supabase.auth.getUser()
+    const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
+    const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
+
     const { error } = await supabase.from('trades').update({
       ...values,
       screenshot_urls,
       screenshot_url: screenshot_urls[0] || null,
+      session,
+      continued_sessions: continuedSessions,
     }).eq('id', tradeId)
 
     if (error) {

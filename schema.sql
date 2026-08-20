@@ -298,19 +298,23 @@ alter table trades add column if not exists continued_sessions text[];
 -- Backfill for trades logged before this feature existed, mirroring
 -- lib/tradeSessions.js's own logic (same session boundaries, same
 -- wall-clock-has-no-timezone-of-its-own interpretation shift_trade_times
--- above already relies on) as closely as SQL allows. Two known, accepted
--- gaps against the JS live path: (1) a trader who's never saved an
--- explicit timezone gets UTC+0 here rather than their browser's own
--- offset - this backfill has no browser to ask, unlike a trade being
--- logged live; (2) the continued-sessions walk advances the
--- already-ET-converted wall clock by whole minutes rather than
--- re-deriving each minute from the underlying UTC instant the way
--- computeTradeSessions does, so a trade that happens to span the exact
--- hour of a DST transition could land in the wrong session for that hour.
--- Both are vanishingly rare edge cases on metadata no trader ever sees, so
--- not worth the extra complexity of matching the JS path exactly. Only
--- touches rows where session is still null, so it's safe to run again
--- (e.g. after restoring trades some other way that skipped the app).
+-- above already relies on) as closely as SQL allows. Two known gaps
+-- against the JS live path, both self-correcting rather than permanent:
+-- (1) a trader who's never saved an explicit timezone gets UTC+0 here,
+-- since this backfill has no browser to ask unlike a trade being logged
+-- live - but every account is now required to have a real saved offset
+-- (app/app/layout.js's TimezoneGate blocks the whole app until one's set),
+-- and the moment that happens it calls lib/tradeSessions.js's
+-- backfillOwnTradeSessions() to recompute that trader's own history for
+-- real, overwriting whatever this UTC+0 pass guessed; (2) the
+-- continued-sessions walk here advances the already-ET-converted wall
+-- clock by whole minutes rather than re-deriving each minute from the
+-- underlying UTC instant the way computeTradeSessions does, so a trade
+-- that happens to span the exact hour of a DST transition could land in
+-- the wrong session for that hour - backfillOwnTradeSessions corrects
+-- this too, being the same function new trades use. Only touches rows
+-- where session is still null, so it's safe to run again (e.g. after
+-- restoring trades some other way that skipped the app).
 create or replace function _session_for_et_minutes(minutes_of_day int)
 returns text
 language sql

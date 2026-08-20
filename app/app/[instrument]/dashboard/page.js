@@ -8,7 +8,7 @@ import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
-import { mockKeyLevels, upcomingEconEvents } from '@/lib/marketContextMock'
+import { upcomingEconEvents } from '@/lib/marketContextMock'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
 import InstrumentMenu from '@/components/InstrumentMenu'
@@ -186,9 +186,6 @@ function fmtPF(val) {
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
   return val > 0 ? 'pos' : val < 0 ? 'neg' : 'neu'
-}
-function fmtPrice(val) {
-  return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function fmtCountdown(ms) {
   if (ms === null || ms === undefined) return '—'
@@ -386,7 +383,6 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
     },
   ]
   const streak = computeStreak(allTrades)
-  const keyLevels = mockKeyLevels(symbol)
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const upcomingEvents = upcomingEconEvents(now)
@@ -424,7 +420,7 @@ return (
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
     <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
   </div>
-  <p className="page-subtitle page-subtitle-tight">Your performance overview for {displayName} futures.</p>
+  <p className="page-subtitle page-subtitle-tight">Your overview for {displayName} futures.</p>
   <div className="header-pills-row">
     <MarketStatusPill />
     <StreakBadge
@@ -540,11 +536,6 @@ return (
   </div>
   <div className="panel">
     <div className="stat-label dashboard-card-title">Key levels</div>
-    <div className="key-levels-list">
-      <div className="key-levels-row"><span>Prior day high</span><span>{fmtPrice(keyLevels.priorHigh)}</span></div>
-      <div className="key-levels-row"><span>Prior day low</span><span>{fmtPrice(keyLevels.priorLow)}</span></div>
-      <div className="key-levels-row"><span>Session open</span><span>{fmtPrice(keyLevels.sessionOpen)}</span></div>
-    </div>
   </div>
   <div className="panel">
     <div className="stat-label dashboard-card-title">Session stats</div>

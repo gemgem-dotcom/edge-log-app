@@ -27,8 +27,12 @@ function computeAxisTicks(maxCount) {
 // dominant outcome is always the part that reaches furthest. Neutral
 // (breakeven or still-unresolved) trades, if any, trail after both. Bars
 // are read against the shared axis at the bottom rather than a per-row
-// number - exact counts are still available on hover.
-export default function TradeDurationChart({ buckets }) {
+// number - exact counts are still available on hover. A bucket with any
+// trades in it is also a filter: clicking it hands the bucket to onSelect
+// (the strategy detail page narrows the trade log below to that range and
+// scrolls to it) - empty buckets aren't clickable, since there's nothing
+// for a filter on them to show.
+export default function TradeDurationChart({ buckets, onSelect }) {
   const [hovered, setHovered] = useState(null)
 
   if (!buckets || buckets.length === 0) {
@@ -50,10 +54,11 @@ export default function TradeDurationChart({ buckets }) {
 
         return (
           <div
-            className="duration-chart-row"
+            className={`duration-chart-row${total > 0 ? ' duration-chart-row-clickable' : ''}`}
             key={b.label}
             onMouseMove={(e) => setHovered({ bucket: b, total, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHovered(null)}
+            onClick={() => total > 0 && onSelect?.(b)}
           >
             <span className="duration-chart-label">{b.label}</span>
             <div className="duration-chart-track">

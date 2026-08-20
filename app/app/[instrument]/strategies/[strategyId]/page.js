@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, Plus } from 'lucide-react'
+import { MoreVertical, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
@@ -145,6 +145,17 @@ const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
+  // Set when a Trade duration bar is clicked - narrows the trade log below
+  // to just that bucket's trades and scrolls it into view, so the chart
+  // doubles as a filter rather than just a static breakdown.
+  const [durationFilter, setDurationFilter] = useState(null)
+  const tradeLogRef = useRef(null)
+
+  function handleSelectDuration(bucket) {
+    setDurationFilter({ from: bucket.from, to: bucket.to, label: bucket.label })
+    tradeLogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
 useEffect(() => {
   loadData()
 }, [strategyId])
@@ -218,6 +229,15 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
 
 const streak = computeStreak(trades)
   const durationBuckets = computeDurationBuckets(trades)
+  // Same [from, to) partition computeDurationBuckets itself assigns trades
+  // to, so a bucket's trade count and what shows up here when it's
+  // selected always agree.
+  const visibleTrades = durationFilter
+    ? trades.filter((t) => {
+        const d = tradeDurationMinutes(t)
+        return d !== null && d >= durationFilter.from && d < durationFilter.to
+      })
+    : trades
 
 return (
   <div className="page-container">
@@ -299,7 +319,7 @@ Delete strategy
   </div>
   <div className="performance-duration-chart">
     <div className="stat-label dashboard-card-title">Trade duration</div>
-    <TradeDurationChart buckets={durationBuckets} />
+    <TradeDurationChart buckets={durationBuckets} onSelect={handleSelectDuration} />
   </div>
 </div>
 
@@ -311,10 +331,20 @@ Delete strategy
   <p className="strategy-context-text">This strategy often trades around scheduled Fed events — one lands today at 10:00.</p>
 </div>
 
-<div className="section-heading">Trade log — {strategy.name}</div>
+<div className="section-heading" ref={tradeLogRef}>Trade log — {strategy.name}</div>
 <div className="panel">
+  {durationFilter && (
+    <div className="active-filters">
+      <span className="filter-chip">
+        Duration: {durationFilter.label}
+        <button type="button" onClick={() => setDurationFilter(null)} aria-label="Remove duration filter">
+          <X size={12} />
+        </button>
+      </span>
+    </div>
+  )}
   <TradeLogTable
-    trades={trades}
+    trades={visibleTrades}
     showStrategyColumn={false}
     showFilters={true}
     symbol={symbol}

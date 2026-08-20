@@ -32,16 +32,16 @@
    1490  Active filter chips
    1539  Empty states, error banners, skeleton loaders
    1610  Cross-instrument overview dashboard (/app)
-   1816  Not found / error boundary state pages
-   1829  Toast notifications
-   1857  Public policy pages (Privacy, Terms)
-   1876  Legal links (auth pages + account settings)
-   1915  Economic calendar card (mock - Overview pages)
-   2022  Calendar news badge (Monthly P&L day cells, mock)
-   2043  Streak badge (Overview + strategy detail pages)
-   2060  Market status pill (Overview + strategy detail pages)
-   2086  Key levels, today's brief (mock cards)
-   2112  Market context cards (all-instruments Overview)
+   1830  Not found / error boundary state pages
+   1843  Toast notifications
+   1871  Public policy pages (Privacy, Terms)
+   1890  Legal links (auth pages + account settings)
+   1929  Economic calendar card (mock - Overview pages)
+   2036  Calendar news badge (Monthly P&L day cells, mock)
+   2057  Streak badge (Overview + strategy detail pages)
+   2074  Market status pill (Overview + strategy detail pages)
+   2100  Key levels, today's brief (mock cards)
+   2126  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1758,7 +1758,14 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .duration-chart-label{
   width:96px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
   font-size:10.5px; color:var(--muted); letter-spacing:.04em;
+  transition:color .15s ease;
 }
+/* Only buckets with at least one trade in them are wired up as a filter
+   (see the component - an empty bucket has nothing for onSelect to show),
+   so only these get the pointer cursor + accent-colored label hinting
+   that. */
+.duration-chart-row-clickable{cursor:pointer;}
+.duration-chart-row-clickable:hover .duration-chart-label{color:var(--accent);}
 .duration-chart-track{flex:1; height:10px; min-width:0; background:var(--line); border-radius:3px; overflow:hidden;}
 .duration-chart-fill{height:100%; display:flex;}
 .duration-chart-seg-win{background:var(--win);}

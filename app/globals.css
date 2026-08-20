@@ -25,23 +25,23 @@
    1095  Screenshot preview (log new trade)
    1112  Auth pages always dark
    1140  Monthly P&L (calendar on Overview)
-   1216  Trade form: sections, validation, currency, screenshots
-   1301  Field tooltips
-   1357  Date/time picker (adds an optional popup to a typed input)
-   1466  In-header column filters (trade log table)
-   1500  Active filter chips
-   1549  Empty states, error banners, skeleton loaders
-   1620  Cross-instrument overview dashboard (/app)
-   1788  Not found / error boundary state pages
-   1801  Toast notifications
-   1829  Public policy pages (Privacy, Terms)
-   1848  Legal links (auth pages + account settings)
-   1887  Economic calendar card (mock - Overview pages)
-   1994  Calendar news badge (Monthly P&L day cells, mock)
-   2015  Streak badge (Overview + strategy detail pages)
-   2032  Market status pill (Overview + strategy detail pages)
-   2058  Key levels, today's brief (mock cards)
-   2084  Market context cards (all-instruments Overview)
+   1206  Trade form: sections, validation, currency, screenshots
+   1291  Field tooltips
+   1347  Date/time picker (adds an optional popup to a typed input)
+   1456  In-header column filters (trade log table)
+   1490  Active filter chips
+   1539  Empty states, error banners, skeleton loaders
+   1610  Cross-instrument overview dashboard (/app)
+   1802  Not found / error boundary state pages
+   1815  Toast notifications
+   1843  Public policy pages (Privacy, Terms)
+   1862  Legal links (auth pages + account settings)
+   1901  Economic calendar card (mock - Overview pages)
+   2008  Calendar news badge (Monthly P&L day cells, mock)
+   2029  Streak badge (Overview + strategy detail pages)
+   2046  Market status pill (Overview + strategy detail pages)
+   2072  Key levels, today's brief (mock cards)
+   2098  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1153,14 +1153,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
 .stats-2{grid-template-columns:repeat(2,1fr);}
-/* Strategy detail page: 8 cards, some with a stat-subvalue line (Total
-   P&L, Expectancy) and some without - min-height plus centering keeps
-   every card the same height regardless of which. */
-.strategy-perf-stats{grid-template-columns:repeat(4,1fr);}
-/* A fixed height (not min-height) so every card matches regardless of
-   which row it lands in - min-height only equalizes within a row, since
-   grid rows size to their own tallest card. */
-.strategy-perf-stats .stat{height:90px; display:flex; flex-direction:column; justify-content:center;}
 .stat-subvalue{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; margin-top:2px;}
 .stat-gauge{display:flex; flex-direction:column;}
 
@@ -1188,13 +1180,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 @media (max-width:1100px){
     .stats-5{grid-template-columns:repeat(3,1fr);}
-    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
 }
 @media (max-width:640px){
     .calendar-toolbar{flex-direction:column; align-items:stretch;}
     .calendar-month-nav{justify-content:space-between;}
     .stats-5{grid-template-columns:repeat(2,1fr);}
-    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
     .calendar-grid-8{grid-template-columns:repeat(7,1fr); gap:4px;}
     .calendar-cell-weekly, .calendar-weekday-weekly{display:none;}
     .calendar-day-subpnl{display:none;}
@@ -1742,6 +1732,30 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .weekday-chart-value{
   width:80px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;
 }
+
+/* Strategy detail page's Performance card - the duration histogram sits
+   below the stats-5 row, inside the same panel (see .performance-card-
+   subgrid above for the equivalent two-column layout other pages use;
+   this one's a single full-width chart, so it doesn't need a grid). */
+.performance-duration-chart{margin-top:28px;}
+/* One bar per duration bucket - unlike .weekday-chart's diverging lanes
+   either side of a zero line, a trade count has no negative direction,
+   so this is a single bar growing from the label outward, split into
+   win/loss (and, if any, neutral - breakeven or still-unresolved)
+   segments. .duration-chart-track's own background is the "full width"
+   reference the fill (scaled to the busiest bucket) sits inside. */
+.duration-chart{display:flex; flex-direction:column; gap:9px;}
+.duration-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
+.duration-chart-label{
+  width:96px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
+  font-size:10.5px; color:var(--muted); letter-spacing:.04em;
+}
+.duration-chart-track{flex:1; height:10px; min-width:0; background:var(--line); border-radius:3px; overflow:hidden;}
+.duration-chart-fill{height:100%; display:flex;}
+.duration-chart-seg-win{background:var(--win);}
+.duration-chart-seg-loss{background:var(--loss);}
+.duration-chart-seg-neu{background:var(--muted-2);}
+.duration-chart-value{width:28px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;}
 
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
 .donut-svg{width:160px; height:160px; flex-shrink:0;}

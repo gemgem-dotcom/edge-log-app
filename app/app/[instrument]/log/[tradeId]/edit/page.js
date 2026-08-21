@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
-import { toast } from '@/lib/toast'
+import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
 import TradeForm from '@/components/TradeForm'
@@ -85,8 +85,14 @@ export default function EditTradePage({ params }) {
       return 'Could not save trade: ' + error.message
     }
 
-    toast.success('Trade updated.')
-    router.push(`/app/${symbol}/log`)
+    // Same as Cancel/Discard changes (onCancel below) - returns to wherever
+    // the trader opened this edit from (the trade detail page, the log, a
+    // strategy page) rather than always landing on the log. Queued rather
+    // than a plain toast.success: see queueToastForReturn's comment - a
+    // toast fired right before router.back() can otherwise be silently
+    // lost to a back-forward-cache restore of the previous page.
+    queueToastForReturn('Trade updated.')
+    router.back()
   }
 
   async function handleDelete() {

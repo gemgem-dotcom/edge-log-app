@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+import { queueToastForReturn } from '../lib/toast'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
@@ -385,6 +386,14 @@ export default function TradeForm({
     setDisciplineTags((prev) => prev.filter((t) => t !== tag))
   }
 
+  // The same button reads "Cancel" or "Discard changes" depending on
+  // `dirty` (see the button below) - only the latter is an action worth a
+  // toast, since "Cancel" means there was nothing to throw away.
+  function handleCancelClick() {
+    if (dirty) queueToastForReturn('Changes discarded.')
+    onCancel()
+  }
+
   function handlePnlFocus() {
     const parsed = parseCurrency(pnlInput)
     setPnlInput(parsed === null ? '' : String(parsed))
@@ -761,7 +770,7 @@ export default function TradeForm({
             {footerLeft}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               {allowDiscard && onCancel && (
-                <button type="button" className={`discard-btn${dirty ? ' dirty' : ''}`} onClick={onCancel} disabled={saving}>
+                <button type="button" className={`discard-btn${dirty ? ' dirty' : ''}`} onClick={handleCancelClick} disabled={saving}>
                   {dirty ? 'Discard changes' : 'Cancel'}
                 </button>
               )}

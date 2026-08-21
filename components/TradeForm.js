@@ -618,7 +618,7 @@ export default function TradeForm({
           <div className="field full section-label">
             Trade Setup
             <span className="section-subtitle">
-              These details define the setup and help EdgeLog identify it in market data.
+              These details define the setup and help EdgeLog identify it in market data. Record the trade as your strategy says it should be taken.
             </span>
           </div>
 

@@ -26,22 +26,22 @@
    1168  Auth pages always dark
    1196  Monthly P&L (calendar on Overview)
    1262  Trade form: sections, validation, currency, screenshots
-   1453  Field tooltips
-   1514  Date/time picker (adds an optional popup to a typed input)
-   1623  In-header column filters (trade log table)
-   1657  Active filter chips
-   1706  Empty states, error banners, skeleton loaders
-   1777  Cross-instrument overview dashboard (/app)
-   1997  Not found / error boundary state pages
-   2010  Toast notifications
-   2038  Public policy pages (Privacy, Terms)
-   2057  Legal links (auth pages + account settings)
-   2096  Economic calendar card (mock - Overview pages)
-   2203  Calendar news badge (Monthly P&L day cells, mock)
-   2224  Streak badge (Overview + strategy detail pages)
-   2241  Market status pill (Overview + strategy detail pages)
-   2267  Key levels, today's brief (mock cards)
-   2293  Market context cards (all-instruments Overview)
+   1482  Field tooltips
+   1544  Date/time picker (adds an optional popup to a typed input)
+   1653  In-header column filters (trade log table)
+   1687  Active filter chips
+   1736  Empty states, error banners, skeleton loaders
+   1807  Cross-instrument overview dashboard (/app)
+   2027  Not found / error boundary state pages
+   2040  Toast notifications
+   2068  Public policy pages (Privacy, Terms)
+   2087  Legal links (auth pages + account settings)
+   2126  Economic calendar card (mock - Overview pages)
+   2233  Calendar news badge (Monthly P&L day cells, mock)
+   2254  Streak badge (Overview + strategy detail pages)
+   2271  Market status pill (Overview + strategy detail pages)
+   2297  Key levels, today's brief (mock cards)
+   2323  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1275,6 +1275,35 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   line-height:1.35;
 }
 
+/* Outcome's unset "Select" state (see components/TradeForm.js) - dims the
+   trigger's text the way a native <select>'s placeholder option normally
+   would. Dropped the moment a real option is picked - React only applies
+   the class while outcome === ''. Chained with .outcome-select-trigger
+   (specificity over a lone .select-placeholder) so .dt-picker-trigger's
+   own color:var(--text) - defined later in the file, so it would
+   otherwise win a same-specificity tie - doesn't quietly override it. */
+.outcome-select-trigger.select-placeholder{color:var(--muted);}
+
+/* Outcome - a custom dropdown (Hit Target/Hit Stop/Custom... are fixed
+   choices, not free text, so a Tags-suggestions-style floating menu reads
+   right here) rather than a native <select>, matching the look of Tags'
+   own suggestions dropdown. .dt-picker-trigger supplies the field-box look
+   (border/height/padding) the trigger needs - same control, different
+   icon. */
+.outcome-select-wrap{position:relative;}
+.outcome-select-trigger{cursor:pointer;}
+/* width:100% (not .tag-suggestions/.discipline-menu's fixed min-width) so
+   the menu spans exactly the trigger's own box - it sits in the same
+   single-column slot of .exit-row-fields as the exit fields below it, so
+   matching the trigger's width also keeps it visually aligned with them. */
+.outcome-menu{
+  position:absolute; top:calc(100% + 6px); left:0; width:100%; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; overflow:hidden; z-index:50;
+  box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
+}
+.outcome-menu-item{height:30px; line-height:30px; padding:0 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
+.outcome-menu-item:hover{background:var(--panel-2);}
+
 /* Auto-derived, non-editable values (the Risk-to-Reward readout). A plain
    disabled input - same as the email field in Account Settings - rather
    than readOnly: readOnly still lets a click focus the field, which used
@@ -1456,7 +1485,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    tooltip bubble (position:absolute, opens above the button) against the
    field's own box. Any field with a FieldTooltip needs the same exemption. */
 .field:has(.field-tooltip),
-.field:has(.dt-picker){overflow-x:visible;}
+.field:has(.dt-picker),
+.field:has(.outcome-select-wrap){overflow-x:visible;}
 /* Wrapper div (not the label itself) carries the flex layout, and
    FieldTooltip's button sits as the wrapper's sibling rather than nested
    inside the <label> - a <button> nested inside a <label> gets :hover

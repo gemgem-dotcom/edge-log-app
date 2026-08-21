@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { X, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple } from '../lib/tradeMath'
@@ -15,6 +15,12 @@ import TimePicker from './TimePicker'
 import ScreenshotLightbox from './ScreenshotLightbox'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
+
+// Outcome's fixed set of choices, in menu order - a plain object rather
+// than an array since both the trigger (looking up the current value's
+// label) and the menu (listing every choice) need it, and an object gives
+// the trigger a direct lookup instead of a .find() over an array.
+const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom...' }
 
 // Fixed, grouped issue list for the Discipline field below - unlike Tags,
 // this isn't a free-text/previously-used list, so the groups and their order
@@ -117,13 +123,17 @@ export default function TradeForm({
   // starting state to agree with.
   const [additionalExits, setAdditionalExits] = useState(initial.additionalExits || [])
 
-  // Hit target / Hit stop / Custom - pre-fills the primary exit's price
+  // Hit Target / Hit Stop / Custom - pre-fills the primary exit's price
   // from Trade Setup's own plan, never a stored value, so this always
-  // starts on Custom rather than trying to guess an already-loaded trade's
-  // outcome from its exit price. Stays visible regardless of whether
-  // additional exits exist - "+ Add another exit" (below) is what's gated
-  // on Custom, not this.
-  const [outcome, setOutcome] = useState('custom')
+  // starts unset (the dropdown's own "Select" placeholder) rather than
+  // trying to guess an already-loaded trade's outcome from its exit price.
+  // Unset behaves exactly like Custom everywhere below (see isCustomOutcome)
+  // - it's only a distinct value so the dropdown can show its placeholder
+  // instead of defaulting to "Custom...". Stays visible regardless of
+  // whether additional exits exist - "+ Add another exit" (below) is what's
+  // gated on Custom, not this.
+  const [outcome, setOutcome] = useState('')
+  const [showOutcomeMenu, setShowOutcomeMenu] = useState(false)
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])
@@ -169,6 +179,12 @@ export default function TradeForm({
     return calcRMultiple(direction, entryNum, stopPriceForR, parseFloat(exitPriceStr))
   }
 
+  // Anything other than an explicit Hit Target/Hit Stop counts as Custom -
+  // including the dropdown's unset starting value (see outcome's own
+  // comment above), so a trader who hasn't touched Outcome yet still gets
+  // Custom's fully-manual behavior rather than a third, no-op state.
+  const isCustomOutcome = outcome !== 'target' && outcome !== 'stop'
+
   // Whether the form is showing the numbered exit list or the plain single
   // row - not its own tracked state, just whether there's a second exit AND
   // Outcome is on Custom. additionalExits itself is left untouched by
@@ -180,7 +196,7 @@ export default function TradeForm({
   // what actually gets submitted) goes through this rather than
   // additionalExits directly, so Hit target/Hit stop consistently behaves
   // as if that leftover data doesn't exist until Custom is chosen again.
-  const multipleExits = outcome === 'custom' && additionalExits.length > 0
+  const multipleExits = isCustomOutcome && additionalExits.length > 0
 
   // The exit legs currently on screen - just the primary exit outside
   // Multiple exits mode, primary + every additional row once it's on.
@@ -222,11 +238,11 @@ export default function TradeForm({
     if (pnlManual) return
     const exitRows = [
       { exit_price: parseFloat(execution.exit_price), contracts: parseFloat(execution.contracts) },
-      ...(outcome === 'custom' ? additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })) : []),
+      ...(isCustomOutcome ? additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })) : []),
     ]
     const computed = calcMultiExitProfitLoss(direction, parseFloat(setup.entry), exitRows, pointValueFor(symbol))
     setPnlInput(computed === null ? '' : formatCurrency(computed))
-  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, outcome, symbol])
+  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, isCustomOutcome, symbol])
 
   // Object URLs are created per selected file, so release them on unmount.
   // Tracked through a ref because the cleanup runs once and would otherwise
@@ -313,7 +329,9 @@ export default function TradeForm({
   // Discipline's issue picker is a plain click-to-toggle list, not a typed
   // input like the tag dropdown above - no autofocus/keyboard/scroll
   // interplay to guard against, so a plain outside-click close is enough.
+  // Outcome's menu (below) is the same - a fixed list, nothing typed.
   const disciplineMenuRef = useClickOutside(showDisciplineMenu, () => setShowDisciplineMenu(false))
+  const outcomeMenuRef = useClickOutside(showOutcomeMenu, () => setShowOutcomeMenu(false))
 
   function updateSetup(field, value) {
     setDirty(true)
@@ -576,7 +594,7 @@ export default function TradeForm({
       // exits too, even ones with data still sitting in state (see
       // multipleExits above) - Custom is the only outcome a multi-exit
       // trade can actually save as.
-      additional_exits: (outcome === 'custom' ? additionalExits : [])
+      additional_exits: (isCustomOutcome ? additionalExits : [])
         .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
         .map((row) => {
           const rowExitPrice = parseFloat(row.exit_price)
@@ -785,18 +803,39 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
-            <label>Outcome</label>
-            <select value={outcome} onChange={(e) => handleOutcomeChange(e.target.value)}>
-              <option value="target">Hit Target</option>
-              <option value="stop">Hit Stop</option>
-              <option value="custom">Custom...</option>
-            </select>
+            <div className="exit-row-fields">
+              <div className="field">
+                <label>Outcome</label>
+                <div className="outcome-select-wrap" ref={outcomeMenuRef}>
+                  <div
+                    className={`dt-picker-trigger outcome-select-trigger ${outcome === '' ? 'select-placeholder' : ''}`}
+                    onClick={() => setShowOutcomeMenu((v) => !v)}
+                  >
+                    <span>{OUTCOME_LABELS[outcome] || 'Select'}</span>
+                    <ChevronDown size={14} />
+                  </div>
+                  {showOutcomeMenu && (
+                    <div className="outcome-menu">
+                      {Object.entries(OUTCOME_LABELS).map(([value, label]) => (
+                        <div
+                          key={value}
+                          className="outcome-menu-item"
+                          onClick={() => { handleOutcomeChange(value); setShowOutcomeMenu(false) }}
+                        >
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {!multipleExits ? (
             <>
               {renderExitFields(0)}
-              {outcome === 'custom' && (
+              {isCustomOutcome && (
                 <div className="field full">
                   <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
                     + Add another exit
@@ -821,7 +860,7 @@ export default function TradeForm({
                   </li>
                 ))}
               </ol>
-              {outcome === 'custom' && (
+              {isCustomOutcome && (
                 <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
                   + Add another exit
                 </span>

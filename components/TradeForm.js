@@ -30,7 +30,7 @@ export const EMPTY_TRADE_FORM = {
   direction: 'long',
   strategyId: '',
   reasoning: '',
-  setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '', position_size: '' },
+  setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '' },
   execution: { contracts: '', exit_time: '', exit_price: '' },
   additionalExits: [],
   pnl: null,
@@ -171,26 +171,11 @@ export default function TradeForm({
   // Multiple exits mode, primary + every additional row once it's on.
   const exitLegRows = multipleExits ? [execution, ...additionalExits] : [execution]
 
-  // Total contracts closed so far, across every leg - used both for the
-  // summary row below and to validate against Position size.
+  // Total contracts closed so far, across every leg - shown in the summary
+  // row below.
   const totalLegContracts = exitLegRows.reduce((sum, row) => (
     sum + (isBlank(row.contracts) ? 0 : parseInt(row.contracts))
   ), 0)
-
-  // A trader might be mid-way through logging a trade that's still open, so
-  // this is a soft warning rather than a validation error - contracts
-  // logged so far falling short of Position size is completely normal.
-  // Only checked when Position size was actually entered - with nothing to
-  // compare against, there's nothing to warn about.
-  let contractsWarning = null
-  if (!isBlank(setup.position_size)) {
-    const positionSize = parseInt(setup.position_size)
-    if (Number.isFinite(positionSize) && positionSize > 0 && totalLegContracts > 0 && totalLegContracts !== positionSize) {
-      contractsWarning = totalLegContracts > positionSize
-        ? `Contracts across all legs add up to ${totalLegContracts} — more than the ${positionSize} this trade opened with.`
-        : `Contracts across all legs add up to ${totalLegContracts} of the ${positionSize} this trade opened with.`
-    }
-  }
 
   // Realized R (blended): a contracts-weighted average of every leg's own
   // R-multiple, reduces to just that one exit's R-multiple for a single
@@ -358,13 +343,12 @@ export default function TradeForm({
     setPnlManual(false)
   }
 
-  // Pre-fills the primary exit from Trade Setup's own planned target/stop
-  // price - a starting value, not a locked substitution, so the fields stay
-  // exactly as editable afterward as a fully manual entry would be (an
-  // actual fill can slip from the theoretical price on slippage or a
-  // partial fill). Contracts only pre-fills when Position size was actually
-  // entered - with nothing to pre-fill it from, it's left alone. Choosing
-  // Custom applies nothing at all, leaving whatever's already there.
+  // Pre-fills the primary exit's price from Trade Setup's own planned
+  // target/stop price - a starting value, not a locked substitution, so the
+  // field stays exactly as editable afterward as a fully manual entry would
+  // be (an actual fill can slip from the theoretical price on slippage or a
+  // partial fill). Choosing Custom applies nothing at all, leaving whatever
+  // is already there.
   function handleOutcomeChange(value) {
     setDirty(true)
     setOutcome(value)
@@ -374,7 +358,6 @@ export default function TradeForm({
       ? calcTargetPrice(direction, entry, parseFloat(setup.target_distance))
       : calcStopPrice(direction, entry, parseFloat(setup.stop_distance))
     updateExecution('exit_price', price === null ? '' : String(price))
-    if (!isBlank(setup.position_size)) updateExecution('contracts', setup.position_size)
   }
 
   function handleAddAnotherExit() {
@@ -580,7 +563,6 @@ export default function TradeForm({
       target: toDecimalString(targetPrice),
       stop_distance: toDecimalString(stopDistance),
       target_distance: toDecimalString(targetDistance),
-      position_size: isBlank(setup.position_size) ? null : parseInt(setup.position_size),
       // exit_points is derived from the typed exit price rather than
       // entered directly - see calcPointsFromExitPrice. Stored for future
       // use (e.g. market-data matching); the trader never sees it.
@@ -768,13 +750,6 @@ export default function TradeForm({
             </div>
             {errors.direction && <span className="field-error">{errors.direction}</span>}
           </div>
-          <div className="field wide">
-            <label>Position size</label>
-            <input
-              type="number" step="1" min="0"
-              value={setup.position_size} onChange={(e) => updateSetup('position_size', e.target.value)}
-            />
-          </div>
 
           <div className="field wide">
             <div className="field-label-row">
@@ -853,12 +828,6 @@ export default function TradeForm({
               <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
                 + Add another exit
               </span>
-            </div>
-          )}
-
-          {contractsWarning && (
-            <div className="field full">
-              <span className="field-warning">{contractsWarning}</span>
             </div>
           )}
 

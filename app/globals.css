@@ -26,22 +26,22 @@
    1153  Auth pages always dark
    1181  Monthly P&L (calendar on Overview)
    1247  Trade form: sections, validation, currency, screenshots
-   1442  Field tooltips
-   1503  Date/time picker (adds an optional popup to a typed input)
-   1612  In-header column filters (trade log table)
-   1646  Active filter chips
-   1695  Empty states, error banners, skeleton loaders
-   1766  Cross-instrument overview dashboard (/app)
-   1986  Not found / error boundary state pages
-   1999  Toast notifications
-   2027  Public policy pages (Privacy, Terms)
-   2046  Legal links (auth pages + account settings)
-   2085  Economic calendar card (mock - Overview pages)
-   2192  Calendar news badge (Monthly P&L day cells, mock)
-   2213  Streak badge (Overview + strategy detail pages)
-   2230  Market status pill (Overview + strategy detail pages)
-   2256  Key levels, today's brief (mock cards)
-   2282  Market context cards (all-instruments Overview)
+   1438  Field tooltips
+   1499  Date/time picker (adds an optional popup to a typed input)
+   1608  In-header column filters (trade log table)
+   1642  Active filter chips
+   1691  Empty states, error banners, skeleton loaders
+   1762  Cross-instrument overview dashboard (/app)
+   1982  Not found / error boundary state pages
+   1995  Toast notifications
+   2023  Public policy pages (Privacy, Terms)
+   2042  Legal links (auth pages + account settings)
+   2081  Economic calendar card (mock - Overview pages)
+   2188  Calendar news badge (Monthly P&L day cells, mock)
+   2209  Streak badge (Overview + strategy detail pages)
+   2226  Market status pill (Overview + strategy detail pages)
+   2252  Key levels, today's brief (mock cards)
+   2278  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1418,10 +1418,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .exit-row-fields .field{grid-column:span 1;}
 .exit-remove{display:inline-block; margin-top:8px; font-size:12px;}
 .exit-add{display:inline-block; margin-top:12px;}
-/* Soft, non-blocking validation (contracts not adding up to Position size) -
-   distinct from .field-error's red, which reads as "this submission will be
-   rejected" and would be misleading for something that never blocks saving. */
-.field-warning{display:block; color:var(--be); font-size:12px; margin-top:4px;}
 
 /* Planned vs. realized comparison row, below the exit leg(s) - Total
    contracts / $ Profit or Loss / Planned R:R / Realized R (blended) side

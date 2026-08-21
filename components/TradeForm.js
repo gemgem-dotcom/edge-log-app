@@ -744,7 +744,7 @@ export default function TradeForm({
           )}
 
           <div className="field full section-label">
-            Trade Setup
+            Setup
             <span className="section-subtitle">
               These details define the setup according to your strategy and help EdgeLog identify it in market data.
             </span>
@@ -841,7 +841,7 @@ export default function TradeForm({
           </div>
 
           <div className="field full section-label">
-            Trade Management
+            Results
             <span className="section-subtitle">
               Record how the trade was executed, including contracts, exit details, and your final P&amp;L.
             </span>
@@ -946,7 +946,7 @@ export default function TradeForm({
             </div>
           )}
           <div className="field full section-label">
-            Trade Review
+            Review
             <span className="section-subtitle">
               Review your trade, record your observations, and identify areas for improvement.
             </span>

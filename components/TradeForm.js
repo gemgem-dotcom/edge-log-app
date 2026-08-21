@@ -12,6 +12,7 @@ import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
 import DatePicker from './DatePicker'
 import TimePicker from './TimePicker'
+import ScreenshotLightbox from './ScreenshotLightbox'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
@@ -118,7 +119,11 @@ export default function TradeForm({
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])
-  const [lightboxUrl, setLightboxUrl] = useState(null)
+  // Index into the combined existingScreenshots + screenshots list below
+  // (in that same order) rather than a URL, so ScreenshotLightbox - shared
+  // with the read-only Trade Detail page and Trade Log's expand row - can
+  // step between them with its arrows/keyboard nav the same way there.
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const [tags, setTags] = useState(initial.tags || [])
   const [addingTag, setAddingTag] = useState(false)
@@ -542,6 +547,11 @@ export default function TradeForm({
     && (!tagQuery || t.toLowerCase().includes(tagQuery))
   ))
 
+  // Same order as the two .map() calls in the screenshot grid below, so a
+  // thumbnail's lightboxIndex (set on click) always points at the matching
+  // image here.
+  const allScreenshotUrls = [...existingScreenshots, ...screenshots.map((s) => s.previewUrl)]
+
   // The same three fields (Exit time / Exit price / Contracts) whether
   // this is the trade's only exit or one of several - idx 0 is always the
   // primary exit (execution state, exit_price validated below), idx 1+ are
@@ -746,7 +756,7 @@ export default function TradeForm({
                       src={url}
                       alt={`Screenshot ${i + 1}`}
                       className="screenshot-preview-thumb"
-                      onClick={() => setLightboxUrl(url)}
+                      onClick={() => setLightboxIndex(i)}
                     />
                     <button
                       type="button"
@@ -764,7 +774,7 @@ export default function TradeForm({
                       src={shot.previewUrl}
                       alt={`New screenshot ${i + 1}`}
                       className="screenshot-preview-thumb"
-                      onClick={() => setLightboxUrl(shot.previewUrl)}
+                      onClick={() => setLightboxIndex(existingScreenshots.length + i)}
                     />
                     <button
                       type="button"
@@ -905,13 +915,13 @@ export default function TradeForm({
         </form>
       </div>
 
-      {lightboxUrl && (
-        <div className="modal-overlay" onClick={() => setLightboxUrl(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-close" onClick={() => setLightboxUrl(null)}>✕</div>
-            <img src={lightboxUrl} alt="Screenshot full view" />
-          </div>
-        </div>
+      {lightboxIndex !== null && (
+        <ScreenshotLightbox
+          shots={allScreenshotUrls}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
     </>
   )

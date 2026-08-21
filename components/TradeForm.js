@@ -170,9 +170,17 @@ export default function TradeForm({
   }
 
   // Whether the form is showing the numbered exit list or the plain single
-  // row - purely a function of whether there's a second exit yet, not its
-  // own tracked state (see additionalExits above).
-  const multipleExits = additionalExits.length > 0
+  // row - not its own tracked state, just whether there's a second exit AND
+  // Outcome is on Custom. additionalExits itself is left untouched by
+  // switching to Hit target/Hit stop (see handleOutcomeChange) - toggling
+  // back to Custom brings the numbered rows right back with whatever was
+  // typed into them, a convenience for an accidental toggle rather than a
+  // deliberate switch to a single clean exit. Everywhere below that reads
+  // "the exits currently in effect" (P&L, Total contracts, Realized R, and
+  // what actually gets submitted) goes through this rather than
+  // additionalExits directly, so Hit target/Hit stop consistently behaves
+  // as if that leftover data doesn't exist until Custom is chosen again.
+  const multipleExits = outcome === 'custom' && additionalExits.length > 0
 
   // The exit legs currently on screen - just the primary exit outside
   // Multiple exits mode, primary + every additional row once it's on.
@@ -203,20 +211,22 @@ export default function TradeForm({
     if (strategyId === '' && strategies.length > 0) setStrategyId(strategies[0].id)
   }, [autoSelectFirstStrategy, strategies, strategyId])
 
-  // Auto-fill $ P&L from every exit - each one closes its own contracts at
-  // its own price (see calcMultiExitProfitLoss), so this is the same
-  // calculation whether there's one exit or several; additionalExits is
-  // always empty outside multiple-exits mode, so the single-exit case just
-  // falls out of it rather than needing its own branch.
+  // Auto-fill $ P&L from every exit currently in effect - each one closes
+  // its own contracts at its own price (see calcMultiExitProfitLoss), so
+  // this is the same calculation whether there's one exit or several.
+  // additionalExits only contributes on Custom (see multipleExits above) -
+  // otherwise it's ignored here exactly as it is everywhere else, even if
+  // it still holds data left over from before switching to Hit target/Hit
+  // stop.
   useEffect(() => {
     if (pnlManual) return
     const exitRows = [
       { exit_price: parseFloat(execution.exit_price), contracts: parseFloat(execution.contracts) },
-      ...additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })),
+      ...(outcome === 'custom' ? additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })) : []),
     ]
     const computed = calcMultiExitProfitLoss(direction, parseFloat(setup.entry), exitRows, pointValueFor(symbol))
     setPnlInput(computed === null ? '' : formatCurrency(computed))
-  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, symbol])
+  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, outcome, symbol])
 
   // Object URLs are created per selected file, so release them on unmount.
   // Tracked through a ref because the cleanup runs once and would otherwise
@@ -561,8 +571,12 @@ export default function TradeForm({
       // Rows the trader added but left entirely untouched (e.g. clicked
       // "+ Add another exit" then changed their mind) are dropped rather
       // than saved as empty placeholders - an empty additionalExits falls
-      // out of this the same way, with nothing to filter or map.
-      additional_exits: additionalExits
+      // out of this the same way, with nothing to filter or map. Switching
+      // to Hit target/Hit stop right before saving drops any additional
+      // exits too, even ones with data still sitting in state (see
+      // multipleExits above) - Custom is the only outcome a multi-exit
+      // trade can actually save as.
+      additional_exits: (outcome === 'custom' ? additionalExits : [])
         .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
         .map((row) => {
           const rowExitPrice = parseFloat(row.exit_price)

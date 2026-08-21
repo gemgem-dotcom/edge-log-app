@@ -14,34 +14,34 @@
    558  Tabs
    568  Misc form helpers
    574  Detail view
-   597  Holiday notice (site-wide, above the shell)
-   622  Shell layout (sidebar + topbar)
-   831  Expandable trade rows
-   848  Calendar
-   896  Account settings page
-   1094  Light theme
-   1122  2FA
-   1137  Account fine print
-   1140  Screenshot preview (log new trade)
-   1182  Auth pages always dark
-   1210  Monthly P&L (calendar on Overview)
-   1276  Trade form: sections, validation, currency, screenshots
-   1504  Field tooltips
-   1566  Date/time picker (adds an optional popup to a typed input)
-   1675  In-header column filters (trade log table)
-   1709  Active filter chips
-   1758  Empty states, error banners, skeleton loaders
-   1829  Cross-instrument overview dashboard (/app)
-   2049  Not found / error boundary state pages
-   2062  Toast notifications
-   2090  Public policy pages (Privacy, Terms)
-   2109  Legal links (auth pages + account settings)
-   2148  Economic calendar card (mock - Overview pages)
-   2255  Calendar news badge (Monthly P&L day cells, mock)
-   2276  Streak badge (Overview + strategy detail pages)
-   2293  Market status pill (Overview + strategy detail pages)
-   2319  Key levels, today's brief (mock cards)
-   2345  Market context cards (all-instruments Overview)
+   590  Holiday notice (site-wide, above the shell)
+   615  Shell layout (sidebar + topbar)
+   824  Expandable trade rows
+   841  Calendar
+   889  Account settings page
+   1087  Light theme
+   1115  2FA
+   1130  Account fine print
+   1133  Screenshot preview (log new trade)
+   1175  Auth pages always dark
+   1203  Monthly P&L (calendar on Overview)
+   1269  Trade form: sections, validation, currency, screenshots
+   1497  Field tooltips
+   1559  Date/time picker (adds an optional popup to a typed input)
+   1668  In-header column filters (trade log table)
+   1702  Active filter chips
+   1751  Empty states, error banners, skeleton loaders
+   1822  Cross-instrument overview dashboard (/app)
+   2042  Not found / error boundary state pages
+   2055  Toast notifications
+   2083  Public policy pages (Privacy, Terms)
+   2102  Legal links (auth pages + account settings)
+   2141  Economic calendar card (mock - Overview pages)
+   2248  Calendar news badge (Monthly P&L day cells, mock)
+   2269  Streak badge (Overview + strategy detail pages)
+   2286  Market status pill (Overview + strategy detail pages)
+   2312  Key levels, today's brief (mock cards)
+   2338  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -581,13 +581,6 @@ table{min-width:640px;}
 }
 .detail-grid > div > div{font-family:'JetBrains Mono',monospace; font-size:14px;}
 .detail-subvalue{font-size:12px; margin-top:2px;}
-/* Trade Detail page only - wider row gaps than the shared .detail-grid
-   default (16px) and more space between the Technical/Strategy/Context
-   panels, since this read-only page packs in enough fields to read as
-   cramped. Scoped to .trade-detail so TradeLogTable's own expanded-row
-   use of .detail-grid is unaffected. */
-.trade-detail .detail-grid{row-gap:26px;}
-.trade-detail .panel{margin-bottom:32px;}
 
 @media (max-width:640px){
   .topnav{flex-direction:column; align-items:flex-start;}

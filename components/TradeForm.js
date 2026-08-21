@@ -29,7 +29,7 @@ const DISCIPLINE_GROUPS = [
   { heading: 'Entry discipline', items: ['Early entry', 'Chased price / late entry', 'No clear setup'] },
   { heading: 'Risk management', items: ['Oversized', 'Moved stop', 'Removed stop'] },
   { heading: 'Exit discipline', items: ['Cut winner early', 'Held loser too long', 'Moved target'] },
-  { heading: 'Behavioral', items: ['Hesitated', 'Revenge trade', 'Overtraded'] },
+  { heading: 'Behavioural', items: ['Hesitated', 'Revenge trade', 'Overtraded'] },
 ]
 
 export const EMPTY_TRADE_FORM = {
@@ -913,7 +913,7 @@ export default function TradeForm({
                   </div>
                 </div>
                 <div className="field">
-                  <label>Realized R (blended)</label>
+                  <label>Realised R (blended)</label>
                   <input
                     type="text" disabled
                     className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}

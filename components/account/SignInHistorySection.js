@@ -65,7 +65,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
   return (
     <>
       <div className="panel-title">Recent sign-ins</div>
-      <p className="onboard-note" style={{ marginTop: '-8px' }}>These are devices that have recently signed in to your account. If you don&apos;t recognize any of these devices, we recommend logging out of all devices and changing your password.</p>
+      <p className="onboard-note" style={{ marginTop: '-8px' }}>These are devices that have recently signed in to your account. If you don&apos;t recognise any of these devices, we recommend logging out of all devices and changing your password.</p>
       {loginEvents.length === 0 ? (
         <div className="empty" style={{ padding: '14px' }}>No sign-in history yet.</div>
       ) : (

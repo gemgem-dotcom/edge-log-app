@@ -67,7 +67,7 @@ export default function TradeDetailPage({ params }) {
   const adherenceClass = { target: 'r-pos', stop: 'r-neg', breakeven: 'r-zero', deviated: 'r-open' }[adherence]
 
   return (
-    <div className="page-container trade-detail">
+    <div className="page-container">
       <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
       <h1 className="page-title">Trade Detail</h1>
 
@@ -79,8 +79,8 @@ export default function TradeDetailPage({ params }) {
           <div><label>Entry time</label><div>{formatTime12h(trade.trade_time)}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{fmtNum(trade.entry)}</div></div>
-          <div><label>Stop loss</label><div>{trade.stop_distance == null ? '—' : `${fmtNum(trade.stop_distance)} pts`}</div></div>
-          <div><label>Take profit</label><div>{trade.target_distance == null ? '—' : `${fmtNum(trade.target_distance)} pts`}</div></div>
+          <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null && <div className="detail-subvalue">{fmtNum(trade.stop_distance)} pts</div>}</div></div>
+          <div><label>Take profit</label><div>{trade.target == null ? '—' : fmtNum(trade.target)}{trade.target_distance != null && <div className="detail-subvalue">{fmtNum(trade.target_distance)} pts</div>}</div></div>
           <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price == null ? '—' : fmtNum(trade.exit_price)}</div></div>
           <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(trade))}</div></div>
@@ -104,7 +104,7 @@ export default function TradeDetailPage({ params }) {
         <div className="detail-grid">
           <div><label>Contracts</label><div>{trade.contracts == null ? '—' : trade.contracts.toLocaleString('en-US')}</div></div>
         </div>
-        <div style={{ marginTop: '22px' }}>
+        <div style={{ marginTop: '14px' }}>
           <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Tags</label>
           {trade.tags?.length ? (
             <div className="tag-row" style={{ marginTop: '6px' }}>
@@ -114,12 +114,12 @@ export default function TradeDetailPage({ params }) {
             <p style={{ marginTop: '6px', lineHeight: 1.5 }}>—</p>
           )}
         </div>
-        <div style={{ marginTop: '22px' }}>
-          <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Notes</label>
+        <div style={{ marginTop: '14px' }}>
+          <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Reasoning</label>
           <p style={{ marginTop: '6px', lineHeight: 1.5 }}>{trade.reasoning || '—'}</p>
         </div>
         {shots.length > 0 && (
-          <div className="screenshot-grid" style={{ marginTop: '22px' }}>
+          <div className="screenshot-grid" style={{ marginTop: '14px' }}>
             {shots.map((url, i) => (
               <img
                 key={url}

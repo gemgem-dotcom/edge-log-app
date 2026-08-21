@@ -26,22 +26,22 @@
    1113  Auth pages always dark
    1141  Monthly P&L (calendar on Overview)
    1207  Trade form: sections, validation, currency, screenshots
-   1326  Field tooltips
-   1382  Date/time picker (adds an optional popup to a typed input)
-   1491  In-header column filters (trade log table)
-   1525  Active filter chips
-   1574  Empty states, error banners, skeleton loaders
-   1645  Cross-instrument overview dashboard (/app)
-   1865  Not found / error boundary state pages
-   1878  Toast notifications
-   1906  Public policy pages (Privacy, Terms)
-   1925  Legal links (auth pages + account settings)
-   1964  Economic calendar card (mock - Overview pages)
-   2071  Calendar news badge (Monthly P&L day cells, mock)
-   2092  Streak badge (Overview + strategy detail pages)
-   2109  Market status pill (Overview + strategy detail pages)
-   2135  Key levels, today's brief (mock cards)
-   2161  Market context cards (all-instruments Overview)
+   1360  Field tooltips
+   1416  Date/time picker (adds an optional popup to a typed input)
+   1525  In-header column filters (trade log table)
+   1559  Active filter chips
+   1608  Empty states, error banners, skeleton loaders
+   1679  Cross-instrument overview dashboard (/app)
+   1899  Not found / error boundary state pages
+   1912  Toast notifications
+   1940  Public policy pages (Privacy, Terms)
+   1959  Legal links (auth pages + account settings)
+   1998  Economic calendar card (mock - Overview pages)
+   2105  Calendar news badge (Monthly P&L day cells, mock)
+   2126  Streak badge (Overview + strategy detail pages)
+   2143  Market status pill (Overview + strategy detail pages)
+   2169  Key levels, today's brief (mock cards)
+   2195  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -158,6 +158,15 @@ form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 .field.full.section-label:first-of-type{border-top:none; margin-top:0; padding-top:0;}
 label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
 input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%; min-width:0;}
+/* Explicit height rather than trusting padding + line-height to add up to
+   the same number as select/.dt-picker-trigger's own explicit height:36px
+   below - browsers don't all compute a plain text input's "normal"
+   line-height for this font stack identically, so without this a text
+   field could render a pixel or two shorter than the date/time pickers and
+   dropdowns sitting right next to it in the same row. Checkboxes size
+   themselves (width:auto elsewhere already un-stretches them) and file
+   inputs have their own native chrome, so both are excluded. */
+input:not([type="checkbox"]):not([type="file"]){height:36px;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
 /* <select> has native-chrome problems on real mobile browsers (not
    reproducible in a desktop-engine screenshot) - its own background,
@@ -307,6 +316,12 @@ table{min-width:640px;}
      it's a real typed field like any other text input. */
   input, select, textarea{font-size:16px; padding:10px;}
   select{font-size:13.5px; height:41px; padding-right:34px;}
+  /* Plain text/number inputs grow to 41px here to match select's own mobile
+     height right above - .field (not just a bare input selector) outranks
+     the base input:not(...){height:36px} rule's own specificity, the same
+     reason .field .dt-picker-trigger below needs the same prefix rather
+     than just a bare .dt-picker-trigger. */
+  .field input:not([type="checkbox"]):not([type="file"]){height:41px;}
   /* .dt-picker-trigger doesn't inherit the 16px/padding:10px bump above
      (it's a wrapper div, not an input) - without this it stays at its
      desktop 36px and visibly mismatches its siblings, the same height-
@@ -1220,14 +1235,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   line-height:1.35;
 }
 
-/* Auto-derived, non-editable values (the Risk-to-Reward readout). Nothing
-   to type here, so the shared input:focus accent border (below) would
-   just be a false "you can edit this" signal on click - overridden back
-   to the plain resting border. */
+/* Auto-derived, non-editable values (the Risk-to-Reward readout). A plain
+   disabled input - same as the email field in Account Settings - rather
+   than readOnly: readOnly still lets a click focus the field, which used
+   to add the site-wide [tabindex]:focus-visible ring (it's readOnly's
+   tabIndex={-1} that made it match that selector) and visibly change size
+   on click. disabled can never receive focus at all, so there's nothing
+   left to override on click/focus. */
 .readonly-field{
   background:rgba(255,255,255,.04); color:var(--muted); cursor:default;
 }
-.readonly-field:focus{border-color:var(--line);}
 
 /* $ Profit or Loss input, with the currency symbol pinned inside the box. */
 .currency-field{position:relative; display:flex; align-items:center;}
@@ -1289,17 +1306,22 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   .tag-add-form-wrap{flex-basis:100%;}
 }
 
+/* Shared plain-text checkbox + label row - Discipline's "Reviewed - no
+   issues" and Trade Execution's "Multiple exits" both use this rather than
+   the all-caps .field label styling, since each reads as a sentence next
+   to its own checkbox, not a field name above an input. */
+.checkbox-label{
+  display:flex; align-items:center; gap:8px; margin-top:2px;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+  text-transform:none; letter-spacing:0; color:var(--text); cursor:pointer;
+}
+.checkbox-label input{width:auto; margin:0; cursor:pointer; flex-shrink:0;}
+
 /* Discipline - a mandatory reviewed-or-flagged checkbox (Trade Review
    section). Unticked, it expands into the same add/remove-pill pattern as
    Tags above, but picking from a fixed grouped list rather than free text,
    and in --loss red rather than --accent blue, so a flagged trade reads as
    a flagged trade at a glance in the trade log/detail views later. */
-.discipline-checkbox{
-  display:flex; align-items:center; gap:8px; margin-top:2px;
-  font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
-  text-transform:none; letter-spacing:0; color:var(--text); cursor:pointer;
-}
-.discipline-checkbox input{width:auto; margin:0; cursor:pointer; flex-shrink:0;}
 /* Same clipping quirk as .tags-field above: .field's overflow-x:hidden
    backstop computes overflow-y to auto instead of visible, clipping
    .discipline-menu's position:absolute dropdown against the field's own
@@ -1310,23 +1332,48 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .discipline-tag{background:rgba(225,92,92,.1); color:var(--loss); border-color:rgba(225,92,92,.3);}
 .discipline-menu-wrap{position:relative; display:inline-flex;}
 /* Same floating-menu treatment as .tag-suggestions, grouped under
-   sub-headings instead of a flat filtered list - a fixed max-height with
-   scroll keeps four groups of three items from overrunning the panel on a
-   short viewport. */
+   sub-headings instead of a flat filtered list - max-height caps it at
+   exactly 5 rows (5 x 30px, headings included) before it scrolls, so it
+   always stays within the card regardless of how many of the four groups
+   are still showing items. Both row types share the same 30px line-height
+   (rather than padding) to vertically center their text, so the two stay
+   pixel-equal and the math holds. */
 .discipline-menu{
   position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
-  border:1px solid var(--line); border-radius:9px; min-width:210px; max-height:260px;
+  border:1px solid var(--line); border-radius:9px; min-width:210px; max-height:150px;
   overflow-y:auto; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
-  padding:6px 0;
+  padding:0;
 }
 .discipline-menu-heading{
-  padding:8px 12px 4px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+  height:30px; line-height:30px; padding:0 12px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
   color:var(--muted); font-family:'Inter',sans-serif; font-weight:700;
 }
-.discipline-menu-item{padding:8px 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
+.discipline-menu-item{height:30px; line-height:30px; padding:0 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
 .discipline-menu-item:hover{background:var(--panel-2);}
 @media (max-width:640px){
   .discipline-menu-wrap{flex-basis:100%;}
+}
+
+/* Multiple exits (Trade Execution) - each exit becomes a numbered, slightly
+   indented list item instead of a flat repeat of the same three fields.
+   .exit-row-fields is its own 3-column grid rather than relying on the
+   outer form grid's own column tracking, since nesting inside a .field.full
+   wrapper (needed for the numbering/indent) takes each row out of that
+   outer grid entirely - which is also why its own .field children need
+   grid-column reset back to a single track: .field.wide's span:2 (sized
+   for the outer 6-column form) would otherwise still apply here too,
+   leaving room for barely one field per row instead of three. */
+.exit-list{
+  list-style:decimal; padding-left:22px; margin:10px 0 0;
+  display:flex; flex-direction:column; gap:16px;
+}
+.exit-list-item::marker{color:var(--muted); font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700;}
+.exit-row-fields{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+.exit-row-fields .field{grid-column:span 1;}
+.exit-remove{display:inline-block; margin-top:8px; font-size:12px;}
+.exit-add{display:inline-block; margin-top:12px;}
+@media (max-width:640px){
+  .exit-row-fields{grid-template-columns:1fr;}
 }
 
 /* ---------- Field tooltips ---------- */

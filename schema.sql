@@ -407,3 +407,15 @@ drop function _session_for_et_minutes(int);
 -- neither.
 alter table trades add column if not exists reviewed_no_issues boolean not null default false;
 alter table trades add column if not exists discipline_tags text[];
+
+-- Multiple exits (Log New Trade / Edit Trade's Trade Execution section).
+-- The trade's existing exit_time/exit_price/contracts columns still hold
+-- the first (or only) exit unchanged - this column holds every exit
+-- beyond that one, in the order they were entered, each shaped the same
+-- way: {exit_time, exit_price, contracts}. $ P&L sums calcProfitLoss
+-- across the primary exit and every row here (see
+-- lib/tradeMath.js's calcMultiExitProfitLoss); r_multiple and
+-- session/continued_sessions above are still derived from the primary
+-- exit only. Empty array (not null) for a single-exit trade, so callers
+-- can always iterate it without a null check.
+alter table trades add column if not exists additional_exits jsonb not null default '[]'::jsonb;

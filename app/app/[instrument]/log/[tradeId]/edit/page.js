@@ -130,6 +130,11 @@ export default function EditTradePage({ params }) {
       exit_time: trade.exit_time ?? '',
       exit_price: trade.exit_price ?? '',
     },
+    additionalExits: (trade.additional_exits || []).map((e) => ({
+      exit_time: e.exit_time ?? '',
+      exit_price: e.exit_price ?? '',
+      contracts: e.contracts ?? '',
+    })),
     pnl: trade.pnl ?? null,
     tags: trade.tags || [],
     reviewedNoIssues: trade.reviewed_no_issues ?? false,

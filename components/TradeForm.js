@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -31,6 +31,7 @@ export const EMPTY_TRADE_FORM = {
   reasoning: '',
   setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '' },
   execution: { contracts: '', exit_time: '', exit_price: '' },
+  additionalExits: [],
   pnl: null,
   tags: [],
   reviewedNoIssues: false,
@@ -92,16 +93,28 @@ export default function TradeForm({
   // stored inputs and only treats it as manual if that figure doesn't
   // match. Otherwise editing Contracts/entry/exit on the edit page could
   // never auto-update the way it does on the new-trade page.
-  const initialComputed = calcProfitLoss(
+  const initialExitRows = [
+    { exit_price: parseFloat(initial.execution.exit_price), contracts: parseFloat(initial.execution.contracts) },
+    ...(initial.additionalExits || []).map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })),
+  ]
+  const initialComputed = calcMultiExitProfitLoss(
     initial.direction,
     parseFloat(initial.setup.entry),
-    parseFloat(initial.execution.exit_price),
-    parseFloat(initial.execution.contracts),
+    initialExitRows,
     pointValueFor(symbol),
   )
   const [pnlManual, setPnlManual] = useState(
     initial.pnl != null && (initialComputed === null || Math.abs(initialComputed - initial.pnl) > 0.005)
   )
+
+  // Multiple exits: the primary exit (execution.exit_time/exit_price/
+  // contracts above) is always exit #1 - additionalExits holds only the
+  // rows beyond that, each the same shape. Starting multipleExits true
+  // whenever a loaded trade already has any is what lets the edit page
+  // show the numbered list instead of collapsing real data down to a
+  // single row.
+  const [multipleExits, setMultipleExits] = useState((initial.additionalExits || []).length > 0)
+  const [additionalExits, setAdditionalExits] = useState(initial.additionalExits || [])
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])
@@ -138,18 +151,20 @@ export default function TradeForm({
     if (strategyId === '' && strategies.length > 0) setStrategyId(strategies[0].id)
   }, [autoSelectFirstStrategy, strategies, strategyId])
 
-  // Auto-fill $ P&L once entry, exit price and contracts are all present.
+  // Auto-fill $ P&L from every exit - each one closes its own contracts at
+  // its own price (see calcMultiExitProfitLoss), so this is the same
+  // calculation whether there's one exit or several; additionalExits is
+  // always empty outside multiple-exits mode, so the single-exit case just
+  // falls out of it rather than needing its own branch.
   useEffect(() => {
     if (pnlManual) return
-    const computed = calcProfitLoss(
-      direction,
-      parseFloat(setup.entry),
-      parseFloat(execution.exit_price),
-      parseFloat(execution.contracts),
-      pointValueFor(symbol),
-    )
+    const exitRows = [
+      { exit_price: parseFloat(execution.exit_price), contracts: parseFloat(execution.contracts) },
+      ...additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })),
+    ]
+    const computed = calcMultiExitProfitLoss(direction, parseFloat(setup.entry), exitRows, pointValueFor(symbol))
     setPnlInput(computed === null ? '' : formatCurrency(computed))
-  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, symbol])
+  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, symbol])
 
   // Object URLs are created per selected file, so release them on unmount.
   // Tracked through a ref because the cleanup runs once and would otherwise
@@ -265,6 +280,39 @@ export default function TradeForm({
     setDirty(true)
     setDirection(value)
     setPnlManual(false)
+  }
+
+  // Ticking on seeds one blank extra row (exit #2) so the numbered list has
+  // something to show right away, rather than a checkbox with nothing
+  // under it. Ticking off drops every extra row rather than just hiding
+  // them - same as unchecking Discipline's own reviewed box back on, there
+  // should be nothing left over to reappear if it's ticked on again later.
+  function handleMultipleExitsToggle(checked) {
+    setDirty(true)
+    setMultipleExits(checked)
+    if (checked) {
+      setAdditionalExits((prev) => (prev.length > 0 ? prev : [{ exit_time: '', exit_price: '', contracts: '' }]))
+    } else {
+      setAdditionalExits([])
+    }
+    setPnlManual(false)
+  }
+
+  function handleAddAnotherExit() {
+    setDirty(true)
+    setAdditionalExits((prev) => [...prev, { exit_time: '', exit_price: '', contracts: '' }])
+  }
+
+  function handleRemoveAdditionalExit(index) {
+    setDirty(true)
+    setAdditionalExits((prev) => prev.filter((_, i) => i !== index))
+    setPnlManual(false)
+  }
+
+  function updateAdditionalExit(index, field, value) {
+    setDirty(true)
+    setAdditionalExits((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
+    if (field === 'contracts' || field === 'exit_price') setPnlManual(false)
   }
 
   async function handleAddStrategy(e) {
@@ -450,6 +498,18 @@ export default function TradeForm({
       r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
+      // Rows the trader added but left entirely untouched (e.g. clicked
+      // "+ Add another exit" then changed their mind) are dropped rather
+      // than saved as empty placeholders.
+      additional_exits: multipleExits
+        ? additionalExits
+          .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
+          .map((row) => ({
+            exit_time: row.exit_time || null,
+            exit_price: toDecimalString(parseFloat(row.exit_price)),
+            contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
+          }))
+        : [],
       pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,
       reviewed_no_issues: reviewedNoIssues,
@@ -473,6 +533,43 @@ export default function TradeForm({
     !tags.some((existing) => existing.toLowerCase() === t.toLowerCase())
     && (!tagQuery || t.toLowerCase().includes(tagQuery))
   ))
+
+  // The same three fields (Exit time / Exit price / Contracts) whether
+  // this is the trade's only exit or one of several - idx 0 is always the
+  // primary exit (execution state, exit_price validated below), idx 1+ are
+  // additionalExits rows. Kept as one function rather than duplicating the
+  // JSX so the two only ever drift apart in their data source, never their
+  // fields or field order.
+  function renderExitFields(idx) {
+    const isPrimary = idx === 0
+    const row = isPrimary ? execution : additionalExits[idx - 1]
+    const update = isPrimary
+      ? (field, value) => updateExecution(field, value)
+      : (field, value) => updateAdditionalExit(idx - 1, field, value)
+    return (
+      <>
+        <div className="field wide">
+          <label>Exit time (to the second)</label>
+          <TimePicker value={row.exit_time} onChange={(v) => update('exit_time', v)} />
+        </div>
+        <div className="field wide">
+          <label>Exit price</label>
+          <input
+            type="number" step="0.01"
+            value={row.exit_price} onChange={(e) => update('exit_price', e.target.value)}
+          />
+          {isPrimary && errors.exit_price && <span className="field-error">{errors.exit_price}</span>}
+        </div>
+        <div className="field wide">
+          <label>Contracts</label>
+          <input
+            type="number" step="1"
+            value={row.contracts} onChange={(e) => update('contracts', e.target.value)}
+          />
+        </div>
+      </>
+    )
+  }
 
   return (
     <>
@@ -573,7 +670,7 @@ export default function TradeForm({
           </div>
           <div className="field wide">
             <label>Risk-to-Reward</label>
-            <input type="text" readOnly tabIndex={-1} className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
+            <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
           </div>
 
           <div className="field full section-label">
@@ -583,27 +680,38 @@ export default function TradeForm({
             </span>
           </div>
 
-          <div className="field wide">
-            <label>Contracts</label>
-            <input
-              type="number" step="1"
-              value={execution.contracts} onChange={(e) => updateExecution('contracts', e.target.value)}
-            />
+          <div className="field full">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={multipleExits}
+                onChange={(e) => handleMultipleExitsToggle(e.target.checked)}
+              />
+              Multiple exits
+            </label>
           </div>
-          <div className="field wide">
-            <label>Actual exit time (to the second)</label>
-            <TimePicker
-              value={execution.exit_time} onChange={(v) => updateExecution('exit_time', v)}
-            />
-          </div>
-          <div className="field wide">
-            <label>Actual exit price</label>
-            <input
-              type="number" step="0.01"
-              value={execution.exit_price} onChange={(e) => updateExecution('exit_price', e.target.value)}
-            />
-            {errors.exit_price && <span className="field-error">{errors.exit_price}</span>}
-          </div>
+
+          {!multipleExits ? (
+            renderExitFields(0)
+          ) : (
+            <div className="field full">
+              <ol className="exit-list">
+                <li className="exit-list-item">
+                  <div className="exit-row-fields">{renderExitFields(0)}</div>
+                </li>
+                {additionalExits.map((_, i) => (
+                  <li className="exit-list-item" key={i}>
+                    <div className="exit-row-fields">{renderExitFields(i + 1)}</div>
+                    <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
+                  </li>
+                ))}
+              </ol>
+              <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                + Add another exit
+              </span>
+            </div>
+          )}
+
           <div className="field wide">
             <label>$ Profit or Loss</label>
             <div className="currency-field">
@@ -706,18 +814,9 @@ export default function TradeForm({
             </div>
           </div>
 
-          <div className="field full">
-            <textarea
-              name="reasoning"
-              defaultValue={initial.reasoning}
-              aria-label="Why did you take it?"
-              onChange={() => setDirty(true)}
-            />
-          </div>
-
           <div className="field full discipline-field">
             <label>Discipline</label>
-            <label className="discipline-checkbox">
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={reviewedNoIssues}
@@ -764,6 +863,15 @@ export default function TradeForm({
               </div>
             )}
             {errors.discipline && <span className="field-error">{errors.discipline}</span>}
+          </div>
+
+          <div className="field full">
+            <textarea
+              name="reasoning"
+              defaultValue={initial.reasoning}
+              aria-label="Why did you take it?"
+              onChange={() => setDirty(true)}
+            />
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>

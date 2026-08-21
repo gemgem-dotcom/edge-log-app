@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–356  Base: reset, typography, forms, tables, thumbnails,
+     1–378  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   357  Auth pages
-   409  Top nav
-   424  Instrument nav (topbar pill row)
-   488  Page layout
-   536  Tabs
-   546  Misc form helpers
-   552  Detail view
-   568  Holiday notice (site-wide, above the shell)
-   593  Shell layout (sidebar + topbar)
-   802  Expandable trade rows
-   819  Calendar
-   867  Account settings page
-   1065  Light theme
-   1093  2FA
-   1108  Account fine print
-   1111  Screenshot preview (log new trade)
-   1149  Auth pages always dark
-   1177  Monthly P&L (calendar on Overview)
-   1243  Trade form: sections, validation, currency, screenshots
-   1404  Field tooltips
-   1460  Date/time picker (adds an optional popup to a typed input)
-   1569  In-header column filters (trade log table)
-   1603  Active filter chips
-   1652  Empty states, error banners, skeleton loaders
-   1723  Cross-instrument overview dashboard (/app)
-   1943  Not found / error boundary state pages
-   1956  Toast notifications
-   1984  Public policy pages (Privacy, Terms)
-   2003  Legal links (auth pages + account settings)
-   2042  Economic calendar card (mock - Overview pages)
-   2149  Calendar news badge (Monthly P&L day cells, mock)
-   2170  Streak badge (Overview + strategy detail pages)
-   2187  Market status pill (Overview + strategy detail pages)
-   2213  Key levels, today's brief (mock cards)
-   2239  Market context cards (all-instruments Overview)
+   379  Auth pages
+   431  Top nav
+   446  Instrument nav (topbar pill row)
+   510  Page layout
+   558  Tabs
+   568  Misc form helpers
+   574  Detail view
+   590  Holiday notice (site-wide, above the shell)
+   615  Shell layout (sidebar + topbar)
+   824  Expandable trade rows
+   841  Calendar
+   889  Account settings page
+   1087  Light theme
+   1115  2FA
+   1130  Account fine print
+   1133  Screenshot preview (log new trade)
+   1175  Auth pages always dark
+   1203  Monthly P&L (calendar on Overview)
+   1269  Trade form: sections, validation, currency, screenshots
+   1497  Field tooltips
+   1559  Date/time picker (adds an optional popup to a typed input)
+   1668  In-header column filters (trade log table)
+   1702  Active filter chips
+   1751  Empty states, error banners, skeleton loaders
+   1822  Cross-instrument overview dashboard (/app)
+   2042  Not found / error boundary state pages
+   2055  Toast notifications
+   2083  Public policy pages (Privacy, Terms)
+   2102  Legal links (auth pages + account settings)
+   2141  Economic calendar card (mock - Overview pages)
+   2248  Calendar news badge (Monthly P&L day cells, mock)
+   2269  Streak badge (Overview + strategy detail pages)
+   2286  Market status pill (Overview + strategy detail pages)
+   2312  Key levels, today's brief (mock cards)
+   2338  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -156,6 +156,13 @@ form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
   font-weight:700; padding-top:10px; border-top:1px solid var(--line); margin-top:2px;
 }
 .field.full.section-label:first-of-type{border-top:none; margin-top:0; padding-top:0;}
+/* Wider gaps than the base form grid's 12px - the trade form's Setup/
+   Management/Review sections pack in enough fields that the tighter
+   default reads as cramped. section-label's own margin-top/padding-top
+   get a smaller bump too, just enough to keep the section break from
+   looking identical to the gap between two ordinary field rows. */
+.trade-form{gap:18px;}
+.trade-form .section-label{font-size:12px; margin-top:8px; padding-top:14px;}
 label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
 input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%; min-width:0;}
 /* Explicit height rather than trusting padding + line-height to add up to
@@ -203,14 +210,29 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
   outline:2px solid var(--accent); outline-offset:2px; border-radius:inherit;
 }
 
-.dir-toggle{display:flex; border:1px solid var(--line); border-radius:100px; overflow:hidden;}
-.dir-btn{flex:1; padding:9px 0; text-align:center; font-size:12.5px; font-weight:600; cursor:pointer; background:var(--panel-2); color:var(--muted); user-select:none; transition:background-color .15s ease, color .15s ease;}
+/* Explicit height:36px for the same reason input/select/.dt-picker-trigger
+   above all set it explicitly rather than trusting padding - this sits in
+   the same field rows as those, and padding-based sizing alone rendered it
+   a pixel or two off from theirs. .dir-btn centers its own text with flex
+   instead of vertical padding so that height is exact, not approximate. */
+.dir-toggle{display:flex; border:1px solid var(--line); border-radius:100px; overflow:hidden; height:36px;}
+.dir-btn{
+  flex:1; display:flex; align-items:center; justify-content:center;
+  font-size:12.5px; font-weight:600; cursor:pointer;
+  background:var(--panel-2); color:var(--muted); user-select:none;
+  transition:background-color .15s ease, color .15s ease;
+}
 .dir-btn.active-long{background:rgba(51,193,122,.15); color:var(--win);}
 .dir-btn.active-short{background:rgba(225,92,92,.15); color:var(--loss);}
 /* Only the inactive state gets a hover treatment - an active pill (long/
    short/theme) keeps its own color under the cursor rather than flashing
    the plain hover background. */
 .dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
+/* Direction specifically (not Hit target/Hit stop/Custom or the account-
+   settings theme toggle, which still use the pill) - a square box instead,
+   to read as one more field box among Entry price/Stop Loss/Take Profit
+   rather than standing out as the one pill-shaped control in the row. */
+.dir-toggle-square{border-radius:7px;}
 
 .submit-row{grid-column:span 6; display:flex; justify-content:flex-end; align-items:center; gap:16px; margin-top:4px;}
 button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; transition:filter .15s ease, background-color .15s ease, opacity .15s ease;}
@@ -1260,6 +1282,44 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   line-height:1.35;
 }
 
+/* Outcome's unset "Select" state (see components/TradeForm.js) - dims the
+   trigger's text the way a native <select>'s placeholder option normally
+   would. Dropped the moment a real option is picked - React only applies
+   the class while outcome === ''. Chained with .outcome-select-trigger
+   (specificity over a lone .select-placeholder) so .dt-picker-trigger's
+   own color:var(--text) - defined later in the file, so it would
+   otherwise win a same-specificity tie - doesn't quietly override it. */
+.outcome-select-trigger.select-placeholder{color:var(--muted);}
+
+/* Outcome - a custom dropdown (Hit Target/Hit Stop/Custom... are fixed
+   choices, not free text, so a Tags-suggestions-style floating menu reads
+   right here) rather than a native <select>, matching the look of Tags'
+   own suggestions dropdown. .dt-picker-trigger supplies the field-box look
+   (border/height/padding) the trigger needs - same control, different
+   icon. */
+.outcome-select-wrap{position:relative;}
+.outcome-select-trigger{cursor:pointer;}
+/* .dt-picker-trigger's own font (JetBrains Mono, for the numeric date/time
+   values it's normally showing) would read oddly for plain words like
+   "Select"/"Hit Target" - reset to match .outcome-menu-item's font below it
+   so the trigger and its menu read as one control. Chained with
+   .dt-picker-trigger (specificity over a lone .outcome-select-trigger) for
+   the same reason .outcome-select-trigger.select-placeholder above is -
+   .dt-picker-trigger's own font-family/font-size, defined later in the
+   file, would otherwise win a same-specificity tie. */
+.outcome-select-trigger.dt-picker-trigger{font-family:'Inter',sans-serif; font-size:12.5px;}
+/* width:100% (not .tag-suggestions/.discipline-menu's fixed min-width) so
+   the menu spans exactly the trigger's own box - it sits in the same
+   single-column slot of .exit-row-fields as the exit fields below it, so
+   matching the trigger's width also keeps it visually aligned with them. */
+.outcome-menu{
+  position:absolute; top:calc(100% + 6px); left:0; width:100%; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; overflow:hidden; z-index:50;
+  box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
+}
+.outcome-menu-item{height:30px; line-height:30px; padding:0 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
+.outcome-menu-item:hover{background:var(--panel-2);}
+
 /* Auto-derived, non-editable values (the Risk-to-Reward readout). A plain
    disabled input - same as the email field in Account Settings - rather
    than readOnly: readOnly still lets a click focus the field, which used
@@ -1270,6 +1330,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .readonly-field{
   background:rgba(255,255,255,.04); color:var(--muted); cursor:default;
 }
+/* Realized R (blended) colors like the per-leg R badges above and the R
+   pills elsewhere in the app - !important since .readonly-field's own
+   color would otherwise win (it's the more specific selector by source
+   order alone, not by specificity, but this keeps the override obvious
+   regardless of where either rule ends up). */
+.readonly-field-pos{color:var(--win) !important;}
+.readonly-field-neg{color:var(--loss) !important;}
 
 /* $ Profit or Loss input, with the currency symbol pinned inside the box. */
 .currency-field{position:relative; display:flex; align-items:center;}
@@ -1387,7 +1454,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   .discipline-menu-wrap{flex-basis:100%;}
 }
 
-/* Multiple exits (Trade Execution) - each exit becomes a numbered, slightly
+/* Multiple exits (Trade Management) - each exit becomes a numbered, slightly
    indented list item instead of a flat repeat of the same three fields.
    .exit-row-fields is its own 3-column grid rather than relying on the
    outer form grid's own column tracking, since nesting inside a .field.full
@@ -1401,12 +1468,30 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; flex-direction:column; gap:16px;
 }
 .exit-list-item::marker{color:var(--muted); font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700;}
+/* The leg's own R-multiple, sitting as the very first thing in the <li> so
+   it lands on the same line as the ::marker number above (e.g. "1.  +2.34R") -
+   an empty min-height keeps that first line's height stable (and the
+   marker's vertical position steady) for a not-yet-priced leg, which
+   renders nothing here rather than a placeholder dash. */
+.exit-leg-r{min-height:15px; font-size:13px; font-weight:600; margin-bottom:2px;}
 .exit-row-fields{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
 .exit-row-fields .field{grid-column:span 1;}
 .exit-remove{display:inline-block; margin-top:8px; font-size:12px;}
 .exit-add{display:inline-block; margin-top:12px;}
+
+/* Trade summary row, below the exit leg(s) - Total contracts / $ Profit
+   or Loss / Realized R (blended) side by side. A dedicated 3-column grid
+   rather than three .field.wide entries in the outer 6-column form grid,
+   the same reason .exit-row-fields is its own grid above: three
+   .field.wide spans (2 each) don't divide evenly into 6 columns, so one
+   would wrap onto its own row instead of sitting flush with the others. */
+.trade-summary-row{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
+  border-top:1px solid var(--line); padding-top:16px; margin-top:4px;
+}
 @media (max-width:640px){
   .exit-row-fields{grid-template-columns:1fr;}
+  .trade-summary-row{grid-template-columns:repeat(2,1fr);}
 }
 
 /* ---------- Field tooltips ---------- */
@@ -1415,7 +1500,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    tooltip bubble (position:absolute, opens above the button) against the
    field's own box. Any field with a FieldTooltip needs the same exemption. */
 .field:has(.field-tooltip),
-.field:has(.dt-picker){overflow-x:visible;}
+.field:has(.dt-picker),
+.field:has(.outcome-select-wrap){overflow-x:visible;}
 /* Wrapper div (not the label itself) carries the flex layout, and
    FieldTooltip's button sits as the wrapper's sibling rather than nested
    inside the <label> - a <button> nested inside a <label> gets :hover

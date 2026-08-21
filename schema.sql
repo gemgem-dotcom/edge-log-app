@@ -415,10 +415,13 @@ alter table trades add column if not exists discipline_tags text[];
 -- way: {exit_time, exit_price, exit_points, contracts} (see exit_points
 -- below for what it's derived from). $ P&L sums calcProfitLoss across the
 -- primary exit and every row here (see lib/tradeMath.js's
--- calcMultiExitProfitLoss); r_multiple and session/continued_sessions
--- above are still derived from the primary exit only. Empty array (not
--- null) for a single-exit trade, so callers can always iterate it without
--- a null check.
+-- calcMultiExitProfitLoss); r_multiple is the blended, contracts-weighted
+-- R-multiple across the primary exit and every row here (see
+-- calcBlendedRMultiple) - it reduces to the primary exit's own R-multiple
+-- when this array is empty. session/continued_sessions above are still
+-- derived from the primary exit only. Empty array (not null) for a
+-- single-exit trade, so callers can always iterate it without a null
+-- check.
 alter table trades add column if not exists additional_exits jsonb not null default '[]'::jsonb;
 
 -- The trader only ever types an exit price - exit_points is derived from

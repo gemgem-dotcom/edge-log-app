@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss } from '../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -506,7 +506,11 @@ export default function TradeForm({
       target: toDecimalString(targetPrice),
       stop_distance: toDecimalString(stopDistance),
       target_distance: toDecimalString(targetDistance),
+      // exit_points is derived from the typed exit price rather than
+      // entered directly - see calcPointsFromExitPrice. Stored for future
+      // use (e.g. market-data matching); the trader never sees it.
       exit_price: toDecimalString(exitPrice),
+      exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, exitPrice)),
       exit_time: execution.exit_time || null,
       r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
@@ -517,11 +521,15 @@ export default function TradeForm({
       additional_exits: multipleExits
         ? additionalExits
           .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
-          .map((row) => ({
-            exit_time: row.exit_time || null,
-            exit_price: toDecimalString(parseFloat(row.exit_price)),
-            contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
-          }))
+          .map((row) => {
+            const rowExitPrice = parseFloat(row.exit_price)
+            return {
+              exit_time: row.exit_time || null,
+              exit_price: toDecimalString(rowExitPrice),
+              exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, rowExitPrice)),
+              contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
+            }
+          })
         : [],
       pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,

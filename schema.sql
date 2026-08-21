@@ -412,10 +412,19 @@ alter table trades add column if not exists discipline_tags text[];
 -- The trade's existing exit_time/exit_price/contracts columns still hold
 -- the first (or only) exit unchanged - this column holds every exit
 -- beyond that one, in the order they were entered, each shaped the same
--- way: {exit_time, exit_price, contracts}. $ P&L sums calcProfitLoss
--- across the primary exit and every row here (see
--- lib/tradeMath.js's calcMultiExitProfitLoss); r_multiple and
--- session/continued_sessions above are still derived from the primary
--- exit only. Empty array (not null) for a single-exit trade, so callers
--- can always iterate it without a null check.
+-- way: {exit_time, exit_price, exit_points, contracts} (see exit_points
+-- below for what it's derived from). $ P&L sums calcProfitLoss across the
+-- primary exit and every row here (see lib/tradeMath.js's
+-- calcMultiExitProfitLoss); r_multiple and session/continued_sessions
+-- above are still derived from the primary exit only. Empty array (not
+-- null) for a single-exit trade, so callers can always iterate it without
+-- a null check.
 alter table trades add column if not exists additional_exits jsonb not null default '[]'::jsonb;
+
+-- The trader only ever types an exit price - exit_points is derived from
+-- it at save time (lib/tradeMath.js's calcPointsFromExitPrice,
+-- direction-aware the same way calcTargetPrice is) and stored alongside
+-- it purely for future use (e.g. market-data matching); it's never shown
+-- on the form. Nullable since trades logged before this existed only
+-- ever had exit_price.
+alter table trades add column if not exists exit_points numeric;

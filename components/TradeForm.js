@@ -41,7 +41,7 @@ export const EMPTY_TRADE_FORM = {
   existingScreenshots: [],
 }
 
-// The Trade Setup / Trade Execution / Trade Review form, shared by the new-
+// The Trade Setup / Trade Management / Trade Review form, shared by the new-
 // and edit-trade pages. It owns every piece of form state, the validation and
 // the derived figures, then hands the finished values to `onSubmit`.
 //
@@ -707,7 +707,7 @@ export default function TradeForm({
           </div>
 
           <div className="field full section-label">
-            Trade Execution
+            Trade Management
             <span className="section-subtitle">
               Record how the trade was executed, including contracts, exit details, and your final P&amp;L.
             </span>

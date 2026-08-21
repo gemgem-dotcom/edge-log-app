@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–341  Base: reset, typography, forms, tables, thumbnails,
+     1–356  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   342  Auth pages
-   394  Top nav
-   409  Instrument nav (topbar pill row)
-   473  Page layout
-   521  Tabs
-   531  Misc form helpers
-   537  Detail view
-   553  Holiday notice (site-wide, above the shell)
-   578  Shell layout (sidebar + topbar)
-   787  Expandable trade rows
-   804  Calendar
-   852  Account settings page
-   1050  Light theme
-   1078  2FA
-   1093  Account fine print
-   1096  Screenshot preview (log new trade)
-   1113  Auth pages always dark
-   1141  Monthly P&L (calendar on Overview)
-   1207  Trade form: sections, validation, currency, screenshots
-   1360  Field tooltips
-   1416  Date/time picker (adds an optional popup to a typed input)
-   1525  In-header column filters (trade log table)
-   1559  Active filter chips
-   1608  Empty states, error banners, skeleton loaders
-   1679  Cross-instrument overview dashboard (/app)
-   1899  Not found / error boundary state pages
-   1912  Toast notifications
-   1940  Public policy pages (Privacy, Terms)
-   1959  Legal links (auth pages + account settings)
-   1998  Economic calendar card (mock - Overview pages)
-   2105  Calendar news badge (Monthly P&L day cells, mock)
-   2126  Streak badge (Overview + strategy detail pages)
-   2143  Market status pill (Overview + strategy detail pages)
-   2169  Key levels, today's brief (mock cards)
-   2195  Market context cards (all-instruments Overview)
+   357  Auth pages
+   409  Top nav
+   424  Instrument nav (topbar pill row)
+   488  Page layout
+   536  Tabs
+   546  Misc form helpers
+   552  Detail view
+   568  Holiday notice (site-wide, above the shell)
+   593  Shell layout (sidebar + topbar)
+   802  Expandable trade rows
+   819  Calendar
+   867  Account settings page
+   1065  Light theme
+   1093  2FA
+   1108  Account fine print
+   1111  Screenshot preview (log new trade)
+   1149  Auth pages always dark
+   1177  Monthly P&L (calendar on Overview)
+   1243  Trade form: sections, validation, currency, screenshots
+   1404  Field tooltips
+   1460  Date/time picker (adds an optional popup to a typed input)
+   1569  In-header column filters (trade log table)
+   1603  Active filter chips
+   1652  Empty states, error banners, skeleton loaders
+   1723  Cross-instrument overview dashboard (/app)
+   1943  Not found / error boundary state pages
+   1956  Toast notifications
+   1984  Public policy pages (Privacy, Terms)
+   2003  Legal links (auth pages + account settings)
+   2042  Economic calendar card (mock - Overview pages)
+   2149  Calendar news badge (Monthly P&L day cells, mock)
+   2170  Streak badge (Overview + strategy detail pages)
+   2187  Market status pill (Overview + strategy detail pages)
+   2213  Key levels, today's brief (mock cards)
+   2239  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1109,6 +1109,31 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .account-fine-print{font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:14px;}
 
 /* ---------- Screenshot preview (log new trade) ---------- */
+/* Custom-styled trigger for the screenshot file input - the native button
+   ("Choose Files" / "No file chosen") doesn't match the rest of the form's
+   dark theme and can't be restyled directly, so a <label htmlFor> stands
+   in as the visible button and the real <input type="file"> sits right
+   behind it, visually hidden. Clipped to 1x1px rather than display:none,
+   so it stays in the tab order and keyboard-activatable via the label
+   pointing at it, rather than removed from accessibility entirely. */
+.screenshot-upload-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.screenshot-upload-row .field-hint{display:inline; margin:0;}
+.file-upload-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:8px 14px; border-radius:7px; background:var(--panel-2); border:1px solid var(--line);
+  color:var(--text); font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer;
+  /* It's a <label>, which the base label{} rule (styled for all-caps field
+     names like "SCREENSHOT(S)" above it) would otherwise turn into
+     "CHOOSE FILES" too. */
+  text-transform:none; letter-spacing:normal;
+  transition:background-color .15s ease, border-color .15s ease;
+}
+.file-upload-btn:hover{background:var(--line);}
+.file-upload-input{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+
 .screenshot-preview-wrap{position:relative; width:fit-content;}
 .screenshot-preview-thumb{
   width:64px; height:64px; object-fit:cover; border-radius:7px; border:1px solid var(--line);

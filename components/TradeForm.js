@@ -857,8 +857,16 @@ export default function TradeForm({
 
           <div className="field full">
             <label>Screenshot(s)</label>
-            <input type="file" accept="image/*" multiple onChange={handleScreenshotChange} />
-            <span className="field-hint">or paste from clipboard</span>
+            <div className="screenshot-upload-row">
+              <label htmlFor="screenshot-upload" className="file-upload-btn">Choose files</label>
+              <input
+                id="screenshot-upload"
+                type="file" accept="image/*" multiple
+                onChange={handleScreenshotChange}
+                className="file-upload-input"
+              />
+              <span className="field-hint">or paste from clipboard</span>
+            </div>
             {(existingScreenshots.length > 0 || screenshots.length > 0) && (
               <div className="screenshot-grid">
                 {existingScreenshots.map((url, i) => (

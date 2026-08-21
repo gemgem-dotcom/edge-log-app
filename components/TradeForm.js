@@ -188,8 +188,8 @@ export default function TradeForm({
   // Custom's fully-manual behavior rather than a third, no-op state.
   const isCustomOutcome = outcome !== 'target' && outcome !== 'stop'
 
-  // The exit row(s) and the Total contracts/$ P&L/Realized R/Planned R:R
-  // summary row both stay hidden until the trader has actually picked
+  // The exit row(s) and the Total contracts/$ P&L/Realized R summary row
+  // both stay hidden until the trader has actually picked
   // something from Outcome - showing empty Exit time/price/Contracts boxes
   // (or an all-zero/dash summary) above an unmade choice invites filling
   // them in before the choice they depend on even exists.
@@ -911,10 +911,6 @@ export default function TradeForm({
                     className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}
                     value={realizedR === null ? '—' : (realizedR >= 0 ? '+' : '') + realizedR.toFixed(2) + 'R'}
                   />
-                </div>
-                <div className="field">
-                  <label>Planned R:R</label>
-                  <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
                 </div>
               </div>
             </div>

@@ -1472,15 +1472,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .exit-remove{display:inline-block; margin-top:8px; font-size:12px;}
 .exit-add{display:inline-block; margin-top:12px;}
 
-/* Planned vs. realized comparison row, below the exit leg(s) - Total
-   contracts / $ Profit or Loss / Planned R:R / Realized R (blended) side
-   by side. A dedicated 4-column grid rather than four .field.wide entries
-   in the outer 6-column form grid, the same reason .exit-row-fields is its
-   own grid above: four .field.wide spans (2 each) don't divide evenly into
-   6 columns, so one would wrap onto its own row instead of sitting flush
-   with the other three. */
+/* Trade summary row, below the exit leg(s) - Total contracts / $ Profit
+   or Loss / Realized R (blended) side by side. A dedicated 3-column grid
+   rather than three .field.wide entries in the outer 6-column form grid,
+   the same reason .exit-row-fields is its own grid above: three
+   .field.wide spans (2 each) don't divide evenly into 6 columns, so one
+   would wrap onto its own row instead of sitting flush with the others. */
 .trade-summary-row{
-  display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
   border-top:1px solid var(--line); padding-top:16px; margin-top:4px;
 }
 @media (max-width:640px){

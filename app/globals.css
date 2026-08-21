@@ -1416,13 +1416,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    field's own box. Any field with a FieldTooltip needs the same exemption. */
 .field:has(.field-tooltip),
 .field:has(.dt-picker){overflow-x:visible;}
-/* display:flex rather than vertical-align on the label itself - the same
+/* Wrapper div (not the label itself) carries the flex layout, and
+   FieldTooltip's button sits as the wrapper's sibling rather than nested
+   inside the <label> - a <button> nested inside a <label> gets :hover
+   forwarded to it from anywhere over the label (browsers extend a
+   label's hit area to its form-control descendants), so the "?" lit up
+   blue on hovering the label text too, not just the icon itself. The
+   flex layout here (rather than vertical-align on the label) is the same
    fix as .th-with-tooltip and for the same reason: vertical-align centers
    against the label's font x-height, not its actual (uppercase, per the
    base label rule) glyphs, which reads as the "?" circle sitting low next
-   to the label text. :has() rather than a wrapper span in TradeForm's JSX
-   so this applies to every label a FieldTooltip is dropped into. */
-label:has(.field-tooltip){display:flex; align-items:center;}
+   to the label text. */
+.field-label-row{display:flex; align-items:center;}
 .field-tooltip{position:relative; display:inline-flex; align-items:center; margin-left:5px;}
 .field-tooltip-btn{
   width:14px; height:14px; padding:0; border-radius:50%;

@@ -917,7 +917,7 @@ export default function TradeForm({
             <div className="field full">
               <div className="trade-summary-row">
                 <div className="field">
-                  <label>Realised R (blended)</label>
+                  <label>{isCustomOutcome ? 'Realised R (blended)' : 'Realised R'}</label>
                   <input
                     type="text" disabled
                     className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}

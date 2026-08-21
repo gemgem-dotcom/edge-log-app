@@ -117,6 +117,12 @@ export default function TradeForm({
   const [multipleExits, setMultipleExits] = useState((initial.additionalExits || []).length > 0)
   const [additionalExits, setAdditionalExits] = useState(initial.additionalExits || [])
 
+  // Hit target / Hit stop / Custom - a single-exit-only convenience that
+  // pre-fills Exit price/Contracts from Trade Setup's own plan, never a
+  // stored value, so this always starts on Custom rather than trying to
+  // guess an already-loaded trade's outcome from its exit price.
+  const [outcome, setOutcome] = useState('custom')
+
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])
   // Index into the combined existingScreenshots + screenshots list below
@@ -350,6 +356,25 @@ export default function TradeForm({
       setAdditionalExits([])
     }
     setPnlManual(false)
+  }
+
+  // Pre-fills the primary exit from Trade Setup's own planned target/stop
+  // price - a starting value, not a locked substitution, so the fields stay
+  // exactly as editable afterward as a fully manual entry would be (an
+  // actual fill can slip from the theoretical price on slippage or a
+  // partial fill). Contracts only pre-fills when Position size was actually
+  // entered - with nothing to pre-fill it from, it's left alone. Choosing
+  // Custom applies nothing at all, leaving whatever's already there.
+  function handleOutcomeChange(value) {
+    setDirty(true)
+    setOutcome(value)
+    if (value === 'custom') return
+    const entry = parseFloat(setup.entry)
+    const price = value === 'target'
+      ? calcTargetPrice(direction, entry, parseFloat(setup.target_distance))
+      : calcStopPrice(direction, entry, parseFloat(setup.stop_distance))
+    updateExecution('exit_price', price === null ? '' : String(price))
+    if (!isBlank(setup.position_size)) updateExecution('contracts', setup.position_size)
   }
 
   function handleAddAnotherExit() {
@@ -796,6 +821,17 @@ export default function TradeForm({
               Multiple exits
             </div>
           </div>
+
+          {!multipleExits && (
+            <div className="field full">
+              <label>Outcome</label>
+              <div className="dir-toggle">
+                <div className={`dir-btn ${outcome === 'target' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('target')}>Hit target</div>
+                <div className={`dir-btn ${outcome === 'stop' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('stop')}>Hit stop</div>
+                <div className={`dir-btn ${outcome === 'custom' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('custom')}>Custom</div>
+              </div>
+            </div>
+          )}
 
           {!multipleExits ? (
             renderExitFields(0)

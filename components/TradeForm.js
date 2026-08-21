@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss } from '../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcExitPriceFromPoints } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -15,6 +15,7 @@ import TimePicker from './TimePicker'
 import ScreenshotLightbox from './ScreenshotLightbox'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
+const EXIT_POINTS_HINT = 'Points gained or lost on this exit, relative to your entry price. A loss is a negative number (e.g. -5 for a 5-point loss) — a gain is positive.'
 
 // Fixed, grouped issue list for the Discipline field below - unlike Tags,
 // this isn't a free-text/previously-used list, so the groups and their order
@@ -31,7 +32,7 @@ export const EMPTY_TRADE_FORM = {
   strategyId: '',
   reasoning: '',
   setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '' },
-  execution: { contracts: '', exit_time: '', exit_price: '' },
+  execution: { contracts: '', exit_time: '', exit_points: '' },
   additionalExits: [],
   pnl: null,
   tags: [],
@@ -94,13 +95,14 @@ export default function TradeForm({
   // stored inputs and only treats it as manual if that figure doesn't
   // match. Otherwise editing Contracts/entry/exit on the edit page could
   // never auto-update the way it does on the new-trade page.
+  const initialEntry = parseFloat(initial.setup.entry)
   const initialExitRows = [
-    { exit_price: parseFloat(initial.execution.exit_price), contracts: parseFloat(initial.execution.contracts) },
-    ...(initial.additionalExits || []).map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })),
+    { exit_price: calcExitPriceFromPoints(initial.direction, initialEntry, parseFloat(initial.execution.exit_points)), contracts: parseFloat(initial.execution.contracts) },
+    ...(initial.additionalExits || []).map((e) => ({ exit_price: calcExitPriceFromPoints(initial.direction, initialEntry, parseFloat(e.exit_points)), contracts: parseFloat(e.contracts) })),
   ]
   const initialComputed = calcMultiExitProfitLoss(
     initial.direction,
-    parseFloat(initial.setup.entry),
+    initialEntry,
     initialExitRows,
     pointValueFor(symbol),
   )
@@ -108,7 +110,7 @@ export default function TradeForm({
     initial.pnl != null && (initialComputed === null || Math.abs(initialComputed - initial.pnl) > 0.005)
   )
 
-  // Multiple exits: the primary exit (execution.exit_time/exit_price/
+  // Multiple exits: the primary exit (execution.exit_time/exit_points/
   // contracts above) is always exit #1 - additionalExits holds only the
   // rows beyond that, each the same shape. Starting multipleExits true
   // whenever a loaded trade already has any is what lets the edit page
@@ -160,16 +162,19 @@ export default function TradeForm({
   // its own price (see calcMultiExitProfitLoss), so this is the same
   // calculation whether there's one exit or several; additionalExits is
   // always empty outside multiple-exits mode, so the single-exit case just
-  // falls out of it rather than needing its own branch.
+  // falls out of it rather than needing its own branch. Each exit's own
+  // price is derived from its typed points figure (calcExitPriceFromPoints)
+  // rather than read directly, same as at submit time.
   useEffect(() => {
     if (pnlManual) return
+    const entryNum = parseFloat(setup.entry)
     const exitRows = [
-      { exit_price: parseFloat(execution.exit_price), contracts: parseFloat(execution.contracts) },
-      ...additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })),
+      { exit_price: calcExitPriceFromPoints(direction, entryNum, parseFloat(execution.exit_points)), contracts: parseFloat(execution.contracts) },
+      ...additionalExits.map((e) => ({ exit_price: calcExitPriceFromPoints(direction, entryNum, parseFloat(e.exit_points)), contracts: parseFloat(e.contracts) })),
     ]
-    const computed = calcMultiExitProfitLoss(direction, parseFloat(setup.entry), exitRows, pointValueFor(symbol))
+    const computed = calcMultiExitProfitLoss(direction, entryNum, exitRows, pointValueFor(symbol))
     setPnlInput(computed === null ? '' : formatCurrency(computed))
-  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, symbol])
+  }, [pnlManual, direction, setup.entry, execution.exit_points, execution.contracts, additionalExits, symbol])
 
   // Object URLs are created per selected file, so release them on unmount.
   // Tracked through a ref because the cleanup runs once and would otherwise
@@ -275,10 +280,10 @@ export default function TradeForm({
     // Editing any input the $ P&L calc actually depends on re-enables
     // auto-fill from that point on, even on the edit page where a stored
     // figure otherwise counts as manual (see pnlManual's init above) -
-    // deliberately changing contracts or exit price is a clearer signal
+    // deliberately changing contracts or exit points is a clearer signal
     // that the trader wants the total to follow than a value that just
     // happens to still be sitting in the field from before.
-    if (field === 'contracts' || field === 'exit_price') setPnlManual(false)
+    if (field === 'contracts' || field === 'exit_points') setPnlManual(false)
   }
 
   function handleDirectionChange(value) {
@@ -296,7 +301,7 @@ export default function TradeForm({
     setDirty(true)
     setMultipleExits(checked)
     if (checked) {
-      setAdditionalExits((prev) => (prev.length > 0 ? prev : [{ exit_time: '', exit_price: '', contracts: '' }]))
+      setAdditionalExits((prev) => (prev.length > 0 ? prev : [{ exit_time: '', exit_points: '', contracts: '' }]))
     } else {
       setAdditionalExits([])
     }
@@ -305,7 +310,7 @@ export default function TradeForm({
 
   function handleAddAnotherExit() {
     setDirty(true)
-    setAdditionalExits((prev) => [...prev, { exit_time: '', exit_price: '', contracts: '' }])
+    setAdditionalExits((prev) => [...prev, { exit_time: '', exit_points: '', contracts: '' }])
   }
 
   function handleRemoveAdditionalExit(index) {
@@ -325,7 +330,7 @@ export default function TradeForm({
   function updateAdditionalExit(index, field, value) {
     setDirty(true)
     setAdditionalExits((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
-    if (field === 'contracts' || field === 'exit_price') setPnlManual(false)
+    if (field === 'contracts' || field === 'exit_points') setPnlManual(false)
   }
 
   async function handleAddStrategy(e) {
@@ -492,7 +497,8 @@ export default function TradeForm({
     const entry = parseFloat(setup.entry)
     const stopDistance = parseFloat(setup.stop_distance)
     const targetDistance = parseFloat(setup.target_distance)
-    const exitPrice = parseFloat(execution.exit_price)
+    const exitPoints = parseFloat(execution.exit_points)
+    const exitPrice = calcExitPriceFromPoints(direction, entry, exitPoints)
     const stopPrice = calcStopPrice(direction, entry, stopDistance)
     const targetPrice = calcTargetPrice(direction, entry, targetDistance)
 
@@ -506,7 +512,12 @@ export default function TradeForm({
       target: toDecimalString(targetPrice),
       stop_distance: toDecimalString(stopDistance),
       target_distance: toDecimalString(targetDistance),
+      // exit_price is derived from exit_points (the trader's own typed
+      // figure, kept alongside it) rather than entered directly - see
+      // calcExitPriceFromPoints. r_multiple/$-P&L/everything else downstream
+      // still runs on this real price exactly as before.
       exit_price: toDecimalString(exitPrice),
+      exit_points: toDecimalString(exitPoints),
       exit_time: execution.exit_time || null,
       r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
@@ -516,12 +527,16 @@ export default function TradeForm({
       // than saved as empty placeholders.
       additional_exits: multipleExits
         ? additionalExits
-          .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
-          .map((row) => ({
-            exit_time: row.exit_time || null,
-            exit_price: toDecimalString(parseFloat(row.exit_price)),
-            contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
-          }))
+          .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_points) && isBlank(row.contracts)))
+          .map((row) => {
+            const points = parseFloat(row.exit_points)
+            return {
+              exit_time: row.exit_time || null,
+              exit_points: toDecimalString(points),
+              exit_price: toDecimalString(calcExitPriceFromPoints(direction, entry, points)),
+              contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
+            }
+          })
         : [],
       pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,
@@ -552,12 +567,12 @@ export default function TradeForm({
   // image here.
   const allScreenshotUrls = [...existingScreenshots, ...screenshots.map((s) => s.previewUrl)]
 
-  // The same three fields (Exit time / Exit price / Contracts) whether
-  // this is the trade's only exit or one of several - idx 0 is always the
-  // primary exit (execution state, exit_price validated below), idx 1+ are
-  // additionalExits rows. Kept as one function rather than duplicating the
-  // JSX so the two only ever drift apart in their data source, never their
-  // fields or field order.
+  // The same three fields (Exit time / Exit (in points) / Contracts)
+  // whether this is the trade's only exit or one of several - idx 0 is
+  // always the primary exit (execution state, exit_points validated
+  // below), idx 1+ are additionalExits rows. Kept as one function rather
+  // than duplicating the JSX so the two only ever drift apart in their
+  // data source, never their fields or field order.
   function renderExitFields(idx) {
     const isPrimary = idx === 0
     const row = isPrimary ? execution : additionalExits[idx - 1]
@@ -571,12 +586,12 @@ export default function TradeForm({
           <TimePicker value={row.exit_time} onChange={(v) => update('exit_time', v)} />
         </div>
         <div className="field wide">
-          <label>Exit price</label>
+          <label>Exit (in points) <FieldTooltip text={EXIT_POINTS_HINT} /></label>
           <input
             type="number" step="0.01"
-            value={row.exit_price} onChange={(e) => update('exit_price', e.target.value)}
+            value={row.exit_points} onChange={(e) => update('exit_points', e.target.value)}
           />
-          {isPrimary && errors.exit_price && <span className="field-error">{errors.exit_price}</span>}
+          {isPrimary && errors.exit_points && <span className="field-error">{errors.exit_points}</span>}
         </div>
         <div className="field wide">
           <label>Contracts</label>

@@ -402,50 +402,52 @@ export default function TradeLogTable({
                 {isExpanded && (
                   <tr className="expand-row">
                     <td colSpan={colCount}>
-                      <div className="detail-grid" style={{ padding: '16px 4px' }}>
-                        <div><label>Entry time</label><div>{formatTime12h(t.trade_time)}</div></div>
-                        <div><label>Entry price</label><div>{fmtNum(t.entry)}</div></div>
-                        <div><label>Stop loss</label><div>{fmtNum(t.stop)}{t.stop_distance != null && <div className="detail-subvalue">{fmtNum(t.stop_distance)} pts</div>}</div></div>
-                        <div><label>Take profit</label><div>{fmtNum(t.target)}{t.target_distance != null && <div className="detail-subvalue">{fmtNum(t.target_distance)} pts</div>}</div></div>
-                        <div><label>Exit price</label><div>{fmtNum(t.exit_price)}</div></div>
-                        <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(t))}</div></div>
-                        <div><label>Contracts</label><div>{t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')}</div></div>
-                        {/* No data source until Phase 2 captures excursions. */}
-                        <div><label>MFE</label><div>—</div></div>
-                        <div><label>MAE</label><div>—</div></div>
-                        <div><label>Plan Adherence</label><div>{adherence === null ? '—' : <span className={`r-pill ${adherenceClass}`}>{adherenceLabel}</span>}</div></div>
-                      </div>
+                      <div className="expand-row-detail">
+                        <div className="detail-grid" style={{ padding: '16px 4px' }}>
+                          <div><label>Entry time</label><div>{formatTime12h(t.trade_time)}</div></div>
+                          <div><label>Entry price</label><div>{fmtNum(t.entry)}</div></div>
+                          <div><label>Stop loss</label><div>{t.stop_distance == null ? '—' : `${fmtNum(t.stop_distance)} pts`}</div></div>
+                          <div><label>Take profit</label><div>{t.target_distance == null ? '—' : `${fmtNum(t.target_distance)} pts`}</div></div>
+                          <div><label>Exit price</label><div>{fmtNum(t.exit_price)}</div></div>
+                          <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(t))}</div></div>
+                          <div><label>Contracts</label><div>{t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')}</div></div>
+                          {/* No data source until Phase 2 captures excursions. */}
+                          <div><label>MFE</label><div>—</div></div>
+                          <div><label>MAE</label><div>—</div></div>
+                          <div><label>Plan Adherence</label><div>{adherence === null ? '—' : <span className={`r-pill ${adherenceClass}`}>{adherenceLabel}</span>}</div></div>
+                        </div>
 
-                      {t.tags?.length > 0 && (
-                        <div style={{ marginTop: '12px' }}>
-                          <label className="detail-sublabel">Tags</label>
-                          <div className="tag-row" style={{ marginTop: '4px' }}>
-                            {t.tags.map((tag) => <span className="trade-tag" key={tag}>{tag}</span>)}
+                        {t.tags?.length > 0 && (
+                          <div style={{ marginTop: '20px' }}>
+                            <label className="detail-sublabel">Tags</label>
+                            <div className="tag-row" style={{ marginTop: '4px' }}>
+                              {t.tags.map((tag) => <span className="trade-tag" key={tag}>{tag}</span>)}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {t.reasoning && (
-                        <div style={{ marginTop: '12px' }}>
-                          <label className="detail-sublabel">Reasoning</label>
-                          <p style={{ marginTop: '4px', lineHeight: 1.5, fontSize: '13px' }}>{t.reasoning}</p>
-                        </div>
-                      )}
+                        {t.reasoning && (
+                          <div style={{ marginTop: '20px' }}>
+                            <label className="detail-sublabel">Notes</label>
+                            <p style={{ marginTop: '4px', lineHeight: 1.5, fontSize: '13px' }}>{t.reasoning}</p>
+                          </div>
+                        )}
 
-                      {shots.length > 0 && (
-                        <div className="screenshot-grid" style={{ marginTop: '12px' }}>
-                          {shots.map((url, i) => (
-                            <img
-                              key={url}
-                              src={url}
-                              alt={`Trade screenshot ${i + 1}`}
-                              className="thumb"
-                              style={{ width: '70px', height: '70px' }}
-                              onClick={(e) => { e.stopPropagation(); setPreview({ shots, index: i }) }}
-                            />
-                          ))}
-                        </div>
-                      )}
+                        {shots.length > 0 && (
+                          <div className="screenshot-grid" style={{ marginTop: '20px' }}>
+                            {shots.map((url, i) => (
+                              <img
+                                key={url}
+                                src={url}
+                                alt={`Trade screenshot ${i + 1}`}
+                                className="thumb"
+                                style={{ width: '70px', height: '70px' }}
+                                onClick={(e) => { e.stopPropagation(); setPreview({ shots, index: i }) }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )}

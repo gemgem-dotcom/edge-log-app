@@ -17,31 +17,31 @@
    590  Holiday notice (site-wide, above the shell)
    615  Shell layout (sidebar + topbar)
    824  Expandable trade rows
-   841  Calendar
-   889  Account settings page
-   1087  Light theme
-   1115  2FA
-   1130  Account fine print
-   1133  Screenshot preview (log new trade)
-   1175  Auth pages always dark
-   1203  Monthly P&L (calendar on Overview)
-   1269  Trade form: sections, validation, currency, screenshots
-   1497  Field tooltips
-   1559  Date/time picker (adds an optional popup to a typed input)
-   1668  In-header column filters (trade log table)
-   1702  Active filter chips
-   1751  Empty states, error banners, skeleton loaders
-   1822  Cross-instrument overview dashboard (/app)
-   2042  Not found / error boundary state pages
-   2055  Toast notifications
-   2083  Public policy pages (Privacy, Terms)
-   2102  Legal links (auth pages + account settings)
-   2141  Economic calendar card (mock - Overview pages)
-   2248  Calendar news badge (Monthly P&L day cells, mock)
-   2269  Streak badge (Overview + strategy detail pages)
-   2286  Market status pill (Overview + strategy detail pages)
-   2312  Key levels, today's brief (mock cards)
-   2338  Market context cards (all-instruments Overview)
+   845  Calendar
+   893  Account settings page
+   1091  Light theme
+   1119  2FA
+   1134  Account fine print
+   1137  Screenshot preview (log new trade)
+   1179  Auth pages always dark
+   1207  Monthly P&L (calendar on Overview)
+   1273  Trade form: sections, validation, currency, screenshots
+   1501  Field tooltips
+   1563  Date/time picker (adds an optional popup to a typed input)
+   1672  In-header column filters (trade log table)
+   1706  Active filter chips
+   1755  Empty states, error banners, skeleton loaders
+   1826  Cross-instrument overview dashboard (/app)
+   2046  Not found / error boundary state pages
+   2059  Toast notifications
+   2087  Public policy pages (Privacy, Terms)
+   2106  Legal links (auth pages + account settings)
+   2145  Economic calendar card (mock - Overview pages)
+   2252  Calendar news badge (Monthly P&L day cells, mock)
+   2273  Streak badge (Overview + strategy detail pages)
+   2290  Market status pill (Overview + strategy detail pages)
+   2316  Key levels, today's brief (mock cards)
+   2342  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -833,6 +833,10 @@ a.shell-logo{color:inherit; text-decoration:none;}
   from{opacity:0; transform:translateY(-4px);}
   to{opacity:1; transform:translateY(0);}
 }
+/* Wider row gap than the shared .detail-grid default (16px) for this
+   expanded row specifically - it packs in enough fields to read as
+   cramped otherwise. */
+.expand-row-detail .detail-grid{row-gap:24px;}
 .detail-sublabel{
   font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
 }

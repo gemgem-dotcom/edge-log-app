@@ -744,7 +744,7 @@ export default function TradeForm({
           </div>
           <div className="field wide">
             <label>Direction</label>
-            <div className="dir-toggle">
+            <div className="dir-toggle dir-toggle-square">
               <div className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`} onClick={() => handleDirectionChange('long')}>Long</div>
               <div className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`} onClick={() => handleDirectionChange('short')}>Short</div>
             </div>

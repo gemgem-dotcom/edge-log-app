@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–356  Base: reset, typography, forms, tables, thumbnails,
+     1–371  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   357  Auth pages
-   409  Top nav
-   424  Instrument nav (topbar pill row)
-   488  Page layout
-   536  Tabs
-   546  Misc form helpers
-   552  Detail view
-   568  Holiday notice (site-wide, above the shell)
-   593  Shell layout (sidebar + topbar)
-   802  Expandable trade rows
-   819  Calendar
-   867  Account settings page
-   1065  Light theme
-   1093  2FA
-   1108  Account fine print
-   1111  Screenshot preview (log new trade)
-   1153  Auth pages always dark
-   1181  Monthly P&L (calendar on Overview)
-   1247  Trade form: sections, validation, currency, screenshots
-   1438  Field tooltips
-   1499  Date/time picker (adds an optional popup to a typed input)
-   1608  In-header column filters (trade log table)
-   1642  Active filter chips
-   1691  Empty states, error banners, skeleton loaders
-   1762  Cross-instrument overview dashboard (/app)
-   1982  Not found / error boundary state pages
-   1995  Toast notifications
-   2023  Public policy pages (Privacy, Terms)
-   2042  Legal links (auth pages + account settings)
-   2081  Economic calendar card (mock - Overview pages)
-   2188  Calendar news badge (Monthly P&L day cells, mock)
-   2209  Streak badge (Overview + strategy detail pages)
-   2226  Market status pill (Overview + strategy detail pages)
-   2252  Key levels, today's brief (mock cards)
-   2278  Market context cards (all-instruments Overview)
+   372  Auth pages
+   424  Top nav
+   439  Instrument nav (topbar pill row)
+   503  Page layout
+   551  Tabs
+   561  Misc form helpers
+   567  Detail view
+   583  Holiday notice (site-wide, above the shell)
+   608  Shell layout (sidebar + topbar)
+   817  Expandable trade rows
+   834  Calendar
+   882  Account settings page
+   1080  Light theme
+   1108  2FA
+   1123  Account fine print
+   1126  Screenshot preview (log new trade)
+   1168  Auth pages always dark
+   1196  Monthly P&L (calendar on Overview)
+   1262  Trade form: sections, validation, currency, screenshots
+   1453  Field tooltips
+   1514  Date/time picker (adds an optional popup to a typed input)
+   1623  In-header column filters (trade log table)
+   1657  Active filter chips
+   1706  Empty states, error banners, skeleton loaders
+   1777  Cross-instrument overview dashboard (/app)
+   1997  Not found / error boundary state pages
+   2010  Toast notifications
+   2038  Public policy pages (Privacy, Terms)
+   2057  Legal links (auth pages + account settings)
+   2096  Economic calendar card (mock - Overview pages)
+   2203  Calendar news badge (Monthly P&L day cells, mock)
+   2224  Streak badge (Overview + strategy detail pages)
+   2241  Market status pill (Overview + strategy detail pages)
+   2267  Key levels, today's brief (mock cards)
+   2293  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -203,14 +203,29 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
   outline:2px solid var(--accent); outline-offset:2px; border-radius:inherit;
 }
 
-.dir-toggle{display:flex; border:1px solid var(--line); border-radius:100px; overflow:hidden;}
-.dir-btn{flex:1; padding:9px 0; text-align:center; font-size:12.5px; font-weight:600; cursor:pointer; background:var(--panel-2); color:var(--muted); user-select:none; transition:background-color .15s ease, color .15s ease;}
+/* Explicit height:36px for the same reason input/select/.dt-picker-trigger
+   above all set it explicitly rather than trusting padding - this sits in
+   the same field rows as those, and padding-based sizing alone rendered it
+   a pixel or two off from theirs. .dir-btn centers its own text with flex
+   instead of vertical padding so that height is exact, not approximate. */
+.dir-toggle{display:flex; border:1px solid var(--line); border-radius:100px; overflow:hidden; height:36px;}
+.dir-btn{
+  flex:1; display:flex; align-items:center; justify-content:center;
+  font-size:12.5px; font-weight:600; cursor:pointer;
+  background:var(--panel-2); color:var(--muted); user-select:none;
+  transition:background-color .15s ease, color .15s ease;
+}
 .dir-btn.active-long{background:rgba(51,193,122,.15); color:var(--win);}
 .dir-btn.active-short{background:rgba(225,92,92,.15); color:var(--loss);}
 /* Only the inactive state gets a hover treatment - an active pill (long/
    short/theme) keeps its own color under the cursor rather than flashing
    the plain hover background. */
 .dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
+/* Direction specifically (not Hit target/Hit stop/Custom or the account-
+   settings theme toggle, which still use the pill) - a square box instead,
+   to read as one more field box among Entry price/Stop Loss/Take Profit
+   rather than standing out as the one pill-shaped control in the row. */
+.dir-toggle-square{border-radius:7px;}
 
 .submit-row{grid-column:span 6; display:flex; justify-content:flex-end; align-items:center; gap:16px; margin-top:4px;}
 button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; transition:filter .15s ease, background-color .15s ease, opacity .15s ease;}

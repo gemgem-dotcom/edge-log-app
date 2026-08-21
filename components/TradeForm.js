@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple } from '../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple, ADHERENCE_EPSILON } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -21,6 +21,29 @@ const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool
 // label) and the menu (listing every choice) need it, and an object gives
 // the trigger a direct lookup instead of a .find() over an array.
 const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom...' }
+
+// Outcome itself is never stored - only the exit_price/additional_exits it
+// produces are - so re-opening a saved trade for edit has to infer which
+// choice it originally was. A multi-exit trade can only have been saved as
+// Custom (handleSubmit drops additional_exits for anything else), and a
+// single exit whose price has reached or passed the planned target/stop
+// level reads as that outcome - the same tolerance-based "at or past"
+// comparison lib/tradeMath.js's planAdherence uses for the Plan Adherence
+// badge, so an exit that ran past the plan still counts as having hit it.
+// Anything short of either level falls back to Custom.
+function inferOutcome(initial) {
+  if (isBlank(initial.execution.exit_price)) return ''
+  if ((initial.additionalExits || []).length > 0) return 'custom'
+  const direction = initial.direction
+  const entry = parseFloat(initial.setup.entry)
+  const exitPrice = parseFloat(initial.execution.exit_price)
+  const stopPrice = calcStopPrice(direction, entry, parseFloat(initial.setup.stop_distance))
+  const targetPrice = calcTargetPrice(direction, entry, parseFloat(initial.setup.target_distance))
+  const dir = direction === 'long' ? 1 : -1
+  if (targetPrice !== null && dir * (exitPrice - targetPrice) >= -ADHERENCE_EPSILON) return 'target'
+  if (stopPrice !== null && dir * (exitPrice - stopPrice) <= ADHERENCE_EPSILON) return 'stop'
+  return 'custom'
+}
 
 // Fixed, grouped issue list for the Discipline field below - unlike Tags,
 // this isn't a free-text/previously-used list, so the groups and their order
@@ -128,14 +151,13 @@ export default function TradeForm({
   // trade starts unset (the dropdown's own "Select" placeholder) rather
   // than trying to guess an outcome from a price that doesn't exist yet.
   // A trade that already has an exit price - the edit page loading an
-  // existing trade - starts on Custom instead: since the exit row(s) below
-  // stay hidden until Outcome is chosen (see outcomeChosen), leaving this
-  // unset here would hide the trader's own already-saved exit data behind
-  // an extra click every time they open it. Unset otherwise behaves
-  // exactly like Custom everywhere below (see isCustomOutcome) - it's only
-  // a distinct value so the dropdown can show its placeholder instead of
-  // defaulting to "Custom...".
-  const [outcome, setOutcome] = useState(isBlank(initial.execution.exit_price) ? '' : 'custom')
+  // existing trade - starts on whatever inferOutcome reconstructs instead,
+  // so a trade saved via Hit Target/Hit Stop shows that choice again
+  // rather than always falling back to Custom (which would still be
+  // functionally fine, since the exit row(s) below stay hidden only while
+  // Outcome is unset - see outcomeChosen - but reads as wrong to a trader
+  // who picked Hit Target and sees Custom on the very next visit).
+  const [outcome, setOutcome] = useState(inferOutcome(initial))
   const [showOutcomeMenu, setShowOutcomeMenu] = useState(false)
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)

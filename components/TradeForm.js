@@ -671,20 +671,20 @@ export default function TradeForm({
           </div>
 
           <div className="field wide">
-            <label>Take Profit (in points) <FieldTooltip text={DISTANCE_HINT} /></label>
-            <input
-              type="number" step="0.01" min="0"
-              value={setup.target_distance} onChange={(e) => updateSetup('target_distance', e.target.value)}
-            />
-            {errors.target_distance && <span className="field-error">{errors.target_distance}</span>}
-          </div>
-          <div className="field wide">
             <label>Stop Loss (in points) <FieldTooltip text={DISTANCE_HINT} /></label>
             <input
               type="number" step="0.01" min="0"
               value={setup.stop_distance} onChange={(e) => updateSetup('stop_distance', e.target.value)}
             />
             {errors.stop_distance && <span className="field-error">{errors.stop_distance}</span>}
+          </div>
+          <div className="field wide">
+            <label>Take Profit (in points) <FieldTooltip text={DISTANCE_HINT} /></label>
+            <input
+              type="number" step="0.01" min="0"
+              value={setup.target_distance} onChange={(e) => updateSetup('target_distance', e.target.value)}
+            />
+            {errors.target_distance && <span className="field-error">{errors.target_distance}</span>}
           </div>
           <div className="field wide">
             <label>Risk-to-Reward</label>

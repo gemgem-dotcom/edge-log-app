@@ -786,11 +786,11 @@ export default function TradeForm({
 
           <div className="field full">
             <label>Outcome</label>
-            <div className="dir-toggle">
-              <div className={`dir-btn ${outcome === 'target' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('target')}>Hit target</div>
-              <div className={`dir-btn ${outcome === 'stop' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('stop')}>Hit stop</div>
-              <div className={`dir-btn ${outcome === 'custom' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('custom')}>Custom</div>
-            </div>
+            <select value={outcome} onChange={(e) => handleOutcomeChange(e.target.value)}>
+              <option value="target">Hit Target</option>
+              <option value="stop">Hit Stop</option>
+              <option value="custom">Custom...</option>
+            </select>
           </div>
 
           {!multipleExits ? (

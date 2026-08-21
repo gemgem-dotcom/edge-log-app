@@ -598,7 +598,15 @@ export default function TradeForm({
       exit_price: toDecimalString(exitPrice),
       exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, exitPrice)),
       exit_time: execution.exit_time || null,
-      r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
+      // Blended across every exit leg (see realizedR above), not just the
+      // primary one, so a multi-exit trade's stored R matches what every
+      // trade log/stat that reads r_multiple actually shows the trader.
+      // realizedR needs contracts on every leg to weight the average, but
+      // Contracts isn't a required field - falls back to the plain
+      // primary-exit R-multiple so a trade with no contracts entered still
+      // gets an R rather than null (exit price is mandatory, so every trade
+      // must have one).
+      r_multiple: realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       // Rows the trader added but left entirely untouched (e.g. clicked

@@ -124,15 +124,18 @@ export default function TradeForm({
   const [additionalExits, setAdditionalExits] = useState(initial.additionalExits || [])
 
   // Hit Target / Hit Stop / Custom - pre-fills the primary exit's price
-  // from Trade Setup's own plan, never a stored value, so this always
-  // starts unset (the dropdown's own "Select" placeholder) rather than
-  // trying to guess an already-loaded trade's outcome from its exit price.
-  // Unset behaves exactly like Custom everywhere below (see isCustomOutcome)
-  // - it's only a distinct value so the dropdown can show its placeholder
-  // instead of defaulting to "Custom...". Stays visible regardless of
-  // whether additional exits exist - "+ Add another exit" (below) is what's
-  // gated on Custom, not this.
-  const [outcome, setOutcome] = useState('')
+  // from Trade Setup's own plan, never a stored value, so a genuinely new
+  // trade starts unset (the dropdown's own "Select" placeholder) rather
+  // than trying to guess an outcome from a price that doesn't exist yet.
+  // A trade that already has an exit price - the edit page loading an
+  // existing trade - starts on Custom instead: since the exit row(s) below
+  // stay hidden until Outcome is chosen (see outcomeChosen), leaving this
+  // unset here would hide the trader's own already-saved exit data behind
+  // an extra click every time they open it. Unset otherwise behaves
+  // exactly like Custom everywhere below (see isCustomOutcome) - it's only
+  // a distinct value so the dropdown can show its placeholder instead of
+  // defaulting to "Custom...".
+  const [outcome, setOutcome] = useState(isBlank(initial.execution.exit_price) ? '' : 'custom')
   const [showOutcomeMenu, setShowOutcomeMenu] = useState(false)
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
@@ -184,6 +187,13 @@ export default function TradeForm({
   // comment above), so a trader who hasn't touched Outcome yet still gets
   // Custom's fully-manual behavior rather than a third, no-op state.
   const isCustomOutcome = outcome !== 'target' && outcome !== 'stop'
+
+  // The exit row(s) and the Total contracts/$ P&L/Planned R:R/Realized R
+  // summary row both stay hidden until the trader has actually picked
+  // something from Outcome - showing empty Exit time/price/Contracts boxes
+  // (or an all-zero/dash summary) above an unmade choice invites filling
+  // them in before the choice they depend on even exists.
+  const outcomeChosen = outcome !== ''
 
   // Whether the form is showing the numbered exit list or the plain single
   // row - not its own tracked state, just whether there's a second exit AND
@@ -371,6 +381,7 @@ export default function TradeForm({
   function handleOutcomeChange(value) {
     setDirty(true)
     setOutcome(value)
+    setErrors((prev) => (prev.outcome ? { ...prev, outcome: undefined } : prev))
     if (value === 'custom') return
     const entry = parseFloat(setup.entry)
     const price = value === 'target'
@@ -548,6 +559,10 @@ export default function TradeForm({
 
     const foundErrors = {
       ...validateSetup({ ...setup, direction, strategyId }),
+      // Outcome gates whether the exit row(s) even render (see
+      // outcomeChosen) - validateExecution's own exit_price check would
+      // otherwise fire against a hidden field with no visible error.
+      ...(outcomeChosen ? {} : { outcome: 'Choose an outcome.' }),
       ...validateExecution(execution),
       ...validateDiscipline({ reviewedNoIssues, disciplineTags }),
     }
@@ -828,11 +843,12 @@ export default function TradeForm({
                     </div>
                   )}
                 </div>
+                {errors.outcome && <span className="field-error">{errors.outcome}</span>}
               </div>
             </div>
           </div>
 
-          {!multipleExits ? (
+          {outcomeChosen && (!multipleExits ? (
             <>
               {renderExitFields(0)}
               {isCustomOutcome && (
@@ -866,41 +882,43 @@ export default function TradeForm({
                 </span>
               )}
             </div>
-          )}
+          ))}
 
-          <div className="field full">
-            <div className="trade-summary-row">
-              <div className="field">
-                <label>Total contracts</label>
-                <input type="text" disabled className="readonly-field" value={totalLegContracts} />
-              </div>
-              <div className="field">
-                <label>$ Profit or Loss</label>
-                <div className="currency-field">
-                  <span className="currency-prefix">$</span>
+          {outcomeChosen && (
+            <div className="field full">
+              <div className="trade-summary-row">
+                <div className="field">
+                  <label>Total contracts</label>
+                  <input type="text" disabled className="readonly-field" value={totalLegContracts} />
+                </div>
+                <div className="field">
+                  <label>$ Profit or Loss</label>
+                  <div className="currency-field">
+                    <span className="currency-prefix">$</span>
+                    <input
+                      type="text" inputMode="decimal" placeholder="0.00"
+                      value={pnlInput}
+                      onChange={(e) => handlePnlChange(e.target.value)}
+                      onFocus={handlePnlFocus}
+                      onBlur={handlePnlBlur}
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Planned R:R</label>
+                  <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
+                </div>
+                <div className="field">
+                  <label>Realized R (blended)</label>
                   <input
-                    type="text" inputMode="decimal" placeholder="0.00"
-                    value={pnlInput}
-                    onChange={(e) => handlePnlChange(e.target.value)}
-                    onFocus={handlePnlFocus}
-                    onBlur={handlePnlBlur}
+                    type="text" disabled
+                    className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}
+                    value={realizedR === null ? '—' : (realizedR >= 0 ? '+' : '') + realizedR.toFixed(2) + 'R'}
                   />
                 </div>
               </div>
-              <div className="field">
-                <label>Planned R:R</label>
-                <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
-              </div>
-              <div className="field">
-                <label>Realized R (blended)</label>
-                <input
-                  type="text" disabled
-                  className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}
-                  value={realizedR === null ? '—' : (realizedR >= 0 ? '+' : '') + realizedR.toFixed(2) + 'R'}
-                />
-              </div>
             </div>
-          </div>
+          )}
           <div className="field full section-label">
             Trade Review
             <span className="section-subtitle">

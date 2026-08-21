@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { X, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice } from '../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -16,6 +16,12 @@ import ScreenshotLightbox from './ScreenshotLightbox'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
+// Outcome's fixed set of choices, in menu order - a plain object rather
+// than an array since both the trigger (looking up the current value's
+// label) and the menu (listing every choice) need it, and an object gives
+// the trigger a direct lookup instead of a .find() over an array.
+const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom...' }
+
 // Fixed, grouped issue list for the Discipline field below - unlike Tags,
 // this isn't a free-text/previously-used list, so the groups and their order
 // are just declared here.
@@ -23,7 +29,7 @@ const DISCIPLINE_GROUPS = [
   { heading: 'Entry discipline', items: ['Early entry', 'Chased price / late entry', 'No clear setup'] },
   { heading: 'Risk management', items: ['Oversized', 'Moved stop', 'Removed stop'] },
   { heading: 'Exit discipline', items: ['Cut winner early', 'Held loser too long', 'Moved target'] },
-  { heading: 'Behavioral', items: ['Hesitated', 'Revenge trade', 'Overtraded'] },
+  { heading: 'Behavioural', items: ['Hesitated', 'Revenge trade', 'Overtraded'] },
 ]
 
 export const EMPTY_TRADE_FORM = {
@@ -110,12 +116,27 @@ export default function TradeForm({
 
   // Multiple exits: the primary exit (execution.exit_time/exit_price/
   // contracts above) is always exit #1 - additionalExits holds only the
-  // rows beyond that, each the same shape. Starting multipleExits true
-  // whenever a loaded trade already has any is what lets the edit page
-  // show the numbered list instead of collapsing real data down to a
-  // single row.
-  const [multipleExits, setMultipleExits] = useState((initial.additionalExits || []).length > 0)
+  // rows beyond that, each the same shape. Whether the form is in
+  // "multiple exits" mode is just whether this is non-empty - there's no
+  // separate on/off flag, so a loaded trade with saved additional exits
+  // shows the numbered list automatically rather than needing its own
+  // starting state to agree with.
   const [additionalExits, setAdditionalExits] = useState(initial.additionalExits || [])
+
+  // Hit Target / Hit Stop / Custom - pre-fills the primary exit's price
+  // from Trade Setup's own plan, never a stored value, so a genuinely new
+  // trade starts unset (the dropdown's own "Select" placeholder) rather
+  // than trying to guess an outcome from a price that doesn't exist yet.
+  // A trade that already has an exit price - the edit page loading an
+  // existing trade - starts on Custom instead: since the exit row(s) below
+  // stay hidden until Outcome is chosen (see outcomeChosen), leaving this
+  // unset here would hide the trader's own already-saved exit data behind
+  // an extra click every time they open it. Unset otherwise behaves
+  // exactly like Custom everywhere below (see isCustomOutcome) - it's only
+  // a distinct value so the dropdown can show its placeholder instead of
+  // defaulting to "Custom...".
+  const [outcome, setOutcome] = useState(isBlank(initial.execution.exit_price) ? '' : 'custom')
+  const [showOutcomeMenu, setShowOutcomeMenu] = useState(false)
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   const [screenshots, setScreenshots] = useState([])
@@ -148,6 +169,66 @@ export default function TradeForm({
     parseFloat(setup.entry),
   )
 
+  // Every per-leg and blended R-multiple below shares this same stop price -
+  // computed once so the numbered list's live badges and the summary row's
+  // Realized R can't ever disagree on what "risk" means for this trade.
+  const entryNum = parseFloat(setup.entry)
+  const stopPriceForR = calcStopPrice(direction, entryNum, parseFloat(setup.stop_distance))
+
+  // R-multiple for a single exit leg's typed price - reward/risk off the
+  // same Entry/Stop the Trade Setup section's own Planned R:R uses, just
+  // with this leg's actual exit price standing in for the planned target.
+  function legRMultiple(exitPriceStr) {
+    return calcRMultiple(direction, entryNum, stopPriceForR, parseFloat(exitPriceStr))
+  }
+
+  // Anything other than an explicit Hit Target/Hit Stop counts as Custom -
+  // including the dropdown's unset starting value (see outcome's own
+  // comment above), so a trader who hasn't touched Outcome yet still gets
+  // Custom's fully-manual behavior rather than a third, no-op state.
+  const isCustomOutcome = outcome !== 'target' && outcome !== 'stop'
+
+  // The exit row(s) and the Total contracts/$ P&L/Realized R summary row
+  // both stay hidden until the trader has actually picked
+  // something from Outcome - showing empty Exit time/price/Contracts boxes
+  // (or an all-zero/dash summary) above an unmade choice invites filling
+  // them in before the choice they depend on even exists.
+  const outcomeChosen = outcome !== ''
+
+  // Whether the form is showing the numbered exit list or the plain single
+  // row - not its own tracked state, just whether there's a second exit AND
+  // Outcome is on Custom. additionalExits itself is left untouched by
+  // switching to Hit target/Hit stop (see handleOutcomeChange) - toggling
+  // back to Custom brings the numbered rows right back with whatever was
+  // typed into them, a convenience for an accidental toggle rather than a
+  // deliberate switch to a single clean exit. Everywhere below that reads
+  // "the exits currently in effect" (P&L, Total contracts, Realized R, and
+  // what actually gets submitted) goes through this rather than
+  // additionalExits directly, so Hit target/Hit stop consistently behaves
+  // as if that leftover data doesn't exist until Custom is chosen again.
+  const multipleExits = isCustomOutcome && additionalExits.length > 0
+
+  // The exit legs currently on screen - just the primary exit outside
+  // Multiple exits mode, primary + every additional row once it's on.
+  const exitLegRows = multipleExits ? [execution, ...additionalExits] : [execution]
+
+  // Total contracts closed so far, across every leg - shown in the summary
+  // row below.
+  const totalLegContracts = exitLegRows.reduce((sum, row) => (
+    sum + (isBlank(row.contracts) ? 0 : parseInt(row.contracts))
+  ), 0)
+
+  // Realized R (blended): a contracts-weighted average of every leg's own
+  // R-multiple, reduces to just that one exit's R-multiple for a single
+  // exit. Never derived from $ Profit or Loss (see handlePnlChange) - purely
+  // a price/contracts calculation, so a manual P&L edit can't move it.
+  const realizedR = calcBlendedRMultiple(
+    direction,
+    entryNum,
+    stopPriceForR,
+    exitLegRows.map((row) => ({ exit_price: parseFloat(row.exit_price), contracts: parseFloat(row.contracts) })),
+  )
+
   // The new-trade page renders before its strategies have loaded, so the
   // first one is selected once they arrive. Never on the edit page, where an
   // empty selection means the trade is deliberately unclassified.
@@ -156,20 +237,22 @@ export default function TradeForm({
     if (strategyId === '' && strategies.length > 0) setStrategyId(strategies[0].id)
   }, [autoSelectFirstStrategy, strategies, strategyId])
 
-  // Auto-fill $ P&L from every exit - each one closes its own contracts at
-  // its own price (see calcMultiExitProfitLoss), so this is the same
-  // calculation whether there's one exit or several; additionalExits is
-  // always empty outside multiple-exits mode, so the single-exit case just
-  // falls out of it rather than needing its own branch.
+  // Auto-fill $ P&L from every exit currently in effect - each one closes
+  // its own contracts at its own price (see calcMultiExitProfitLoss), so
+  // this is the same calculation whether there's one exit or several.
+  // additionalExits only contributes on Custom (see multipleExits above) -
+  // otherwise it's ignored here exactly as it is everywhere else, even if
+  // it still holds data left over from before switching to Hit target/Hit
+  // stop.
   useEffect(() => {
     if (pnlManual) return
     const exitRows = [
       { exit_price: parseFloat(execution.exit_price), contracts: parseFloat(execution.contracts) },
-      ...additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })),
+      ...(isCustomOutcome ? additionalExits.map((e) => ({ exit_price: parseFloat(e.exit_price), contracts: parseFloat(e.contracts) })) : []),
     ]
     const computed = calcMultiExitProfitLoss(direction, parseFloat(setup.entry), exitRows, pointValueFor(symbol))
     setPnlInput(computed === null ? '' : formatCurrency(computed))
-  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, symbol])
+  }, [pnlManual, direction, setup.entry, execution.exit_price, execution.contracts, additionalExits, isCustomOutcome, symbol])
 
   // Object URLs are created per selected file, so release them on unmount.
   // Tracked through a ref because the cleanup runs once and would otherwise
@@ -256,7 +339,9 @@ export default function TradeForm({
   // Discipline's issue picker is a plain click-to-toggle list, not a typed
   // input like the tag dropdown above - no autofocus/keyboard/scroll
   // interplay to guard against, so a plain outside-click close is enough.
+  // Outcome's menu (below) is the same - a fixed list, nothing typed.
   const disciplineMenuRef = useClickOutside(showDisciplineMenu, () => setShowDisciplineMenu(false))
+  const outcomeMenuRef = useClickOutside(showOutcomeMenu, () => setShowOutcomeMenu(false))
 
   function updateSetup(field, value) {
     setDirty(true)
@@ -287,20 +372,22 @@ export default function TradeForm({
     setPnlManual(false)
   }
 
-  // Ticking on seeds one blank extra row (exit #2) so the numbered list has
-  // something to show right away, rather than a checkbox with nothing
-  // under it. Ticking off drops every extra row rather than just hiding
-  // them - same as unchecking Discipline's own reviewed box back on, there
-  // should be nothing left over to reappear if it's ticked on again later.
-  function handleMultipleExitsToggle(checked) {
+  // Pre-fills the primary exit's price from Trade Setup's own planned
+  // target/stop price - a starting value, not a locked substitution, so the
+  // field stays exactly as editable afterward as a fully manual entry would
+  // be (an actual fill can slip from the theoretical price on slippage or a
+  // partial fill). Choosing Custom applies nothing at all, leaving whatever
+  // is already there.
+  function handleOutcomeChange(value) {
     setDirty(true)
-    setMultipleExits(checked)
-    if (checked) {
-      setAdditionalExits((prev) => (prev.length > 0 ? prev : [{ exit_time: '', exit_price: '', contracts: '' }]))
-    } else {
-      setAdditionalExits([])
-    }
-    setPnlManual(false)
+    setOutcome(value)
+    setErrors((prev) => (prev.outcome ? { ...prev, outcome: undefined } : prev))
+    if (value === 'custom') return
+    const entry = parseFloat(setup.entry)
+    const price = value === 'target'
+      ? calcTargetPrice(direction, entry, parseFloat(setup.target_distance))
+      : calcStopPrice(direction, entry, parseFloat(setup.stop_distance))
+    updateExecution('exit_price', price === null ? '' : String(price))
   }
 
   function handleAddAnotherExit() {
@@ -308,17 +395,12 @@ export default function TradeForm({
     setAdditionalExits((prev) => [...prev, { exit_time: '', exit_price: '', contracts: '' }])
   }
 
+  // Dropping the last additional exit takes the form straight back to the
+  // plain single-row layout - multipleExits is just additionalExits.length
+  // > 0, so there's no separate flag left over to reset.
   function handleRemoveAdditionalExit(index) {
     setDirty(true)
-    setAdditionalExits((prev) => {
-      const next = prev.filter((_, i) => i !== index)
-      // Back down to just the primary exit - the numbered list/indent only
-      // makes sense with more than one, so drop back to the plain single-
-      // row layout rather than leaving the checkbox checked over a list of
-      // exactly one.
-      if (next.length === 0) setMultipleExits(false)
-      return next
-    })
+    setAdditionalExits((prev) => prev.filter((_, i) => i !== index))
     setPnlManual(false)
   }
 
@@ -477,6 +559,10 @@ export default function TradeForm({
 
     const foundErrors = {
       ...validateSetup({ ...setup, direction, strategyId }),
+      // Outcome gates whether the exit row(s) even render (see
+      // outcomeChosen) - validateExecution's own exit_price check would
+      // otherwise fire against a hidden field with no visible error.
+      ...(outcomeChosen ? {} : { outcome: 'Choose an outcome.' }),
       ...validateExecution(execution),
       ...validateDiscipline({ reviewedNoIssues, disciplineTags }),
     }
@@ -512,25 +598,36 @@ export default function TradeForm({
       exit_price: toDecimalString(exitPrice),
       exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, exitPrice)),
       exit_time: execution.exit_time || null,
-      r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
+      // Blended across every exit leg (see realizedR above), not just the
+      // primary one, so a multi-exit trade's stored R matches what every
+      // trade log/stat that reads r_multiple actually shows the trader.
+      // realizedR needs contracts on every leg to weight the average, but
+      // Contracts isn't a required field - falls back to the plain
+      // primary-exit R-multiple so a trade with no contracts entered still
+      // gets an R rather than null (exit price is mandatory, so every trade
+      // must have one).
+      r_multiple: realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       // Rows the trader added but left entirely untouched (e.g. clicked
       // "+ Add another exit" then changed their mind) are dropped rather
-      // than saved as empty placeholders.
-      additional_exits: multipleExits
-        ? additionalExits
-          .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
-          .map((row) => {
-            const rowExitPrice = parseFloat(row.exit_price)
-            return {
-              exit_time: row.exit_time || null,
-              exit_price: toDecimalString(rowExitPrice),
-              exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, rowExitPrice)),
-              contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
-            }
-          })
-        : [],
+      // than saved as empty placeholders - an empty additionalExits falls
+      // out of this the same way, with nothing to filter or map. Switching
+      // to Hit target/Hit stop right before saving drops any additional
+      // exits too, even ones with data still sitting in state (see
+      // multipleExits above) - Custom is the only outcome a multi-exit
+      // trade can actually save as.
+      additional_exits: (isCustomOutcome ? additionalExits : [])
+        .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
+        .map((row) => {
+          const rowExitPrice = parseFloat(row.exit_price)
+          return {
+            exit_time: row.exit_time || null,
+            exit_price: toDecimalString(rowExitPrice),
+            exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, rowExitPrice)),
+            contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
+          }
+        }),
       pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,
       reviewed_no_issues: reviewedNoIssues,
@@ -597,10 +694,26 @@ export default function TradeForm({
     )
   }
 
+  // The live R-multiple for one exit leg's numbered row - rendered as the
+  // very first thing inside its <li> so it lands on the same line as the
+  // list's own number marker (see .exit-list-item::marker), reading like
+  // "1.  +2.34R" the way the row numbers themselves already do. Blank
+  // (rather than a placeholder) until there's actually a price to compute
+  // from - a bare "—" next to every unfilled row would just be noise.
+  function renderLegRBadge(exitPriceStr) {
+    const r = legRMultiple(exitPriceStr)
+    if (r === null) return <div className="exit-leg-r" />
+    return (
+      <div className="exit-leg-r">
+        <span className={r > 0 ? 'pos' : r < 0 ? 'neg' : 'neu'}>{(r >= 0 ? '+' : '') + r.toFixed(2)}R</span>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="panel">
-        <form onSubmit={handleSubmit} onPaste={handlePaste} noValidate>
+        <form className="trade-form" onSubmit={handleSubmit} onPaste={handlePaste} noValidate>
 
           {formError && (
             <div className="field full">
@@ -671,7 +784,7 @@ export default function TradeForm({
           </div>
           <div className="field wide">
             <label>Direction</label>
-            <div className="dir-toggle">
+            <div className="dir-toggle dir-toggle-square">
               <div className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`} onClick={() => handleDirectionChange('long')}>Long</div>
               <div className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`} onClick={() => handleDirectionChange('short')}>Short</div>
             </div>
@@ -701,7 +814,7 @@ export default function TradeForm({
             {errors.target_distance && <span className="field-error">{errors.target_distance}</span>}
           </div>
           <div className="field wide">
-            <label>Risk-to-Reward</label>
+            <label>Planned R:R</label>
             <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
           </div>
 
@@ -713,51 +826,103 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
-            <div className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={multipleExits}
-                onChange={(e) => handleMultipleExitsToggle(e.target.checked)}
-                aria-label="Multiple exits"
-              />
-              Multiple exits
+            <div className="exit-row-fields">
+              <div className="field">
+                <label>Outcome</label>
+                <div className="outcome-select-wrap" ref={outcomeMenuRef}>
+                  <div
+                    className={`dt-picker-trigger outcome-select-trigger ${outcome === '' ? 'select-placeholder' : ''}`}
+                    onClick={() => setShowOutcomeMenu((v) => !v)}
+                  >
+                    <span>{OUTCOME_LABELS[outcome] || 'Select'}</span>
+                    <ChevronDown size={14} />
+                  </div>
+                  {showOutcomeMenu && (
+                    <div className="outcome-menu">
+                      {Object.entries(OUTCOME_LABELS).map(([value, label]) => (
+                        <div
+                          key={value}
+                          className="outcome-menu-item"
+                          onClick={() => { handleOutcomeChange(value); setShowOutcomeMenu(false) }}
+                        >
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {errors.outcome && <span className="field-error">{errors.outcome}</span>}
+              </div>
             </div>
           </div>
 
-          {!multipleExits ? (
-            renderExitFields(0)
+          {outcomeChosen && (!multipleExits ? (
+            <>
+              {renderExitFields(0)}
+              {isCustomOutcome && (
+                <div className="field full">
+                  <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                    + Add another exit
+                  </span>
+                </div>
+              )}
+            </>
           ) : (
             <div className="field full">
               <ol className="exit-list">
                 <li className="exit-list-item">
+                  {renderLegRBadge(execution.exit_price)}
                   <div className="exit-row-fields">{renderExitFields(0)}</div>
                 </li>
-                {additionalExits.map((_, i) => (
+                {additionalExits.map((row, i) => (
                   <li className="exit-list-item" key={i}>
+                    {renderLegRBadge(row.exit_price)}
                     <div className="exit-row-fields">{renderExitFields(i + 1)}</div>
-                    <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
+                    {i === additionalExits.length - 1 && (
+                      <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
+                    )}
                   </li>
                 ))}
               </ol>
-              <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
-                + Add another exit
-              </span>
+              {isCustomOutcome && (
+                <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                  + Add another exit
+                </span>
+              )}
+            </div>
+          ))}
+
+          {outcomeChosen && (
+            <div className="field full">
+              <div className="trade-summary-row">
+                <div className="field">
+                  <label>Realised R (blended)</label>
+                  <input
+                    type="text" disabled
+                    className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}
+                    value={realizedR === null ? '—' : (realizedR >= 0 ? '+' : '') + realizedR.toFixed(2) + 'R'}
+                  />
+                </div>
+                <div className="field">
+                  <label>$ Profit or Loss</label>
+                  <div className="currency-field">
+                    <span className="currency-prefix">$</span>
+                    <input
+                      type="text" inputMode="decimal" placeholder="0.00"
+                      value={pnlInput}
+                      onChange={(e) => handlePnlChange(e.target.value)}
+                      onFocus={handlePnlFocus}
+                      onBlur={handlePnlBlur}
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Total contracts</label>
+                  <input type="text" disabled className="readonly-field" value={totalLegContracts} />
+                </div>
+              </div>
             </div>
           )}
-
-          <div className="field wide">
-            <label>$ Profit or Loss</label>
-            <div className="currency-field">
-              <span className="currency-prefix">$</span>
-              <input
-                type="text" inputMode="decimal" placeholder="0.00"
-                value={pnlInput}
-                onChange={(e) => handlePnlChange(e.target.value)}
-                onFocus={handlePnlFocus}
-                onBlur={handlePnlBlur}
-              />
-            </div>
-          </div>
           <div className="field full section-label">
             Trade Review
             <span className="section-subtitle">
@@ -806,9 +971,8 @@ export default function TradeForm({
             <label>Discipline</label>
             {/* A div, not a label - a native <label> toggles its checkbox
                 on a click anywhere in it, including the text, which isn't
-                wanted for any checkbox in this form (see Multiple exits
-                below, the same way). aria-label restores what the checkbox
-                loses by not being wrapped in one. */}
+                wanted here. aria-label restores what the checkbox loses by
+                not being wrapped in one. */}
             <div className="checkbox-label">
               <input
                 type="checkbox"

@@ -23,7 +23,7 @@ export default function TermsOfServicePage({ searchParams }) {
         <h2>Description of service</h2>
         <p>
           EdgeLog is a trading journal tool. It allows you to log trades, track performance
-          statistics, and organize your trading strategies. EdgeLog does not execute trades, manage
+          statistics, and organise your trading strategies. EdgeLog does not execute trades, manage
           funds, or provide brokerage services.
         </p>
 
@@ -52,7 +52,7 @@ export default function TermsOfServicePage({ searchParams }) {
         <h2>Acceptable use</h2>
         <p>
           You agree not to use EdgeLog for any unlawful purpose, or to attempt to disrupt or gain
-          unauthorized access to the service.
+          unauthorised access to the service.
         </p>
 
         <h2>Termination</h2>

@@ -305,7 +305,15 @@ export default function TradeForm({
 
   function handleRemoveAdditionalExit(index) {
     setDirty(true)
-    setAdditionalExits((prev) => prev.filter((_, i) => i !== index))
+    setAdditionalExits((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      // Back down to just the primary exit - the numbered list/indent only
+      // makes sense with more than one, so drop back to the plain single-
+      // row layout rather than leaving the checkbox checked over a list of
+      // exactly one.
+      if (next.length === 0) setMultipleExits(false)
+      return next
+    })
     setPnlManual(false)
   }
 
@@ -681,14 +689,15 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
-            <label className="checkbox-label">
+            <div className="checkbox-label">
               <input
                 type="checkbox"
                 checked={multipleExits}
                 onChange={(e) => handleMultipleExitsToggle(e.target.checked)}
+                aria-label="Multiple exits"
               />
               Multiple exits
-            </label>
+            </div>
           </div>
 
           {!multipleExits ? (
@@ -779,6 +788,7 @@ export default function TradeForm({
           </div>
 
           <div className="field full tags-field">
+            <label>Tags</label>
             <div className="tag-row">
               {tags.map((tag) => (
                 <span className="trade-tag" key={tag}>
@@ -816,14 +826,20 @@ export default function TradeForm({
 
           <div className="field full discipline-field">
             <label>Discipline</label>
-            <label className="checkbox-label">
+            {/* A div, not a label - a native <label> toggles its checkbox
+                on a click anywhere in it, including the text, which isn't
+                wanted for any checkbox in this form (see Multiple exits
+                below, the same way). aria-label restores what the checkbox
+                loses by not being wrapped in one. */}
+            <div className="checkbox-label">
               <input
                 type="checkbox"
                 checked={reviewedNoIssues}
                 onChange={(e) => handleReviewedChange(e.target.checked)}
+                aria-label="Reviewed — no issues"
               />
               Reviewed — no issues
-            </label>
+            </div>
 
             {!reviewedNoIssues && (
               <div className="tag-row discipline-tag-row">
@@ -866,6 +882,7 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
+            <label>Notes</label>
             <textarea
               name="reasoning"
               defaultValue={initial.reasoning}

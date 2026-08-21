@@ -1306,14 +1306,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   .tag-add-form-wrap{flex-basis:100%;}
 }
 
-/* Shared plain-text checkbox + label row - Discipline's "Reviewed - no
+/* Shared plain-text checkbox + text row - Discipline's "Reviewed - no
    issues" and Trade Execution's "Multiple exits" both use this rather than
    the all-caps .field label styling, since each reads as a sentence next
-   to its own checkbox, not a field name above an input. */
+   to its own checkbox, not a field name above an input. A plain <div>
+   rather than a <label> (see the comment in TradeForm.js), specifically so
+   only the checkbox itself responds to a click, not the text next to it -
+   cursor stays default on the row for that reason, only the checkbox
+   itself gets the pointer cursor below. */
 .checkbox-label{
   display:flex; align-items:center; gap:8px; margin-top:2px;
   font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
-  text-transform:none; letter-spacing:0; color:var(--text); cursor:pointer;
+  text-transform:none; letter-spacing:0; color:var(--text);
 }
 .checkbox-label input{width:auto; margin:0; cursor:pointer; flex-shrink:0;}
 

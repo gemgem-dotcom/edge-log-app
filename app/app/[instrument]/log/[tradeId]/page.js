@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult, calcRiskReward, planAdherence, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
+import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -62,9 +62,6 @@ export default function TradeDetailPage({ params }) {
   const rClass = !closed ? 'r-zero' : trade.r_multiple > 0 ? 'r-pos' : trade.r_multiple < 0 ? 'r-neg' : 'r-zero'
   const shots = trade.screenshot_urls?.length ? trade.screenshot_urls : (trade.screenshot_url ? [trade.screenshot_url] : [])
   const riskReward = calcRiskReward(trade.target_distance, trade.stop_distance)
-  const adherence = planAdherence(trade)
-  const adherenceLabel = { target: 'Target hit', stop: 'Stop hit', breakeven: 'Breakeven', deviated: 'Deviated' }[adherence]
-  const adherenceClass = { target: 'r-pos', stop: 'r-neg', breakeven: 'r-zero', deviated: 'r-open' }[adherence]
 
   return (
     <div className="page-container">
@@ -88,7 +85,6 @@ export default function TradeDetailPage({ params }) {
           <div><label>MFE</label><div>—</div></div>
           <div><label>MAE</label><div>—</div></div>
           <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
-          <div><label>Plan Adherence</label><div>{adherence === null ? '—' : <span className={`r-pill ${adherenceClass}`}>{adherenceLabel}</span>}</div></div>
         </div>
       </div>
 

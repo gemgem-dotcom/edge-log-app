@@ -27,10 +27,9 @@ const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom
 // choice it originally was. A multi-exit trade can only have been saved as
 // Custom (handleSubmit drops additional_exits for anything else), and a
 // single exit whose price has reached or passed the planned target/stop
-// level reads as that outcome - the same tolerance-based "at or past"
-// comparison lib/tradeMath.js's planAdherence uses for the Plan Adherence
-// badge, so an exit that ran past the plan still counts as having hit it.
-// Anything short of either level falls back to Custom.
+// level (within lib/tradeMath.js's ADHERENCE_EPSILON tolerance) reads as
+// that outcome, so an exit that ran past the plan still counts as having
+// hit it. Anything short of either level falls back to Custom.
 function inferOutcome(initial) {
   if (isBlank(initial.execution.exit_price)) return ''
   if ((initial.additionalExits || []).length > 0) return 'custom'
@@ -918,7 +917,7 @@ export default function TradeForm({
             <div className="field full">
               <div className="trade-summary-row">
                 <div className="field">
-                  <label>Realised R (blended)</label>
+                  <label>{isCustomOutcome ? 'Realised R (blended)' : 'Realised R'}</label>
                   <input
                     type="text" disabled
                     className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}

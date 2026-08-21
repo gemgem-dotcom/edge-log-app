@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
-import { calcPointsFromExitPrice } from '@/lib/tradeMath'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -129,15 +128,11 @@ export default function EditTradePage({ params }) {
     execution: {
       contracts: trade.contracts ?? '',
       exit_time: trade.exit_time ?? '',
-      // Trades logged before "Exit (in points)" replaced a typed exit
-      // price only ever have exit_price - back-derive the points figure
-      // that would have produced it, so the field shows something
-      // meaningful instead of blank.
-      exit_points: trade.exit_points ?? calcPointsFromExitPrice(trade.direction, trade.entry, trade.exit_price) ?? '',
+      exit_price: trade.exit_price ?? '',
     },
     additionalExits: (trade.additional_exits || []).map((e) => ({
       exit_time: e.exit_time ?? '',
-      exit_points: e.exit_points ?? calcPointsFromExitPrice(trade.direction, trade.entry, e.exit_price) ?? '',
+      exit_price: e.exit_price ?? '',
       contracts: e.contracts ?? '',
     })),
     pnl: trade.pnl ?? null,

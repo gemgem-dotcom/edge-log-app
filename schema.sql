@@ -408,27 +408,14 @@ drop function _session_for_et_minutes(int);
 alter table trades add column if not exists reviewed_no_issues boolean not null default false;
 alter table trades add column if not exists discipline_tags text[];
 
--- Multiple exits (Log New Trade / Edit Trade's Trade Execution section).
+-- Multiple exits (Log New Trade / Edit Trade's Trade Management section).
 -- The trade's existing exit_time/exit_price/contracts columns still hold
 -- the first (or only) exit unchanged - this column holds every exit
 -- beyond that one, in the order they were entered, each shaped the same
--- way: {exit_time, exit_price, exit_points, contracts} (see exit_points
--- below for what exit_price here is derived from). $ P&L sums
--- calcProfitLoss across the primary exit and every row here (see
+-- way: {exit_time, exit_price, contracts}. $ P&L sums calcProfitLoss
+-- across the primary exit and every row here (see
 -- lib/tradeMath.js's calcMultiExitProfitLoss); r_multiple and
 -- session/continued_sessions above are still derived from the primary
 -- exit only. Empty array (not null) for a single-exit trade, so callers
 -- can always iterate it without a null check.
 alter table trades add column if not exists additional_exits jsonb not null default '[]'::jsonb;
-
--- "Exit (in points)" on the form - the trader logs how many points they
--- gained (positive) or lost (negative) on the primary exit, relative to
--- entry, rather than typing an absolute price. exit_price is still what
--- gets stored and used everywhere else (r_multiple, $-P&L, stats) -
--- lib/tradeMath.js's calcExitPriceFromPoints derives it from this column
--- and entry at save time (direction-aware, same as calcTargetPrice: a
--- short's "gain" moves price down, not up). Nullable: trades logged
--- before this existed only ever had exit_price, and the edit form
--- backfills a points figure for those from exit_price/entry
--- (calcPointsFromExitPrice) rather than needing this column populated.
-alter table trades add column if not exists exit_points numeric;

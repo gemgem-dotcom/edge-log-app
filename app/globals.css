@@ -1284,7 +1284,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* Extra breathing room under the Choose files/paste-from-clipboard row on
    the form specifically - the read-only trade views' own screenshot-grid
    isn't preceded by that row, so this doesn't touch those. */
-.screenshot-upload-row + .screenshot-grid{margin-top:16px;}
+.screenshot-upload-row + .screenshot-grid{margin-top:14px;}
 
 /* A trade with no exit price has no R yet. */
 .r-open{background:rgba(255,255,255,.07); color:var(--muted);}

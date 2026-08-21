@@ -164,9 +164,15 @@ async function loadData() {
   setLoading(true)
   setError(null)
   try {
+    // PGRST116 is PostgREST's "0 rows" error for .single() - expected when
+    // this strategy was deleted (e.g. a stale sidebar link, or a bookmark/
+    // back-button hit before the sidebar catches up - see the layout's own
+    // pathname-triggered refetch). That's the empty-strategy state below,
+    // not a real failure worth surfacing as an error banner.
     const { data: s, error: stratError } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
-    if (stratError) throw stratError
-    setStrategy(s)
+    if (stratError && stratError.code !== 'PGRST116') throw stratError
+    setStrategy(stratError ? null : s)
+    if (stratError) return
 
     const { data: tradeData, error: tradeError } = await supabase
     .from('trades')

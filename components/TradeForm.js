@@ -706,7 +706,7 @@ export default function TradeForm({
             />
           </div>
 
-          <div className="field full">
+          <div className="field full discipline-field">
             <label>Discipline</label>
             <label className="discipline-checkbox">
               <input

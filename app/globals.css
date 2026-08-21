@@ -1300,6 +1300,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   text-transform:none; letter-spacing:0; color:var(--text); cursor:pointer;
 }
 .discipline-checkbox input{width:auto; margin:0; cursor:pointer; flex-shrink:0;}
+/* Same clipping quirk as .tags-field above: .field's overflow-x:hidden
+   backstop computes overflow-y to auto instead of visible, clipping
+   .discipline-menu's position:absolute dropdown against the field's own
+   box. This field has no native widget to guard against, so it's exempted
+   the same way. */
+.discipline-field{overflow-x:visible;}
 .discipline-tag-row{margin-top:10px;}
 .discipline-tag{background:rgba(225,92,92,.1); color:var(--loss); border-color:rgba(225,92,92,.3);}
 .discipline-menu-wrap{position:relative; display:inline-flex;}

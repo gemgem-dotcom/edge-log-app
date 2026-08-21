@@ -744,52 +744,6 @@ export default function TradeForm({
               />
             </div>
           </div>
-          <div className="field full">
-            <label>Screenshot(s)</label>
-            <input type="file" accept="image/*" multiple onChange={handleScreenshotChange} />
-            <span className="field-hint">or paste from clipboard</span>
-            {(existingScreenshots.length > 0 || screenshots.length > 0) && (
-              <div className="screenshot-grid">
-                {existingScreenshots.map((url, i) => (
-                  <div key={url} className="screenshot-preview-wrap">
-                    <img
-                      src={url}
-                      alt={`Screenshot ${i + 1}`}
-                      className="screenshot-preview-thumb"
-                      onClick={() => setLightboxIndex(i)}
-                    />
-                    <button
-                      type="button"
-                      className="screenshot-remove-btn"
-                      onClick={() => handleRemoveExistingScreenshot(i)}
-                      aria-label={`Remove screenshot ${i + 1}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                {screenshots.map((shot, i) => (
-                  <div key={shot.previewUrl} className="screenshot-preview-wrap">
-                    <img
-                      src={shot.previewUrl}
-                      alt={`New screenshot ${i + 1}`}
-                      className="screenshot-preview-thumb"
-                      onClick={() => setLightboxIndex(existingScreenshots.length + i)}
-                    />
-                    <button
-                      type="button"
-                      className="screenshot-remove-btn"
-                      onClick={() => handleRemoveScreenshot(i)}
-                      aria-label={`Remove new screenshot ${i + 1}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className="field full section-label">
             Trade Review
             <span className="section-subtitle">
@@ -899,6 +853,52 @@ export default function TradeForm({
               aria-label="Why did you take it?"
               onChange={() => setDirty(true)}
             />
+          </div>
+
+          <div className="field full">
+            <label>Screenshot(s)</label>
+            <input type="file" accept="image/*" multiple onChange={handleScreenshotChange} />
+            <span className="field-hint">or paste from clipboard</span>
+            {(existingScreenshots.length > 0 || screenshots.length > 0) && (
+              <div className="screenshot-grid">
+                {existingScreenshots.map((url, i) => (
+                  <div key={url} className="screenshot-preview-wrap">
+                    <img
+                      src={url}
+                      alt={`Screenshot ${i + 1}`}
+                      className="screenshot-preview-thumb"
+                      onClick={() => setLightboxIndex(i)}
+                    />
+                    <button
+                      type="button"
+                      className="screenshot-remove-btn"
+                      onClick={() => handleRemoveExistingScreenshot(i)}
+                      aria-label={`Remove screenshot ${i + 1}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {screenshots.map((shot, i) => (
+                  <div key={shot.previewUrl} className="screenshot-preview-wrap">
+                    <img
+                      src={shot.previewUrl}
+                      alt={`New screenshot ${i + 1}`}
+                      className="screenshot-preview-thumb"
+                      onClick={() => setLightboxIndex(existingScreenshots.length + i)}
+                    />
+                    <button
+                      type="button"
+                      className="screenshot-remove-btn"
+                      onClick={() => handleRemoveScreenshot(i)}
+                      aria-label={`Remove new screenshot ${i + 1}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>

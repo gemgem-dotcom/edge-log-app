@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss } from '../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -40,7 +40,7 @@ export const EMPTY_TRADE_FORM = {
   existingScreenshots: [],
 }
 
-// The Trade Setup / Trade Execution / Trade Review form, shared by the new-
+// The Trade Setup / Trade Management / Trade Review form, shared by the new-
 // and edit-trade pages. It owns every piece of form state, the validation and
 // the derived figures, then hands the finished values to `onSubmit`.
 //
@@ -275,7 +275,7 @@ export default function TradeForm({
     // Editing any input the $ P&L calc actually depends on re-enables
     // auto-fill from that point on, even on the edit page where a stored
     // figure otherwise counts as manual (see pnlManual's init above) -
-    // deliberately changing contracts or exit price is a clearer signal
+    // deliberately changing contracts or exit points is a clearer signal
     // that the trader wants the total to follow than a value that just
     // happens to still be sitting in the field from before.
     if (field === 'contracts' || field === 'exit_price') setPnlManual(false)
@@ -506,7 +506,11 @@ export default function TradeForm({
       target: toDecimalString(targetPrice),
       stop_distance: toDecimalString(stopDistance),
       target_distance: toDecimalString(targetDistance),
+      // exit_points is derived from the typed exit price rather than
+      // entered directly - see calcPointsFromExitPrice. Stored for future
+      // use (e.g. market-data matching); the trader never sees it.
       exit_price: toDecimalString(exitPrice),
+      exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, exitPrice)),
       exit_time: execution.exit_time || null,
       r_multiple: calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
@@ -517,11 +521,15 @@ export default function TradeForm({
       additional_exits: multipleExits
         ? additionalExits
           .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
-          .map((row) => ({
-            exit_time: row.exit_time || null,
-            exit_price: toDecimalString(parseFloat(row.exit_price)),
-            contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
-          }))
+          .map((row) => {
+            const rowExitPrice = parseFloat(row.exit_price)
+            return {
+              exit_time: row.exit_time || null,
+              exit_price: toDecimalString(rowExitPrice),
+              exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, rowExitPrice)),
+              contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
+            }
+          })
         : [],
       pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,
@@ -603,7 +611,7 @@ export default function TradeForm({
           <div className="field full section-label">
             Trade Setup
             <span className="section-subtitle">
-              These details define the setup and help EdgeLog identify it in market data.
+              These details define the setup according to your strategy and help EdgeLog identify it in market data.
             </span>
           </div>
 
@@ -671,15 +679,10 @@ export default function TradeForm({
           </div>
 
           <div className="field wide">
-            <label>Take Profit (in points) <FieldTooltip text={DISTANCE_HINT} /></label>
-            <input
-              type="number" step="0.01" min="0"
-              value={setup.target_distance} onChange={(e) => updateSetup('target_distance', e.target.value)}
-            />
-            {errors.target_distance && <span className="field-error">{errors.target_distance}</span>}
-          </div>
-          <div className="field wide">
-            <label>Stop Loss (in points) <FieldTooltip text={DISTANCE_HINT} /></label>
+            <div className="field-label-row">
+              <label>Stop Loss (in points)</label>
+              <FieldTooltip text={DISTANCE_HINT} />
+            </div>
             <input
               type="number" step="0.01" min="0"
               value={setup.stop_distance} onChange={(e) => updateSetup('stop_distance', e.target.value)}
@@ -687,12 +690,23 @@ export default function TradeForm({
             {errors.stop_distance && <span className="field-error">{errors.stop_distance}</span>}
           </div>
           <div className="field wide">
+            <div className="field-label-row">
+              <label>Take Profit (in points)</label>
+              <FieldTooltip text={DISTANCE_HINT} />
+            </div>
+            <input
+              type="number" step="0.01" min="0"
+              value={setup.target_distance} onChange={(e) => updateSetup('target_distance', e.target.value)}
+            />
+            {errors.target_distance && <span className="field-error">{errors.target_distance}</span>}
+          </div>
+          <div className="field wide">
             <label>Risk-to-Reward</label>
             <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
           </div>
 
           <div className="field full section-label">
-            Trade Execution
+            Trade Management
             <span className="section-subtitle">
               Record how the trade was executed, including contracts, exit details, and your final P&amp;L.
             </span>
@@ -744,52 +758,6 @@ export default function TradeForm({
               />
             </div>
           </div>
-          <div className="field full">
-            <label>Screenshot(s)</label>
-            <input type="file" accept="image/*" multiple onChange={handleScreenshotChange} />
-            <span className="field-hint">or paste from clipboard</span>
-            {(existingScreenshots.length > 0 || screenshots.length > 0) && (
-              <div className="screenshot-grid">
-                {existingScreenshots.map((url, i) => (
-                  <div key={url} className="screenshot-preview-wrap">
-                    <img
-                      src={url}
-                      alt={`Screenshot ${i + 1}`}
-                      className="screenshot-preview-thumb"
-                      onClick={() => setLightboxIndex(i)}
-                    />
-                    <button
-                      type="button"
-                      className="screenshot-remove-btn"
-                      onClick={() => handleRemoveExistingScreenshot(i)}
-                      aria-label={`Remove screenshot ${i + 1}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                {screenshots.map((shot, i) => (
-                  <div key={shot.previewUrl} className="screenshot-preview-wrap">
-                    <img
-                      src={shot.previewUrl}
-                      alt={`New screenshot ${i + 1}`}
-                      className="screenshot-preview-thumb"
-                      onClick={() => setLightboxIndex(existingScreenshots.length + i)}
-                    />
-                    <button
-                      type="button"
-                      className="screenshot-remove-btn"
-                      onClick={() => handleRemoveScreenshot(i)}
-                      aria-label={`Remove new screenshot ${i + 1}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className="field full section-label">
             Trade Review
             <span className="section-subtitle">
@@ -899,6 +867,60 @@ export default function TradeForm({
               aria-label="Why did you take it?"
               onChange={() => setDirty(true)}
             />
+          </div>
+
+          <div className="field full">
+            <label>Screenshot(s)</label>
+            <div className="screenshot-upload-row">
+              <label htmlFor="screenshot-upload" className="file-upload-btn">Choose files</label>
+              <input
+                id="screenshot-upload"
+                type="file" accept="image/*" multiple
+                onChange={handleScreenshotChange}
+                className="file-upload-input"
+              />
+              <span className="field-hint">or paste from clipboard</span>
+            </div>
+            {(existingScreenshots.length > 0 || screenshots.length > 0) && (
+              <div className="screenshot-grid">
+                {existingScreenshots.map((url, i) => (
+                  <div key={url} className="screenshot-preview-wrap">
+                    <img
+                      src={url}
+                      alt={`Screenshot ${i + 1}`}
+                      className="screenshot-preview-thumb"
+                      onClick={() => setLightboxIndex(i)}
+                    />
+                    <button
+                      type="button"
+                      className="screenshot-remove-btn"
+                      onClick={() => handleRemoveExistingScreenshot(i)}
+                      aria-label={`Remove screenshot ${i + 1}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {screenshots.map((shot, i) => (
+                  <div key={shot.previewUrl} className="screenshot-preview-wrap">
+                    <img
+                      src={shot.previewUrl}
+                      alt={`New screenshot ${i + 1}`}
+                      className="screenshot-preview-thumb"
+                      onClick={() => setLightboxIndex(existingScreenshots.length + i)}
+                    />
+                    <button
+                      type="button"
+                      className="screenshot-remove-btn"
+                      onClick={() => handleRemoveScreenshot(i)}
+                      aria-label={`Remove new screenshot ${i + 1}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>

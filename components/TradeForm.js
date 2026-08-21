@@ -176,7 +176,7 @@ export default function TradeForm({
   const stopPriceForR = calcStopPrice(direction, entryNum, parseFloat(setup.stop_distance))
 
   // R-multiple for a single exit leg's typed price - reward/risk off the
-  // same Entry/Stop the Trade Setup section's own Risk-to-Reward uses, just
+  // same Entry/Stop the Trade Setup section's own Planned R:R uses, just
   // with this leg's actual exit price standing in for the planned target.
   function legRMultiple(exitPriceStr) {
     return calcRMultiple(direction, entryNum, stopPriceForR, parseFloat(exitPriceStr))
@@ -806,7 +806,7 @@ export default function TradeForm({
             {errors.target_distance && <span className="field-error">{errors.target_distance}</span>}
           </div>
           <div className="field wide">
-            <label>Risk-to-Reward</label>
+            <label>Planned R:R</label>
             <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
           </div>
 

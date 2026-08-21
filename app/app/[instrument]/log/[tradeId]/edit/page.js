@@ -124,6 +124,7 @@ export default function EditTradePage({ params }) {
       entry: trade.entry ?? '',
       target_distance: trade.target_distance ?? (trade.target != null ? Math.abs(trade.target - trade.entry) : ''),
       stop_distance: trade.stop_distance ?? (trade.stop != null ? Math.abs(trade.stop - trade.entry) : ''),
+      position_size: trade.position_size ?? '',
     },
     execution: {
       contracts: trade.contracts ?? '',

@@ -23,25 +23,25 @@
    1093  2FA
    1108  Account fine print
    1111  Screenshot preview (log new trade)
-   1149  Auth pages always dark
-   1177  Monthly P&L (calendar on Overview)
-   1243  Trade form: sections, validation, currency, screenshots
-   1404  Field tooltips
-   1460  Date/time picker (adds an optional popup to a typed input)
-   1569  In-header column filters (trade log table)
-   1603  Active filter chips
-   1652  Empty states, error banners, skeleton loaders
-   1723  Cross-instrument overview dashboard (/app)
-   1943  Not found / error boundary state pages
-   1956  Toast notifications
-   1984  Public policy pages (Privacy, Terms)
-   2003  Legal links (auth pages + account settings)
-   2042  Economic calendar card (mock - Overview pages)
-   2149  Calendar news badge (Monthly P&L day cells, mock)
-   2170  Streak badge (Overview + strategy detail pages)
-   2187  Market status pill (Overview + strategy detail pages)
-   2213  Key levels, today's brief (mock cards)
-   2239  Market context cards (all-instruments Overview)
+   1153  Auth pages always dark
+   1181  Monthly P&L (calendar on Overview)
+   1247  Trade form: sections, validation, currency, screenshots
+   1422  Field tooltips
+   1483  Date/time picker (adds an optional popup to a typed input)
+   1592  In-header column filters (trade log table)
+   1626  Active filter chips
+   1675  Empty states, error banners, skeleton loaders
+   1746  Cross-instrument overview dashboard (/app)
+   1966  Not found / error boundary state pages
+   1979  Toast notifications
+   2007  Public policy pages (Privacy, Terms)
+   2026  Legal links (auth pages + account settings)
+   2065  Economic calendar card (mock - Overview pages)
+   2172  Calendar news badge (Monthly P&L day cells, mock)
+   2193  Streak badge (Overview + strategy detail pages)
+   2210  Market status pill (Overview + strategy detail pages)
+   2236  Key levels, today's brief (mock cards)
+   2262  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1387,7 +1387,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   .discipline-menu-wrap{flex-basis:100%;}
 }
 
-/* Multiple exits (Trade Execution) - each exit becomes a numbered, slightly
+/* Multiple exits (Trade Management) - each exit becomes a numbered, slightly
    indented list item instead of a flat repeat of the same three fields.
    .exit-row-fields is its own 3-column grid rather than relying on the
    outer form grid's own column tracking, since nesting inside a .field.full
@@ -1401,10 +1401,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; flex-direction:column; gap:16px;
 }
 .exit-list-item::marker{color:var(--muted); font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700;}
+/* The leg's own R-multiple, sitting as the very first thing in the <li> so
+   it lands on the same line as the ::marker number above (e.g. "1.  +2.34R") -
+   an empty min-height keeps that first line's height stable (and the
+   marker's vertical position steady) for a not-yet-priced leg, which
+   renders nothing here rather than a placeholder dash. */
+.exit-leg-r{min-height:15px; font-size:13px; font-weight:600; margin-bottom:2px;}
 .exit-row-fields{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
 .exit-row-fields .field{grid-column:span 1;}
 .exit-remove{display:inline-block; margin-top:8px; font-size:12px;}
 .exit-add{display:inline-block; margin-top:12px;}
+/* Soft, non-blocking validation (contracts not adding up to Position size) -
+   distinct from .field-error's red, which reads as "this submission will be
+   rejected" and would be misleading for something that never blocks saving. */
+.field-warning{display:block; color:var(--be); font-size:12px; margin-top:4px;}
 @media (max-width:640px){
   .exit-row-fields{grid-template-columns:1fr;}
 }

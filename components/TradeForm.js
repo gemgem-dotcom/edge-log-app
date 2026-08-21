@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
-import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice } from '../lib/tradeMath'
+import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -30,7 +30,7 @@ export const EMPTY_TRADE_FORM = {
   direction: 'long',
   strategyId: '',
   reasoning: '',
-  setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '' },
+  setup: { trade_date: '', trade_time: '', entry: '', target_distance: '', stop_distance: '', position_size: '' },
   execution: { contracts: '', exit_time: '', exit_price: '' },
   additionalExits: [],
   pnl: null,
@@ -146,6 +146,55 @@ export default function TradeForm({
     parseFloat(setup.stop_distance),
     direction,
     parseFloat(setup.entry),
+  )
+
+  // Every per-leg and blended R-multiple below shares this same stop price -
+  // computed once so the numbered list's live badges and the summary row's
+  // Realized R can't ever disagree on what "risk" means for this trade.
+  const entryNum = parseFloat(setup.entry)
+  const stopPriceForR = calcStopPrice(direction, entryNum, parseFloat(setup.stop_distance))
+
+  // R-multiple for a single exit leg's typed price - reward/risk off the
+  // same Entry/Stop the Trade Setup section's own Risk-to-Reward uses, just
+  // with this leg's actual exit price standing in for the planned target.
+  function legRMultiple(exitPriceStr) {
+    return calcRMultiple(direction, entryNum, stopPriceForR, parseFloat(exitPriceStr))
+  }
+
+  // The exit legs currently on screen - just the primary exit outside
+  // Multiple exits mode, primary + every additional row once it's on.
+  const exitLegRows = multipleExits ? [execution, ...additionalExits] : [execution]
+
+  // Total contracts closed so far, across every leg - used both for the
+  // summary row below and to validate against Position size.
+  const totalLegContracts = exitLegRows.reduce((sum, row) => (
+    sum + (isBlank(row.contracts) ? 0 : parseInt(row.contracts))
+  ), 0)
+
+  // A trader might be mid-way through logging a trade that's still open, so
+  // this is a soft warning rather than a validation error - contracts
+  // logged so far falling short of Position size is completely normal.
+  // Only checked when Position size was actually entered - with nothing to
+  // compare against, there's nothing to warn about.
+  let contractsWarning = null
+  if (!isBlank(setup.position_size)) {
+    const positionSize = parseInt(setup.position_size)
+    if (Number.isFinite(positionSize) && positionSize > 0 && totalLegContracts > 0 && totalLegContracts !== positionSize) {
+      contractsWarning = totalLegContracts > positionSize
+        ? `Contracts across all legs add up to ${totalLegContracts} — more than the ${positionSize} this trade opened with.`
+        : `Contracts across all legs add up to ${totalLegContracts} of the ${positionSize} this trade opened with.`
+    }
+  }
+
+  // Realized R (blended): a contracts-weighted average of every leg's own
+  // R-multiple, reduces to just that one exit's R-multiple for a single
+  // exit. Never derived from $ Profit or Loss (see handlePnlChange) - purely
+  // a price/contracts calculation, so a manual P&L edit can't move it.
+  const realizedR = calcBlendedRMultiple(
+    direction,
+    entryNum,
+    stopPriceForR,
+    exitLegRows.map((row) => ({ exit_price: parseFloat(row.exit_price), contracts: parseFloat(row.contracts) })),
   )
 
   // The new-trade page renders before its strategies have loaded, so the
@@ -506,6 +555,7 @@ export default function TradeForm({
       target: toDecimalString(targetPrice),
       stop_distance: toDecimalString(stopDistance),
       target_distance: toDecimalString(targetDistance),
+      position_size: isBlank(setup.position_size) ? null : parseInt(setup.position_size),
       // exit_points is derived from the typed exit price rather than
       // entered directly - see calcPointsFromExitPrice. Stored for future
       // use (e.g. market-data matching); the trader never sees it.
@@ -597,6 +647,22 @@ export default function TradeForm({
     )
   }
 
+  // The live R-multiple for one exit leg's numbered row - rendered as the
+  // very first thing inside its <li> so it lands on the same line as the
+  // list's own number marker (see .exit-list-item::marker), reading like
+  // "1.  +2.34R" the way the row numbers themselves already do. Blank
+  // (rather than a placeholder) until there's actually a price to compute
+  // from - a bare "—" next to every unfilled row would just be noise.
+  function renderLegRBadge(exitPriceStr) {
+    const r = legRMultiple(exitPriceStr)
+    if (r === null) return <div className="exit-leg-r" />
+    return (
+      <div className="exit-leg-r">
+        <span className={r > 0 ? 'pos' : r < 0 ? 'neg' : 'neu'}>{(r >= 0 ? '+' : '') + r.toFixed(2)}R</span>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="panel">
@@ -677,6 +743,13 @@ export default function TradeForm({
             </div>
             {errors.direction && <span className="field-error">{errors.direction}</span>}
           </div>
+          <div className="field wide">
+            <label>Position size</label>
+            <input
+              type="number" step="1" min="0"
+              value={setup.position_size} onChange={(e) => updateSetup('position_size', e.target.value)}
+            />
+          </div>
 
           <div className="field wide">
             <div className="field-label-row">
@@ -730,10 +803,12 @@ export default function TradeForm({
             <div className="field full">
               <ol className="exit-list">
                 <li className="exit-list-item">
+                  {renderLegRBadge(execution.exit_price)}
                   <div className="exit-row-fields">{renderExitFields(0)}</div>
                 </li>
-                {additionalExits.map((_, i) => (
+                {additionalExits.map((row, i) => (
                   <li className="exit-list-item" key={i}>
+                    {renderLegRBadge(row.exit_price)}
                     <div className="exit-row-fields">{renderExitFields(i + 1)}</div>
                     <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
                   </li>
@@ -742,6 +817,12 @@ export default function TradeForm({
               <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
                 + Add another exit
               </span>
+            </div>
+          )}
+
+          {contractsWarning && (
+            <div className="field full">
+              <span className="field-warning">{contractsWarning}</span>
             </div>
           )}
 

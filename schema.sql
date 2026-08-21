@@ -428,3 +428,12 @@ alter table trades add column if not exists additional_exits jsonb not null defa
 -- on the form. Nullable since trades logged before this existed only
 -- ever had exit_price.
 alter table trades add column if not exists exit_points numeric;
+
+-- How many contracts the trade was entered with (Trade Setup's "Position
+-- size"), distinct from the per-exit `contracts` columns above, which hold
+-- how many contracts each individual exit closed. Optional: entering it
+-- lets the form warn (not block) if the exit legs' contracts don't add up
+-- to it, and lets the Hit target/Hit stop outcome shortcut pre-fill a
+-- single exit's Contracts field with it. Nullable/no default since trades
+-- logged before this existed never had a value for it.
+alter table trades add column if not exists position_size integer;

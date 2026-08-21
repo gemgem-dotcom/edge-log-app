@@ -26,22 +26,22 @@
    1168  Auth pages always dark
    1196  Monthly P&L (calendar on Overview)
    1262  Trade form: sections, validation, currency, screenshots
-   1482  Field tooltips
-   1544  Date/time picker (adds an optional popup to a typed input)
-   1653  In-header column filters (trade log table)
-   1687  Active filter chips
-   1736  Empty states, error banners, skeleton loaders
-   1807  Cross-instrument overview dashboard (/app)
-   2027  Not found / error boundary state pages
-   2040  Toast notifications
-   2068  Public policy pages (Privacy, Terms)
-   2087  Legal links (auth pages + account settings)
-   2126  Economic calendar card (mock - Overview pages)
-   2233  Calendar news badge (Monthly P&L day cells, mock)
-   2254  Streak badge (Overview + strategy detail pages)
-   2271  Market status pill (Overview + strategy detail pages)
-   2297  Key levels, today's brief (mock cards)
-   2323  Market context cards (all-instruments Overview)
+   1491  Field tooltips
+   1553  Date/time picker (adds an optional popup to a typed input)
+   1662  In-header column filters (trade log table)
+   1696  Active filter chips
+   1745  Empty states, error banners, skeleton loaders
+   1816  Cross-instrument overview dashboard (/app)
+   2036  Not found / error boundary state pages
+   2049  Toast notifications
+   2077  Public policy pages (Privacy, Terms)
+   2096  Legal links (auth pages + account settings)
+   2135  Economic calendar card (mock - Overview pages)
+   2242  Calendar news badge (Monthly P&L day cells, mock)
+   2263  Streak badge (Overview + strategy detail pages)
+   2280  Market status pill (Overview + strategy detail pages)
+   2306  Key levels, today's brief (mock cards)
+   2332  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1292,6 +1292,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    icon. */
 .outcome-select-wrap{position:relative;}
 .outcome-select-trigger{cursor:pointer;}
+/* .dt-picker-trigger's own font (JetBrains Mono, for the numeric date/time
+   values it's normally showing) would read oddly for plain words like
+   "Select"/"Hit Target" - reset to match .outcome-menu-item's font below it
+   so the trigger and its menu read as one control. Chained with
+   .dt-picker-trigger (specificity over a lone .outcome-select-trigger) for
+   the same reason .outcome-select-trigger.select-placeholder above is -
+   .dt-picker-trigger's own font-family/font-size, defined later in the
+   file, would otherwise win a same-specificity tie. */
+.outcome-select-trigger.dt-picker-trigger{font-family:'Inter',sans-serif; font-size:12.5px;}
 /* width:100% (not .tag-suggestions/.discipline-menu's fixed min-width) so
    the menu spans exactly the trigger's own box - it sits in the same
    single-column slot of .exit-row-fields as the exit fields below it, so

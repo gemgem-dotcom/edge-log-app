@@ -20,28 +20,28 @@
    804  Calendar
    852  Account settings page
    1050  Light theme
-   1077  2FA
-   1092  Account fine print
-   1095  Screenshot preview (log new trade)
-   1112  Auth pages always dark
-   1140  Monthly P&L (calendar on Overview)
-   1206  Trade form: sections, validation, currency, screenshots
-   1291  Field tooltips
-   1347  Date/time picker (adds an optional popup to a typed input)
-   1456  In-header column filters (trade log table)
-   1490  Active filter chips
-   1539  Empty states, error banners, skeleton loaders
-   1610  Cross-instrument overview dashboard (/app)
-   1830  Not found / error boundary state pages
-   1843  Toast notifications
-   1871  Public policy pages (Privacy, Terms)
-   1890  Legal links (auth pages + account settings)
-   1929  Economic calendar card (mock - Overview pages)
-   2036  Calendar news badge (Monthly P&L day cells, mock)
-   2057  Streak badge (Overview + strategy detail pages)
-   2074  Market status pill (Overview + strategy detail pages)
-   2100  Key levels, today's brief (mock cards)
-   2126  Market context cards (all-instruments Overview)
+   1078  2FA
+   1093  Account fine print
+   1096  Screenshot preview (log new trade)
+   1113  Auth pages always dark
+   1141  Monthly P&L (calendar on Overview)
+   1207  Trade form: sections, validation, currency, screenshots
+   1326  Field tooltips
+   1382  Date/time picker (adds an optional popup to a typed input)
+   1491  In-header column filters (trade log table)
+   1525  Active filter chips
+   1574  Empty states, error banners, skeleton loaders
+   1645  Cross-instrument overview dashboard (/app)
+   1865  Not found / error boundary state pages
+   1878  Toast notifications
+   1906  Public policy pages (Privacy, Terms)
+   1925  Legal links (auth pages + account settings)
+   1964  Economic calendar card (mock - Overview pages)
+   2071  Calendar news badge (Monthly P&L day cells, mock)
+   2092  Streak badge (Overview + strategy detail pages)
+   2109  Market status pill (Overview + strategy detail pages)
+   2135  Key levels, today's brief (mock cards)
+   2161  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1072,7 +1072,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 :root[data-theme="light"] .modal-overlay{background:rgba(20,22,26,.55);}
 :root[data-theme="light"] .instrument-dropdown,
 :root[data-theme="light"] .strategy-menu-dropdown,
-:root[data-theme="light"] .tag-suggestions{box-shadow:0 8px 24px rgba(20,22,26,.15);}
+:root[data-theme="light"] .tag-suggestions,
+:root[data-theme="light"] .discipline-menu{box-shadow:0 8px 24px rgba(20,22,26,.15);}
 
 /* ---------- 2FA ---------- */
 .mfa-status-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
@@ -1286,6 +1287,40 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
      pins its left edge (and so the dropdown's) to the row's own left
      edge every time, regardless of tag count. */
   .tag-add-form-wrap{flex-basis:100%;}
+}
+
+/* Discipline - a mandatory reviewed-or-flagged checkbox (Trade Review
+   section). Unticked, it expands into the same add/remove-pill pattern as
+   Tags above, but picking from a fixed grouped list rather than free text,
+   and in --loss red rather than --accent blue, so a flagged trade reads as
+   a flagged trade at a glance in the trade log/detail views later. */
+.discipline-checkbox{
+  display:flex; align-items:center; gap:8px; margin-top:2px;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+  text-transform:none; letter-spacing:0; color:var(--text); cursor:pointer;
+}
+.discipline-checkbox input{width:auto; margin:0; cursor:pointer; flex-shrink:0;}
+.discipline-tag-row{margin-top:10px;}
+.discipline-tag{background:rgba(225,92,92,.1); color:var(--loss); border-color:rgba(225,92,92,.3);}
+.discipline-menu-wrap{position:relative; display:inline-flex;}
+/* Same floating-menu treatment as .tag-suggestions, grouped under
+   sub-headings instead of a flat filtered list - a fixed max-height with
+   scroll keeps four groups of three items from overrunning the panel on a
+   short viewport. */
+.discipline-menu{
+  position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; min-width:210px; max-height:260px;
+  overflow-y:auto; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
+  padding:6px 0;
+}
+.discipline-menu-heading{
+  padding:8px 12px 4px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); font-family:'Inter',sans-serif; font-weight:700;
+}
+.discipline-menu-item{padding:8px 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
+.discipline-menu-item:hover{background:var(--panel-2);}
+@media (max-width:640px){
+  .discipline-menu-wrap{flex-basis:100%;}
 }
 
 /* ---------- Field tooltips ---------- */

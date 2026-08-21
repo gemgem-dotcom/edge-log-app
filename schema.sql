@@ -395,3 +395,15 @@ where t.id = c.id;
 
 drop function _continued_sessions_walk(timestamp, int, text);
 drop function _session_for_et_minutes(int);
+
+-- Trade Review's Discipline field (Log New Trade / Edit Trade). A trade is
+-- either reviewed clean (reviewed_no_issues) or flagged with one or more
+-- fixed issue tags (discipline_tags, grouped in the UI under Entry
+-- discipline/Risk management/Exit discipline/Behavioral - see
+-- components/TradeForm.js's DISCIPLINE_GROUPS) - never both, the form
+-- clears discipline_tags whenever reviewed_no_issues is checked. Mandatory
+-- on the form (one of the two has to be set) but nullable/defaulted here
+-- the same way tags is, since trades logged before this existed have
+-- neither.
+alter table trades add column if not exists reviewed_no_issues boolean not null default false;
+alter table trades add column if not exists discipline_tags text[];

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcProfitLoss } from '../lib/tradeMath'
-import { isBlank, validateSetup, validateExecution, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
+import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
@@ -14,6 +14,16 @@ import TimePicker from './TimePicker'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
+// Fixed, grouped issue list for the Discipline field below - unlike Tags,
+// this isn't a free-text/previously-used list, so the groups and their order
+// are just declared here.
+const DISCIPLINE_GROUPS = [
+  { heading: 'Entry discipline', items: ['Early entry', 'Chased price / late entry', 'No clear setup'] },
+  { heading: 'Risk management', items: ['Oversized', 'Moved stop', 'Removed stop'] },
+  { heading: 'Exit discipline', items: ['Cut winner early', 'Held loser too long', 'Moved target'] },
+  { heading: 'Behavioral', items: ['Hesitated', 'Revenge trade', 'Overtraded'] },
+]
+
 export const EMPTY_TRADE_FORM = {
   direction: 'long',
   strategyId: '',
@@ -22,6 +32,8 @@ export const EMPTY_TRADE_FORM = {
   execution: { contracts: '', exit_time: '', exit_price: '' },
   pnl: null,
   tags: [],
+  reviewedNoIssues: false,
+  disciplineTags: [],
   existingScreenshots: [],
 }
 
@@ -102,6 +114,10 @@ export default function TradeForm({
   // only governs the suggestions dropdown, so scrolling or clicking away
   // closes the dropdown without losing whatever's mid-typed in the input.
   const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const [reviewedNoIssues, setReviewedNoIssues] = useState(initial.reviewedNoIssues ?? false)
+  const [disciplineTags, setDisciplineTags] = useState(initial.disciplineTags || [])
+  const [showDisciplineMenu, setShowDisciplineMenu] = useState(false)
 
   const [saving, setSaving] = useState(false)
 
@@ -215,6 +231,11 @@ export default function TradeForm({
       window.removeEventListener('resize', dismissOnResize)
     }
   }, [showSuggestions])
+
+  // Discipline's issue picker is a plain click-to-toggle list, not a typed
+  // input like the tag dropdown above - no autofocus/keyboard/scroll
+  // interplay to guard against, so a plain outside-click close is enough.
+  const disciplineMenuRef = useClickOutside(showDisciplineMenu, () => setShowDisciplineMenu(false))
 
   function updateSetup(field, value) {
     setDirty(true)
@@ -345,6 +366,25 @@ export default function TradeForm({
     setTags((prev) => prev.filter((t) => t !== tag))
   }
 
+  function handleReviewedChange(checked) {
+    setDirty(true)
+    setReviewedNoIssues(checked)
+    setErrors((prev) => (prev.discipline ? { ...prev, discipline: undefined } : prev))
+  }
+
+  // The issue list is fixed, so toggling is just in/out - unlike free-text
+  // tags there's nothing to dedupe or trim.
+  function handleToggleDisciplineTag(tag) {
+    setDirty(true)
+    setDisciplineTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+    setErrors((prev) => (prev.discipline ? { ...prev, discipline: undefined } : prev))
+  }
+
+  function handleRemoveDisciplineTag(tag) {
+    setDirty(true)
+    setDisciplineTags((prev) => prev.filter((t) => t !== tag))
+  }
+
   function handlePnlFocus() {
     const parsed = parseCurrency(pnlInput)
     setPnlInput(parsed === null ? '' : String(parsed))
@@ -368,6 +408,7 @@ export default function TradeForm({
     const foundErrors = {
       ...validateSetup({ ...setup, direction, strategyId }),
       ...validateExecution(execution),
+      ...validateDiscipline({ reviewedNoIssues, disciplineTags }),
     }
     if (Object.keys(foundErrors).length > 0) {
       setErrors(foundErrors)
@@ -402,6 +443,8 @@ export default function TradeForm({
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,
+      reviewed_no_issues: reviewedNoIssues,
+      discipline_tags: reviewedNoIssues ? [] : disciplineTags,
     }
 
     // The caller navigates away on success; returning an error message
@@ -661,6 +704,57 @@ export default function TradeForm({
               aria-label="Why did you take it?"
               onChange={() => setDirty(true)}
             />
+          </div>
+
+          <div className="field full">
+            <label>Discipline</label>
+            <label className="discipline-checkbox">
+              <input
+                type="checkbox"
+                checked={reviewedNoIssues}
+                onChange={(e) => handleReviewedChange(e.target.checked)}
+              />
+              Reviewed — no issues
+            </label>
+
+            {!reviewedNoIssues && (
+              <div className="tag-row discipline-tag-row">
+                {disciplineTags.map((tag) => (
+                  <span className="trade-tag discipline-tag" key={tag}>
+                    {tag}
+                    <X size={12} className="trade-tag-remove" onClick={() => handleRemoveDisciplineTag(tag)} />
+                  </span>
+                ))}
+                <span className="discipline-menu-wrap" ref={disciplineMenuRef}>
+                  <span className="del" style={{ color: 'var(--loss)' }} onClick={() => setShowDisciplineMenu((v) => !v)}>
+                    + Add issue
+                  </span>
+                  {showDisciplineMenu && (
+                    <div className="discipline-menu">
+                      {DISCIPLINE_GROUPS.map((group) => {
+                        const remaining = group.items.filter((item) => !disciplineTags.includes(item))
+                        if (remaining.length === 0) return null
+                        return (
+                          <div key={group.heading}>
+                            <div className="discipline-menu-heading">{group.heading}</div>
+                            {remaining.map((item) => (
+                              <div
+                                key={item}
+                                className="discipline-menu-item"
+                                onClick={() => handleToggleDisciplineTag(item)}
+                              >
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </span>
+              </div>
+            )}
+            {errors.discipline && <span className="field-error">{errors.discipline}</span>}
           </div>
 
           <div className="submit-row" style={footerLeft ? { justifyContent: 'space-between' } : undefined}>

@@ -126,6 +126,8 @@ export default function EditTradePage({ params }) {
     },
     pnl: trade.pnl ?? null,
     tags: trade.tags || [],
+    reviewedNoIssues: trade.reviewed_no_issues ?? false,
+    disciplineTags: trade.discipline_tags || [],
     existingScreenshots: trade.screenshot_urls?.length
       ? trade.screenshot_urls
       : (trade.screenshot_url ? [trade.screenshot_url] : []),

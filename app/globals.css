@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–371  Base: reset, typography, forms, tables, thumbnails,
+     1–378  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   372  Auth pages
-   424  Top nav
-   439  Instrument nav (topbar pill row)
-   503  Page layout
-   551  Tabs
-   561  Misc form helpers
-   567  Detail view
-   583  Holiday notice (site-wide, above the shell)
-   608  Shell layout (sidebar + topbar)
-   817  Expandable trade rows
-   834  Calendar
-   882  Account settings page
-   1080  Light theme
-   1108  2FA
-   1123  Account fine print
-   1126  Screenshot preview (log new trade)
-   1168  Auth pages always dark
-   1196  Monthly P&L (calendar on Overview)
-   1262  Trade form: sections, validation, currency, screenshots
-   1491  Field tooltips
-   1553  Date/time picker (adds an optional popup to a typed input)
-   1662  In-header column filters (trade log table)
-   1696  Active filter chips
-   1745  Empty states, error banners, skeleton loaders
-   1816  Cross-instrument overview dashboard (/app)
-   2036  Not found / error boundary state pages
-   2049  Toast notifications
-   2077  Public policy pages (Privacy, Terms)
-   2096  Legal links (auth pages + account settings)
-   2135  Economic calendar card (mock - Overview pages)
-   2242  Calendar news badge (Monthly P&L day cells, mock)
-   2263  Streak badge (Overview + strategy detail pages)
-   2280  Market status pill (Overview + strategy detail pages)
-   2306  Key levels, today's brief (mock cards)
-   2332  Market context cards (all-instruments Overview)
+   379  Auth pages
+   431  Top nav
+   446  Instrument nav (topbar pill row)
+   510  Page layout
+   558  Tabs
+   568  Misc form helpers
+   574  Detail view
+   590  Holiday notice (site-wide, above the shell)
+   615  Shell layout (sidebar + topbar)
+   824  Expandable trade rows
+   841  Calendar
+   889  Account settings page
+   1087  Light theme
+   1115  2FA
+   1130  Account fine print
+   1133  Screenshot preview (log new trade)
+   1175  Auth pages always dark
+   1203  Monthly P&L (calendar on Overview)
+   1269  Trade form: sections, validation, currency, screenshots
+   1497  Field tooltips
+   1559  Date/time picker (adds an optional popup to a typed input)
+   1668  In-header column filters (trade log table)
+   1702  Active filter chips
+   1751  Empty states, error banners, skeleton loaders
+   1822  Cross-instrument overview dashboard (/app)
+   2042  Not found / error boundary state pages
+   2055  Toast notifications
+   2083  Public policy pages (Privacy, Terms)
+   2102  Legal links (auth pages + account settings)
+   2141  Economic calendar card (mock - Overview pages)
+   2248  Calendar news badge (Monthly P&L day cells, mock)
+   2269  Streak badge (Overview + strategy detail pages)
+   2286  Market status pill (Overview + strategy detail pages)
+   2312  Key levels, today's brief (mock cards)
+   2338  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -156,6 +156,13 @@ form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
   font-weight:700; padding-top:10px; border-top:1px solid var(--line); margin-top:2px;
 }
 .field.full.section-label:first-of-type{border-top:none; margin-top:0; padding-top:0;}
+/* Wider gaps than the base form grid's 12px - the trade form's Setup/
+   Management/Review sections pack in enough fields that the tighter
+   default reads as cramped. section-label's own margin-top/padding-top
+   get a smaller bump too, just enough to keep the section break from
+   looking identical to the gap between two ordinary field rows. */
+.trade-form{gap:18px;}
+.trade-form .section-label{font-size:12px; margin-top:8px; padding-top:14px;}
 label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
 input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%; min-width:0;}
 /* Explicit height rather than trusting padding + line-height to add up to

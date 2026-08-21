@@ -713,7 +713,7 @@ export default function TradeForm({
   return (
     <>
       <div className="panel">
-        <form onSubmit={handleSubmit} onPaste={handlePaste} noValidate>
+        <form className="trade-form" onSubmit={handleSubmit} onPaste={handlePaste} noValidate>
 
           {formError && (
             <div className="field full">

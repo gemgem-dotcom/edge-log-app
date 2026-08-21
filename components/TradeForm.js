@@ -826,17 +826,37 @@ export default function TradeForm({
             </div>
           )}
 
-          <div className="field wide">
-            <label>$ Profit or Loss</label>
-            <div className="currency-field">
-              <span className="currency-prefix">$</span>
-              <input
-                type="text" inputMode="decimal" placeholder="0.00"
-                value={pnlInput}
-                onChange={(e) => handlePnlChange(e.target.value)}
-                onFocus={handlePnlFocus}
-                onBlur={handlePnlBlur}
-              />
+          <div className="field full">
+            <div className="trade-summary-row">
+              <div className="field">
+                <label>Total contracts</label>
+                <input type="text" disabled className="readonly-field" value={totalLegContracts} />
+              </div>
+              <div className="field">
+                <label>$ Profit or Loss</label>
+                <div className="currency-field">
+                  <span className="currency-prefix">$</span>
+                  <input
+                    type="text" inputMode="decimal" placeholder="0.00"
+                    value={pnlInput}
+                    onChange={(e) => handlePnlChange(e.target.value)}
+                    onFocus={handlePnlFocus}
+                    onBlur={handlePnlBlur}
+                  />
+                </div>
+              </div>
+              <div className="field">
+                <label>Planned R:R</label>
+                <input type="text" disabled className="readonly-field" value={riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
+              </div>
+              <div className="field">
+                <label>Realized R (blended)</label>
+                <input
+                  type="text" disabled
+                  className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}
+                  value={realizedR === null ? '—' : (realizedR >= 0 ? '+' : '') + realizedR.toFixed(2) + 'R'}
+                />
+              </div>
             </div>
           </div>
           <div className="field full section-label">

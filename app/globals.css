@@ -26,22 +26,22 @@
    1153  Auth pages always dark
    1181  Monthly P&L (calendar on Overview)
    1247  Trade form: sections, validation, currency, screenshots
-   1422  Field tooltips
-   1483  Date/time picker (adds an optional popup to a typed input)
-   1592  In-header column filters (trade log table)
-   1626  Active filter chips
-   1675  Empty states, error banners, skeleton loaders
-   1746  Cross-instrument overview dashboard (/app)
-   1966  Not found / error boundary state pages
-   1979  Toast notifications
-   2007  Public policy pages (Privacy, Terms)
-   2026  Legal links (auth pages + account settings)
-   2065  Economic calendar card (mock - Overview pages)
-   2172  Calendar news badge (Monthly P&L day cells, mock)
-   2193  Streak badge (Overview + strategy detail pages)
-   2210  Market status pill (Overview + strategy detail pages)
-   2236  Key levels, today's brief (mock cards)
-   2262  Market context cards (all-instruments Overview)
+   1442  Field tooltips
+   1503  Date/time picker (adds an optional popup to a typed input)
+   1612  In-header column filters (trade log table)
+   1646  Active filter chips
+   1695  Empty states, error banners, skeleton loaders
+   1766  Cross-instrument overview dashboard (/app)
+   1986  Not found / error boundary state pages
+   1999  Toast notifications
+   2027  Public policy pages (Privacy, Terms)
+   2046  Legal links (auth pages + account settings)
+   2085  Economic calendar card (mock - Overview pages)
+   2192  Calendar news badge (Monthly P&L day cells, mock)
+   2213  Streak badge (Overview + strategy detail pages)
+   2230  Market status pill (Overview + strategy detail pages)
+   2256  Key levels, today's brief (mock cards)
+   2282  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1270,6 +1270,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .readonly-field{
   background:rgba(255,255,255,.04); color:var(--muted); cursor:default;
 }
+/* Realized R (blended) colors like the per-leg R badges above and the R
+   pills elsewhere in the app - !important since .readonly-field's own
+   color would otherwise win (it's the more specific selector by source
+   order alone, not by specificity, but this keeps the override obvious
+   regardless of where either rule ends up). */
+.readonly-field-pos{color:var(--win) !important;}
+.readonly-field-neg{color:var(--loss) !important;}
 
 /* $ Profit or Loss input, with the currency symbol pinned inside the box. */
 .currency-field{position:relative; display:flex; align-items:center;}
@@ -1415,8 +1422,21 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    distinct from .field-error's red, which reads as "this submission will be
    rejected" and would be misleading for something that never blocks saving. */
 .field-warning{display:block; color:var(--be); font-size:12px; margin-top:4px;}
+
+/* Planned vs. realized comparison row, below the exit leg(s) - Total
+   contracts / $ Profit or Loss / Planned R:R / Realized R (blended) side
+   by side. A dedicated 4-column grid rather than four .field.wide entries
+   in the outer 6-column form grid, the same reason .exit-row-fields is its
+   own grid above: four .field.wide spans (2 each) don't divide evenly into
+   6 columns, so one would wrap onto its own row instead of sitting flush
+   with the other three. */
+.trade-summary-row{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+  border-top:1px solid var(--line); padding-top:16px; margin-top:4px;
+}
 @media (max-width:640px){
   .exit-row-fields{grid-template-columns:1fr;}
+  .trade-summary-row{grid-template-columns:repeat(2,1fr);}
 }
 
 /* ---------- Field tooltips ---------- */

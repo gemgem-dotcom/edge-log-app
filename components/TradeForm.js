@@ -110,17 +110,19 @@ export default function TradeForm({
 
   // Multiple exits: the primary exit (execution.exit_time/exit_price/
   // contracts above) is always exit #1 - additionalExits holds only the
-  // rows beyond that, each the same shape. Starting multipleExits true
-  // whenever a loaded trade already has any is what lets the edit page
-  // show the numbered list instead of collapsing real data down to a
-  // single row.
-  const [multipleExits, setMultipleExits] = useState((initial.additionalExits || []).length > 0)
+  // rows beyond that, each the same shape. Whether the form is in
+  // "multiple exits" mode is just whether this is non-empty - there's no
+  // separate on/off flag, so a loaded trade with saved additional exits
+  // shows the numbered list automatically rather than needing its own
+  // starting state to agree with.
   const [additionalExits, setAdditionalExits] = useState(initial.additionalExits || [])
 
-  // Hit target / Hit stop / Custom - a single-exit-only convenience that
-  // pre-fills Exit price/Contracts from Trade Setup's own plan, never a
-  // stored value, so this always starts on Custom rather than trying to
-  // guess an already-loaded trade's outcome from its exit price.
+  // Hit target / Hit stop / Custom - pre-fills the primary exit's price
+  // from Trade Setup's own plan, never a stored value, so this always
+  // starts on Custom rather than trying to guess an already-loaded trade's
+  // outcome from its exit price. Stays visible regardless of whether
+  // additional exits exist - "+ Add another exit" (below) is what's gated
+  // on Custom, not this.
   const [outcome, setOutcome] = useState('custom')
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
@@ -166,6 +168,11 @@ export default function TradeForm({
   function legRMultiple(exitPriceStr) {
     return calcRMultiple(direction, entryNum, stopPriceForR, parseFloat(exitPriceStr))
   }
+
+  // Whether the form is showing the numbered exit list or the plain single
+  // row - purely a function of whether there's a second exit yet, not its
+  // own tracked state (see additionalExits above).
+  const multipleExits = additionalExits.length > 0
 
   // The exit legs currently on screen - just the primary exit outside
   // Multiple exits mode, primary + every additional row once it's on.
@@ -327,22 +334,6 @@ export default function TradeForm({
     setPnlManual(false)
   }
 
-  // Ticking on seeds one blank extra row (exit #2) so the numbered list has
-  // something to show right away, rather than a checkbox with nothing
-  // under it. Ticking off drops every extra row rather than just hiding
-  // them - same as unchecking Discipline's own reviewed box back on, there
-  // should be nothing left over to reappear if it's ticked on again later.
-  function handleMultipleExitsToggle(checked) {
-    setDirty(true)
-    setMultipleExits(checked)
-    if (checked) {
-      setAdditionalExits((prev) => (prev.length > 0 ? prev : [{ exit_time: '', exit_price: '', contracts: '' }]))
-    } else {
-      setAdditionalExits([])
-    }
-    setPnlManual(false)
-  }
-
   // Pre-fills the primary exit's price from Trade Setup's own planned
   // target/stop price - a starting value, not a locked substitution, so the
   // field stays exactly as editable afterward as a fully manual entry would
@@ -365,17 +356,12 @@ export default function TradeForm({
     setAdditionalExits((prev) => [...prev, { exit_time: '', exit_price: '', contracts: '' }])
   }
 
+  // Dropping the last additional exit takes the form straight back to the
+  // plain single-row layout - multipleExits is just additionalExits.length
+  // > 0, so there's no separate flag left over to reset.
   function handleRemoveAdditionalExit(index) {
     setDirty(true)
-    setAdditionalExits((prev) => {
-      const next = prev.filter((_, i) => i !== index)
-      // Back down to just the primary exit - the numbered list/indent only
-      // makes sense with more than one, so drop back to the plain single-
-      // row layout rather than leaving the checkbox checked over a list of
-      // exactly one.
-      if (next.length === 0) setMultipleExits(false)
-      return next
-    })
+    setAdditionalExits((prev) => prev.filter((_, i) => i !== index))
     setPnlManual(false)
   }
 
@@ -574,20 +560,19 @@ export default function TradeForm({
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       // Rows the trader added but left entirely untouched (e.g. clicked
       // "+ Add another exit" then changed their mind) are dropped rather
-      // than saved as empty placeholders.
-      additional_exits: multipleExits
-        ? additionalExits
-          .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
-          .map((row) => {
-            const rowExitPrice = parseFloat(row.exit_price)
-            return {
-              exit_time: row.exit_time || null,
-              exit_price: toDecimalString(rowExitPrice),
-              exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, rowExitPrice)),
-              contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
-            }
-          })
-        : [],
+      // than saved as empty placeholders - an empty additionalExits falls
+      // out of this the same way, with nothing to filter or map.
+      additional_exits: additionalExits
+        .filter((row) => !(isBlank(row.exit_time) && isBlank(row.exit_price) && isBlank(row.contracts)))
+        .map((row) => {
+          const rowExitPrice = parseFloat(row.exit_price)
+          return {
+            exit_time: row.exit_time || null,
+            exit_price: toDecimalString(rowExitPrice),
+            exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, rowExitPrice)),
+            contracts: isBlank(row.contracts) ? null : parseInt(row.contracts),
+          }
+        }),
       pnl: toDecimalString(parseCurrency(pnlInput)),
       tags,
       reviewed_no_issues: reviewedNoIssues,
@@ -786,30 +771,25 @@ export default function TradeForm({
           </div>
 
           <div className="field full">
-            <div className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={multipleExits}
-                onChange={(e) => handleMultipleExitsToggle(e.target.checked)}
-                aria-label="Multiple exits"
-              />
-              Multiple exits
+            <label>Outcome</label>
+            <div className="dir-toggle">
+              <div className={`dir-btn ${outcome === 'target' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('target')}>Hit target</div>
+              <div className={`dir-btn ${outcome === 'stop' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('stop')}>Hit stop</div>
+              <div className={`dir-btn ${outcome === 'custom' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('custom')}>Custom</div>
             </div>
           </div>
 
-          {!multipleExits && (
-            <div className="field full">
-              <label>Outcome</label>
-              <div className="dir-toggle">
-                <div className={`dir-btn ${outcome === 'target' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('target')}>Hit target</div>
-                <div className={`dir-btn ${outcome === 'stop' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('stop')}>Hit stop</div>
-                <div className={`dir-btn ${outcome === 'custom' ? 'active-theme' : ''}`} onClick={() => handleOutcomeChange('custom')}>Custom</div>
-              </div>
-            </div>
-          )}
-
           {!multipleExits ? (
-            renderExitFields(0)
+            <>
+              {renderExitFields(0)}
+              {outcome === 'custom' && (
+                <div className="field full">
+                  <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                    + Add another exit
+                  </span>
+                </div>
+              )}
+            </>
           ) : (
             <div className="field full">
               <ol className="exit-list">
@@ -825,9 +805,11 @@ export default function TradeForm({
                   </li>
                 ))}
               </ol>
-              <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
-                + Add another exit
-              </span>
+              {outcome === 'custom' && (
+                <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                  + Add another exit
+                </span>
+              )}
             </div>
           )}
 
@@ -912,9 +894,8 @@ export default function TradeForm({
             <label>Discipline</label>
             {/* A div, not a label - a native <label> toggles its checkbox
                 on a click anywhere in it, including the text, which isn't
-                wanted for any checkbox in this form (see Multiple exits
-                below, the same way). aria-label restores what the checkbox
-                loses by not being wrapped in one. */}
+                wanted here. aria-label restores what the checkbox loses by
+                not being wrapped in one. */}
             <div className="checkbox-label">
               <input
                 type="checkbox"

@@ -896,8 +896,12 @@ export default function TradeForm({
             <div className="field full">
               <div className="trade-summary-row">
                 <div className="field">
-                  <label>Total contracts</label>
-                  <input type="text" disabled className="readonly-field" value={totalLegContracts} />
+                  <label>Realised R (blended)</label>
+                  <input
+                    type="text" disabled
+                    className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}
+                    value={realizedR === null ? '—' : (realizedR >= 0 ? '+' : '') + realizedR.toFixed(2) + 'R'}
+                  />
                 </div>
                 <div className="field">
                   <label>$ Profit or Loss</label>
@@ -913,12 +917,8 @@ export default function TradeForm({
                   </div>
                 </div>
                 <div className="field">
-                  <label>Realised R (blended)</label>
-                  <input
-                    type="text" disabled
-                    className={`readonly-field ${realizedR > 0 ? 'readonly-field-pos' : realizedR < 0 ? 'readonly-field-neg' : ''}`}
-                    value={realizedR === null ? '—' : (realizedR >= 0 ? '+' : '') + realizedR.toFixed(2) + 'R'}
-                  />
+                  <label>Total contracts</label>
+                  <input type="text" disabled className="readonly-field" value={totalLegContracts} />
                 </div>
               </div>
             </div>

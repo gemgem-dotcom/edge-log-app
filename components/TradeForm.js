@@ -801,7 +801,9 @@ export default function TradeForm({
                   <li className="exit-list-item" key={i}>
                     {renderLegRBadge(row.exit_price)}
                     <div className="exit-row-fields">{renderExitFields(i + 1)}</div>
-                    <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
+                    {i === additionalExits.length - 1 && (
+                      <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
+                    )}
                   </li>
                 ))}
               </ol>

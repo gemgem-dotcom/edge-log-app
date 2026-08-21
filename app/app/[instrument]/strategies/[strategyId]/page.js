@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, Plus } from 'lucide-react'
+import { MoreVertical, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
@@ -12,6 +12,8 @@ import { computeStreak } from '@/lib/streak'
 import TradeLogTable from '@/components/TradeLogTable'
 import StreakBadge from '@/components/StreakBadge'
 import MarketStatusPill from '@/components/MarketStatusPill'
+import WinRateGauge from '@/components/WinRateGauge'
+import TradeDurationChart from '@/components/TradeDurationChart'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -22,14 +24,12 @@ function hasDollar(t) {
 }
 
 async function computeStrategyStats(allTrades) {
-  // Duration is measured over every trade that has an exit time, but the R
-  // stats only make sense for trades that actually have a result.
   const trades = allTrades.filter(hasResult)
   const n = trades.length
   if (n === 0) {
     return {
       n, winRate: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
-      hasD: false, profitFactor: null, avgDuration: computeAvgDuration(allTrades),
+      hasD: false, profitFactor: null, wins: 0, losses: 0,
     }
   }
 
@@ -59,12 +59,52 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, profitFactor, avgDuration: computeAvgDuration(allTrades) }
+return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
 }
 
-function computeAvgDuration(trades) {
-  const durations = trades.map(tradeDurationMinutes).filter((d) => d !== null)
-  return durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null
+// Adaptive-width duration histogram - bucket width scales to the trades'
+// own min/max duration (picked from NICE_STEPS_MIN, the same "round
+// number of minutes/hours" progression a chart-axis tick algorithm would
+// use) so a scalper's few-minute trades land in minute-wide buckets and a
+// swing trader's multi-hour trades land in hour-wide ones, rather than
+// one fixed scale being too coarse for one trader and too fine for the
+// other. Every trade with a recorded entry+exit time counts, regardless
+// of hasResult - duration is about time, not outcome, the same reasoning
+// the old computeAvgDuration used allTrades for.
+const NICE_STEPS_MIN = [1, 2, 5, 10, 15, 30, 60, 120, 240, 360, 480, 720, 1440, 2880]
+const TARGET_MAX_BUCKETS = 6
+
+function computeDurationBuckets(allTrades) {
+  const withDuration = allTrades
+    .map((t) => ({ t, duration: tradeDurationMinutes(t) }))
+    .filter((x) => x.duration !== null)
+  if (withDuration.length === 0) return []
+
+  const durations = withDuration.map((x) => x.duration)
+  const min = Math.min(...durations)
+  const max = Math.max(...durations)
+
+  const step = min === max
+    ? Math.max(1, min)
+    : (NICE_STEPS_MIN.find((s) => Math.ceil((max - min) / s) <= TARGET_MAX_BUCKETS) || NICE_STEPS_MIN[NICE_STEPS_MIN.length - 1])
+
+  const start = Math.floor(min / step) * step
+  const numBuckets = Math.max(1, Math.ceil((max - start + 1) / step))
+  const buckets = Array.from({ length: numBuckets }, (_, i) => {
+    const from = start + i * step
+    const to = from + step
+    return { from, to, label: `${formatDuration(from)}–${formatDuration(to)}`, wins: 0, losses: 0, neutral: 0 }
+  })
+
+  for (const { t, duration } of withDuration) {
+    const idx = Math.min(numBuckets - 1, Math.max(0, Math.floor((duration - start) / step)))
+    const bucket = buckets[idx]
+    if (!hasResult(t) || t.r_multiple === 0) bucket.neutral += 1
+    else if (t.r_multiple > 0) bucket.wins += 1
+    else bucket.losses += 1
+  }
+
+  return buckets
 }
 
 function fmtR(val) {
@@ -105,6 +145,17 @@ const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
+  // Set when a Trade duration bar is clicked - narrows the trade log below
+  // to just that bucket's trades and scrolls it into view, so the chart
+  // doubles as a filter rather than just a static breakdown.
+  const [durationFilter, setDurationFilter] = useState(null)
+  const tradeLogRef = useRef(null)
+
+  function handleSelectDuration(bucket) {
+    setDurationFilter({ from: bucket.from, to: bucket.to, label: bucket.label })
+    tradeLogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
 useEffect(() => {
   loadData()
 }, [strategyId])
@@ -113,9 +164,15 @@ async function loadData() {
   setLoading(true)
   setError(null)
   try {
+    // PGRST116 is PostgREST's "0 rows" error for .single() - expected when
+    // this strategy was deleted (e.g. a stale sidebar link, or a bookmark/
+    // back-button hit before the sidebar catches up - see the layout's own
+    // pathname-triggered refetch). That's the empty-strategy state below,
+    // not a real failure worth surfacing as an error banner.
     const { data: s, error: stratError } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
-    if (stratError) throw stratError
-    setStrategy(s)
+    if (stratError && stratError.code !== 'PGRST116') throw stratError
+    setStrategy(stratError ? null : s)
+    if (stratError) return
 
     const { data: tradeData, error: tradeError } = await supabase
     .from('trades')
@@ -177,6 +234,16 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
 const streak = computeStreak(trades)
+  const durationBuckets = computeDurationBuckets(trades)
+  // Same [from, to) partition computeDurationBuckets itself assigns trades
+  // to, so a bucket's trade count and what shows up here when it's
+  // selected always agree.
+  const visibleTrades = durationFilter
+    ? trades.filter((t) => {
+        const d = tradeDurationMinutes(t)
+        return d !== null && d >= durationFilter.from && d < durationFilter.to
+      })
+    : trades
 
 return (
   <div className="page-container">
@@ -223,50 +290,44 @@ Delete strategy
 </div>
 
 <div className="section-heading">Performance</div>
-<div className="stats strategy-perf-stats">
-<div className="stat">
-  <div className="stat-label">Total P&amp;L</div>
-<div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
-{stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+<div className="panel">
+  <div className="stats stats-5">
+    <div className="stat">
+      <div className="stat-label">Total P&amp;L</div>
+      <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
+        {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+      </div>
+      {stats.hasD && (
+        <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+      )}
+    </div>
+    <div className="stat">
+      <div className="stat-label">Expectancy</div>
+      <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
+        {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+      </div>
+      {stats.expectancyD !== null && (
+        <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+      )}
+    </div>
+    <div className="stat stat-gauge">
+      <div className="stat-label">Win rate</div>
+      <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
+    </div>
+    <div className="stat">
+      <div className="stat-label">Profit factor</div>
+      <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+    </div>
+    <div className="stat">
+      <div className="stat-label">Total trades</div>
+      <div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
+    </div>
+  </div>
+  <div className="performance-duration-chart">
+    <div className="stat-label dashboard-card-title">Trade duration</div>
+    <TradeDurationChart buckets={durationBuckets} onSelect={handleSelectDuration} />
+  </div>
 </div>
-{stats.hasD && (
-  <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
-)}
-  </div>
-<div className="stat">
-  <div className="stat-label">Expectancy</div>
-<div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
-{stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
-</div>
-{stats.expectancyD !== null && (
-  <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
-)}
-  </div>
-<div className="stat">
-  <div className="stat-label">Profit factor</div>
-<div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
-  </div>
-  <div className="stat">
-  <div className="stat-label">Win rate</div>
-<div className="stat-value neu">{stats.winRate === null ? '—' : stats.winRate.toFixed(1) + '%'}</div>
-  </div>
-  <div className="stat">
-  <div className="stat-label">Total trades</div>
-<div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Avg trade duration</div>
-<div className="stat-value neu">{formatDuration(stats.avgDuration)}</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Avg MFE</div>
-<div className="stat-value neu stat-placeholder">Needs Phase 2</div>
-  </div>
-<div className="stat">
-  <div className="stat-label">Avg MAE</div>
-<div className="stat-value neu stat-placeholder">Needs Phase 2</div>
-  </div>
-  </div>
 
 <div className="section-heading">At a glance</div>
 <div className="panel">
@@ -276,10 +337,20 @@ Delete strategy
   <p className="strategy-context-text">This strategy often trades around scheduled Fed events — one lands today at 10:00.</p>
 </div>
 
-<div className="section-heading">Trade log — {strategy.name}</div>
+<div className="section-heading" ref={tradeLogRef}>Trade log — {strategy.name}</div>
 <div className="panel">
+  {durationFilter && (
+    <div className="active-filters">
+      <span className="filter-chip">
+        Duration: {durationFilter.label}
+        <button type="button" onClick={() => setDurationFilter(null)} aria-label="Remove duration filter">
+          <X size={12} />
+        </button>
+      </span>
+    </div>
+  )}
   <TradeLogTable
-    trades={trades}
+    trades={visibleTrades}
     showStrategyColumn={false}
     showFilters={true}
     symbol={symbol}

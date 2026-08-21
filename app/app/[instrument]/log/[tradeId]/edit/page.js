@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
-import { toast } from '@/lib/toast'
+import { computeTradeSessions } from '@/lib/tradeSessions'
+import { browserOffsetGuess } from '@/lib/timezone'
+import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
 import TradeForm from '@/components/TradeForm'
@@ -67,18 +69,30 @@ export default function EditTradePage({ params }) {
     }
     const screenshot_urls = [...existingScreenshots, ...uploaded]
 
+    const { data: { user } } = await supabase.auth.getUser()
+    const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
+    const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
+
     const { error } = await supabase.from('trades').update({
       ...values,
       screenshot_urls,
       screenshot_url: screenshot_urls[0] || null,
+      session,
+      continued_sessions: continuedSessions,
     }).eq('id', tradeId)
 
     if (error) {
       return 'Could not save trade: ' + error.message
     }
 
-    toast.success('Trade updated.')
-    router.push(`/app/${symbol}/log`)
+    // Same as Cancel/Discard changes (onCancel below) - returns to wherever
+    // the trader opened this edit from (the trade detail page, the log, a
+    // strategy page) rather than always landing on the log. Queued rather
+    // than a plain toast.success: see queueToastForReturn's comment - a
+    // toast fired right before router.back() can otherwise be silently
+    // lost to a back-forward-cache restore of the previous page.
+    queueToastForReturn('Trade updated.')
+    router.back()
   }
 
   async function handleDelete() {
@@ -116,8 +130,15 @@ export default function EditTradePage({ params }) {
       exit_time: trade.exit_time ?? '',
       exit_price: trade.exit_price ?? '',
     },
+    additionalExits: (trade.additional_exits || []).map((e) => ({
+      exit_time: e.exit_time ?? '',
+      exit_price: e.exit_price ?? '',
+      contracts: e.contracts ?? '',
+    })),
     pnl: trade.pnl ?? null,
     tags: trade.tags || [],
+    reviewedNoIssues: trade.reviewed_no_issues ?? false,
+    disciplineTags: trade.discipline_tags || [],
     existingScreenshots: trade.screenshot_urls?.length
       ? trade.screenshot_urls
       : (trade.screenshot_url ? [trade.screenshot_url] : []),

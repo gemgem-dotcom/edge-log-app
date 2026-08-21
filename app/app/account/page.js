@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { UTC_OFFSETS } from '@/lib/timezone'
+import { UTC_OFFSETS, browserOffsetGuess } from '@/lib/timezone'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import ProfileSection from '@/components/account/ProfileSection'
@@ -54,11 +54,7 @@ export default function AccountPage() {
     if (savedTz !== undefined && savedTz !== null && UTC_OFFSETS.some((o) => o.value === String(savedTz))) {
       setTimezone(String(savedTz))
     } else {
-      const browserOffset = -(new Date().getTimezoneOffset()) / 60
-      const nearest = UTC_OFFSETS.reduce((best, o) =>
-        Math.abs(parseFloat(o.value) - browserOffset) < Math.abs(parseFloat(best.value) - browserOffset) ? o : best
-      )
-      setTimezone(nearest.value)
+      setTimezone(browserOffsetGuess())
     }
 
     // Theme - read from localStorage (matches the inline script in layout.js

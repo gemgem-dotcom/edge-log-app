@@ -20,28 +20,28 @@
    804  Calendar
    852  Account settings page
    1050  Light theme
-   1077  2FA
-   1092  Account fine print
-   1095  Screenshot preview (log new trade)
-   1112  Auth pages always dark
-   1140  Monthly P&L (calendar on Overview)
-   1216  Trade form: sections, validation, currency, screenshots
-   1301  Field tooltips
-   1357  Date/time picker (adds an optional popup to a typed input)
-   1466  In-header column filters (trade log table)
-   1500  Active filter chips
-   1549  Empty states, error banners, skeleton loaders
-   1620  Cross-instrument overview dashboard (/app)
-   1788  Not found / error boundary state pages
-   1801  Toast notifications
-   1829  Public policy pages (Privacy, Terms)
-   1848  Legal links (auth pages + account settings)
-   1887  Economic calendar card (mock - Overview pages)
-   1994  Calendar news badge (Monthly P&L day cells, mock)
-   2015  Streak badge (Overview + strategy detail pages)
-   2032  Market status pill (Overview + strategy detail pages)
-   2058  Key levels, today's brief (mock cards)
-   2084  Market context cards (all-instruments Overview)
+   1078  2FA
+   1093  Account fine print
+   1096  Screenshot preview (log new trade)
+   1113  Auth pages always dark
+   1141  Monthly P&L (calendar on Overview)
+   1207  Trade form: sections, validation, currency, screenshots
+   1360  Field tooltips
+   1416  Date/time picker (adds an optional popup to a typed input)
+   1525  In-header column filters (trade log table)
+   1559  Active filter chips
+   1608  Empty states, error banners, skeleton loaders
+   1679  Cross-instrument overview dashboard (/app)
+   1899  Not found / error boundary state pages
+   1912  Toast notifications
+   1940  Public policy pages (Privacy, Terms)
+   1959  Legal links (auth pages + account settings)
+   1998  Economic calendar card (mock - Overview pages)
+   2105  Calendar news badge (Monthly P&L day cells, mock)
+   2126  Streak badge (Overview + strategy detail pages)
+   2143  Market status pill (Overview + strategy detail pages)
+   2169  Key levels, today's brief (mock cards)
+   2195  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -158,6 +158,15 @@ form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 .field.full.section-label:first-of-type{border-top:none; margin-top:0; padding-top:0;}
 label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
 input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%; min-width:0;}
+/* Explicit height rather than trusting padding + line-height to add up to
+   the same number as select/.dt-picker-trigger's own explicit height:36px
+   below - browsers don't all compute a plain text input's "normal"
+   line-height for this font stack identically, so without this a text
+   field could render a pixel or two shorter than the date/time pickers and
+   dropdowns sitting right next to it in the same row. Checkboxes size
+   themselves (width:auto elsewhere already un-stretches them) and file
+   inputs have their own native chrome, so both are excluded. */
+input:not([type="checkbox"]):not([type="file"]){height:36px;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
 /* <select> has native-chrome problems on real mobile browsers (not
    reproducible in a desktop-engine screenshot) - its own background,
@@ -307,6 +316,12 @@ table{min-width:640px;}
      it's a real typed field like any other text input. */
   input, select, textarea{font-size:16px; padding:10px;}
   select{font-size:13.5px; height:41px; padding-right:34px;}
+  /* Plain text/number inputs grow to 41px here to match select's own mobile
+     height right above - .field (not just a bare input selector) outranks
+     the base input:not(...){height:36px} rule's own specificity, the same
+     reason .field .dt-picker-trigger below needs the same prefix rather
+     than just a bare .dt-picker-trigger. */
+  .field input:not([type="checkbox"]):not([type="file"]){height:41px;}
   /* .dt-picker-trigger doesn't inherit the 16px/padding:10px bump above
      (it's a wrapper div, not an input) - without this it stays at its
      desktop 36px and visibly mismatches its siblings, the same height-
@@ -1072,7 +1087,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 :root[data-theme="light"] .modal-overlay{background:rgba(20,22,26,.55);}
 :root[data-theme="light"] .instrument-dropdown,
 :root[data-theme="light"] .strategy-menu-dropdown,
-:root[data-theme="light"] .tag-suggestions{box-shadow:0 8px 24px rgba(20,22,26,.15);}
+:root[data-theme="light"] .tag-suggestions,
+:root[data-theme="light"] .discipline-menu{box-shadow:0 8px 24px rgba(20,22,26,.15);}
 
 /* ---------- 2FA ---------- */
 .mfa-status-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
@@ -1153,14 +1169,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
 .stats-2{grid-template-columns:repeat(2,1fr);}
-/* Strategy detail page: 8 cards, some with a stat-subvalue line (Total
-   P&L, Expectancy) and some without - min-height plus centering keeps
-   every card the same height regardless of which. */
-.strategy-perf-stats{grid-template-columns:repeat(4,1fr);}
-/* A fixed height (not min-height) so every card matches regardless of
-   which row it lands in - min-height only equalizes within a row, since
-   grid rows size to their own tallest card. */
-.strategy-perf-stats .stat{height:90px; display:flex; flex-direction:column; justify-content:center;}
 .stat-subvalue{font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; margin-top:2px;}
 .stat-gauge{display:flex; flex-direction:column;}
 
@@ -1188,13 +1196,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 @media (max-width:1100px){
     .stats-5{grid-template-columns:repeat(3,1fr);}
-    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
 }
 @media (max-width:640px){
     .calendar-toolbar{flex-direction:column; align-items:stretch;}
     .calendar-month-nav{justify-content:space-between;}
     .stats-5{grid-template-columns:repeat(2,1fr);}
-    .strategy-perf-stats{grid-template-columns:repeat(2,1fr);}
     .calendar-grid-8{grid-template-columns:repeat(7,1fr); gap:4px;}
     .calendar-cell-weekly, .calendar-weekday-weekly{display:none;}
     .calendar-day-subpnl{display:none;}
@@ -1229,14 +1235,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   line-height:1.35;
 }
 
-/* Auto-derived, non-editable values (the Risk-to-Reward readout). Nothing
-   to type here, so the shared input:focus accent border (below) would
-   just be a false "you can edit this" signal on click - overridden back
-   to the plain resting border. */
+/* Auto-derived, non-editable values (the Risk-to-Reward readout). A plain
+   disabled input - same as the email field in Account Settings - rather
+   than readOnly: readOnly still lets a click focus the field, which used
+   to add the site-wide [tabindex]:focus-visible ring (it's readOnly's
+   tabIndex={-1} that made it match that selector) and visibly change size
+   on click. disabled can never receive focus at all, so there's nothing
+   left to override on click/focus. */
 .readonly-field{
   background:rgba(255,255,255,.04); color:var(--muted); cursor:default;
 }
-.readonly-field:focus{border-color:var(--line);}
 
 /* $ Profit or Loss input, with the currency symbol pinned inside the box. */
 .currency-field{position:relative; display:flex; align-items:center;}
@@ -1296,6 +1304,80 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
      pins its left edge (and so the dropdown's) to the row's own left
      edge every time, regardless of tag count. */
   .tag-add-form-wrap{flex-basis:100%;}
+}
+
+/* Shared plain-text checkbox + text row - Discipline's "Reviewed - no
+   issues" and Trade Execution's "Multiple exits" both use this rather than
+   the all-caps .field label styling, since each reads as a sentence next
+   to its own checkbox, not a field name above an input. A plain <div>
+   rather than a <label> (see the comment in TradeForm.js), specifically so
+   only the checkbox itself responds to a click, not the text next to it -
+   cursor stays default on the row for that reason, only the checkbox
+   itself gets the pointer cursor below. */
+.checkbox-label{
+  display:flex; align-items:center; gap:8px; margin-top:2px;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+  text-transform:none; letter-spacing:0; color:var(--text);
+}
+.checkbox-label input{width:auto; margin:0; cursor:pointer; flex-shrink:0;}
+
+/* Discipline - a mandatory reviewed-or-flagged checkbox (Trade Review
+   section). Unticked, it expands into the same add/remove-pill pattern as
+   Tags above, but picking from a fixed grouped list rather than free text,
+   and in --loss red rather than --accent blue, so a flagged trade reads as
+   a flagged trade at a glance in the trade log/detail views later. */
+/* Same clipping quirk as .tags-field above: .field's overflow-x:hidden
+   backstop computes overflow-y to auto instead of visible, clipping
+   .discipline-menu's position:absolute dropdown against the field's own
+   box. This field has no native widget to guard against, so it's exempted
+   the same way. */
+.discipline-field{overflow-x:visible;}
+.discipline-tag-row{margin-top:10px;}
+.discipline-tag{background:rgba(225,92,92,.1); color:var(--loss); border-color:rgba(225,92,92,.3);}
+.discipline-menu-wrap{position:relative; display:inline-flex;}
+/* Same floating-menu treatment as .tag-suggestions, grouped under
+   sub-headings instead of a flat filtered list - max-height caps it at
+   exactly 5 rows (5 x 30px, headings included) before it scrolls, so it
+   always stays within the card regardless of how many of the four groups
+   are still showing items. Both row types share the same 30px line-height
+   (rather than padding) to vertically center their text, so the two stay
+   pixel-equal and the math holds. */
+.discipline-menu{
+  position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; min-width:210px; max-height:150px;
+  overflow-y:auto; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:dropdown-in .15s ease;
+  padding:0;
+}
+.discipline-menu-heading{
+  height:30px; line-height:30px; padding:0 12px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); font-family:'Inter',sans-serif; font-weight:700;
+}
+.discipline-menu-item{height:30px; line-height:30px; padding:0 12px; font-size:12.5px; color:var(--text); cursor:pointer; transition:background-color .15s ease;}
+.discipline-menu-item:hover{background:var(--panel-2);}
+@media (max-width:640px){
+  .discipline-menu-wrap{flex-basis:100%;}
+}
+
+/* Multiple exits (Trade Execution) - each exit becomes a numbered, slightly
+   indented list item instead of a flat repeat of the same three fields.
+   .exit-row-fields is its own 3-column grid rather than relying on the
+   outer form grid's own column tracking, since nesting inside a .field.full
+   wrapper (needed for the numbering/indent) takes each row out of that
+   outer grid entirely - which is also why its own .field children need
+   grid-column reset back to a single track: .field.wide's span:2 (sized
+   for the outer 6-column form) would otherwise still apply here too,
+   leaving room for barely one field per row instead of three. */
+.exit-list{
+  list-style:decimal; padding-left:22px; margin:10px 0 0;
+  display:flex; flex-direction:column; gap:16px;
+}
+.exit-list-item::marker{color:var(--muted); font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700;}
+.exit-row-fields{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+.exit-row-fields .field{grid-column:span 1;}
+.exit-remove{display:inline-block; margin-top:8px; font-size:12px;}
+.exit-add{display:inline-block; margin-top:12px;}
+@media (max-width:640px){
+  .exit-row-fields{grid-template-columns:1fr;}
 }
 
 /* ---------- Field tooltips ---------- */
@@ -1741,6 +1823,58 @@ label:has(.field-tooltip){display:flex; align-items:center;}
 .weekday-chart-bar-neg{background:var(--loss);}
 .weekday-chart-value{
   width:80px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;
+}
+
+/* Strategy detail page's Performance card - the duration histogram sits
+   below the stats-5 row, inside the same panel (see .performance-card-
+   subgrid above for the equivalent two-column layout other pages use;
+   this one's a single chart rather than two side by side, so it doesn't
+   need a grid - width:50% instead keeps it from stretching bar labels/
+   tracks across the panel's full width, which read as too sparse for
+   what's usually a handful of buckets). Back to full width once 50%
+   would squeeze the 96px label column against a narrow track. */
+.performance-duration-chart{margin-top:28px; width:50%;}
+@media (max-width:900px){
+  .performance-duration-chart{width:100%;}
+}
+/* One bar per duration bucket - unlike .weekday-chart's diverging lanes
+   either side of a zero line, a trade count has no negative direction,
+   so this is a single bar growing from the label outward, split into
+   win/loss (and, if any, neutral - breakeven or still-unresolved)
+   segments. .duration-chart-track's own background is the "full width"
+   reference the fill sits inside, scaled against the shared axis below
+   (see .duration-chart-axis) rather than a per-row number - bars read
+   against that axis, exact counts are a hover away. */
+.duration-chart{display:flex; flex-direction:column; gap:9px;}
+.duration-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
+.duration-chart-label{
+  width:96px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
+  font-size:10.5px; color:var(--muted); letter-spacing:.04em;
+  transition:color .15s ease;
+}
+/* Only buckets with at least one trade in them are wired up as a filter
+   (see the component - an empty bucket has nothing for onSelect to show),
+   so only these get the pointer cursor + accent-colored label hinting
+   that. */
+.duration-chart-row-clickable{cursor:pointer;}
+.duration-chart-row-clickable:hover .duration-chart-label{color:var(--accent);}
+.duration-chart-track{flex:1; height:10px; min-width:0; background:var(--line); border-radius:3px; overflow:hidden;}
+.duration-chart-fill{height:100%; display:flex;}
+.duration-chart-seg-win{background:var(--win);}
+.duration-chart-seg-loss{background:var(--loss);}
+.duration-chart-seg-neu{background:var(--muted-2);}
+/* Axis row - a spacer matching .duration-chart-label's own width keeps
+   its track aligned under the bars above, the same trick
+   .duration-chart-row's flex layout uses. Tick labels are positioned
+   absolutely by percentage (not a flex row) since they need to sit at
+   exact fractions of the track's width to line up with where each
+   bar's own percentage-width would reach, not spaced evenly by count. */
+.duration-chart-axis{display:flex; align-items:center; gap:10px; margin-top:4px;}
+.duration-chart-axis-spacer{width:96px; flex-shrink:0;}
+.duration-chart-axis-track{position:relative; flex:1; min-width:0; height:14px;}
+.duration-chart-axis-tick{
+  position:absolute; top:0; font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--muted);
 }
 
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}

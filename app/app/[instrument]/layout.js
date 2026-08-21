@@ -54,9 +54,14 @@ export default function InstrumentLayout({ children, params }) {
         return () => window.removeEventListener('scroll', dismiss, true)
   }, [strategiesExpanded])
 
+  // Also re-runs on every in-app navigation (pathname), not just an
+  // instrument switch - deleting a strategy from its own detail page
+  // redirects here via router.push, a client-side transition that leaves
+  // this layout mounted, so without this its sidebar list would keep
+  // showing the deleted strategy until a full page reload.
   useEffect(() => {
         loadData()
-  }, [currentSymbol])
+  }, [currentSymbol, pathname])
 
   async function loadData() {
         const { data: { user } } = await supabase.auth.getUser()

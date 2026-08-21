@@ -18,13 +18,25 @@ export default function StrategyDetailSkeleton() {
       </div>
 
       <div className="section-heading">Performance</div>
-      <div className="stats strategy-perf-stats">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div className="stat" key={i}>
-            <div className="skel skel-line" style={{ width: '60%' }} />
-            <div className="skel skel-value" />
-          </div>
-        ))}
+      <div className="panel">
+        <div className="stats stats-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div className={`stat${i === 2 ? ' stat-gauge' : ''}`} key={i}>
+              <div className="skel skel-line" style={{ width: '60%' }} />
+              {i === 2 ? (
+                <div className="skel skel-circle" style={{ width: '100px', height: '52px', margin: '4px auto 0' }} />
+              ) : (
+                <div className="skel skel-value" />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="performance-duration-chart">
+          <div className="skel skel-line" style={{ width: '120px', height: '12px', marginBottom: '16px' }} />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div className="skel skel-line" key={i} style={{ marginBottom: '12px' }} />
+          ))}
+        </div>
       </div>
 
       <div className="section-heading">At a glance</div>

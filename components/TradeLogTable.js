@@ -442,7 +442,7 @@ export default function TradeLogTable({
                                   {exitLegs.map((leg, i) => {
                                     const legR = calcRMultiple(t.direction, t.entry, t.stop, parseFloat(leg.exit_price))
                                     return (
-                                      <li key={i}>
+                                      <li className="exit-list-item" key={i}>
                                         {fmtNum(leg.exit_price)} ({leg.contracts == null ? '—' : leg.contracts}x)
                                         {legR !== null && (
                                           <span className={legR > 0 ? 'pos' : legR < 0 ? 'neg' : 'neu'}> · {(legR >= 0 ? '+' : '') + legR.toFixed(2)}R</span>

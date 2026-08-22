@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
-import { hasResult, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
+import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
@@ -348,6 +348,7 @@ export default function TradeLogTable({
           {visible.map((t) => {
             const closed = hasResult(t)
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
+            const riskReward = calcRiskReward(t.target_distance, t.stop_distance)
             const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
@@ -400,21 +401,63 @@ export default function TradeLogTable({
                   <tr className="expand-row">
                     <td colSpan={colCount}>
                       <div className="expand-row-detail">
-                        <div className="detail-grid" style={{ padding: '16px 4px' }}>
-                          <div><label>Entry time</label><div>{formatTime12h(t.trade_time)}</div></div>
-                          <div><label>Entry price</label><div>{fmtNum(t.entry)}</div></div>
-                          <div><label>Stop loss</label><div>{t.stop_distance == null ? '—' : `${fmtNum(t.stop_distance)} pts`}</div></div>
-                          <div><label>Take profit</label><div>{t.target_distance == null ? '—' : `${fmtNum(t.target_distance)} pts`}</div></div>
-                          <div><label>Exit price</label><div>{fmtNum(t.exit_price)}</div></div>
-                          <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(t))}</div></div>
-                          <div><label>Contracts</label><div>{t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')}</div></div>
+                        <div className="detail-grid trade-expand-grid" style={{ padding: '16px 4px' }}>
+                          <div>
+                            <label>Entry</label>
+                            <div>
+                              {fmtNum(t.entry)}
+                              <div className="detail-subvalue">{formatTime12h(t.trade_time)}</div>
+                            </div>
+                          </div>
+                          <div>
+                            <label>Stop loss</label>
+                            <div>
+                              {fmtNum(t.stop)}
+                              {t.stop_distance != null && <div className="detail-subvalue">{fmtNum(t.stop_distance)} pts</div>}
+                            </div>
+                          </div>
+                          <div>
+                            <label>Take profit</label>
+                            <div>
+                              {t.target == null ? '—' : fmtNum(t.target)}
+                              {t.target_distance != null && <div className="detail-subvalue">{fmtNum(t.target_distance)} pts</div>}
+                            </div>
+                          </div>
+                          <div>
+                            <label>Exit price</label>
+                            <div>
+                              {fmtNum(t.exit_price)}
+                              <div className="detail-subvalue">
+                                {formatDuration(tradeDurationMinutes(t))} · {t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')} contracts
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <label>Planned R:R</label>
+                            <div>{riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          </div>
+                          <div>
+                            <label>Realised R</label>
+                            <div className={!closed ? '' : t.r_multiple > 0 ? 'pnl-pos' : t.r_multiple < 0 ? 'pnl-neg' : ''}>
+                              {closed ? (t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R' : '—'}
+                            </div>
+                          </div>
                           {/* No data source until Phase 2 captures excursions. */}
                           <div><label>MFE</label><div>—</div></div>
                           <div><label>MAE</label><div>—</div></div>
                         </div>
 
+                        {t.discipline_tags?.length > 0 && (
+                          <div className="expand-row-divider">
+                            <label className="detail-sublabel">Discipline</label>
+                            <div className="tag-row" style={{ marginTop: '4px' }}>
+                              {t.discipline_tags.map((tag) => <span className="trade-tag discipline-tag" key={tag}>{tag}</span>)}
+                            </div>
+                          </div>
+                        )}
+
                         {t.tags?.length > 0 && (
-                          <div style={{ marginTop: '20px' }}>
+                          <div className="expand-row-divider">
                             <label className="detail-sublabel">Tags</label>
                             <div className="tag-row" style={{ marginTop: '4px' }}>
                               {t.tags.map((tag) => <span className="trade-tag" key={tag}>{tag}</span>)}
@@ -423,7 +466,7 @@ export default function TradeLogTable({
                         )}
 
                         {t.reasoning && (
-                          <div style={{ marginTop: '20px' }}>
+                          <div className="expand-row-divider">
                             <label className="detail-sublabel">Notes</label>
                             <p style={{ marginTop: '4px', lineHeight: 1.5, fontSize: '13px' }}>{t.reasoning}</p>
                           </div>

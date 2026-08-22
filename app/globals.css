@@ -17,31 +17,31 @@
    590  Holiday notice (site-wide, above the shell)
    615  Shell layout (sidebar + topbar)
    824  Expandable trade rows
-   864  Calendar
-   912  Account settings page
-   1110  Light theme
-   1138  2FA
-   1153  Account fine print
-   1156  Screenshot preview (log new trade)
-   1198  Auth pages always dark
-   1226  Monthly P&L (calendar on Overview)
-   1292  Trade form: sections, validation, currency, screenshots
-   1520  Field tooltips
-   1582  Date/time picker (adds an optional popup to a typed input)
-   1691  In-header column filters (trade log table)
-   1725  Active filter chips
-   1774  Empty states, error banners, skeleton loaders
-   1845  Cross-instrument overview dashboard (/app)
-   2065  Not found / error boundary state pages
-   2078  Toast notifications
-   2106  Public policy pages (Privacy, Terms)
-   2125  Legal links (auth pages + account settings)
-   2164  Economic calendar card (mock - Overview pages)
-   2271  Calendar news badge (Monthly P&L day cells, mock)
-   2292  Streak badge (Overview + strategy detail pages)
-   2309  Market status pill (Overview + strategy detail pages)
-   2335  Key levels, today's brief (mock cards)
-   2361  Market context cards (all-instruments Overview)
+   872  Calendar
+   920  Account settings page
+   1118  Light theme
+   1146  2FA
+   1161  Account fine print
+   1164  Screenshot preview (log new trade)
+   1206  Auth pages always dark
+   1234  Monthly P&L (calendar on Overview)
+   1300  Trade form: sections, validation, currency, screenshots
+   1528  Field tooltips
+   1590  Date/time picker (adds an optional popup to a typed input)
+   1699  In-header column filters (trade log table)
+   1733  Active filter chips
+   1782  Empty states, error banners, skeleton loaders
+   1853  Cross-instrument overview dashboard (/app)
+   2073  Not found / error boundary state pages
+   2086  Toast notifications
+   2114  Public policy pages (Privacy, Terms)
+   2133  Legal links (auth pages + account settings)
+   2172  Economic calendar card (mock - Overview pages)
+   2279  Calendar news badge (Monthly P&L day cells, mock)
+   2300  Streak badge (Overview + strategy detail pages)
+   2317  Market status pill (Overview + strategy detail pages)
+   2343  Key levels, today's brief (mock cards)
+   2369  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -851,6 +851,14 @@ a.shell-logo{color:inherit; text-decoration:none;}
    plain text) and no top margin, since the label above it already
    provides that spacing via .detail-grid label's margin-bottom. */
 .trade-expand-grid .exit-list{margin-top:0; gap:2px; padding-left:16px;}
+/* Widens the gap between the "1."/"2." marker and each leg's own text -
+   list-style-position:outside puts the marker in the space carved out by
+   the <li>'s own padding-left, so this (rather than the .exit-list's
+   padding-left above, which only sets the list's overall indent) is what
+   actually controls that gap. Scoped to this read-only list, not
+   TradeForm.js's own .exit-list-item rows (those hold input fields, not
+   plain text, and were never asked to change). */
+.trade-expand-grid .exit-list-item{padding-left:6px;}
 /* Discipline/Tags/Notes each get this instead of a plain margin-top, so
    whichever of the three actually renders first still reads as a
    distinct section below the field grids above, not just more of the

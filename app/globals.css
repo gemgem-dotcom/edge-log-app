@@ -17,31 +17,31 @@
    590  Holiday notice (site-wide, above the shell)
    615  Shell layout (sidebar + topbar)
    824  Expandable trade rows
-   845  Calendar
-   893  Account settings page
-   1091  Light theme
-   1119  2FA
-   1134  Account fine print
-   1137  Screenshot preview (log new trade)
-   1179  Auth pages always dark
-   1207  Monthly P&L (calendar on Overview)
-   1273  Trade form: sections, validation, currency, screenshots
-   1501  Field tooltips
-   1563  Date/time picker (adds an optional popup to a typed input)
-   1672  In-header column filters (trade log table)
-   1706  Active filter chips
-   1755  Empty states, error banners, skeleton loaders
-   1826  Cross-instrument overview dashboard (/app)
-   2046  Not found / error boundary state pages
-   2059  Toast notifications
-   2087  Public policy pages (Privacy, Terms)
-   2106  Legal links (auth pages + account settings)
-   2145  Economic calendar card (mock - Overview pages)
-   2252  Calendar news badge (Monthly P&L day cells, mock)
-   2273  Streak badge (Overview + strategy detail pages)
-   2290  Market status pill (Overview + strategy detail pages)
-   2316  Key levels, today's brief (mock cards)
-   2342  Market context cards (all-instruments Overview)
+   872  Calendar
+   920  Account settings page
+   1118  Light theme
+   1146  2FA
+   1161  Account fine print
+   1164  Screenshot preview (log new trade)
+   1206  Auth pages always dark
+   1234  Monthly P&L (calendar on Overview)
+   1300  Trade form: sections, validation, currency, screenshots
+   1528  Field tooltips
+   1590  Date/time picker (adds an optional popup to a typed input)
+   1699  In-header column filters (trade log table)
+   1733  Active filter chips
+   1782  Empty states, error banners, skeleton loaders
+   1853  Cross-instrument overview dashboard (/app)
+   2073  Not found / error boundary state pages
+   2086  Toast notifications
+   2114  Public policy pages (Privacy, Terms)
+   2133  Legal links (auth pages + account settings)
+   2172  Economic calendar card (mock - Overview pages)
+   2279  Calendar news badge (Monthly P&L day cells, mock)
+   2300  Streak badge (Overview + strategy detail pages)
+   2317  Market status pill (Overview + strategy detail pages)
+   2343  Key levels, today's brief (mock cards)
+   2369  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -837,6 +837,33 @@ a.shell-logo{color:inherit; text-decoration:none;}
    expanded row specifically - it packs in enough fields to read as
    cramped otherwise. */
 .expand-row-detail .detail-grid{row-gap:24px;}
+/* Fixed 4-column grid rather than .detail-grid's own auto-fill, so the
+   redesigned expand row (Entry/Stop loss/Take profit/Exit price, then
+   Planned R:R/Realised R/MFE/MAE) always wraps as two clean rows of four
+   regardless of how much width the table happens to have. */
+.trade-expand-grid{grid-template-columns:repeat(4, 1fr);}
+@media (max-width:640px){
+  .trade-expand-grid{grid-template-columns:repeat(2, 1fr);}
+}
+/* Per-leg exit list for a multi-exit trade, inside the "Exit legs" cell -
+   the same numbered .exit-list TradeForm.js's own edit view uses, just
+   with a tighter gap (that one's tuned for rows of input fields, not
+   plain text) and no top margin, since the label above it already
+   provides that spacing via .detail-grid label's margin-bottom. */
+.trade-expand-grid .exit-list{margin-top:0; gap:2px; padding-left:16px;}
+/* Widens the gap between the "1."/"2." marker and each leg's own text -
+   list-style-position:outside puts the marker in the space carved out by
+   the <li>'s own padding-left, so this (rather than the .exit-list's
+   padding-left above, which only sets the list's overall indent) is what
+   actually controls that gap. Scoped to this read-only list, not
+   TradeForm.js's own .exit-list-item rows (those hold input fields, not
+   plain text, and were never asked to change). */
+.trade-expand-grid .exit-list-item{padding-left:6px;}
+/* Discipline/Tags/Notes each get this instead of a plain margin-top, so
+   whichever of the three actually renders first still reads as a
+   distinct section below the field grids above, not just more of the
+   same spacing. */
+.expand-row-divider{border-top:1px solid var(--line); margin-top:20px; padding-top:20px;}
 .detail-sublabel{
   font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
 }

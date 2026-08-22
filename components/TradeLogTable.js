@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
-import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
+import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
@@ -349,6 +349,17 @@ export default function TradeLogTable({
             const closed = hasResult(t)
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
             const riskReward = calcRiskReward(t.target_distance, t.stop_distance)
+            // The primary exit plus every additional leg, in the order they
+            // were entered - same convention TradeForm.js's own numbered
+            // exit list uses. A single-leg trade (the common case) skips
+            // all of this and renders exactly as before.
+            const exitLegs = [
+              { exit_time: t.exit_time, exit_price: t.exit_price, contracts: t.contracts },
+              ...(t.additional_exits || []),
+            ]
+            const hasMultipleExits = exitLegs.length > 1
+            const totalExitContracts = exitLegs.reduce((sum, leg) => sum + (leg.contracts == null ? 0 : Number(leg.contracts)), 0)
+            const lastLeg = exitLegs[exitLegs.length - 1]
             const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
@@ -424,11 +435,27 @@ export default function TradeLogTable({
                             </div>
                           </div>
                           <div>
-                            <label>Exit price</label>
+                            <label>{hasMultipleExits ? 'Exit legs' : 'Exit price'}</label>
                             <div>
-                              {fmtNum(t.exit_price)}
+                              {hasMultipleExits ? (
+                                <ol className="exit-list">
+                                  {exitLegs.map((leg, i) => {
+                                    const legR = calcRMultiple(t.direction, t.entry, t.stop, parseFloat(leg.exit_price))
+                                    return (
+                                      <li key={i}>
+                                        {fmtNum(leg.exit_price)} ({leg.contracts == null ? '—' : leg.contracts}x)
+                                        {legR !== null && (
+                                          <span className={legR > 0 ? 'pos' : legR < 0 ? 'neg' : 'neu'}> · {(legR >= 0 ? '+' : '') + legR.toFixed(2)}R</span>
+                                        )}
+                                      </li>
+                                    )
+                                  })}
+                                </ol>
+                              ) : (
+                                fmtNum(t.exit_price)
+                              )}
                               <div className="detail-subvalue">
-                                {formatDuration(tradeDurationMinutes(t))} · {t.contracts == null ? '—' : t.contracts.toLocaleString('en-US')} contracts
+                                {formatDuration(tradeDurationMinutes({ trade_time: t.trade_time, exit_time: lastLeg.exit_time }))} · {totalExitContracts} contracts
                               </div>
                             </div>
                           </div>

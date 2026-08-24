@@ -431,3 +431,18 @@ alter table trades add column if not exists additional_exits jsonb not null defa
 -- on the form. Nullable since trades logged before this existed only
 -- ever had exit_price.
 alter table trades add column if not exists exit_points numeric;
+
+-- in_plan was superseded by reviewed_no_issues/discipline_tags (the
+-- Discipline field above) - confirmed nothing in the codebase still reads
+-- or writes it, so unlike every other change in this file, this one is a
+-- genuine drop rather than an addition: dead weight, not historical data
+-- worth preserving.
+alter table trades drop column if exists in_plan;
+
+-- screenshot_url (singular) is legacy, going forward - TradeForm.js only
+-- ever writes screenshot_urls now (see the comment above that column
+-- further up), and screenshot_url is read in exactly one place
+-- (app/app/[instrument]/log/[tradeId]/edit/page.js's fallback for a trade
+-- whose screenshot_urls is still null). Left in place rather than
+-- dropped, since there's no way to be certain every existing row's
+-- one-time backfill into screenshot_urls above actually ran.

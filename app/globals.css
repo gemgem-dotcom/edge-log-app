@@ -5,43 +5,44 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–461  Base: reset, typography, forms, tables, thumbnails,
+     1–462  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   462  Auth pages
-   528  Top nav
-   543  Instrument nav (topbar pill row)
-   607  Page layout
-   659  Tabs
-   669  Misc form helpers
-   675  Detail view
-   691  Holiday notice (site-wide, above the shell)
-   716  Shell layout (sidebar + topbar)
-   928  Expandable trade rows
-   976  Calendar
-   1024  Account settings page
-   1231  Light theme
-   1263  2FA
-   1278  Account fine print
-   1281  Screenshot preview (log new trade)
-   1323  Auth pages always dark
-   1351  Monthly P&L (calendar on Overview)
-   1417  Trade form: sections, validation, currency, screenshots
-   1645  Field tooltips
-   1707  Date/time picker (adds an optional popup to a typed input)
-   1816  In-header column filters (trade log table)
-   1850  Active filter chips
-   1899  Empty states, error banners, skeleton loaders
-   1970  Cross-instrument overview dashboard (/app)
-   2190  Not found / error boundary state pages
-   2203  Toast notifications
-   2231  Public policy pages (Privacy, Terms)
-   2250  Legal links (auth pages + account settings)
-   2289  Economic calendar card (mock - Overview pages)
-   2396  Calendar news badge (Monthly P&L day cells, mock)
-   2417  Streak badge (Overview + strategy detail pages)
-   2434  Market status pill (Overview + strategy detail pages)
-   2460  Key levels, today's brief (mock cards)
-   2486  Market context cards (all-instruments Overview)
+   463  Auth pages
+   529  Top nav
+   544  Instrument nav (topbar pill row)
+   608  Page layout
+   660  Tabs
+   670  Misc form helpers
+   676  Detail view
+   692  Holiday notice (site-wide, above the shell)
+   717  Shell layout (sidebar + topbar)
+   929  Expandable trade rows
+   977  Calendar
+   1025  Account settings page
+   1232  Light theme
+   1264  2FA
+   1279  Account fine print
+   1282  Screenshot preview (log new trade)
+   1324  Auth pages always dark
+   1352  Monthly P&L (calendar on Overview)
+   1418  Trade form: sections, validation, currency, screenshots
+   1646  Field tooltips
+   1708  Date/time picker (adds an optional popup to a typed input)
+   1817  In-header column filters (trade log table)
+   1851  Active filter chips
+   1900  Empty states, error banners, skeleton loaders
+   1971  Cross-instrument overview dashboard (/app)
+   2191  Not found / error boundary state pages
+   2204  Toast notifications
+   2232  Public policy pages (Privacy, Terms)
+   2251  Legal links (auth pages + account settings)
+   2290  Economic calendar card (mock - Overview pages)
+   2397  Calendar news badge (Monthly P&L day cells, mock)
+   2418  Streak badge (Overview + strategy detail pages)
+   2435  Market status pill (Overview + strategy detail pages)
+   2461  Key levels, today's brief (mock cards)
+   2487  Market context cards (all-instruments Overview)
+   2546  Strategy detail: performance findings
    ============================================================ */
 
 :root{
@@ -2541,3 +2542,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    actual rendered (uppercase, per the base th rule) glyphs - close enough
    normally, but visibly off once compared side-by-side across a header row. */
 .th-with-tooltip{display:inline-flex; align-items:center;}
+
+/* ---------- Strategy detail: performance findings ---------- */
+/* Sits below .performance-duration-chart inside the same Performance
+   panel, not a separate top-level section - see the strategy detail
+   page's Performance panel for how these two stack together. */
+.strategy-findings{display:flex; flex-direction:column; gap:20px; margin-top:28px;}
+.strategy-finding-label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+.strategy-finding-text{font-size:13px; line-height:1.6; color:var(--text);}
+/* A session row's win rate/expectancy cells fall back to this instead of
+   a number once that row's own trade count misses the confidence gate -
+   a session-specific "not enough data yet" note, distinct from
+   .stat-placeholder (which replaces a whole stat block, not one table
+   cell). */
+.muted-note{color:var(--muted); font-style:italic;}
+.session-breakdown-table{margin-top:8px;}

@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–378  Base: reset, typography, forms, tables, thumbnails,
+     1–414  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   379  Auth pages
-   431  Top nav
-   446  Instrument nav (topbar pill row)
-   510  Page layout
-   558  Tabs
-   568  Misc form helpers
-   574  Detail view
-   590  Holiday notice (site-wide, above the shell)
-   615  Shell layout (sidebar + topbar)
-   824  Expandable trade rows
-   872  Calendar
-   920  Account settings page
-   1118  Light theme
-   1146  2FA
-   1161  Account fine print
-   1164  Screenshot preview (log new trade)
-   1206  Auth pages always dark
-   1234  Monthly P&L (calendar on Overview)
-   1300  Trade form: sections, validation, currency, screenshots
-   1528  Field tooltips
-   1590  Date/time picker (adds an optional popup to a typed input)
-   1699  In-header column filters (trade log table)
-   1733  Active filter chips
-   1782  Empty states, error banners, skeleton loaders
-   1853  Cross-instrument overview dashboard (/app)
-   2073  Not found / error boundary state pages
-   2086  Toast notifications
-   2114  Public policy pages (Privacy, Terms)
-   2133  Legal links (auth pages + account settings)
-   2172  Economic calendar card (mock - Overview pages)
-   2279  Calendar news badge (Monthly P&L day cells, mock)
-   2300  Streak badge (Overview + strategy detail pages)
-   2317  Market status pill (Overview + strategy detail pages)
-   2343  Key levels, today's brief (mock cards)
-   2369  Market context cards (all-instruments Overview)
+   415  Auth pages
+   467  Top nav
+   482  Instrument nav (topbar pill row)
+   546  Page layout
+   594  Tabs
+   604  Misc form helpers
+   610  Detail view
+   626  Holiday notice (site-wide, above the shell)
+   651  Shell layout (sidebar + topbar)
+   863  Expandable trade rows
+   911  Calendar
+   959  Account settings page
+   1160  Light theme
+   1188  2FA
+   1203  Account fine print
+   1206  Screenshot preview (log new trade)
+   1248  Auth pages always dark
+   1276  Monthly P&L (calendar on Overview)
+   1342  Trade form: sections, validation, currency, screenshots
+   1570  Field tooltips
+   1632  Date/time picker (adds an optional popup to a typed input)
+   1741  In-header column filters (trade log table)
+   1775  Active filter chips
+   1824  Empty states, error banners, skeleton loaders
+   1895  Cross-instrument overview dashboard (/app)
+   2115  Not found / error boundary state pages
+   2128  Toast notifications
+   2156  Public policy pages (Privacy, Terms)
+   2175  Legal links (auth pages + account settings)
+   2214  Economic calendar card (mock - Overview pages)
+   2321  Calendar news badge (Monthly P&L day cells, mock)
+   2342  Streak badge (Overview + strategy detail pages)
+   2359  Market status pill (Overview + strategy detail pages)
+   2385  Key levels, today's brief (mock cards)
+   2411  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -83,10 +83,23 @@
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
+
+  /* Layered ambient shadow used on every card-like surface (.panel, .stat,
+     .progress-card, .confirm-modal) for depth against the flat --line
+     border alone - two shadows rather than one, a tight near-black one for
+     definition right at the edge and a softer, wider one that fades out,
+     which reads as more natural depth than a single flat shadow does. */
+  --panel-shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px -16px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 body{
-  background:var(--bg);
+  /* A faint accent-tinted glow anchored near the top of the page, under
+     the flat --bg - subtle enough not to compete with any panel sitting
+     on top of it, but enough to keep the background from reading as
+     completely flat on pages with little content near the top. */
+  background:
+    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(59,167,255,.08), transparent 60%),
+    var(--bg);
   color:var(--text);
   font-family:'Inter',sans-serif;
   min-height:100vh;
@@ -103,7 +116,7 @@ header{display:flex; justify-content:space-between; align-items:flex-end; margin
 .title span{color:var(--accent);}
 h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:4px;}
 
-.progress-card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 18px; min-width:220px;}
+.progress-card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 18px; min-width:220px; box-shadow:var(--panel-shadow);}
 .progress-label{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px;}
 .progress-count{font-family:'JetBrains Mono',monospace; color:var(--text); font-weight:600;}
 .progress-bar{height:6px; background:var(--line); border-radius:99px; overflow:hidden;}
@@ -120,12 +133,12 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
    where a .section-heading follows instead: its own 24px margin-top
    still wins that collapse regardless of this value. */
 .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:15px;}
-.stat{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px;}
+.stat{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px; box-shadow:var(--panel-shadow);}
 .stat-label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
 .stat-value{font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:600;}
 .pos{color:var(--win);} .neg{color:var(--loss);} .neu{color:var(--text);}
 
-.panel{background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:24px;}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:24px; box-shadow:var(--panel-shadow);}
 .panel-title{font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; margin-bottom:16px;}
 /* Reusable translucent surface for the glass-panel aesthetic - not applied
    to any element yet, opt in with class="panel glass-panel" (or on its
@@ -235,8 +248,31 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
 .dir-toggle-square{border-radius:7px;}
 
 .submit-row{grid-column:span 6; display:flex; justify-content:flex-end; align-items:center; gap:16px; margin-top:4px;}
-button{background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; transition:filter .15s ease, background-color .15s ease, opacity .15s ease;}
-button:hover{filter:brightness(1.08);}
+button{
+  background:var(--accent); color:#04121f; border:none; border-radius:100px; padding:10px 22px;
+  font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif;
+  transition:filter .15s ease, background-color .15s ease, opacity .15s ease, transform .15s ease, box-shadow .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+/* Lift + accent-tinted glow for every plain solid-accent button (the
+   base look for a submit/primary action across the app). */
+button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3), 0 0 20px rgba(59,167,255,.3);}
+/* Every secondary/icon/nav button class overrides `background` away from
+   --accent (panel-2, transparent, a semantic color), so a blue glow on
+   hover would read as a mismatch rather than a variant - reset it here
+   rather than trying to select "still solid-accent" some other way.
+   .btn-accent-outline/.btn-danger-outline get their own color-matched
+   glow below instead of a flat reset, since they're accent/semantic-
+   colored themselves and a glow still reads correctly on them, just not
+   this hardcoded blue one. A new secondary button class needs adding to
+   this list (or its own box-shadow override) to avoid inheriting the glow. */
+.dir-btn:hover, .discard-btn:hover, .auth-oauth-btn:hover, .icon-btn:hover, .icon-btn-profile:hover,
+.theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .eye-btn:hover, .strategy-menu-btn:hover,
+.icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
+.dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .col-filter-btn:hover,
+.trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-today-btn:hover, .row-action-btn:hover{
+  transform:none; box-shadow:none;
+}
 button:disabled{opacity:.5; cursor:not-allowed;}
 /* Undoes the pill treatment above - plain grey text next to Save changes
    on the edit-trade form. Blue on hover as "Cancel", before there's
@@ -681,9 +717,12 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
   font-weight:700; font-size:13px; padding:9px 16px; border-radius:100px; text-decoration:none;
-  white-space:nowrap; flex-shrink:0; transition:filter .15s ease;
+  white-space:nowrap; flex-shrink:0; transition:filter .15s ease, transform .15s ease, box-shadow .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.3);
 }
-.new-trade-btn:hover{filter:brightness(1.08);}
+/* Not a <button>, so it doesn't inherit the base button:hover glow - given
+   its own copy since it's the app's most-repeated primary CTA. */
+.new-trade-btn:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3), 0 0 20px rgba(59,167,255,.3);}
 
 .shell-body{display:flex; flex:1; min-height:0;}
 
@@ -992,17 +1031,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .btn-danger-outline{
   background:transparent; border:1px solid var(--loss); color:var(--loss);
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
-  transition:background-color .15s ease;
+  transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-.btn-danger-outline:hover{background:rgba(225,92,92,.1);}
+/* box-shadow explicitly overridden here (not just left to inherit) - the
+   base button:hover rule below would otherwise still win the cascade for
+   that property and put a blue glow around a red destructive button. */
+.btn-danger-outline:hover{background:rgba(225,92,92,.1); box-shadow:0 0 16px rgba(225,92,92,.25);}
 /* Same shape as the danger button, in the accent colour — for the safe
    choice in a confirm modal, so red is reserved for the destructive one. */
 .btn-accent-outline{
   background:transparent; border:1px solid var(--accent); color:var(--accent);
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
-  transition:background-color .15s ease;
+  transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-.btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none;}
+.btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none; box-shadow:0 0 16px rgba(59,167,255,.25);}
 
 .account-msg{border-radius:7px; padding:9px 12px; font-size:12.5px; margin-top:12px;}
 .account-msg-error{background:rgba(225,92,92,.12); border:1px solid var(--loss); color:var(--loss);}
@@ -1224,7 +1266,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 .confirm-modal{
     background:var(--panel); border:1px solid var(--line); border-radius:20px;
-    padding:24px; max-width:420px; width:100%;
+    padding:24px; max-width:420px; width:100%; box-shadow:var(--panel-shadow);
 }
 .confirm-modal h2{font-family:'Archivo',sans-serif; font-size:18px; font-weight:800; margin-bottom:12px;}
 .confirm-modal p{font-size:13.5px; color:var(--muted); margin-bottom:16px; line-height:1.5;}

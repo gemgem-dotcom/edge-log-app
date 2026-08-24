@@ -542,3 +542,13 @@ alter table market_session_stats enable row level security;
 create policy "Anyone signed in can read market session stats"
   on market_session_stats for select
   using (auth.role() = 'authenticated');
+
+-- Per-trade regime labels (lib/tradeRegimes.js) - high/normal/low, bucketed
+-- by comparing the trade's own session's total_range/total_volume against
+-- the trailing 20 sessions in market_session_stats. Nullable and lazily
+-- backfilled at read time (app/app/layout.js, on every app-shell mount) -
+-- null means "not yet applicable" (a same-day trade whose session hasn't
+-- closed, the daily job hasn't run yet, or the trade isn't on an NQ-family
+-- instrument), never a guessed value, same principle as `session` above.
+alter table trades add column if not exists volatility_regime text;
+alter table trades add column if not exists volume_regime text;

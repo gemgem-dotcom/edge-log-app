@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–473  Base: reset, typography, forms, tables, thumbnails,
+     1–476  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   474  Auth pages
-   540  Top nav
-   555  Instrument nav (topbar pill row)
-   619  Page layout
-   667  Tabs
-   677  Misc form helpers
-   683  Detail view
-   699  Holiday notice (site-wide, above the shell)
-   724  Shell layout (sidebar + topbar)
-   936  Expandable trade rows
-   984  Calendar
-   1032  Account settings page
-   1233  Light theme
-   1265  2FA
-   1280  Account fine print
-   1283  Screenshot preview (log new trade)
-   1325  Auth pages always dark
-   1353  Monthly P&L (calendar on Overview)
-   1419  Trade form: sections, validation, currency, screenshots
-   1647  Field tooltips
-   1709  Date/time picker (adds an optional popup to a typed input)
-   1818  In-header column filters (trade log table)
-   1852  Active filter chips
-   1901  Empty states, error banners, skeleton loaders
-   1972  Cross-instrument overview dashboard (/app)
-   2192  Not found / error boundary state pages
-   2205  Toast notifications
-   2233  Public policy pages (Privacy, Terms)
-   2252  Legal links (auth pages + account settings)
-   2291  Economic calendar card (mock - Overview pages)
-   2398  Calendar news badge (Monthly P&L day cells, mock)
-   2419  Streak badge (Overview + strategy detail pages)
-   2436  Market status pill (Overview + strategy detail pages)
-   2462  Key levels, today's brief (mock cards)
-   2488  Market context cards (all-instruments Overview)
+   477  Auth pages
+   543  Top nav
+   558  Instrument nav (topbar pill row)
+   622  Page layout
+   670  Tabs
+   680  Misc form helpers
+   686  Detail view
+   702  Holiday notice (site-wide, above the shell)
+   727  Shell layout (sidebar + topbar)
+   939  Expandable trade rows
+   987  Calendar
+   1035  Account settings page
+   1242  Light theme
+   1274  2FA
+   1289  Account fine print
+   1292  Screenshot preview (log new trade)
+   1334  Auth pages always dark
+   1362  Monthly P&L (calendar on Overview)
+   1428  Trade form: sections, validation, currency, screenshots
+   1656  Field tooltips
+   1718  Date/time picker (adds an optional popup to a typed input)
+   1827  In-header column filters (trade log table)
+   1861  Active filter chips
+   1910  Empty states, error banners, skeleton loaders
+   1981  Cross-instrument overview dashboard (/app)
+   2201  Not found / error boundary state pages
+   2214  Toast notifications
+   2242  Public policy pages (Privacy, Terms)
+   2261  Legal links (auth pages + account settings)
+   2300  Economic calendar card (mock - Overview pages)
+   2407  Calendar news badge (Monthly P&L day cells, mock)
+   2428  Streak badge (Overview + strategy detail pages)
+   2445  Market status pill (Overview + strategy detail pages)
+   2471  Key levels, today's brief (mock cards)
+   2497  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -325,8 +325,11 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .trade-tag-filter-btn, .econ-impact-filter-btn, .econ-today-btn, .row-action-btn{
   box-shadow:none;
 }
+/* .eye-btn excluded here on purpose - see its own :hover rule below,
+   which resets box-shadow the same way but has to re-assert its
+   translateY(-50%) centering instead of clearing transform outright. */
 .dir-btn:hover, .discard-btn:hover, .auth-oauth-btn:hover, .icon-btn:hover, .icon-btn-profile:hover,
-.theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .eye-btn:hover, .strategy-menu-btn:hover,
+.theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .strategy-menu-btn:hover,
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
 .dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .col-filter-btn:hover,
 .trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-today-btn:hover, .row-action-btn:hover{
@@ -1094,7 +1097,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   background:none; border:none; padding:4px; color:var(--muted); cursor:pointer;
   display:flex; align-items:center; justify-content:center; transition:color .15s ease;
 }
-.eye-btn:hover{color:var(--text);}
+/* transform re-asserts the base rule's translateY(-50%) rather than
+   resetting to none like the shared reset list above does for every
+   other secondary button - .eye-btn is the one button in that list that
+   uses transform for its own layout (vertical centering) rather than
+   just a decorative hover lift, so clearing it outright made the icon
+   visibly jump up by half its own height on hover. */
+.eye-btn:hover{color:var(--text); transform:translateY(-50%); box-shadow:none;}
 .field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px; margin-bottom:10px;}
 
 .danger-panel{border-color:rgba(225,92,92,.35);}

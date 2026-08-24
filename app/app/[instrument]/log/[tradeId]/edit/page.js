@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
+import { applyTrade, reverseTrade } from '@/lib/edgeBeliefs'
 import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -73,16 +74,27 @@ export default function EditTradePage({ params }) {
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
 
-    const { error } = await supabase.from('trades').update({
+    const { data: updated, error } = await supabase.from('trades').update({
       ...values,
       screenshot_urls,
       screenshot_url: screenshot_urls[0] || null,
       session,
       continued_sessions: continuedSessions,
-    }).eq('id', tradeId)
+    }).eq('id', tradeId).select().single()
 
     if (error) {
       return 'Could not save trade: ' + error.message
+    }
+
+    // Best-effort, and in that order deliberately - slice membership itself
+    // can change on an edit (a reassigned strategy, a discipline review), so
+    // reversing the pre-edit row's slices before applying the post-edit
+    // row's is what makes this correct rather than "patch in place."
+    try {
+      await reverseTrade(supabase, trade)
+      await applyTrade(supabase, updated)
+    } catch (beliefError) {
+      console.error('belief update failed:', beliefError)
     }
 
     // Same as Cancel/Discard changes (onCancel below) - returns to wherever
@@ -103,6 +115,11 @@ export default function EditTradePage({ params }) {
     if (error) {
       setDeleteError(`Couldn't delete this trade — ${error.message}`)
       return
+    }
+    try {
+      await reverseTrade(supabase, trade)
+    } catch (beliefError) {
+      console.error('reverseTrade failed:', beliefError)
     }
     toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)

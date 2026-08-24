@@ -9,6 +9,7 @@ import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
+import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
 import { upcomingEconEvents } from '@/lib/marketContextMock'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
@@ -25,6 +26,7 @@ import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
+const NQ_DATA_SYMBOL = 'NQ'
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
 const EQUITY_GROUPS = [
@@ -259,6 +261,7 @@ export default function DashboardPage({ params }) {
   const [perfStrategy, setPerfStrategy] = useState('all')
   const [equityGroup, setEquityGroup] = useState('day')
   const [selectedDate, setSelectedDate] = useState(null)
+  const [regime, setRegime] = useState(null)
 
 useEffect(() => {
   loadData()
@@ -291,6 +294,13 @@ async function loadData() {
     setStrategies(stratData || [])
     setTradesByStrategy(grouped)
     setAllTrades(tradeData || [])
+
+    // NQ-family only, matching lib/tradeRegimes.js's own scope - every
+    // other instrument's trades never carry volatility_regime/volume_regime,
+    // so there's nothing this clause could match and no point in the query.
+    if (catalogEntryFor(symbol)?.data_symbol === NQ_DATA_SYMBOL) {
+      setRegime(await latestClosedSessionRegime(supabase))
+    }
   } catch (err) {
     setError(err.message || "Couldn't load your dashboard — something went wrong.")
   } finally {
@@ -370,6 +380,11 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
     },
   ]
   const streak = computeStreak(allTrades)
+  // null (no clause rendered) until there's a confident, matching
+  // strategy x regime signal for the most recently closed session - see
+  // lib/todaysBrief.js. The existing sentence just above stays exactly as
+  // it was either way.
+  const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime })
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const upcomingEvents = upcomingEconEvents(now)
@@ -519,6 +534,7 @@ return (
     <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
     <p className="brief-card-text">
       {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
+      {briefClause ? ` ${briefClause}` : ''}
     </p>
   </div>
   <div className="panel">

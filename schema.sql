@@ -446,3 +446,109 @@ alter table trades drop column if exists in_plan;
 -- whose screenshot_urls is still null). Left in place rather than
 -- dropped, since there's no way to be certain every existing row's
 -- one-time backfill into screenshot_urls above actually ran.
+
+-- Edge Engine belief state (lib/edgeBeliefs.js) - a persistent, incrementally
+-- updated companion to lib/edgeEngine.js's queryPerformance(). queryPerformance
+-- recomputes stats from scratch from the trades table on every read; this table
+-- instead keeps a running Bayesian posterior per "slice" (the same dimensions
+-- queryPerformance groups by - session, strategy_id, instrument_id, discipline,
+-- and later volatility/volume regime and their strategy_id intersections - plus
+-- one root 'overall' slice), updated incrementally at trade save/edit/delete
+-- time rather than rebuilt from the full trade history on every read.
+--
+-- slice_key is a stable, human-diffable string encoding of bindings, e.g.
+-- 'strategy_id:<uuid>' or 'strategy_id:<uuid>|volatility_regime:high' for a
+-- 2-way intersection - see lib/edgeBeliefs.js's sliceKeyFor. bindings holds
+-- the same information structured, for querying without parsing the key.
+--
+-- win_alpha/win_beta: beta-binomial posterior over this slice's win rate
+-- (+1 alpha per win, +1 beta per loss; breakeven trades touch neither).
+-- expectancy_mean/expectancy_m2 and avg_r_mean/avg_r_m2: two Welford
+-- online-update accumulators (mean + M2, the sum-of-squared-deviations
+-- Welford's algorithm carries instead of a running variance directly), both
+-- currently fed the same per-trade r_multiple samples - see the comment in
+-- lib/edgeBeliefs.js's applyOutcome for why they're kept as separate
+-- accumulators today even though that makes them numerically identical to
+-- each other (and to queryPerformance's own expectancy, which is likewise
+-- identical to avgR by construction there).
+--
+-- parent_slice_key: the coarser slice a brand-new row is seeded from (e.g.
+-- 'strategy_id:<uuid>' for 'strategy_id:<uuid>|volatility_regime:high', or
+-- 'overall' for a top-level single-dimension slice) - win_alpha/win_beta seed
+-- from the parent's posterior mean scaled by a fixed pseudo-count, so a new
+-- slice starts from "what we already believe" rather than an uninformative
+-- 50/50 prior. null only for the root 'overall' slice, which has no parent.
+--
+-- recent_outcomes: a capped (see lib/edgeBeliefs.js's RECENT_OUTCOMES_CAP)
+-- most-recent-first array of {trade_id, r_multiple, trade_date}, used so an
+-- edit/delete can reverse a specific trade's contribution by trade_id rather
+-- than only ever being able to undo the last one applied.
+create table edge_beliefs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  slice_key text not null,
+  bindings jsonb not null,
+  parent_slice_key text,
+  win_alpha numeric not null,
+  win_beta numeric not null,
+  expectancy_mean numeric,
+  expectancy_m2 numeric,
+  avg_r_mean numeric,
+  avg_r_m2 numeric,
+  n integer not null default 0,
+  confidence_tier text not null default 'too_early',
+  recent_outcomes jsonb not null default '[]'::jsonb,
+  last_trade_at timestamptz,
+  last_revised_at timestamptz,
+  revision_note text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id, slice_key)
+);
+
+alter table edge_beliefs enable row level security;
+create policy "Users manage their own belief state"
+  on edge_beliefs for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Daily completed-session market data (lib/databento.js, scripts/
+-- fetch-daily-market-stats.js) - one row per trading day, shared by every
+-- trader rather than duplicated per user. The brief this shipped under
+-- specified `instrument_id uuid references instruments(id)` as this table's
+-- key, but instruments is a per-user table (unique(user_id, symbol)) with no
+-- single shared "NQ" row to reference, and CLAUDE.md's own domain rules say
+-- future market-data lookups should key off data_symbol, not a specific
+-- instruments row, since that's what groups mini/micro contracts (MNQ, NQ)
+-- onto the same underlying series. Flagged to the user, who confirmed
+-- data_symbol over the brief's literal instrument_id FK - see the PR
+-- description for the full reasoning.
+--
+-- No RLS ownership policy makes sense here (no user_id - this isn't anyone's
+-- data) - RLS is still enabled, but only a read policy exists. Writes come
+-- exclusively from scripts/fetch-daily-market-stats.js using
+-- SUPABASE_SERVICE_ROLE_KEY (bypasses RLS entirely), the same key already
+-- used by the two API routes in app/api/ - see README.md/NOTES.md.
+create table market_session_stats (
+  data_symbol text not null,
+  session_date date not null,
+  total_range numeric not null,
+  total_volume numeric not null,
+  created_at timestamptz default now(),
+  primary key (data_symbol, session_date)
+);
+
+alter table market_session_stats enable row level security;
+create policy "Anyone signed in can read market session stats"
+  on market_session_stats for select
+  using (auth.role() = 'authenticated');
+
+-- Per-trade regime labels (lib/tradeRegimes.js) - high/normal/low, bucketed
+-- by comparing the trade's own session's total_range/total_volume against
+-- the trailing 20 sessions in market_session_stats. Nullable and lazily
+-- backfilled at read time (app/app/layout.js, on every app-shell mount) -
+-- null means "not yet applicable" (a same-day trade whose session hasn't
+-- closed, the daily job hasn't run yet, or the trade isn't on an NQ-family
+-- instrument), never a guessed value, same principle as `session` above.
+alter table trades add column if not exists volatility_regime text;
+alter table trades add column if not exists volume_regime text;

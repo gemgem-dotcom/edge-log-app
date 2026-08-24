@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
+import { reverseTrade } from '@/lib/edgeBeliefs'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -51,6 +52,11 @@ export default function TradeDetailPage({ params }) {
     const sure = await confirm({ title: 'Delete Trade', message: 'This action cannot be undone.', confirmLabel: 'Delete trade', danger: true })
     if (!sure) return
     await supabase.from('trades').delete().eq('id', tradeId)
+    try {
+      await reverseTrade(supabase, trade)
+    } catch (beliefError) {
+      console.error('reverseTrade failed:', beliefError)
+    }
     toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
   }

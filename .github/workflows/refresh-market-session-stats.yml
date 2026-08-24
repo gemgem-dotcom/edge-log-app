@@ -1,0 +1,59 @@
+# Daily NQ market-session-stats fetch
+#
+# Runs scripts/fetch-daily-market-stats.js once a day, well after CME's
+# latest possible normal close (5pm ET / 22:00 UTC in EDT, 21:00 UTC in
+# EST) - fetches NQ's completed ohlcv-1m bars for the day that just closed
+# from Databento's Historical API and stores total_range/total_volume in
+# market_session_stats. See schema.sql's comment above `create table
+# market_session_stats` and NOTES.md for the full picture.
+#
+# Unlike refresh-cme-holidays.yml, this workflow never touches a committed
+# file - it writes straight to Supabase (via SUPABASE_SERVICE_ROLE_KEY, the
+# same key the two API routes in app/api/ use) and exits, so there's no
+# git commit/PR/build-gate mechanic here. The script itself is the safety
+# net: it fails gracefully (skips the day, logs why, exits 0) rather than
+# crashing on a holiday, a weekend, an unreachable Databento API, or an
+# unresolved symbol - see the script's own comments.
+#
+# One-time setup required - three repo secrets this workflow needs that
+# don't otherwise exist for GitHub Actions (Vercel has them, Actions does
+# not): Settings -> Secrets and variables -> Actions -> New repository
+# secret:
+#   DATABENTO_API_KEY           same value as .env.local's
+#   SUPABASE_SERVICE_ROLE_KEY   same value as .env.local's
+#   NEXT_PUBLIC_SUPABASE_URL    same value as .env.local's (not a secret by
+#                                nature, but stored as one here since this
+#                                workflow has no other config mechanism)
+
+name: Refresh NQ market session stats
+
+on:
+  schedule:
+    # 23:30 UTC - 7:30pm EDT / 6:30pm EST, safely after the latest possible
+    # normal 5pm ET close in either direction of the DST clock change, and
+    # well after any early-close time (CME's earliest is 9:15am ET, Good
+    # Friday) an early-closed session could have ended at.
+    - cron: '30 23 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Fetch and store today's NQ session stats
+        env:
+          DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: node scripts/fetch-daily-market-stats.js

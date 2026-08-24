@@ -22,6 +22,11 @@ const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool
 // the trigger a direct lookup instead of a .find() over an array.
 const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', breakeven: 'Breakeven', custom: 'Custom...' }
 
+// A "breakeven" exit is meant to be at (or essentially at) entry - this
+// caps how far the trader can nudge the auto-filled price before it's
+// really just a small win/loss that belongs under Custom instead.
+const BREAKEVEN_TOLERANCE_POINTS = 5
+
 // Outcome itself is never stored - only the exit_price/additional_exits it
 // produces are - so re-opening a saved trade for edit has to infer which
 // choice it originally was. A multi-exit trade can only have been saved as
@@ -590,13 +595,24 @@ export default function TradeForm({
   async function handleSubmit(e) {
     e.preventDefault()
 
+    const execErrors = validateExecution(execution)
+    // Only checked once the exit price has already passed the basic
+    // present/numeric check above - a range error would otherwise
+    // overwrite (and hide) that more fundamental one.
+    if (!execErrors.exit_price && outcome === 'breakeven') {
+      const entry = parseFloat(setup.entry)
+      const exitPrice = parseFloat(execution.exit_price)
+      if (Number.isFinite(entry) && Math.abs(exitPrice - entry) > BREAKEVEN_TOLERANCE_POINTS) {
+        execErrors.exit_price = `Breakeven exit price must be within ${BREAKEVEN_TOLERANCE_POINTS} points of entry.`
+      }
+    }
     const foundErrors = {
       ...validateSetup({ ...setup, direction, strategyId }),
       // Outcome gates whether the exit row(s) even render (see
       // outcomeChosen) - validateExecution's own exit_price check would
       // otherwise fire against a hidden field with no visible error.
       ...(outcomeChosen ? {} : { outcome: 'Choose an outcome.' }),
-      ...validateExecution(execution),
+      ...execErrors,
       ...validateDiscipline({ reviewedNoIssues, disciplineTags }),
     }
     if (Object.keys(foundErrors).length > 0) {

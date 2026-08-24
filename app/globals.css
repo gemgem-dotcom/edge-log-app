@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–417  Base: reset, typography, forms, tables, thumbnails,
+     1–427  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   418  Auth pages
-   475  Top nav
-   490  Instrument nav (topbar pill row)
-   554  Page layout
-   602  Tabs
-   612  Misc form helpers
-   618  Detail view
-   634  Holiday notice (site-wide, above the shell)
-   659  Shell layout (sidebar + topbar)
-   871  Expandable trade rows
-   919  Calendar
-   967  Account settings page
-   1168  Light theme
-   1196  2FA
-   1211  Account fine print
-   1214  Screenshot preview (log new trade)
-   1256  Auth pages always dark
-   1284  Monthly P&L (calendar on Overview)
-   1350  Trade form: sections, validation, currency, screenshots
-   1578  Field tooltips
-   1640  Date/time picker (adds an optional popup to a typed input)
-   1749  In-header column filters (trade log table)
-   1783  Active filter chips
-   1832  Empty states, error banners, skeleton loaders
-   1903  Cross-instrument overview dashboard (/app)
-   2123  Not found / error boundary state pages
-   2136  Toast notifications
-   2164  Public policy pages (Privacy, Terms)
-   2183  Legal links (auth pages + account settings)
-   2222  Economic calendar card (mock - Overview pages)
-   2329  Calendar news badge (Monthly P&L day cells, mock)
-   2350  Streak badge (Overview + strategy detail pages)
-   2367  Market status pill (Overview + strategy detail pages)
-   2393  Key levels, today's brief (mock cards)
-   2419  Market context cards (all-instruments Overview)
+   428  Auth pages
+   485  Top nav
+   500  Instrument nav (topbar pill row)
+   564  Page layout
+   612  Tabs
+   622  Misc form helpers
+   628  Detail view
+   644  Holiday notice (site-wide, above the shell)
+   669  Shell layout (sidebar + topbar)
+   881  Expandable trade rows
+   929  Calendar
+   977  Account settings page
+   1178  Light theme
+   1206  2FA
+   1221  Account fine print
+   1224  Screenshot preview (log new trade)
+   1266  Auth pages always dark
+   1294  Monthly P&L (calendar on Overview)
+   1360  Trade form: sections, validation, currency, screenshots
+   1588  Field tooltips
+   1650  Date/time picker (adds an optional popup to a typed input)
+   1759  In-header column filters (trade log table)
+   1793  Active filter chips
+   1842  Empty states, error banners, skeleton loaders
+   1913  Cross-instrument overview dashboard (/app)
+   2133  Not found / error boundary state pages
+   2146  Toast notifications
+   2174  Public policy pages (Privacy, Terms)
+   2193  Legal links (auth pages + account settings)
+   2232  Economic calendar card (mock - Overview pages)
+   2339  Calendar news badge (Monthly P&L day cells, mock)
+   2360  Streak badge (Overview + strategy detail pages)
+   2377  Market status pill (Overview + strategy detail pages)
+   2403  Key levels, today's brief (mock cards)
+   2429  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -263,12 +263,22 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 /* Every secondary/icon/nav button class overrides `background` away from
    --accent (panel-2, transparent, a semantic color), so a blue glow on
    hover would read as a mismatch rather than a variant - reset it here
-   rather than trying to select "still solid-accent" some other way.
+   rather than trying to select "still solid-accent" some other way. These
+   stay flat at rest too - the base button{} rule's box-shadow is meant for
+   solid-accent primary buttons, not a bare icon/nav control, so it's
+   reset unconditionally here, not just on :hover.
    .btn-accent-outline/.btn-danger-outline get their own color-matched
    glow below instead of a flat reset, since they're accent/semantic-
    colored themselves and a glow still reads correctly on them, just not
    this hardcoded blue one. A new secondary button class needs adding to
    this list (or its own box-shadow override) to avoid inheriting the glow. */
+.dir-btn, .discard-btn, .auth-oauth-btn, .icon-btn, .icon-btn-profile,
+.theme-toggle-btn, .calendar-nav-btn, .back-btn, .eye-btn, .strategy-menu-btn,
+.icon-edit-btn, .file-upload-btn, .screenshot-remove-btn, .field-tooltip-btn,
+.dt-picker-icon-btn, .dt-picker-nav-btn, .dt-picker-spin-btn, .col-filter-btn,
+.trade-tag-filter-btn, .econ-impact-filter-btn, .econ-today-btn, .row-action-btn{
+  box-shadow:none;
+}
 .dir-btn:hover, .discard-btn:hover, .auth-oauth-btn:hover, .icon-btn:hover, .icon-btn-profile:hover,
 .theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .eye-btn:hover, .strategy-menu-btn:hover,
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,

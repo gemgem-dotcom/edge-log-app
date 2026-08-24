@@ -11,37 +11,37 @@
    544  Top nav
    559  Instrument nav (topbar pill row)
    623  Page layout
-   671  Tabs
-   681  Misc form helpers
-   687  Detail view
-   703  Holiday notice (site-wide, above the shell)
-   728  Shell layout (sidebar + topbar)
-   940  Expandable trade rows
-   988  Calendar
-   1036  Account settings page
-   1243  Light theme
-   1275  2FA
-   1290  Account fine print
-   1293  Screenshot preview (log new trade)
-   1335  Auth pages always dark
-   1363  Monthly P&L (calendar on Overview)
-   1429  Trade form: sections, validation, currency, screenshots
-   1657  Field tooltips
-   1719  Date/time picker (adds an optional popup to a typed input)
-   1828  In-header column filters (trade log table)
-   1862  Active filter chips
-   1911  Empty states, error banners, skeleton loaders
-   1982  Cross-instrument overview dashboard (/app)
-   2202  Not found / error boundary state pages
-   2215  Toast notifications
-   2243  Public policy pages (Privacy, Terms)
-   2262  Legal links (auth pages + account settings)
-   2301  Economic calendar card (mock - Overview pages)
-   2408  Calendar news badge (Monthly P&L day cells, mock)
-   2429  Streak badge (Overview + strategy detail pages)
-   2446  Market status pill (Overview + strategy detail pages)
-   2472  Key levels, today's brief (mock cards)
-   2498  Market context cards (all-instruments Overview)
+   675  Tabs
+   685  Misc form helpers
+   691  Detail view
+   707  Holiday notice (site-wide, above the shell)
+   732  Shell layout (sidebar + topbar)
+   944  Expandable trade rows
+   992  Calendar
+   1040  Account settings page
+   1247  Light theme
+   1279  2FA
+   1294  Account fine print
+   1297  Screenshot preview (log new trade)
+   1339  Auth pages always dark
+   1367  Monthly P&L (calendar on Overview)
+   1433  Trade form: sections, validation, currency, screenshots
+   1661  Field tooltips
+   1723  Date/time picker (adds an optional popup to a typed input)
+   1832  In-header column filters (trade log table)
+   1866  Active filter chips
+   1915  Empty states, error banners, skeleton loaders
+   1986  Cross-instrument overview dashboard (/app)
+   2206  Not found / error boundary state pages
+   2219  Toast notifications
+   2247  Public policy pages (Privacy, Terms)
+   2266  Legal links (auth pages + account settings)
+   2305  Economic calendar card (mock - Overview pages)
+   2412  Calendar news badge (Monthly P&L day cells, mock)
+   2433  Streak badge (Overview + strategy detail pages)
+   2450  Market status pill (Overview + strategy detail pages)
+   2476  Key levels, today's brief (mock cards)
+   2502  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -639,9 +639,13 @@ table{min-width:640px;}
    would silently fall back to the body font instead of the intended lighter
    Archivo weight. */
 .page-title{font-family:'Archivo',sans-serif; font-size:26px; font-weight:500; margin-bottom:20px; letter-spacing:-.01em;}
+/* No background of its own (previously a flat var(--bg) fill) - body's own
+   background is the same flat color plus the ambient radial-gradient glow
+   and drifting blobs, so an opaque fill here painted a hard-edged
+   rectangle over that ambient effect for as long as a page was loading. */
 .page-loading{
   min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:14px; background:var(--bg);
+  gap:14px;
 }
 .page-loading-bars{display:flex; align-items:center; gap:5px; height:28px;}
 .page-loading-bars span{

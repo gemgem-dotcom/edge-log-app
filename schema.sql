@@ -511,3 +511,34 @@ create policy "Users manage their own belief state"
   on edge_beliefs for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Daily completed-session market data (lib/databento.js, scripts/
+-- fetch-daily-market-stats.js) - one row per trading day, shared by every
+-- trader rather than duplicated per user. The brief this shipped under
+-- specified `instrument_id uuid references instruments(id)` as this table's
+-- key, but instruments is a per-user table (unique(user_id, symbol)) with no
+-- single shared "NQ" row to reference, and CLAUDE.md's own domain rules say
+-- future market-data lookups should key off data_symbol, not a specific
+-- instruments row, since that's what groups mini/micro contracts (MNQ, NQ)
+-- onto the same underlying series. Flagged to the user, who confirmed
+-- data_symbol over the brief's literal instrument_id FK - see the PR
+-- description for the full reasoning.
+--
+-- No RLS ownership policy makes sense here (no user_id - this isn't anyone's
+-- data) - RLS is still enabled, but only a read policy exists. Writes come
+-- exclusively from scripts/fetch-daily-market-stats.js using
+-- SUPABASE_SERVICE_ROLE_KEY (bypasses RLS entirely), the same key already
+-- used by the two API routes in app/api/ - see README.md/NOTES.md.
+create table market_session_stats (
+  data_symbol text not null,
+  session_date date not null,
+  total_range numeric not null,
+  total_volume numeric not null,
+  created_at timestamptz default now(),
+  primary key (data_symbol, session_date)
+);
+
+alter table market_session_stats enable row level security;
+create policy "Anyone signed in can read market session stats"
+  on market_session_stats for select
+  using (auth.role() = 'authenticated');

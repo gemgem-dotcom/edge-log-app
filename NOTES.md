@@ -123,6 +123,41 @@ alone - the exchange is still open then). This runs automatically at read time a
 whatever `cmeHolidays.json` currently holds, so it stays correct as that file gets
 refreshed - no extra step needed when the yearly workflow above updates it.
 
+## Databento market data
+
+Historical only - `lib/databento.js` and `scripts/fetch-daily-market-stats.js` never
+call anything but Databento's Historical API (`GLBX.MDP3` dataset, `ohlcv-1m` schema),
+scoped to NQ's continuous front-month symbol (`NQ.c.0`) only. There's no official
+Databento Node/JS SDK, so both talk to the underlying `v0/timeseries.get_range` HTTP
+endpoint directly with `fetch` - `databento.com` itself isn't reachable from this
+project's dev/CI network egress, so that request/response shape was cross-checked
+against a community Databento MCP server's TypeScript implementation on GitHub instead
+of official docs. Worth a real smoke test against a live `DATABENTO_API_KEY` before
+trusting it in production.
+
+`.github/workflows/refresh-market-session-stats.yml` runs the fetch once daily (23:30
+UTC, safely after CME's latest possible close), computing that day's total range and
+total volume from the fetched 1-minute bars and upserting one row into
+`market_session_stats`, keyed by `data_symbol` ('NQ') rather than a specific
+`instruments` row - see the long comment above `create table market_session_stats` in
+`schema.sql` for why (that table has no per-user owner, so it isn't an
+`instruments(id)`-scoped table the way `trades` is). Skips the day entirely (no
+fetch, no row written) on a weekend or a `cmeHolidays.json` full closure; on an
+early-close day it fetches only up through the shortened close time. Fails gracefully
+(logs, skips, exits 0) rather than crashing the workflow if Databento is unreachable or
+returns nothing for the day.
+
+Needs three repo secrets that don't otherwise exist for GitHub Actions (Vercel has them
+already, Actions doesn't share Vercel's env vars) - see the comment at the top of the
+workflow file: `DATABENTO_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+`NEXT_PUBLIC_SUPABASE_URL`.
+
+`lib/edgeEngine.js`'s `volatility_regime`/`volume_regime` trade dimensions read from
+this table (trailing-20-session comparison) rather than calling Databento directly -
+this daily job is the only place in the whole pass that talks to Databento on a
+recurring basis, keeping usage small and predictable against the signed-up $125 free
+credit.
+
 ## Removing an instrument
 
 The kebab menu next to the title on each per-instrument page (Overview, Trade Log,

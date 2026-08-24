@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–476  Base: reset, typography, forms, tables, thumbnails,
+     1–477  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   477  Auth pages
-   543  Top nav
-   558  Instrument nav (topbar pill row)
-   622  Page layout
-   670  Tabs
-   680  Misc form helpers
-   686  Detail view
-   702  Holiday notice (site-wide, above the shell)
-   727  Shell layout (sidebar + topbar)
-   939  Expandable trade rows
-   987  Calendar
-   1035  Account settings page
-   1242  Light theme
-   1274  2FA
-   1289  Account fine print
-   1292  Screenshot preview (log new trade)
-   1334  Auth pages always dark
-   1362  Monthly P&L (calendar on Overview)
-   1428  Trade form: sections, validation, currency, screenshots
-   1656  Field tooltips
-   1718  Date/time picker (adds an optional popup to a typed input)
-   1827  In-header column filters (trade log table)
-   1861  Active filter chips
-   1910  Empty states, error banners, skeleton loaders
-   1981  Cross-instrument overview dashboard (/app)
-   2201  Not found / error boundary state pages
-   2214  Toast notifications
-   2242  Public policy pages (Privacy, Terms)
-   2261  Legal links (auth pages + account settings)
-   2300  Economic calendar card (mock - Overview pages)
-   2407  Calendar news badge (Monthly P&L day cells, mock)
-   2428  Streak badge (Overview + strategy detail pages)
-   2445  Market status pill (Overview + strategy detail pages)
-   2471  Key levels, today's brief (mock cards)
-   2497  Market context cards (all-instruments Overview)
+   478  Auth pages
+   544  Top nav
+   559  Instrument nav (topbar pill row)
+   623  Page layout
+   671  Tabs
+   681  Misc form helpers
+   687  Detail view
+   703  Holiday notice (site-wide, above the shell)
+   728  Shell layout (sidebar + topbar)
+   940  Expandable trade rows
+   988  Calendar
+   1036  Account settings page
+   1243  Light theme
+   1275  2FA
+   1290  Account fine print
+   1293  Screenshot preview (log new trade)
+   1335  Auth pages always dark
+   1363  Monthly P&L (calendar on Overview)
+   1429  Trade form: sections, validation, currency, screenshots
+   1657  Field tooltips
+   1719  Date/time picker (adds an optional popup to a typed input)
+   1828  In-header column filters (trade log table)
+   1862  Active filter chips
+   1911  Empty states, error banners, skeleton loaders
+   1982  Cross-instrument overview dashboard (/app)
+   2202  Not found / error boundary state pages
+   2215  Toast notifications
+   2243  Public policy pages (Privacy, Terms)
+   2262  Legal links (auth pages + account settings)
+   2301  Economic calendar card (mock - Overview pages)
+   2408  Calendar news badge (Monthly P&L day cells, mock)
+   2429  Streak badge (Overview + strategy detail pages)
+   2446  Market status pill (Overview + strategy detail pages)
+   2472  Key levels, today's brief (mock cards)
+   2498  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -105,21 +105,22 @@ body{
   min-height:100vh;
   position:relative;
 }
-/* Two oversized, heavily-blurred accent blobs drifting slowly behind the
-   page - ambient motion rather than a static glow. Each is a
-   radial-gradient (not a flat-filled circle) so there's no saturated
-   plateau at the core for blur to soften only at the edges - the
-   brightest point already fades smoothly, reading as soft rather than a
-   stark, extreme highlight. z-index:-1 sinks them below body's own
-   in-flow content (panels, sidebar, text) while staying above the flat
-   --bg/radial-gradient background above; position:fixed keeps them
-   viewport-anchored (nothing above sets `transform`, which would
-   otherwise hijack them as a containing block) and off the scrollable
-   area despite hanging outside the viewport edges. Only `transform`
-   animates - compositor-only, so this stays cheap to run indefinitely. */
+/* Two oversized accent blobs drifting slowly behind the page - ambient
+   motion rather than a static glow. No filter:blur() - a radial-gradient
+   already fades smoothly to transparent on its own (browsers interpolate
+   gradients per-pixel), and blurring a element this large is expensive
+   enough that some GPUs downsample before blurring, which showed up as
+   visible blocky/low-res artifacts in the moving blob rather than a
+   smooth glow. z-index:-1 sinks them below body's own in-flow content
+   (panels, sidebar, text) while staying above the flat --bg/radial-
+   gradient background above; position:fixed keeps them viewport-anchored
+   (nothing above sets `transform`, which would otherwise hijack them as
+   a containing block) and off the scrollable area despite hanging
+   outside the viewport edges. Only `transform` animates - compositor-
+   only, so this stays cheap to run indefinitely. */
 body::before, body::after{
   content:''; position:fixed; z-index:-1; pointer-events:none;
-  width:900px; height:900px; border-radius:50%; filter:blur(130px);
+  width:900px; height:900px; border-radius:50%;
 }
 body::before{
   top:-320px; left:-280px;

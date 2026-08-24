@@ -180,6 +180,33 @@ function findStandoutSession(sessionRows) {
   return Math.abs(standout.winRateDelta) >= MIN_STANDOUT_GAP ? standout : null
 }
 
+// Win rate over this strategy's most recent 20 closed trades vs. its
+// all-time win rate - only meaningful once there's a real baseline to
+// have decayed from, so this only runs once the strategy has cleared
+// sampleConfidence's "enough to trust" tier (50+ trades) on its overall
+// count; below that, callers should omit the finding entirely rather than
+// show a placeholder for a concept ("decay") the trader hasn't earned yet.
+// allTrades is expected in the page's own newest-first query order, so
+// closed.slice(0, 20) is already the 20 most recently entered closed
+// trades without a separate sort. MIN_DECAY_GAP keeps a small, normal
+// fluctuation from reading as a warning, and only a DECLINE is flagged -
+// an improving stretch isn't "decay" - both judgment calls, no exact
+// threshold was specified.
+const MIN_DECAY_GAP = 10
+function computeEdgeDecay(allTrades, overallWinRate, overallN) {
+  if (sampleConfidence(overallN).level !== 'high') return null
+  if (overallWinRate === null) return null
+  const recent20 = allTrades.filter(hasResult).slice(0, 20)
+  const wins = recent20.filter((t) => t.r_multiple > 0)
+  const losses = recent20.filter((t) => t.r_multiple < 0)
+  const denom = wins.length + losses.length
+  if (denom === 0) return null
+  const recentWinRate = (wins.length / denom) * 100
+  const gap = recentWinRate - overallWinRate
+  if (gap > -MIN_DECAY_GAP) return null
+  return { recentWinRate, overallWinRate, gap }
+}
+
 // Adaptive-width duration histogram - bucket width scales to the trades'
 // own min/max duration (picked from NICE_STEPS_MIN, the same "round
 // number of minutes/hours" progression a chart-axis tick algorithm would
@@ -365,6 +392,7 @@ const streak = computeStreak(trades)
   const topMistakeTag = computeTopMistakeTag(closedLosses, lossBreakdown.flagged)
   const sessionBreakdown = computeSessionBreakdown(trades, stats.winRate, stats.expectancy)
   const standoutSession = findStandoutSession(sessionBreakdown)
+  const edgeDecay = computeEdgeDecay(trades, stats.winRate, stats.n)
   const durationBuckets = computeDurationBuckets(trades)
   // Same [from, to) partition computeDurationBuckets itself assigns trades
   // to, so a bucket's trade count and what shows up here when it's
@@ -530,6 +558,15 @@ Delete strategy
         </>
       )}
     </div>
+    {edgeDecay && (
+      <div className="strategy-finding">
+        <div className="strategy-finding-label">Edge decay</div>
+        <p className="strategy-finding-text">
+          Your last 20 trades are winning at <strong className="neg">{fmtPct(edgeDecay.recentWinRate)}</strong>, vs.{' '}
+          <strong>{fmtPct(edgeDecay.overallWinRate)}</strong> all-time — worth a look.
+        </p>
+      </div>
+    )}
   </div>
 </div>
 

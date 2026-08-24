@@ -20,28 +20,28 @@
    929  Calendar
    977  Account settings page
    1178  Light theme
-   1206  2FA
-   1221  Account fine print
-   1224  Screenshot preview (log new trade)
-   1266  Auth pages always dark
-   1294  Monthly P&L (calendar on Overview)
-   1360  Trade form: sections, validation, currency, screenshots
-   1588  Field tooltips
-   1650  Date/time picker (adds an optional popup to a typed input)
-   1759  In-header column filters (trade log table)
-   1793  Active filter chips
-   1842  Empty states, error banners, skeleton loaders
-   1913  Cross-instrument overview dashboard (/app)
-   2133  Not found / error boundary state pages
-   2146  Toast notifications
-   2174  Public policy pages (Privacy, Terms)
-   2193  Legal links (auth pages + account settings)
-   2232  Economic calendar card (mock - Overview pages)
-   2339  Calendar news badge (Monthly P&L day cells, mock)
-   2360  Streak badge (Overview + strategy detail pages)
-   2377  Market status pill (Overview + strategy detail pages)
-   2403  Key levels, today's brief (mock cards)
-   2429  Market context cards (all-instruments Overview)
+   1210  2FA
+   1225  Account fine print
+   1228  Screenshot preview (log new trade)
+   1270  Auth pages always dark
+   1298  Monthly P&L (calendar on Overview)
+   1364  Trade form: sections, validation, currency, screenshots
+   1592  Field tooltips
+   1654  Date/time picker (adds an optional popup to a typed input)
+   1763  In-header column filters (trade log table)
+   1797  Active filter chips
+   1846  Empty states, error banners, skeleton loaders
+   1917  Cross-instrument overview dashboard (/app)
+   2137  Not found / error boundary state pages
+   2150  Toast notifications
+   2178  Public policy pages (Privacy, Terms)
+   2197  Legal links (auth pages + account settings)
+   2236  Economic calendar card (mock - Overview pages)
+   2343  Calendar news badge (Monthly P&L day cells, mock)
+   2364  Streak badge (Overview + strategy detail pages)
+   2381  Market status pill (Overview + strategy detail pages)
+   2407  Key levels, today's brief (mock cards)
+   2433  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -1190,6 +1190,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   --glass: rgba(20,22,26,0.04);
   --glass-border: rgba(20,22,26,0.08);
   --glass-rgb: 20,22,26;
+  /* Lighter than the dark-theme --panel-shadow above - the same alpha
+     values read as much harsher against a white panel than a near-black
+     one, so this halves the opacity of both layers. */
+  --panel-shadow: 0 1px 2px rgba(20,22,26,.08), 0 12px 32px -16px rgba(20,22,26,.22);
 }
 /* The select chevron is a static-color SVG data URI (background-image
    can't read the --muted custom property), so it needs its own copy

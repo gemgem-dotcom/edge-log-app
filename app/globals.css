@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–427  Base: reset, typography, forms, tables, thumbnails,
+     1–460  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   428  Auth pages
-   485  Top nav
-   500  Instrument nav (topbar pill row)
-   564  Page layout
-   612  Tabs
-   622  Misc form helpers
-   628  Detail view
-   644  Holiday notice (site-wide, above the shell)
-   669  Shell layout (sidebar + topbar)
-   881  Expandable trade rows
-   929  Calendar
-   977  Account settings page
-   1178  Light theme
-   1210  2FA
-   1225  Account fine print
-   1228  Screenshot preview (log new trade)
-   1270  Auth pages always dark
-   1298  Monthly P&L (calendar on Overview)
-   1364  Trade form: sections, validation, currency, screenshots
-   1592  Field tooltips
-   1654  Date/time picker (adds an optional popup to a typed input)
-   1763  In-header column filters (trade log table)
-   1797  Active filter chips
-   1846  Empty states, error banners, skeleton loaders
-   1917  Cross-instrument overview dashboard (/app)
-   2137  Not found / error boundary state pages
-   2150  Toast notifications
-   2178  Public policy pages (Privacy, Terms)
-   2197  Legal links (auth pages + account settings)
-   2236  Economic calendar card (mock - Overview pages)
-   2343  Calendar news badge (Monthly P&L day cells, mock)
-   2364  Streak badge (Overview + strategy detail pages)
-   2381  Market status pill (Overview + strategy detail pages)
-   2407  Key levels, today's brief (mock cards)
-   2433  Market context cards (all-instruments Overview)
+   461  Auth pages
+   518  Top nav
+   533  Instrument nav (topbar pill row)
+   597  Page layout
+   645  Tabs
+   655  Misc form helpers
+   661  Detail view
+   677  Holiday notice (site-wide, above the shell)
+   702  Shell layout (sidebar + topbar)
+   914  Expandable trade rows
+   962  Calendar
+   1010  Account settings page
+   1211  Light theme
+   1243  2FA
+   1258  Account fine print
+   1261  Screenshot preview (log new trade)
+   1303  Auth pages always dark
+   1331  Monthly P&L (calendar on Overview)
+   1397  Trade form: sections, validation, currency, screenshots
+   1625  Field tooltips
+   1687  Date/time picker (adds an optional popup to a typed input)
+   1796  In-header column filters (trade log table)
+   1830  Active filter chips
+   1879  Empty states, error banners, skeleton loaders
+   1950  Cross-instrument overview dashboard (/app)
+   2170  Not found / error boundary state pages
+   2183  Toast notifications
+   2211  Public policy pages (Privacy, Terms)
+   2230  Legal links (auth pages + account settings)
+   2269  Economic calendar card (mock - Overview pages)
+   2376  Calendar news badge (Monthly P&L day cells, mock)
+   2397  Streak badge (Overview + strategy detail pages)
+   2414  Market status pill (Overview + strategy detail pages)
+   2440  Key levels, today's brief (mock cards)
+   2466  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -103,6 +103,39 @@ body{
   color:var(--text);
   font-family:'Inter',sans-serif;
   min-height:100vh;
+  position:relative;
+}
+/* Two oversized, heavily-blurred accent blobs drifting slowly behind the
+   page - ambient motion rather than a static glow. z-index:-1 sinks them
+   below body's own in-flow content (panels, sidebar, text) while staying
+   above the flat --bg/radial-gradient background above; position:fixed
+   keeps them viewport-anchored (nothing above sets `transform`, which
+   would otherwise hijack them as a containing block) and off the
+   scrollable area despite hanging outside the viewport edges. Only
+   `transform` animates - compositor-only, so this stays cheap to run
+   indefinitely. */
+body::before, body::after{
+  content:''; position:fixed; z-index:-1; pointer-events:none;
+  width:900px; height:900px; border-radius:50%; filter:blur(130px);
+}
+body::before{
+  top:-320px; left:-280px; background:rgba(59,167,255,.12);
+  animation:blob-drift-a 54s ease-in-out infinite alternate;
+}
+body::after{
+  bottom:-360px; right:-260px; background:rgba(124,208,255,.10);
+  animation:blob-drift-b 68s ease-in-out infinite alternate;
+}
+@keyframes blob-drift-a{
+  0%{transform:translate(0,0);}
+  100%{transform:translate(140px,90px);}
+}
+@keyframes blob-drift-b{
+  0%{transform:translate(0,0);}
+  100%{transform:translate(-120px,-70px);}
+}
+@media (prefers-reduced-motion:reduce){
+  body::before, body::after{animation:none;}
 }
 .wrap{max-width:960px; margin:0 auto; padding:32px 24px 80px;}
 

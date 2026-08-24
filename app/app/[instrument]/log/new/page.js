@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
+import { applyTrade } from '@/lib/edgeBeliefs'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm, { EMPTY_TRADE_FORM } from '@/components/TradeForm'
@@ -71,7 +72,7 @@ export default function NewTradePage({ params, searchParams }) {
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
 
-    const { error } = await supabase.from('trades').insert([{
+    const { data: inserted, error } = await supabase.from('trades').insert([{
       ...values,
       user_id: user.id,
       instrument_id: instrumentId,
@@ -79,10 +80,18 @@ export default function NewTradePage({ params, searchParams }) {
       screenshot_url: screenshot_urls[0] || null,
       session,
       continued_sessions: continuedSessions,
-    }])
+    }]).select().single()
 
     if (error) {
       return 'Could not save trade: ' + error.message
+    }
+
+    // Best-effort - a belief-tracking hiccup should never block the trader
+    // from having successfully saved the trade itself.
+    try {
+      await applyTrade(supabase, inserted)
+    } catch (beliefError) {
+      console.error('applyTrade failed:', beliefError)
     }
 
     toast.success('Trade logged.')

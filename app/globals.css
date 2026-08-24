@@ -2550,3 +2550,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .strategy-findings{display:flex; flex-direction:column; gap:20px; margin-top:28px;}
 .strategy-finding-label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
 .strategy-finding-text{font-size:13px; line-height:1.6; color:var(--text);}
+/* A session row's win rate/expectancy cells fall back to this instead of
+   a number once that row's own trade count misses the sampleConfidence
+   gate - a session-specific "not enough data yet" note, distinct from
+   .stat-placeholder (which replaces a whole stat block, not one table
+   cell). */
+.muted-note{color:var(--muted); font-style:italic;}
+.session-breakdown-table{margin-top:8px;}

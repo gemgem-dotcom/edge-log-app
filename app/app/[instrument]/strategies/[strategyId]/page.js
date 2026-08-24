@@ -128,6 +128,58 @@ function computeTopMistakeTag(closedLosses, flaggedLosses) {
   }
 }
 
+// Win rate/expectancy per trades.session, in the same R terms (never
+// dollars) as computeStrategyStats' own expectancy - so the delta against
+// the overall baseline passed in (that page-level stats.winRate/
+// stats.expectancy, reused rather than recomputed a second way) is always
+// comparing like with like. Only closed trades count, same hasResult
+// filter as computeStrategyStats and getClosedLosses above. One row per
+// session that actually has a trade - a session this strategy has never
+// traded in isn't a "0%" finding, it's not a finding at all, so it's left
+// out rather than padded in with zeros. Sorted most-traded first, since
+// that's the ordering a trader's eye most likely wants first.
+function computeSessionBreakdown(allTrades, overallWinRate, overallExpectancy) {
+  const closed = allTrades.filter(hasResult)
+  const bySession = {}
+  for (const t of closed) {
+    if (!t.session) continue
+    if (!bySession[t.session]) bySession[t.session] = []
+    bySession[t.session].push(t)
+  }
+  return Object.entries(bySession)
+    .map(([session, sTrades]) => {
+      const n = sTrades.length
+      const wins = sTrades.filter((t) => t.r_multiple > 0)
+      const losses = sTrades.filter((t) => t.r_multiple < 0)
+      const wr = wins.length / n
+      const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
+      const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
+      const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
+      const expectancy = wr * avgWin + (1 - wr) * avgLoss
+      return {
+        session, n, winRate, expectancy,
+        winRateDelta: winRate !== null && overallWinRate !== null ? winRate - overallWinRate : null,
+        expectancyDelta: overallExpectancy !== null ? expectancy - overallExpectancy : null,
+        confidence: sampleConfidence(n),
+      }
+    })
+    .sort((a, b) => b.n - a.n)
+}
+
+// The single most notable row to call out in prose alongside the table -
+// the confident (sampleConfidence above "low") session whose win rate
+// differs most from the strategy's overall rate. MIN_STANDOUT_GAP keeps a
+// trivial few-percent wobble from being flagged as if it meant something -
+// judgment call, no threshold for this was specified, so this reuses the
+// same instinct §4's edge-decay gap does.
+const MIN_STANDOUT_GAP = 10
+function findStandoutSession(sessionRows) {
+  const confident = sessionRows.filter((r) => r.confidence.level !== 'low' && r.winRateDelta !== null)
+  if (confident.length === 0) return null
+  const standout = confident.reduce((a, b) => (Math.abs(b.winRateDelta) > Math.abs(a.winRateDelta) ? b : a))
+  return Math.abs(standout.winRateDelta) >= MIN_STANDOUT_GAP ? standout : null
+}
+
 // Adaptive-width duration histogram - bucket width scales to the trades'
 // own min/max duration (picked from NICE_STEPS_MIN, the same "round
 // number of minutes/hours" progression a chart-axis tick algorithm would
@@ -189,6 +241,10 @@ function fmtPF(val) {
 function fmtPct(val) {
   if (val === null || val === undefined) return '—'
   return Math.round(val) + '%'
+}
+function fmtPctDelta(val) {
+  if (val === null || val === undefined) return '—'
+  return (val >= 0 ? '+' : '') + Math.round(val) + 'pp'
 }
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
@@ -307,6 +363,8 @@ const streak = computeStreak(trades)
   const closedLosses = getClosedLosses(trades)
   const lossBreakdown = computeLossBreakdown(closedLosses)
   const topMistakeTag = computeTopMistakeTag(closedLosses, lossBreakdown.flagged)
+  const sessionBreakdown = computeSessionBreakdown(trades, stats.winRate, stats.expectancy)
+  const standoutSession = findStandoutSession(sessionBreakdown)
   const durationBuckets = computeDurationBuckets(trades)
   // Same [from, to) partition computeDurationBuckets itself assigns trades
   // to, so a bucket's trade count and what shows up here when it's
@@ -424,6 +482,52 @@ Delete strategy
           <strong className={colorClass(topMistakeTag.avgRWithTag)}>{fmtR(topMistakeTag.avgRWithTag)}</strong> vs.{' '}
           <strong className={colorClass(topMistakeTag.avgRWithoutTag)}>{fmtR(topMistakeTag.avgRWithoutTag)}</strong> for your other losses.
         </p>
+      )}
+    </div>
+    <div className="strategy-finding">
+      <div className="strategy-finding-label">Session breakdown</div>
+      {sessionBreakdown.length === 0 ? (
+        <div className="stat-placeholder">No session data yet.</div>
+      ) : (
+        <>
+          {standoutSession && (
+            <p className="strategy-finding-text">
+              <strong>{fmtPct(stats.winRate)}</strong> overall, <strong className={colorClass(standoutSession.winRateDelta)}>{fmtPct(standoutSession.winRate)}</strong> in the {standoutSession.session}.
+            </p>
+          )}
+          <div className="table-scroll">
+            <table className="session-breakdown-table">
+              <thead>
+                <tr><th>Session</th><th>Trades</th><th>Win rate</th><th>Expectancy</th></tr>
+              </thead>
+              <tbody>
+                {sessionBreakdown.map((row) => (
+                  <tr key={row.session}>
+                    <td>{row.session}</td>
+                    <td>{row.n}</td>
+                    <td>
+                      {row.confidence.level === 'low' ? (
+                        <span className="muted-note">Too few trades</span>
+                      ) : (
+                        <>
+                          {fmtPct(row.winRate)}{' '}
+                          <span className={colorClass(row.winRateDelta)}>({fmtPctDelta(row.winRateDelta)})</span>
+                        </>
+                      )}
+                    </td>
+                    <td>
+                      {row.confidence.level === 'low' ? (
+                        <span className="muted-note">—</span>
+                      ) : (
+                        <span className={colorClass(row.expectancy)}>{fmtR(row.expectancy)}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   </div>

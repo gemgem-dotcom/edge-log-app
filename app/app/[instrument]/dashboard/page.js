@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
+import { queryPerformance } from '@/lib/edgeEngine'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { upcomingEconEvents } from '@/lib/marketContextMock'
@@ -33,29 +34,23 @@ const EQUITY_GROUPS = [
 ]
 
 function computeStats(allTrades) {
-  // Open trades (no exit price, so no R yet) can't be scored — leaving them
-  // in would count them as breakeven and drag every average down.
+  // winRate/expectancy/profitFactor come from the Edge Engine (the one
+  // shared implementation - see lib/edgeEngine.js) rather than being
+  // computed here a third time; everything below is either dollar-
+  // denominated (out of the engine's scope, which is R-only) or a plain
+  // count WinRateGauge/tradingDays still needs directly. Open trades (no
+  // exit price, so no R yet) can't be scored either way — the engine's
+  // own hasResult filtering already excludes them the same way this
+  // used to.
+  const perf = queryPerformance({ trades: allTrades, groupBy: null })
   const trades = allTrades.filter(hasResult)
-  const n = trades.length
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
-  if (n === 0) return { n, tradingDays, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null, wins: 0, losses: 0 }
+  if (perf.n === 0) return { n: perf.n, tradingDays, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  // Breakeven trades don't count as a win or a loss, so they're excluded
-  // from the denominator here rather than diluting the rate - wr below
-  // (which feeds expectancy, not the displayed win rate) is unrelated and
-  // deliberately left as wins/n.
-  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
-  const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
-  const wr = wins.length / n
-  const expectancy = wr * avgWin + (1 - wr) * avgLoss
-
-const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
+  const wr = wins.length / perf.n
 
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
@@ -66,7 +61,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, tradingDays, winRate, expectancy, totalPnl, profitFactor, totalD, hasD, expectancyD, wins: wins.length, losses: losses.length }
+return { n: perf.n, tradingDays, winRate: perf.winRate, expectancy: perf.expectancy, totalPnl, profitFactor: perf.profitFactor, totalD, hasD, expectancyD, wins: wins.length, losses: losses.length }
 }
 
 function hasDollar(t) {
@@ -135,28 +130,20 @@ function buildEquityCurve(trades, group) {
 }
 
 function computeMonthStats(allTrades) {
+  // Same migration as computeStats above (winRate/expectancy/profitFactor
+  // via the Edge Engine) - kept as a separate function rather than
+  // reusing computeStats since the field names differ (expectancyR/totalR
+  // here vs. expectancy/totalPnl there) and callers read both shapes.
+  const perf = queryPerformance({ trades: allTrades, groupBy: null })
   const trades = allTrades.filter(hasResult)
-  const n = trades.length
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
-  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0 }
+  if (perf.n === 0) return { n: perf.n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  const wr = wins.length / n
-  // Breakeven trades don't count as a win or a loss, so they're excluded
-  // from the denominator here rather than diluting the rate - wr above
-  // (which feeds expectancy, not the displayed win rate) is unrelated and
-  // deliberately left as wins/n.
-  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
+  const wr = wins.length / perf.n
 
 const totalR = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgWinR = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
-  const avgLossR = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
-  const expectancyR = wr * avgWinR + (1 - wr) * avgLossR
-
-  const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
 
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
@@ -167,7 +154,7 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
+return { n: perf.n, tradingDays, winRate: perf.winRate, expectancyR: perf.expectancy, expectancyD, totalR, totalD, hasD, profitFactor: perf.profitFactor, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {

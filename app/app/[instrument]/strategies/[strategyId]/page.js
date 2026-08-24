@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { queryPerformance } from '@/lib/edgeEngine'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -24,33 +25,26 @@ function hasDollar(t) {
 }
 
 async function computeStrategyStats(allTrades) {
+  // winRate/expectancy/profitFactor come from the Edge Engine (the one
+  // shared implementation - see lib/edgeEngine.js) rather than being
+  // computed here a second time; everything below is either dollar-
+  // denominated (out of the engine's scope, which is R-only) or a plain
+  // count WinRateGauge still needs directly.
+  const perf = queryPerformance({ trades: allTrades, groupBy: null })
   const trades = allTrades.filter(hasResult)
-  const n = trades.length
-  if (n === 0) {
+  if (perf.n === 0) {
     return {
-      n, winRate: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
+      n: perf.n, winRate: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
       hasD: false, profitFactor: null, wins: 0, losses: 0,
     }
   }
 
-const wins = trades.filter((t) => t.r_multiple > 0)
+  const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  // Breakeven trades don't count as a win or a loss, so they're excluded
-  // from the denominator here rather than diluting the rate - wr below
-  // (which feeds expectancy, not the displayed win rate) is unrelated and
-  // deliberately left as wins/n.
-  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
-  const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
-  const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
-  const wr = wins.length / n
-  const expectancy = wr * avgWin + (1 - wr) * avgLoss
+  const wr = wins.length / perf.n
 
-const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
-
-const withD = trades.filter(hasDollar)
+  const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
   const winsD = wins.filter(hasDollar)
@@ -59,7 +53,10 @@ const withD = trades.filter(hasDollar)
   const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
-return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
+  return {
+    n: perf.n, winRate: perf.winRate, expectancy: perf.expectancy, expectancyD, totalPnl, totalD,
+    hasD, profitFactor: perf.profitFactor, wins: wins.length, losses: losses.length,
+  }
 }
 
 // Adaptive-width duration histogram - bucket width scales to the trades'

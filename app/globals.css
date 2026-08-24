@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–427  Base: reset, typography, forms, tables, thumbnails,
+     1–477  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   428  Auth pages
-   485  Top nav
-   500  Instrument nav (topbar pill row)
-   564  Page layout
-   612  Tabs
-   622  Misc form helpers
-   628  Detail view
-   644  Holiday notice (site-wide, above the shell)
-   669  Shell layout (sidebar + topbar)
-   881  Expandable trade rows
-   929  Calendar
-   977  Account settings page
-   1178  Light theme
-   1210  2FA
-   1225  Account fine print
-   1228  Screenshot preview (log new trade)
-   1270  Auth pages always dark
-   1298  Monthly P&L (calendar on Overview)
-   1364  Trade form: sections, validation, currency, screenshots
-   1592  Field tooltips
-   1654  Date/time picker (adds an optional popup to a typed input)
-   1763  In-header column filters (trade log table)
-   1797  Active filter chips
-   1846  Empty states, error banners, skeleton loaders
-   1917  Cross-instrument overview dashboard (/app)
-   2137  Not found / error boundary state pages
-   2150  Toast notifications
-   2178  Public policy pages (Privacy, Terms)
-   2197  Legal links (auth pages + account settings)
-   2236  Economic calendar card (mock - Overview pages)
-   2343  Calendar news badge (Monthly P&L day cells, mock)
-   2364  Streak badge (Overview + strategy detail pages)
-   2381  Market status pill (Overview + strategy detail pages)
-   2407  Key levels, today's brief (mock cards)
-   2433  Market context cards (all-instruments Overview)
+   478  Auth pages
+   544  Top nav
+   559  Instrument nav (topbar pill row)
+   623  Page layout
+   671  Tabs
+   681  Misc form helpers
+   687  Detail view
+   703  Holiday notice (site-wide, above the shell)
+   728  Shell layout (sidebar + topbar)
+   940  Expandable trade rows
+   988  Calendar
+   1036  Account settings page
+   1243  Light theme
+   1275  2FA
+   1290  Account fine print
+   1293  Screenshot preview (log new trade)
+   1335  Auth pages always dark
+   1363  Monthly P&L (calendar on Overview)
+   1429  Trade form: sections, validation, currency, screenshots
+   1657  Field tooltips
+   1719  Date/time picker (adds an optional popup to a typed input)
+   1828  In-header column filters (trade log table)
+   1862  Active filter chips
+   1911  Empty states, error banners, skeleton loaders
+   1982  Cross-instrument overview dashboard (/app)
+   2202  Not found / error boundary state pages
+   2215  Toast notifications
+   2243  Public policy pages (Privacy, Terms)
+   2262  Legal links (auth pages + account settings)
+   2301  Economic calendar card (mock - Overview pages)
+   2408  Calendar news badge (Monthly P&L day cells, mock)
+   2429  Streak badge (Overview + strategy detail pages)
+   2446  Market status pill (Overview + strategy detail pages)
+   2472  Key levels, today's brief (mock cards)
+   2498  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -103,6 +103,45 @@ body{
   color:var(--text);
   font-family:'Inter',sans-serif;
   min-height:100vh;
+  position:relative;
+}
+/* Two oversized accent blobs drifting slowly behind the page - ambient
+   motion rather than a static glow. No filter:blur() - a radial-gradient
+   already fades smoothly to transparent on its own (browsers interpolate
+   gradients per-pixel), and blurring a element this large is expensive
+   enough that some GPUs downsample before blurring, which showed up as
+   visible blocky/low-res artifacts in the moving blob rather than a
+   smooth glow. z-index:-1 sinks them below body's own in-flow content
+   (panels, sidebar, text) while staying above the flat --bg/radial-
+   gradient background above; position:fixed keeps them viewport-anchored
+   (nothing above sets `transform`, which would otherwise hijack them as
+   a containing block) and off the scrollable area despite hanging
+   outside the viewport edges. Only `transform` animates - compositor-
+   only, so this stays cheap to run indefinitely. */
+body::before, body::after{
+  content:''; position:fixed; z-index:-1; pointer-events:none;
+  width:900px; height:900px; border-radius:50%;
+}
+body::before{
+  top:-320px; left:-280px;
+  background:radial-gradient(circle, rgba(59,167,255,.09), transparent 70%);
+  animation:blob-drift-a 54s ease-in-out infinite alternate;
+}
+body::after{
+  bottom:-360px; right:-260px;
+  background:radial-gradient(circle, rgba(124,208,255,.07), transparent 70%);
+  animation:blob-drift-b 68s ease-in-out infinite alternate;
+}
+@keyframes blob-drift-a{
+  0%{transform:translate(0,0);}
+  100%{transform:translate(140px,90px);}
+}
+@keyframes blob-drift-b{
+  0%{transform:translate(0,0);}
+  100%{transform:translate(-120px,-70px);}
+}
+@media (prefers-reduced-motion:reduce){
+  body::before, body::after{animation:none;}
 }
 .wrap{max-width:960px; margin:0 auto; padding:32px 24px 80px;}
 
@@ -188,8 +227,16 @@ input, select, textarea{background:var(--panel-2); border:1px solid var(--line);
    inputs have their own native chrome, so both are excluded. overflow:
    hidden belt-and-braces this - a single-line input should never show a
    scrollbar even if some more specific rule's padding/font-size ever
-   overflows this height again. */
-input:not([type="checkbox"]):not([type="file"]){height:36px; overflow:hidden;}
+   overflows this height again. scrollbar-width/-ms-overflow-style are a
+   second layer on top of that - some browser/OS combos (observed on
+   Windows) force their native scrollbar chrome onto an <input>'s
+   internal editing box independently of the host element's own
+   `overflow`, so overflow:hidden alone doesn't reliably suppress it
+   there. */
+input:not([type="checkbox"]):not([type="file"]){
+  height:36px; overflow:hidden; scrollbar-width:none; -ms-overflow-style:none;
+}
+input:not([type="checkbox"]):not([type="file"])::-webkit-scrollbar{display:none;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
 /* <select> has native-chrome problems on real mobile browsers (not
    reproducible in a desktop-engine screenshot) - its own background,
@@ -279,8 +326,11 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .trade-tag-filter-btn, .econ-impact-filter-btn, .econ-today-btn, .row-action-btn{
   box-shadow:none;
 }
+/* .eye-btn excluded here on purpose - see its own :hover rule below,
+   which resets box-shadow the same way but has to re-assert its
+   translateY(-50%) centering instead of clearing transform outright. */
 .dir-btn:hover, .discard-btn:hover, .auth-oauth-btn:hover, .icon-btn:hover, .icon-btn-profile:hover,
-.theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .eye-btn:hover, .strategy-menu-btn:hover,
+.theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .strategy-menu-btn:hover,
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
 .dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .col-filter-btn:hover,
 .trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-today-btn:hover, .row-action-btn:hover{
@@ -445,12 +495,21 @@ table{min-width:640px;}
 .auth-welcome{font-family:'Archivo',sans-serif; font-size:26px; font-weight:800; text-align:center; margin-bottom:6px;}
 .auth-subtitle{font-size:14px; color:var(--muted); text-align:center; margin-bottom:28px;}
 .auth-card form{display:flex; flex-direction:column; gap:18px;}
-/* height:auto overrides the global height:36px above - .auth-card's larger
-   padding (13px) and font-size (14px) don't fit in 36px, and without this
-   the overflowing content makes the browser render its native scroll
+/* Overrides the global height:36px above - .auth-card's larger padding
+   (13px) and font-size (14px) don't fit in 36px, and without this the
+   overflowing content makes the browser render its native scroll
    affordance (arrows) inside the field. Needs :not() to out-specificity
-   that rule rather than just adding a second height declaration here. */
-.auth-card input:not([type="checkbox"]):not([type="file"]){height:auto; padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;}
+   that rule rather than just adding a second height declaration here.
+   An explicit height + line-height (not height:auto) on purpose: auto
+   sizing this box relies on the browser's own line-height calculation
+   for the font matching what its internal text-editing box uses
+   internally, and on some browser/OS combos those two don't agree by a
+   pixel or two, which is enough to re-trigger the native scroll chrome
+   even though the box looks correctly sized. An explicit, generously
+   padded value removes that ambiguity entirely. */
+.auth-card input:not([type="checkbox"]):not([type="file"]){
+  height:48px; line-height:20px; padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;
+}
 .auth-card .password-field input{padding-right:42px;}
 .auth-forgot-row{display:flex; justify-content:flex-end; margin-top:-8px;}
 .auth-forgot-link{color:var(--accent); font-size:13px; text-decoration:none;}
@@ -1039,7 +1098,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   background:none; border:none; padding:4px; color:var(--muted); cursor:pointer;
   display:flex; align-items:center; justify-content:center; transition:color .15s ease;
 }
-.eye-btn:hover{color:var(--text);}
+/* transform re-asserts the base rule's translateY(-50%) rather than
+   resetting to none like the shared reset list above does for every
+   other secondary button - .eye-btn is the one button in that list that
+   uses transform for its own layout (vertical centering) rather than
+   just a decorative hover lift, so clearing it outright made the icon
+   visibly jump up by half its own height on hover. */
+.eye-btn:hover{color:var(--text); transform:translateY(-50%); box-shadow:none;}
 .field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px; margin-bottom:10px;}
 
 .danger-panel{border-color:rgba(225,92,92,.35);}

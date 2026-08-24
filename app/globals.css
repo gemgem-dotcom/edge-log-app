@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–465  Base: reset, typography, forms, tables, thumbnails,
+     1–473  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   466  Auth pages
-   523  Top nav
-   538  Instrument nav (topbar pill row)
-   602  Page layout
-   650  Tabs
-   660  Misc form helpers
-   666  Detail view
-   682  Holiday notice (site-wide, above the shell)
-   707  Shell layout (sidebar + topbar)
-   919  Expandable trade rows
-   967  Calendar
-   1015  Account settings page
-   1216  Light theme
-   1248  2FA
-   1263  Account fine print
-   1266  Screenshot preview (log new trade)
-   1308  Auth pages always dark
-   1336  Monthly P&L (calendar on Overview)
-   1402  Trade form: sections, validation, currency, screenshots
-   1630  Field tooltips
-   1692  Date/time picker (adds an optional popup to a typed input)
-   1801  In-header column filters (trade log table)
-   1835  Active filter chips
-   1884  Empty states, error banners, skeleton loaders
-   1955  Cross-instrument overview dashboard (/app)
-   2175  Not found / error boundary state pages
-   2188  Toast notifications
-   2216  Public policy pages (Privacy, Terms)
-   2235  Legal links (auth pages + account settings)
-   2274  Economic calendar card (mock - Overview pages)
-   2381  Calendar news badge (Monthly P&L day cells, mock)
-   2402  Streak badge (Overview + strategy detail pages)
-   2419  Market status pill (Overview + strategy detail pages)
-   2445  Key levels, today's brief (mock cards)
-   2471  Market context cards (all-instruments Overview)
+   474  Auth pages
+   540  Top nav
+   555  Instrument nav (topbar pill row)
+   619  Page layout
+   667  Tabs
+   677  Misc form helpers
+   683  Detail view
+   699  Holiday notice (site-wide, above the shell)
+   724  Shell layout (sidebar + topbar)
+   936  Expandable trade rows
+   984  Calendar
+   1032  Account settings page
+   1233  Light theme
+   1265  2FA
+   1280  Account fine print
+   1283  Screenshot preview (log new trade)
+   1325  Auth pages always dark
+   1353  Monthly P&L (calendar on Overview)
+   1419  Trade form: sections, validation, currency, screenshots
+   1647  Field tooltips
+   1709  Date/time picker (adds an optional popup to a typed input)
+   1818  In-header column filters (trade log table)
+   1852  Active filter chips
+   1901  Empty states, error banners, skeleton loaders
+   1972  Cross-instrument overview dashboard (/app)
+   2192  Not found / error boundary state pages
+   2205  Toast notifications
+   2233  Public policy pages (Privacy, Terms)
+   2252  Legal links (auth pages + account settings)
+   2291  Economic calendar card (mock - Overview pages)
+   2398  Calendar news badge (Monthly P&L day cells, mock)
+   2419  Streak badge (Overview + strategy detail pages)
+   2436  Market status pill (Overview + strategy detail pages)
+   2462  Key levels, today's brief (mock cards)
+   2488  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -226,8 +226,16 @@ input, select, textarea{background:var(--panel-2); border:1px solid var(--line);
    inputs have their own native chrome, so both are excluded. overflow:
    hidden belt-and-braces this - a single-line input should never show a
    scrollbar even if some more specific rule's padding/font-size ever
-   overflows this height again. */
-input:not([type="checkbox"]):not([type="file"]){height:36px; overflow:hidden;}
+   overflows this height again. scrollbar-width/-ms-overflow-style are a
+   second layer on top of that - some browser/OS combos (observed on
+   Windows) force their native scrollbar chrome onto an <input>'s
+   internal editing box independently of the host element's own
+   `overflow`, so overflow:hidden alone doesn't reliably suppress it
+   there. */
+input:not([type="checkbox"]):not([type="file"]){
+  height:36px; overflow:hidden; scrollbar-width:none; -ms-overflow-style:none;
+}
+input:not([type="checkbox"]):not([type="file"])::-webkit-scrollbar{display:none;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
 /* <select> has native-chrome problems on real mobile browsers (not
    reproducible in a desktop-engine screenshot) - its own background,
@@ -483,12 +491,21 @@ table{min-width:640px;}
 .auth-welcome{font-family:'Archivo',sans-serif; font-size:26px; font-weight:800; text-align:center; margin-bottom:6px;}
 .auth-subtitle{font-size:14px; color:var(--muted); text-align:center; margin-bottom:28px;}
 .auth-card form{display:flex; flex-direction:column; gap:18px;}
-/* height:auto overrides the global height:36px above - .auth-card's larger
-   padding (13px) and font-size (14px) don't fit in 36px, and without this
-   the overflowing content makes the browser render its native scroll
+/* Overrides the global height:36px above - .auth-card's larger padding
+   (13px) and font-size (14px) don't fit in 36px, and without this the
+   overflowing content makes the browser render its native scroll
    affordance (arrows) inside the field. Needs :not() to out-specificity
-   that rule rather than just adding a second height declaration here. */
-.auth-card input:not([type="checkbox"]):not([type="file"]){height:auto; padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;}
+   that rule rather than just adding a second height declaration here.
+   An explicit height + line-height (not height:auto) on purpose: auto
+   sizing this box relies on the browser's own line-height calculation
+   for the font matching what its internal text-editing box uses
+   internally, and on some browser/OS combos those two don't agree by a
+   pixel or two, which is enough to re-trigger the native scroll chrome
+   even though the box looks correctly sized. An explicit, generously
+   padded value removes that ambiguity entirely. */
+.auth-card input:not([type="checkbox"]):not([type="file"]){
+  height:48px; line-height:20px; padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;
+}
 .auth-card .password-field input{padding-right:42px;}
 .auth-forgot-row{display:flex; justify-content:flex-end; margin-top:-8px;}
 .auth-forgot-link{color:var(--accent); font-size:13px; text-decoration:none;}

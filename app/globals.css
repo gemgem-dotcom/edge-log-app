@@ -8,40 +8,40 @@
      1–414  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
    415  Auth pages
-   467  Top nav
-   482  Instrument nav (topbar pill row)
-   546  Page layout
-   594  Tabs
-   604  Misc form helpers
-   610  Detail view
-   626  Holiday notice (site-wide, above the shell)
-   651  Shell layout (sidebar + topbar)
-   863  Expandable trade rows
-   911  Calendar
-   959  Account settings page
-   1160  Light theme
-   1188  2FA
-   1203  Account fine print
-   1206  Screenshot preview (log new trade)
-   1248  Auth pages always dark
-   1276  Monthly P&L (calendar on Overview)
-   1342  Trade form: sections, validation, currency, screenshots
-   1570  Field tooltips
-   1632  Date/time picker (adds an optional popup to a typed input)
-   1741  In-header column filters (trade log table)
-   1775  Active filter chips
-   1824  Empty states, error banners, skeleton loaders
-   1895  Cross-instrument overview dashboard (/app)
-   2115  Not found / error boundary state pages
-   2128  Toast notifications
-   2156  Public policy pages (Privacy, Terms)
-   2175  Legal links (auth pages + account settings)
-   2214  Economic calendar card (mock - Overview pages)
-   2321  Calendar news badge (Monthly P&L day cells, mock)
-   2342  Streak badge (Overview + strategy detail pages)
-   2359  Market status pill (Overview + strategy detail pages)
-   2385  Key levels, today's brief (mock cards)
-   2411  Market context cards (all-instruments Overview)
+   472  Top nav
+   487  Instrument nav (topbar pill row)
+   551  Page layout
+   599  Tabs
+   609  Misc form helpers
+   615  Detail view
+   631  Holiday notice (site-wide, above the shell)
+   656  Shell layout (sidebar + topbar)
+   868  Expandable trade rows
+   916  Calendar
+   964  Account settings page
+   1165  Light theme
+   1193  2FA
+   1208  Account fine print
+   1211  Screenshot preview (log new trade)
+   1253  Auth pages always dark
+   1281  Monthly P&L (calendar on Overview)
+   1347  Trade form: sections, validation, currency, screenshots
+   1575  Field tooltips
+   1637  Date/time picker (adds an optional popup to a typed input)
+   1746  In-header column filters (trade log table)
+   1780  Active filter chips
+   1829  Empty states, error banners, skeleton loaders
+   1900  Cross-instrument overview dashboard (/app)
+   2120  Not found / error boundary state pages
+   2133  Toast notifications
+   2161  Public policy pages (Privacy, Terms)
+   2180  Legal links (auth pages + account settings)
+   2219  Economic calendar card (mock - Overview pages)
+   2326  Calendar news badge (Monthly P&L day cells, mock)
+   2347  Streak badge (Overview + strategy detail pages)
+   2364  Market status pill (Overview + strategy detail pages)
+   2390  Key levels, today's brief (mock cards)
+   2416  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -432,7 +432,12 @@ table{min-width:640px;}
 .auth-welcome{font-family:'Archivo',sans-serif; font-size:26px; font-weight:800; text-align:center; margin-bottom:6px;}
 .auth-subtitle{font-size:14px; color:var(--muted); text-align:center; margin-bottom:28px;}
 .auth-card form{display:flex; flex-direction:column; gap:18px;}
-.auth-card input{padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;}
+/* height:auto overrides the global height:36px above - .auth-card's larger
+   padding (13px) and font-size (14px) don't fit in 36px, and without this
+   the overflowing content makes the browser render its native scroll
+   affordance (arrows) inside the field. Needs :not() to out-specificity
+   that rule rather than just adding a second height declaration here. */
+.auth-card input:not([type="checkbox"]):not([type="file"]){height:auto; padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;}
 .auth-card .password-field input{padding-right:42px;}
 .auth-forgot-row{display:flex; justify-content:flex-end; margin-top:-8px;}
 .auth-forgot-link{color:var(--accent); font-size:13px; text-decoration:none;}

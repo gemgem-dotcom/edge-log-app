@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { hasResult, tradeDurationMinutes, formatDuration, sampleConfidence } from '@/lib/tradeMath'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -60,6 +60,36 @@ const withD = trades.filter(hasDollar)
   const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
 
 return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
+}
+
+// The strategy's closed losing trades - the shared base set every Findings
+// stat below that talks about "losses" draws from, so they can't quietly
+// disagree about what counts as one (open trades excluded via hasResult,
+// same as computeStrategyStats' own losses count above).
+function getClosedLosses(allTrades) {
+  return allTrades.filter(hasResult).filter((t) => t.r_multiple < 0)
+}
+
+// Every closed loss is exactly one of: flagged (has one or more Discipline
+// tags), clean (explicitly reviewed with no issues), or unreviewed (neither
+// set yet) - schema.sql's comment above reviewed_no_issues/discipline_tags
+// is the source of truth for why those two columns are mutually exclusive.
+// Unreviewed is kept as its own bucket rather than folded into "clean" -
+// the whole reason reviewed_no_issues exists as an explicit field is that
+// "never reviewed" and "reviewed, no issues found" are different facts.
+function computeLossBreakdown(losses) {
+  const n = losses.length
+  const flagged = losses.filter((t) => !t.reviewed_no_issues && t.discipline_tags && t.discipline_tags.length > 0)
+  const clean = losses.filter((t) => t.reviewed_no_issues)
+  const unreviewed = losses.filter((t) => !t.reviewed_no_issues && (!t.discipline_tags || t.discipline_tags.length === 0))
+  const pct = (count) => (n > 0 ? (count / n) * 100 : null)
+  return {
+    n,
+    flagged, clean, unreviewed,
+    flaggedPct: pct(flagged.length),
+    cleanPct: pct(clean.length),
+    unreviewedPct: pct(unreviewed.length),
+  }
 }
 
 // Adaptive-width duration histogram - bucket width scales to the trades'
@@ -119,6 +149,10 @@ function fmtPF(val) {
   if (val === null || val === undefined) return '—'
   if (val === Infinity) return '∞'
   return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+function fmtPct(val) {
+  if (val === null || val === undefined) return '—'
+  return Math.round(val) + '%'
 }
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
@@ -234,6 +268,8 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
 const streak = computeStreak(trades)
+  const closedLosses = getClosedLosses(trades)
+  const lossBreakdown = computeLossBreakdown(closedLosses)
   const durationBuckets = computeDurationBuckets(trades)
   // Same [from, to) partition computeDurationBuckets itself assigns trades
   // to, so a bucket's trade count and what shows up here when it's
@@ -326,6 +362,21 @@ Delete strategy
   <div className="performance-duration-chart">
     <div className="stat-label dashboard-card-title">Trade duration</div>
     <TradeDurationChart buckets={durationBuckets} onSelect={handleSelectDuration} />
+  </div>
+  <div className="strategy-findings">
+    <div className="stat-label dashboard-card-title">Findings</div>
+    <div className="strategy-finding">
+      <div className="strategy-finding-label">Loss breakdown</div>
+      {sampleConfidence(lossBreakdown.n).level === 'low' ? (
+        <div className="stat-placeholder">Not enough losses yet.</div>
+      ) : (
+        <p className="strategy-finding-text">
+          <strong className="neg">{fmtPct(lossBreakdown.flaggedPct)}</strong> of your losses carried a mistake tag —{' '}
+          <strong className="pos">{fmtPct(lossBreakdown.cleanPct)}</strong> clean,{' '}
+          <strong className="neu">{fmtPct(lossBreakdown.unreviewedPct)}</strong> unreviewed.
+        </p>
+      )}
+    </div>
   </div>
 </div>
 

@@ -92,6 +92,42 @@ function computeLossBreakdown(losses) {
   }
 }
 
+// The single most common Discipline tag among this strategy's flagged
+// losses (computeLossBreakdown's `flagged` bucket) - a loss with several
+// tags counts toward each one's total, so this is a plain frequency count
+// across every tag on every flagged loss, not a count of losses. Once the
+// top tag is found, "trades carrying that tag" vs. "all other losing
+// trades" is checked against every closed loss (not just the flagged
+// ones) - a loss can only carry a Discipline tag if it's flagged, so
+// "carrying that tag" is already a subset of flagged, but "other losing
+// trades" correctly includes clean/unreviewed losses too, not just
+// differently-flagged ones. r_multiple is reused as stored, never
+// recomputed. Null when there are no flagged losses to find a tag in.
+function computeTopMistakeTag(closedLosses, flaggedLosses) {
+  const tagCounts = {}
+  for (const t of flaggedLosses) {
+    for (const tag of t.discipline_tags || []) {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1
+    }
+  }
+  const entries = Object.entries(tagCounts)
+  if (entries.length === 0) return null
+  entries.sort((a, b) => b[1] - a[1])
+  const [tag, tagCount] = entries[0]
+
+  const withTag = closedLosses.filter((t) => (t.discipline_tags || []).includes(tag))
+  const withoutTag = closedLosses.filter((t) => !(t.discipline_tags || []).includes(tag))
+  const avgR = (arr) => (arr.length > 0 ? arr.reduce((s, t) => s + t.r_multiple, 0) / arr.length : null)
+
+  return {
+    tag,
+    n: withTag.length,
+    pctOfFlagged: flaggedLosses.length > 0 ? (tagCount / flaggedLosses.length) * 100 : null,
+    avgRWithTag: avgR(withTag),
+    avgRWithoutTag: avgR(withoutTag),
+  }
+}
+
 // Adaptive-width duration histogram - bucket width scales to the trades'
 // own min/max duration (picked from NICE_STEPS_MIN, the same "round
 // number of minutes/hours" progression a chart-axis tick algorithm would
@@ -270,6 +306,7 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
 const streak = computeStreak(trades)
   const closedLosses = getClosedLosses(trades)
   const lossBreakdown = computeLossBreakdown(closedLosses)
+  const topMistakeTag = computeTopMistakeTag(closedLosses, lossBreakdown.flagged)
   const durationBuckets = computeDurationBuckets(trades)
   // Same [from, to) partition computeDurationBuckets itself assigns trades
   // to, so a bucket's trade count and what shows up here when it's
@@ -374,6 +411,18 @@ Delete strategy
           <strong className="neg">{fmtPct(lossBreakdown.flaggedPct)}</strong> of your losses carried a mistake tag —{' '}
           <strong className="pos">{fmtPct(lossBreakdown.cleanPct)}</strong> clean,{' '}
           <strong className="neu">{fmtPct(lossBreakdown.unreviewedPct)}</strong> unreviewed.
+        </p>
+      )}
+    </div>
+    <div className="strategy-finding">
+      <div className="strategy-finding-label">Most frequent mistake</div>
+      {!topMistakeTag || sampleConfidence(topMistakeTag.n).level === 'low' ? (
+        <div className="stat-placeholder">Not enough tagged losses yet.</div>
+      ) : (
+        <p className="strategy-finding-text">
+          &quot;{topMistakeTag.tag}&quot; appears in <strong>{fmtPct(topMistakeTag.pctOfFlagged)}</strong> of your tagged losses, and those trades average{' '}
+          <strong className={colorClass(topMistakeTag.avgRWithTag)}>{fmtR(topMistakeTag.avgRWithTag)}</strong> vs.{' '}
+          <strong className={colorClass(topMistakeTag.avgRWithoutTag)}>{fmtR(topMistakeTag.avgRWithoutTag)}</strong> for your other losses.
         </p>
       )}
     </div>

@@ -603,7 +603,7 @@ export default function TradeForm({
       const entry = parseFloat(setup.entry)
       const exitPrice = parseFloat(execution.exit_price)
       if (Number.isFinite(entry) && Math.abs(exitPrice - entry) > BREAKEVEN_TOLERANCE_POINTS) {
-        execErrors.exit_price = `Breakeven exit price must be within ${BREAKEVEN_TOLERANCE_POINTS} points of entry.`
+        execErrors.exit_price = `Breakeven price must be within ${BREAKEVEN_TOLERANCE_POINTS} points of entry.`
       }
     }
     const foundErrors = {

@@ -5,43 +5,43 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–414  Base: reset, typography, forms, tables, thumbnails,
+     1–417  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   415  Auth pages
-   472  Top nav
-   487  Instrument nav (topbar pill row)
-   551  Page layout
-   599  Tabs
-   609  Misc form helpers
-   615  Detail view
-   631  Holiday notice (site-wide, above the shell)
-   656  Shell layout (sidebar + topbar)
-   868  Expandable trade rows
-   916  Calendar
-   964  Account settings page
-   1165  Light theme
-   1193  2FA
-   1208  Account fine print
-   1211  Screenshot preview (log new trade)
-   1253  Auth pages always dark
-   1281  Monthly P&L (calendar on Overview)
-   1347  Trade form: sections, validation, currency, screenshots
-   1575  Field tooltips
-   1637  Date/time picker (adds an optional popup to a typed input)
-   1746  In-header column filters (trade log table)
-   1780  Active filter chips
-   1829  Empty states, error banners, skeleton loaders
-   1900  Cross-instrument overview dashboard (/app)
-   2120  Not found / error boundary state pages
-   2133  Toast notifications
-   2161  Public policy pages (Privacy, Terms)
-   2180  Legal links (auth pages + account settings)
-   2219  Economic calendar card (mock - Overview pages)
-   2326  Calendar news badge (Monthly P&L day cells, mock)
-   2347  Streak badge (Overview + strategy detail pages)
-   2364  Market status pill (Overview + strategy detail pages)
-   2390  Key levels, today's brief (mock cards)
-   2416  Market context cards (all-instruments Overview)
+   418  Auth pages
+   475  Top nav
+   490  Instrument nav (topbar pill row)
+   554  Page layout
+   602  Tabs
+   612  Misc form helpers
+   618  Detail view
+   634  Holiday notice (site-wide, above the shell)
+   659  Shell layout (sidebar + topbar)
+   871  Expandable trade rows
+   919  Calendar
+   967  Account settings page
+   1168  Light theme
+   1196  2FA
+   1211  Account fine print
+   1214  Screenshot preview (log new trade)
+   1256  Auth pages always dark
+   1284  Monthly P&L (calendar on Overview)
+   1350  Trade form: sections, validation, currency, screenshots
+   1578  Field tooltips
+   1640  Date/time picker (adds an optional popup to a typed input)
+   1749  In-header column filters (trade log table)
+   1783  Active filter chips
+   1832  Empty states, error banners, skeleton loaders
+   1903  Cross-instrument overview dashboard (/app)
+   2123  Not found / error boundary state pages
+   2136  Toast notifications
+   2164  Public policy pages (Privacy, Terms)
+   2183  Legal links (auth pages + account settings)
+   2222  Economic calendar card (mock - Overview pages)
+   2329  Calendar news badge (Monthly P&L day cells, mock)
+   2350  Streak badge (Overview + strategy detail pages)
+   2367  Market status pill (Overview + strategy detail pages)
+   2393  Key levels, today's brief (mock cards)
+   2419  Market context cards (all-instruments Overview)
    ============================================================ */
 
 :root{
@@ -185,8 +185,11 @@ input, select, textarea{background:var(--panel-2); border:1px solid var(--line);
    field could render a pixel or two shorter than the date/time pickers and
    dropdowns sitting right next to it in the same row. Checkboxes size
    themselves (width:auto elsewhere already un-stretches them) and file
-   inputs have their own native chrome, so both are excluded. */
-input:not([type="checkbox"]):not([type="file"]){height:36px;}
+   inputs have their own native chrome, so both are excluded. overflow:
+   hidden belt-and-braces this - a single-line input should never show a
+   scrollbar even if some more specific rule's padding/font-size ever
+   overflows this height again. */
+input:not([type="checkbox"]):not([type="file"]){height:36px; overflow:hidden;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
 /* <select> has native-chrome problems on real mobile browsers (not
    reproducible in a desktop-engine screenshot) - its own background,

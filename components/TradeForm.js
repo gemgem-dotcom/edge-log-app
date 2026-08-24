@@ -20,7 +20,12 @@ const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool
 // than an array since both the trigger (looking up the current value's
 // label) and the menu (listing every choice) need it, and an object gives
 // the trigger a direct lookup instead of a .find() over an array.
-const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom...' }
+const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', breakeven: 'Breakeven', custom: 'Custom...' }
+
+// A "breakeven" exit is meant to be at (or essentially at) entry - this
+// caps how far the trader can nudge the auto-filled price before it's
+// really just a small win/loss that belongs under Custom instead.
+const BREAKEVEN_TOLERANCE_POINTS = 5
 
 // Outcome itself is never stored - only the exit_price/additional_exits it
 // produces are - so re-opening a saved trade for edit has to infer which
@@ -29,7 +34,8 @@ const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom
 // single exit whose price has reached or passed the planned target/stop
 // level (within lib/tradeMath.js's ADHERENCE_EPSILON tolerance) reads as
 // that outcome, so an exit that ran past the plan still counts as having
-// hit it. Anything short of either level falls back to Custom.
+// hit it. An exit at the entry price (same tolerance) reads as Breakeven.
+// Anything short of any of those falls back to Custom.
 function inferOutcome(initial) {
   if (isBlank(initial.execution.exit_price)) return ''
   if ((initial.additionalExits || []).length > 0) return 'custom'
@@ -41,6 +47,7 @@ function inferOutcome(initial) {
   const dir = direction === 'long' ? 1 : -1
   if (targetPrice !== null && dir * (exitPrice - targetPrice) >= -ADHERENCE_EPSILON) return 'target'
   if (stopPrice !== null && dir * (exitPrice - stopPrice) <= ADHERENCE_EPSILON) return 'stop'
+  if (Math.abs(exitPrice - entry) <= ADHERENCE_EPSILON) return 'breakeven'
   return 'custom'
 }
 
@@ -203,11 +210,11 @@ export default function TradeForm({
     return calcRMultiple(direction, entryNum, stopPriceForR, parseFloat(exitPriceStr))
   }
 
-  // Anything other than an explicit Hit Target/Hit Stop counts as Custom -
-  // including the dropdown's unset starting value (see outcome's own
-  // comment above), so a trader who hasn't touched Outcome yet still gets
-  // Custom's fully-manual behavior rather than a third, no-op state.
-  const isCustomOutcome = outcome !== 'target' && outcome !== 'stop'
+  // Anything other than an explicit Hit Target/Hit Stop/Breakeven counts as
+  // Custom - including the dropdown's unset starting value (see outcome's
+  // own comment above), so a trader who hasn't touched Outcome yet still
+  // gets Custom's fully-manual behavior rather than a fourth, no-op state.
+  const isCustomOutcome = outcome !== 'target' && outcome !== 'stop' && outcome !== 'breakeven'
 
   // The exit row(s) and the Total contracts/$ P&L/Realized R summary row
   // both stay hidden until the trader has actually picked
@@ -240,15 +247,22 @@ export default function TradeForm({
   ), 0)
 
   // Realized R (blended): a contracts-weighted average of every leg's own
-  // R-multiple, reduces to just that one exit's R-multiple for a single
-  // exit. Never derived from $ Profit or Loss (see handlePnlChange) - purely
+  // R-multiple - genuinely needs every leg's Contracts filled in to weight
+  // the average, so only used once there's more than one exit in effect.
+  // A single exit's R doesn't depend on contracts at all (it's a plain
+  // reward/risk ratio), so that case goes through legRMultiple instead -
+  // Contracts isn't a required field, and a trader who hasn't gotten to it
+  // yet should still see their R the moment they type an exit price. Never
+  // derived from $ Profit or Loss (see handlePnlChange) either way - purely
   // a price/contracts calculation, so a manual P&L edit can't move it.
-  const realizedR = calcBlendedRMultiple(
-    direction,
-    entryNum,
-    stopPriceForR,
-    exitLegRows.map((row) => ({ exit_price: parseFloat(row.exit_price), contracts: parseFloat(row.contracts) })),
-  )
+  const realizedR = multipleExits
+    ? calcBlendedRMultiple(
+        direction,
+        entryNum,
+        stopPriceForR,
+        exitLegRows.map((row) => ({ exit_price: parseFloat(row.exit_price), contracts: parseFloat(row.contracts) })),
+      )
+    : legRMultiple(execution.exit_price)
 
   // The new-trade page renders before its strategies have loaded, so the
   // first one is selected once they arrive. Never on the edit page, where an
@@ -394,11 +408,12 @@ export default function TradeForm({
   }
 
   // Pre-fills the primary exit's price from Trade Setup's own planned
-  // target/stop price - a starting value, not a locked substitution, so the
-  // field stays exactly as editable afterward as a fully manual entry would
-  // be (an actual fill can slip from the theoretical price on slippage or a
-  // partial fill). Choosing Custom applies nothing at all, leaving whatever
-  // is already there.
+  // target/stop price (or, for Breakeven, the entry price itself) - a
+  // starting value, not a locked substitution, so the field stays exactly
+  // as editable afterward as a fully manual entry would be (an actual fill
+  // can slip from the theoretical price on slippage or a partial fill).
+  // Choosing Custom applies nothing at all, leaving whatever is already
+  // there.
   function handleOutcomeChange(value) {
     setDirty(true)
     setOutcome(value)
@@ -407,7 +422,9 @@ export default function TradeForm({
     const entry = parseFloat(setup.entry)
     const price = value === 'target'
       ? calcTargetPrice(direction, entry, parseFloat(setup.target_distance))
-      : calcStopPrice(direction, entry, parseFloat(setup.stop_distance))
+      : value === 'stop'
+      ? calcStopPrice(direction, entry, parseFloat(setup.stop_distance))
+      : (Number.isFinite(entry) ? entry : null)
     updateExecution('exit_price', price === null ? '' : String(price))
   }
 
@@ -578,13 +595,24 @@ export default function TradeForm({
   async function handleSubmit(e) {
     e.preventDefault()
 
+    const execErrors = validateExecution(execution)
+    // Only checked once the exit price has already passed the basic
+    // present/numeric check above - a range error would otherwise
+    // overwrite (and hide) that more fundamental one.
+    if (!execErrors.exit_price && outcome === 'breakeven') {
+      const entry = parseFloat(setup.entry)
+      const exitPrice = parseFloat(execution.exit_price)
+      if (Number.isFinite(entry) && Math.abs(exitPrice - entry) > BREAKEVEN_TOLERANCE_POINTS) {
+        execErrors.exit_price = `Breakeven price must be within ${BREAKEVEN_TOLERANCE_POINTS} points of entry.`
+      }
+    }
     const foundErrors = {
       ...validateSetup({ ...setup, direction, strategyId }),
       // Outcome gates whether the exit row(s) even render (see
       // outcomeChosen) - validateExecution's own exit_price check would
       // otherwise fire against a hidden field with no visible error.
       ...(outcomeChosen ? {} : { outcome: 'Choose an outcome.' }),
-      ...validateExecution(execution),
+      ...execErrors,
       ...validateDiscipline({ reviewedNoIssues, disciplineTags }),
     }
     if (Object.keys(foundErrors).length > 0) {
@@ -619,14 +647,14 @@ export default function TradeForm({
       exit_price: toDecimalString(exitPrice),
       exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, exitPrice)),
       exit_time: execution.exit_time || null,
-      // Blended across every exit leg (see realizedR above), not just the
-      // primary one, so a multi-exit trade's stored R matches what every
+      // Blended across every exit leg (see realizedR above) once there's
+      // more than one, so a multi-exit trade's stored R matches what every
       // trade log/stat that reads r_multiple actually shows the trader.
-      // realizedR needs contracts on every leg to weight the average, but
-      // Contracts isn't a required field - falls back to the plain
-      // primary-exit R-multiple so a trade with no contracts entered still
-      // gets an R rather than null (exit price is mandatory, so every trade
-      // must have one).
+      // Contracts isn't a required field, so a multi-exit trade with every
+      // leg's Contracts left blank can still leave realizedR null (blending
+      // needs weights) even though exit price is mandatory - falls back to
+      // the plain primary-exit R-multiple rather than storing null in that
+      // case.
       r_multiple: realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),

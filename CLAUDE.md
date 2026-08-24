@@ -14,7 +14,10 @@ more detail. `README.md` is the first-time setup guide.
 
 1. **Never commit to `main`.** `main` deploys straight to production. Branch, open
    a PR, wait for the Build check (`.github/workflows/ci.yml`, runs `npm run build`)
-   and the Vercel preview, then merge.
+   and the Vercel preview, then merge. Always branch from the latest `origin/main`,
+   not from another PR's still-open head branch, unless intentionally stacking one
+   PR on another on purpose — stacking by accident has shipped a merge to the wrong
+   branch before.
 2. **Vercel previews use the production database.** Preview deployments inherit the
    project's env vars, so anything logged while testing a preview is a real row in
    the real journal. Delete test data afterwards.
@@ -59,6 +62,7 @@ components/
   account/                    one component per account-settings concern
 lib/
   supabaseClient.js           the one browser Supabase client (flowType: 'pkce' for OAuth)
+  supabaseClient.mock.js      in-memory stand-in, dev/agent-only - see "Local dev tooling"
   supabaseConfig.js           raw url/anon key, no client - see app/auth/callback/page.js
   instrumentCatalog.js        the 12 supported instruments, data_symbol, point_value
   tradeMath.js                distance → price, R-multiple, R:R, $ P&L
@@ -73,6 +77,9 @@ lib/
   marketContextMock.js         placeholder volatility/key-levels/econ-event data (not live)
 schema.sql                    tables + row level security
 storage-setup.sql             screenshots storage bucket
+scripts/
+  update-css-toc.js           regenerates globals.css's table of contents - see below
+next.config.js                only exists for the mock-DB dev alias - see below
 ```
 
 ## Domain rules that are easy to get wrong
@@ -100,8 +107,10 @@ storage-setup.sql             screenshots storage bucket
 - Section titles are `<div className="section-heading">` and sit **above** the card
   they describe.
 - Cards use `.panel`. All styling lives in `app/globals.css` — add new rules at the
-  end under a `/* ---- Feature ---- */` banner, and update the table of contents at
-  the top of that file.
+  end under a `/* ---------- Feature ---------- */` banner, then run
+  `npm run css:toc` to regenerate the table of contents at the top of that file
+  (it recomputes every section's line number from the actual banners — don't hand-edit
+  it, and don't skip it, since a stale ToC is worse than no ToC).
 - Inline SVG icons need an explicit size in CSS or they collapse to 0px wide. See
   `.theme-toggle-btn svg` for the pattern.
 - Trade forms carry no "required" markers. Mandatory fields are enforced on submit
@@ -136,3 +145,23 @@ The Overview pages' "Economic calendar" card (`components/EconomicCalendarCard.j
 currently renders mock data from `lib/marketContextMock.js` — the earlier BLS/FRED/
 FOMC live-fetch version was pulled out in favor of a paid market-data provider, not
 yet wired up. Same story for the volatility and key-levels cards on those pages.
+
+## Local dev tooling
+
+- **`npm run dev:mock`** runs the dev server against `lib/supabaseClient.mock.js` (an
+  in-memory fake client — instruments/strategies/trades kept in a JS array, no real
+  network calls) instead of the real database. `next.config.js` does this by
+  redirecting every import of `lib/supabaseClient` when `NEXT_PUBLIC_USE_MOCK_DB=true`
+  — nothing about `lib/supabaseClient.js` itself changes, so there's no file to swap
+  back afterward. Use this to verify a UI change actually renders correctly before
+  calling it done, without touching a real row in the production database (see the
+  Non-negotiables above on why that matters). `.env.local` still needs *some* value
+  for `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` in mock mode (they're
+  never actually read, but `lib/supabaseConfig.js` and the build both expect them to
+  exist) — a placeholder string is fine. Edit `lib/supabaseClient.mock.js`'s
+  `MOCK_TRADES` directly for whatever a specific change needs to exercise (a
+  multi-exit trade, a trade with screenshots, an open trade, and so on).
+- **`npm run css:toc`** regenerates `globals.css`'s table of contents from the
+  file's actual `/* ---------- Section ---------- */` banners. Run it after any CSS
+  edit that adds, removes, or moves a section — `npm run css:toc:check` reports
+  (without writing) whether it's currently stale, for a sanity check before a commit.

@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:mock": "NEXT_PUBLIC_USE_MOCK_DB=true next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "css:toc": "node scripts/update-css-toc.js",
+    "css:toc:check": "node scripts/update-css-toc.js --check"
   },
   "dependencies": {
     "next": "14.2.5",

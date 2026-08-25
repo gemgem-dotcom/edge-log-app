@@ -7,8 +7,6 @@ name: TEMP - diagnose old vs new excursion logic
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [claude/mfe-fill-instant-precision]
 
 jobs:
   diagnose:

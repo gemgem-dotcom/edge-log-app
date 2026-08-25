@@ -245,7 +245,7 @@ async function main() {
         stype_in: 'instrument_id',
         stype_out: 'raw_symbol',
         start_date: sessionDateStr,
-        end_date: sessionDateStr,
+        end_date: new Date(sessionDate.getTime() + 24 * 3600000).toISOString().slice(0, 10),
       })
       log(`  ${label} instrument_id=${id}: ${resolveText.trim()}`)
     } catch (err) {

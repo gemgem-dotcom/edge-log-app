@@ -9,8 +9,6 @@ name: TEMP - one-off trade excursion backfill
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [claude/backfill-existing-trade-excursions]
 
 jobs:
   backfill:

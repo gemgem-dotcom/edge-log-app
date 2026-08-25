@@ -7,6 +7,7 @@ import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { applyTrade, reverseTrade } from '@/lib/edgeBeliefs'
+import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -95,6 +96,20 @@ export default function EditTradePage({ params }) {
       await applyTrade(supabase, updated)
     } catch (beliefError) {
       console.error('belief update failed:', beliefError)
+    }
+
+    // Only re-triggers the (Databento-backed) excursion computation when a
+    // field it actually depends on changed - an edit that only touches
+    // reasoning/tags/discipline review shouldn't cost another API call
+    // against a trade whose MFE/MAE/drawdown are already correct.
+    const excursionRelevantChanged =
+      trade.direction !== updated.direction ||
+      trade.entry !== updated.entry ||
+      trade.exit_time !== updated.exit_time ||
+      trade.exit_price !== updated.exit_price ||
+      JSON.stringify(trade.additional_exits || []) !== JSON.stringify(updated.additional_exits || [])
+    if (excursionRelevantChanged) {
+      requestTradeExcursionBackfill(symbol, tradeId)
     }
 
     // Same as Cancel/Discard changes (onCancel below) - returns to wherever

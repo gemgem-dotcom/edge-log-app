@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
+import { formatExcursionR, excursionStatusMessage } from '../lib/tradeExcursions'
 import { reverseTrade } from '../lib/edgeBeliefs'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -103,6 +104,16 @@ function resultOf(trade) {
   return 'breakeven'
 }
 
+// Same fallback shape as the trade detail page's own excursionCell -
+// realValue is whatever the caller already computed for 'complete', null
+// otherwise; a null market_data_status (never attempted, or not an
+// NQ-family trade) falls through to the same plain "—" every other
+// not-yet-applicable field in this row already uses.
+function excursionCell(trade, timezoneOffset, realValue) {
+  if (trade.market_data_status === 'complete' && realValue !== null && realValue !== undefined) return realValue
+  return excursionStatusMessage(trade, timezoneOffset) || '—'
+}
+
 export default function TradeLogTable({
   trades,
   strategies = [],
@@ -149,10 +160,20 @@ export default function TradeLogTable({
   // in the toolbar above the table instead of a column-header chevron. A
   // trade matches if it has any one of the selected tags.
   const [filterTags, setFilterTags] = useState([])
+  // Only needed for a still-'pending' trade's "Available in ~Xh" message
+  // (lib/tradeExcursions.js's excursionStatusMessage) - same account
+  // offset trade save/edit already convert wall-clock times with.
+  const [timezoneOffset, setTimezoneOffset] = useState(null)
 
   useEffect(() => {
     setRows(trades)
   }, [trades])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setTimezoneOffset(parseFloat(user?.user_metadata?.timezone))
+    })
+  }, [])
 
   // Support deep links like /log?strategy=<id> from the dashboard table.
   useEffect(() => {
@@ -475,9 +496,18 @@ export default function TradeLogTable({
                               {closed ? (t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R' : '—'}
                             </div>
                           </div>
-                          {/* No data source until Phase 2 captures excursions. */}
-                          <div><label>MFE</label><div>—</div></div>
-                          <div><label>MAE</label><div>—</div></div>
+                          <div>
+                            <label>MFE</label>
+                            <div>{excursionCell(t, timezoneOffset, formatExcursionR(t.mfe_points, t.stop_distance))}</div>
+                          </div>
+                          <div>
+                            <label>MAE</label>
+                            <div>{excursionCell(t, timezoneOffset, formatExcursionR(t.mae_points, t.stop_distance))}</div>
+                          </div>
+                          <div>
+                            <label>Time in drawdown</label>
+                            <div>{excursionCell(t, timezoneOffset, t.market_data_status === 'complete' ? formatDuration(Math.round(t.drawdown_seconds / 60)) : null)}</div>
+                          </div>
                         </div>
 
                         {t.discipline_tags?.length > 0 && (

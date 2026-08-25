@@ -552,3 +552,29 @@ create policy "Anyone signed in can read market session stats"
 -- instrument), never a guessed value, same principle as `session` above.
 alter table trades add column if not exists volatility_regime text;
 alter table trades add column if not exists volume_regime text;
+
+-- MFE/MAE/drawdown (lib/tradeExcursions.js, app/api/backfill-trade-
+-- excursion/route.js, scripts/retry-trade-excursions.js) - computed once
+-- from a fixed entry-to-final-exit window (trades are only ever logged
+-- after they've closed, so there's no "still updating" state), from NQ
+-- 1-minute bars. mfe_points/mae_points are raw, direction-aware points
+-- (long: mfe = high-entry, mae = entry-low; short: mirrored) - displayed
+-- as an R-multiple (divide by stop_distance) rather than stored twice, the
+-- same pattern realized R already follows. drawdown_seconds is cumulative
+-- time the position's unrealized P&L was underwater, summed across every
+-- separate underwater period, not just time-to-first-recovery.
+--
+-- market_data_status drives display and the retry job, not just a cache
+-- flag: 'pending' means blocked on this account's confirmed ~8-hour
+-- GLBX.MDP3 access embargo (not a bug - see NOTES.md), not on unbuilt
+-- infrastructure, so it reads differently in the UI than a plain
+-- placeholder. 'unavailable' means a genuine, non-retryable miss (wrong/
+-- unsupported instrument, no bars returned, a non-embargo API error) -
+-- set explicitly rather than left stuck in 'pending' forever. null (no
+-- default) means this trade has never been attempted yet, or isn't on an
+-- NQ-family instrument - same "not yet applicable" principle as
+-- volatility_regime/volume_regime above, not a fourth status to branch on.
+alter table trades add column if not exists mfe_points numeric;
+alter table trades add column if not exists mae_points numeric;
+alter table trades add column if not exists drawdown_seconds integer;
+alter table trades add column if not exists market_data_status text;

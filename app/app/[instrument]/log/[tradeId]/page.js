@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
+import { formatExcursionR, excursionStatusMessage } from '@/lib/tradeExcursions'
 import { reverseTrade } from '@/lib/edgeBeliefs'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -20,6 +21,18 @@ function fmtNum(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// One cell for MFE/MAE/Time in drawdown: `realValue` is whatever the
+// caller already computed for the 'complete' case (or null otherwise) -
+// this only decides what to show when there's nothing real to display yet,
+// via lib/tradeExcursions.js's excursionStatusMessage ('pending'/
+// 'unavailable' get their own distinct copy). A null market_data_status
+// (never attempted, or not an NQ-family trade) falls through to the same
+// plain "—" every other not-yet-applicable field on this page already uses.
+function excursionCell(trade, timezoneOffset, realValue) {
+  if (trade.market_data_status === 'complete' && realValue !== null && realValue !== undefined) return realValue
+  return excursionStatusMessage(trade, timezoneOffset) || '—'
+}
+
 export default function TradeDetailPage({ params }) {
   usePageTitle('Trade Detail')
   const symbol = params.instrument
@@ -30,6 +43,7 @@ export default function TradeDetailPage({ params }) {
   const [trade, setTrade] = useState(null)
   const [strategyName, setStrategyName] = useState('')
   const [previewIndex, setPreviewIndex] = useState(null)
+  const [timezoneOffset, setTimezoneOffset] = useState(null)
   const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
@@ -44,6 +58,12 @@ export default function TradeDetailPage({ params }) {
 
     const { data: s } = await supabase.from('strategies').select('name').eq('id', t.strategy_id).single()
     setStrategyName(s?.name || '—')
+
+    // Only needed to compute "Available in ~Xh" for a still-pending trade
+    // (lib/tradeExcursions.js's excursionStatusMessage) - the same account
+    // offset trade save/edit already convert wall-clock times with.
+    const { data: { user } } = await supabase.auth.getUser()
+    setTimezoneOffset(parseFloat(user?.user_metadata?.timezone))
 
     setLoading(false)
   }
@@ -87,9 +107,9 @@ export default function TradeDetailPage({ params }) {
           <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price == null ? '—' : fmtNum(trade.exit_price)}</div></div>
           <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(trade))}</div></div>
-          {/* No data source until Phase 2 captures excursions. */}
-          <div><label>MFE</label><div>—</div></div>
-          <div><label>MAE</label><div>—</div></div>
+          <div><label>MFE</label><div>{excursionCell(trade, timezoneOffset, formatExcursionR(trade.mfe_points, trade.stop_distance))}</div></div>
+          <div><label>MAE</label><div>{excursionCell(trade, timezoneOffset, formatExcursionR(trade.mae_points, trade.stop_distance))}</div></div>
+          <div><label>Time in drawdown</label><div>{excursionCell(trade, timezoneOffset, trade.market_data_status === 'complete' ? formatDuration(Math.round(trade.drawdown_seconds / 60)) : null)}</div></div>
           <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
         </div>
       </div>

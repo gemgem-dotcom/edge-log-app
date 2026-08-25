@@ -1,11 +1,26 @@
 # Daily NQ market-session-stats fetch
 #
-# Runs scripts/fetch-daily-market-stats.js once a day, well after CME's
-# latest possible normal close (5pm ET / 22:00 UTC in EDT, 21:00 UTC in
-# EST) - fetches NQ's completed ohlcv-1m bars for the day that just closed
-# from Databento's Historical API and stores total_range/total_volume in
-# market_session_stats. See schema.sql's comment above `create table
-# market_session_stats` and NOTES.md for the full picture.
+# Runs scripts/fetch-daily-market-stats.js once a day, fetching NQ's
+# *previous* completed session's ohlcv-1m bars from Databento's Historical
+# API and storing total_range/total_volume in market_session_stats. See
+# schema.sql's comment above `create table market_session_stats` and
+# NOTES.md for the full picture.
+#
+# Scheduled the morning after, at a fixed UTC hour, not the same evening -
+# confirmed live (two runs, hours apart) that this Databento account's
+# access to GLBX.MDP3 lags wall-clock time by ~8 hours, gated behind an
+# explicit "requires a subscription and/or license" error. The original
+# 23:30 UTC same-evening schedule asked for a session that had technically
+# closed but that an 8-hours-behind account could never yet see: CME's own
+# close (~21:00-22:00 UTC) is itself less than 8 hours before 23:30 UTC.
+# Nothing downstream of this table needs same-evening data - every reader
+# (lib/tradeRegimes.js, lib/todaysBrief.js) already works off "the most
+# recently completed session," whatever that happens to be - so running
+# the morning after and fetching yesterday's date is a strictly safer fit,
+# not a compromise. Fixed UTC rather than a DST-aware "5am ET" translation
+# deliberately - the embargo is wall-clock-based, not ET-based, and this
+# avoids the added complexity of converting a variable local time for no
+# benefit here.
 #
 # Unlike refresh-cme-holidays.yml, this workflow never touches a committed
 # file - it writes straight to Supabase (via SUPABASE_SERVICE_ROLE_KEY, the
@@ -29,11 +44,11 @@ name: Refresh NQ market session stats
 
 on:
   schedule:
-    # 23:30 UTC - 7:30pm EDT / 6:30pm EST, safely after the latest possible
-    # normal 5pm ET close in either direction of the DST clock change, and
-    # well after any early-close time (CME's earliest is 9:15am ET, Good
-    # Friday) an early-closed session could have ended at.
-    - cron: '30 23 * * *'
+    # 09:30 UTC, fixed year-round - comfortably past the ~8-hour embargo
+    # from even the latest possible close (22:00 UTC, EDT), confirmed live
+    # against this account. See the header comment above for why this is a
+    # fixed UTC hour rather than a DST-aware local-time translation.
+    - cron: '30 9 * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -46,12 +61,19 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # 22, not 20 (the app's own package.json target) - @supabase/
+          # supabase-js's createClient always constructs an internal
+          # Realtime (WebSocket) sub-client, even though this script never
+          # uses realtime subscriptions, and that constructor throws under
+          # Node 20 for lacking native WebSocket support (added in Node 21,
+          # stable in 22) rather than silently skipping it. Confirmed live -
+          # this exact error killed a real run before this was pinned to 22.
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Fetch and store today's NQ session stats
+      - name: Fetch and store yesterday's NQ session stats
         env:
           DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

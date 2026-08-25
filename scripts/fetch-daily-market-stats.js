@@ -132,36 +132,45 @@ function parseCloseMinutes(closeTime) {
 }
 
 async function main() {
-  // "Today" in ET at the time this runs is the trading day whose session
-  // just closed - the workflow schedules this comfortably after 5pm ET
-  // (the latest possible normal close) so that's always true.
+  // This account's access to GLBX.MDP3 lags wall-clock time by ~8 hours -
+  // confirmed empirically (two live runs, hours apart, both blocked with
+  // Databento's "requires a subscription and/or license" error, each
+  // exactly 8h behind the request time) rather than assumed. The job used
+  // to run the same evening (23:30 UTC) and fetch "today"'s just-closed
+  // session, which an 8-hour-behind account can never actually see yet at
+  // that hour - CME's own close (~21:00-22:00 UTC) is itself less than 8
+  // hours before 23:30 UTC. It now runs the following morning instead (see
+  // the workflow's cron), by which point the embargo has cleared - so
+  // "today" in ET at run time is the morning after the session actually
+  // closed, and the session to fetch is *yesterday's* ET date, not today's.
   const now = new Date()
   // en-CA formats as YYYY-MM-DD directly - avoids round-tripping a
   // locale-formatted string back through the Date constructor, which isn't
   // a reliably parseable format.
-  const todayEt = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const nowEt = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const sessionDate = addDaysToDateStr(nowEt, -1)
 
-  const weekday = etWeekdayFor(todayEt)
+  const weekday = etWeekdayFor(sessionDate)
   if (weekday === 0 || weekday === 6) {
-    log(`${todayEt} is a weekend in ET - no session, skipping.`)
+    log(`${sessionDate} is a weekend in ET - no session, skipping.`)
     return
   }
 
-  const holiday = CME_HOLIDAYS[todayEt]
+  const holiday = CME_HOLIDAYS[sessionDate]
   if (holiday?.type === 'closed') {
-    log(`${todayEt} is a full CME holiday (${holiday.name}) - skipping.`)
+    log(`${sessionDate} is a full CME holiday (${holiday.name}) - skipping.`)
     return
   }
 
   const closeMinutes = holiday?.type === 'early_close' ? parseCloseMinutes(holiday.closeTime) : 17 * 60
-  const priorDay = addDaysToDateStr(todayEt, -1)
+  const priorDay = addDaysToDateStr(sessionDate, -1)
   // CME's trading day runs from the prior day's 6pm ET reopen through
-  // today's close - same "day starts at the prior evening" convention
+  // that day's close - same "day starts at the prior evening" convention
   // lib/marketHours.js's computeOpen already uses for market-open/close.
   const start = etWallClockToUtc(priorDay, 18 * 60).toISOString()
-  const end = etWallClockToUtc(todayEt, closeMinutes).toISOString()
+  const end = etWallClockToUtc(sessionDate, closeMinutes).toISOString()
 
-  log(`Fetching NQ ohlcv-1m for session ${todayEt} (${start} to ${end})`)
+  log(`Fetching NQ ohlcv-1m for session ${sessionDate} (${start} to ${end})`)
 
   let bars
   try {
@@ -170,12 +179,12 @@ async function main() {
     // Fail gracefully: skip this day rather than crash the job, so a
     // Databento outage or an unresolved symbol on some future date doesn't
     // take the whole scheduled workflow down.
-    log(`Databento fetch failed, skipping ${todayEt}: ${err.message}`)
+    log(`Databento fetch failed, skipping ${sessionDate}: ${err.message}`)
     return
   }
 
   if (bars.length === 0) {
-    log(`No bars returned for ${todayEt} - skipping (nothing to store).`)
+    log(`No bars returned for ${sessionDate} - skipping (nothing to store).`)
     return
   }
 
@@ -190,12 +199,12 @@ async function main() {
   const admin = createClient(supabaseUrl, serviceKey)
 
   const { error } = await admin.from('market_session_stats').upsert(
-    { data_symbol: DATA_SYMBOL, session_date: todayEt, total_range: totalRange, total_volume: totalVolume },
+    { data_symbol: DATA_SYMBOL, session_date: sessionDate, total_range: totalRange, total_volume: totalVolume },
     { onConflict: 'data_symbol,session_date' }
   )
   if (error) throw new Error(`Supabase upsert failed: ${error.message}`)
 
-  log(`Stored ${todayEt}: range=${totalRange.toFixed(2)} volume=${totalVolume}`)
+  log(`Stored ${sessionDate}: range=${totalRange.toFixed(2)} volume=${totalVolume}`)
 }
 
 main().catch((err) => {

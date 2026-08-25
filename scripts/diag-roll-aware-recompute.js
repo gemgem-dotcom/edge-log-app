@@ -301,7 +301,7 @@ async function main() {
       continue
     }
 
-    const rollDistance = daysToNearestRollover(dataSymbolById.get(trade.instrument_id), trade.trade_date)
+    const rollDistance = daysToNearestRollover(dataSymbolById.get(trade.instrument_id), new Date(trade.trade_date + 'T00:00:00'))
     const nearRoll = isNearRollover(dataSymbolById.get(trade.instrument_id), trade.trade_date)
 
     let symbol = NQ_CONTINUOUS_SYMBOL

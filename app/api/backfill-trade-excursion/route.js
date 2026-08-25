@@ -10,7 +10,7 @@
 // See schema.sql's comment above `mfe_points` and lib/tradeExcursions.js
 // for the full picture (the embargo, the three market_data_status values).
 import { createClient } from '@supabase/supabase-js'
-import { fetchOhlcv1m, NQ_CONTINUOUS_SYMBOL } from '@/lib/databento'
+import { fetchOhlcv1m, NQ_CONTINUOUS_SYMBOL, isNearRollover, sessionBoundsFor, resolveFrontMonthByVolume } from '@/lib/databento'
 import { excursionWindow, computeExcursion, isEmbargoError, deriveFillInstants, sliceBarsForWindow, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
 
 function json(body, status = 200) {
@@ -55,10 +55,29 @@ export async function POST(req) {
   // this fetch's start/end boundary handling can never be the reason a bar
   // the search actually needs gets clipped - see FILL_SEARCH_PAD_MINUTES.
   const padMs = FILL_SEARCH_PAD_MINUTES * 60000
+
+  // Within ROLL_PROXIMITY_DAYS of a quarterly roll, NQ_CONTINUOUS_SYMBOL's
+  // own resolution was confirmed (live, PR #122) to disagree with which
+  // contract actually traded that session - resolve by volume instead in
+  // that window. Outside it, trust the continuous symbol as before; if
+  // volume resolution itself comes up empty, fall back to the continuous
+  // symbol too rather than fail the trade over this.
+  let symbol = NQ_CONTINUOUS_SYMBOL
+  let stypeIn = 'continuous'
+  if (isNearRollover(instrument.data_symbol, trade.trade_date)) {
+    const { start: sessionStart, end: sessionEnd } = sessionBoundsFor(rawWindow.entryInstant)
+    const frontMonthId = await resolveFrontMonthByVolume({ sessionStart, sessionEnd })
+    if (frontMonthId !== null) {
+      symbol = String(frontMonthId)
+      stypeIn = 'instrument_id'
+    }
+  }
+
   let bars
   try {
     bars = await fetchOhlcv1m({
-      symbol: NQ_CONTINUOUS_SYMBOL,
+      symbol,
+      stypeIn,
       start: new Date(rawWindow.entryInstant.getTime() - padMs).toISOString(),
       end: new Date(rawWindow.exitInstant.getTime() + padMs).toISOString(),
     })

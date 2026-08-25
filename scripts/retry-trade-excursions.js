@@ -19,12 +19,20 @@
 // Env: DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
 const { createClient } = require('@supabase/supabase-js')
+// JSON, not ESM - require() loads these directly regardless of the
+// "type": "module" gap that keeps this script from importing lib/*.js
+// files, so the actual roll-date data (not just the logic around it)
+// stays a single source of truth with lib/contractRollover.js.
+const ROLLOVER_DATES = require('../lib/contractRollover.json')
+const CME_HOLIDAYS = require('../lib/cmeHolidays.json')
 
 const DATASET = 'GLBX.MDP3'
 const NQ_CONTINUOUS_SYMBOL = 'NQ.c.0'
 const PRICE_SCALE = 1e9
 const EMBARGO_HOURS = 8
 const BAR_SECONDS = 60
+// See lib/databento.js's ROLL_PROXIMITY_DAYS for the full explanation.
+const ROLL_PROXIMITY_DAYS = 10
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args)
@@ -41,6 +49,8 @@ function normalizeRecord(record) {
     high: record.high / PRICE_SCALE,
     low: record.low / PRICE_SCALE,
     tsEvent: record.ts_event ?? record.hd?.ts_event ?? null,
+    volume: Number(record.volume),
+    instrumentId: record.hd?.instrument_id ?? null,
   }
 }
 
@@ -57,12 +67,12 @@ function parseOhlcvRecords(text) {
   return trimmed.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => normalizeRecord(JSON.parse(l)))
 }
 
-async function fetchOhlcv1m({ symbol, start, end }) {
+async function fetchOhlcv1m({ symbol, start, end, stypeIn = 'continuous' }) {
   const url = new URL('/v0/timeseries.get_range', 'https://hist.databento.com')
   url.searchParams.set('dataset', DATASET)
   url.searchParams.set('schema', 'ohlcv-1m')
   url.searchParams.set('symbols', symbol)
-  url.searchParams.set('stype_in', 'continuous')
+  url.searchParams.set('stype_in', stypeIn)
   url.searchParams.set('start', start)
   url.searchParams.set('end', end)
   url.searchParams.set('encoding', 'json')
@@ -78,6 +88,115 @@ async function fetchOhlcv1m({ symbol, start, end }) {
 function isEmbargoError(err) {
   const msg = err?.message || ''
   return msg.includes('dataset_unavailable_range') || msg.includes('data_end_after_available_end')
+}
+
+// See lib/contractRollover.js's own copies for the full explanation - this
+// is the same logic, standalone.
+function rolloverDateStr(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+function isWeekend(date) {
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+function adjustForHolidays(ds) {
+  const d = new Date(ds + 'T00:00:00')
+  while (isWeekend(d) || CME_HOLIDAYS[rolloverDateStr(d)]?.type === 'closed') {
+    d.setDate(d.getDate() - 1)
+  }
+  return rolloverDateStr(d)
+}
+function findNextRolloverDate(dataSymbol, fromDate) {
+  const dates = ROLLOVER_DATES[dataSymbol]
+  if (!dates) return null
+  const todayStr = rolloverDateStr(fromDate)
+  for (const raw of dates) {
+    const adjusted = adjustForHolidays(raw)
+    if (adjusted >= todayStr) return adjusted
+  }
+  return null
+}
+function daysToNearestRollover(dataSymbol, fromDate) {
+  const dates = ROLLOVER_DATES[dataSymbol]
+  if (!dates) return null
+  const fromStr = rolloverDateStr(fromDate)
+  const from = new Date(fromStr + 'T00:00:00')
+  const next = findNextRolloverDate(dataSymbol, from)
+  const daysToNext = next ? Math.round((new Date(next + 'T00:00:00') - from) / 86400000) : null
+  let previous = null
+  for (const raw of dates) {
+    const adjusted = adjustForHolidays(raw)
+    if (adjusted < fromStr) previous = adjusted
+    else break
+  }
+  const daysSincePrevious = previous ? Math.round((from - new Date(previous + 'T00:00:00')) / 86400000) : null
+  const candidates = [daysToNext, daysSincePrevious].filter((d) => d !== null)
+  return candidates.length ? Math.min(...candidates) : null
+}
+function isNearRollover(dataSymbol, tradeDate) {
+  const distance = daysToNearestRollover(dataSymbol, new Date(tradeDate + 'T00:00:00'))
+  return distance !== null && distance <= ROLL_PROXIMITY_DAYS
+}
+
+// See lib/databento.js's sessionBoundsFor/resolveFrontMonthByVolume for
+// the full explanation - this is the same logic, standalone. Uses Intl
+// directly rather than lib/marketHours.js's easternParts (can't import
+// that either), same minimal-duplication approach as the rest of this file.
+function easternParts(date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date)
+  const map = {}
+  for (const p of parts) map[p.type] = p.value
+  const hour = Number(map.hour) % 24
+  return { minutesOfDay: hour * 60 + Number(map.minute), dateStr: `${map.year}-${map.month}-${map.day}` }
+}
+function sixPmEtUtc(dateUtcMidnight) {
+  // Seeded ~22h in, not at midnight - see lib/databento.js's own copy of
+  // this comment for why (ET trails UTC, so a midnight-UTC seed lands in
+  // the previous ET calendar day and the loop below would converge on the
+  // wrong day's 6pm).
+  let guess = new Date(dateUtcMidnight.getTime() + 22 * 3600000)
+  for (let i = 0; i < 3; i++) {
+    const { minutesOfDay } = easternParts(guess)
+    const diffMinutes = 18 * 60 - minutesOfDay
+    guess = new Date(guess.getTime() + diffMinutes * 60000)
+  }
+  return guess
+}
+function sessionBoundsFor(instant) {
+  const { minutesOfDay, dateStr } = easternParts(instant)
+  const [y, m, d] = dateStr.split('-').map(Number)
+  let sessionDateUtc = new Date(Date.UTC(y, m - 1, d))
+  if (minutesOfDay >= 18 * 60) sessionDateUtc = new Date(sessionDateUtc.getTime() + 24 * 3600000)
+  const end = sixPmEtUtc(sessionDateUtc)
+  const start = sixPmEtUtc(new Date(sessionDateUtc.getTime() - 24 * 3600000))
+  return { start, end }
+}
+async function resolveFrontMonthByVolume({ sessionStart, sessionEnd }) {
+  let records
+  try {
+    const bars = await fetchOhlcv1m({
+      symbol: 'NQ.FUT',
+      stypeIn: 'parent',
+      start: sessionStart.toISOString(),
+      end: sessionEnd.toISOString(),
+    })
+    records = bars
+  } catch {
+    return null
+  }
+  const volumeByInstrument = new Map()
+  for (const r of records) {
+    if (r.instrumentId === null || r.instrumentId === undefined) continue
+    volumeByInstrument.set(r.instrumentId, (volumeByInstrument.get(r.instrumentId) || 0) + r.volume)
+  }
+  let bestId = null
+  let bestVolume = -1
+  for (const [id, vol] of volumeByInstrument) {
+    if (vol > bestVolume) { bestVolume = vol; bestId = id }
+  }
+  return bestId
 }
 
 // trade_date/trade_time is a wall-clock reading, not a real instant, until
@@ -274,8 +393,24 @@ async function main() {
       // Padded well beyond findFillInstant's own ±1-minute search margin -
       // see lib/tradeExcursions.js's FILL_SEARCH_PAD_MINUTES.
       const padMs = FILL_SEARCH_PAD_MINUTES * 60000
+
+      // Within ROLL_PROXIMITY_DAYS of a quarterly roll, NQ_CONTINUOUS_SYMBOL's
+      // own resolution was confirmed (live, PR #122) to disagree with which
+      // contract actually traded that session - resolve by volume instead.
+      let symbol = NQ_CONTINUOUS_SYMBOL
+      let stypeIn = 'continuous'
+      if (isNearRollover(dataSymbolById.get(trade.instrument_id), trade.trade_date)) {
+        const { start: sessionStart, end: sessionEnd } = sessionBoundsFor(rawWindow.entryInstant)
+        const frontMonthId = await resolveFrontMonthByVolume({ sessionStart, sessionEnd })
+        if (frontMonthId !== null) {
+          symbol = String(frontMonthId)
+          stypeIn = 'instrument_id'
+        }
+      }
+
       const bars = await fetchOhlcv1m({
-        symbol: NQ_CONTINUOUS_SYMBOL,
+        symbol,
+        stypeIn,
         start: new Date(rawWindow.entryInstant.getTime() - padMs).toISOString(),
         end: new Date(rawWindow.exitInstant.getTime() + padMs).toISOString(),
       })

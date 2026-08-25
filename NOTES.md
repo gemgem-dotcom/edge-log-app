@@ -186,16 +186,43 @@ silently "fixed" or silently left stale:
   levels nearby its logged times, on either candidate contract. The trade's own logged
   fields are internally consistent (correct stop/target sides for a short, exact
   target hit, `r_multiple` matching entry/stop/exit exactly) - so this isn't a garbled
-  entry. Most likely explanation: a timestamp off by more than the ~1-minute margin
-  either fix searches, or the wrong calendar day - something a human needs to check
-  against whatever the trader actually remembers about this trade, not something
-  either automated fix could reasonably guess at.
+  entry.
+
+  **Follow-up (genuinely unresolvable, no correction made):** manually searched a
+  full 3-calendar-day window (the day before, of, and after the logged trade date)
+  on NQU6, the correct front-month contract for this trade's roll-proximity window.
+  The entry price (29737.5) was touched by 196 separate one-minute bars across all
+  three days; the exit/target price (29576) was touched by 34 bars across two of
+  them. Both levels sit inside a wide, choppy multi-day range and get retested too
+  often for a price-touch search to isolate a single real fill instant - widening
+  the window past the automated fix's ±1 minute didn't narrow things down, it just
+  surfaced how common both price levels are. (The other candidate contract, NQM6,
+  returned zero bars for the entire window - it had already rolled off by this
+  trade's date, consistent with the roll-aware fix's choice of NQU6.) No specific
+  corrected timestamp could be identified from this data source with any
+  confidence, so nothing was written - this needs the trader's own memory of the
+  trade, not further automated searching.
 - **`137c4594-c6d0-40f1-904f-acb9e71d9ef6`** - also failed to find a matching bar for
   at least one leg (`excursion_fallback = true`) under the fill-instant fix, same as
   `7e8616fb`, but *not* near any quarterly roll - so the front-month question doesn't
   apply here. Flagged during PR #122's diagnostic and deliberately not investigated
-  further per that PR's own scope - noted here so it isn't quietly forgotten once the
-  PR closes.
+  further per that PR's own scope.
+
+  **Follow-up (real match found, needs a human decision - not yet corrected):** this
+  losing long (entry 29572, stop/exit 29536, logged 09:51:52-09:58:38 ET) was
+  suspected to be the "MAE and exit coincide, no distinct bar" case, but the actual
+  ±5-minute bar data around the logged times rules that out. The *only* one-minute
+  bar in that window touching entry, exit, and stop simultaneously is
+  `2026-08-19T13:48:00Z` (O 29583.75 / H 29592.25 / L 29515 / C 29517.25) - about 4
+  minutes before the logged entry instant (13:51:52Z) and about 10 minutes before
+  the logged exit instant (13:58:38Z). By the logged entry instant, price had
+  already fallen well past the stop (low 29406.5 on the 13:51 bar) - i.e. real price
+  action shows this trade's entry and stop-out both happening inside that same
+  single minute, a much faster and earlier move than the ~7-minute duration
+  currently logged. This is the same class of issue as `7e8616fb` (logged timestamp
+  not matching real price action), not the hypothesized mechanism, and it looks
+  resolvable here where `7e8616fb` wasn't - flagged for a decision before writing
+  anything.
 
 Both trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
 `excursion_fallback` values they already had before this note was written - nothing

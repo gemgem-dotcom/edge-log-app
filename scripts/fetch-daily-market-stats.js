@@ -168,6 +168,11 @@ async function main() {
   // that day's close - same "day starts at the prior evening" convention
   // lib/marketHours.js's computeOpen already uses for market-open/close.
   const start = etWallClockToUtc(priorDay, 18 * 60).toISOString()
+  // `end` is exactly the session-close instant. Databento's `end` is
+  // exclusive (confirmed live - see lib/databento.js's header), but since
+  // every bar is timestamped by its start, the bar that would sit exactly
+  // at `end` would cover the minute *after* close - never part of this
+  // session - so excluding it costs nothing.
   const end = etWallClockToUtc(sessionDate, closeMinutes).toISOString()
 
   log(`Fetching NQ ohlcv-1m for session ${sessionDate} (${start} to ${end})`)

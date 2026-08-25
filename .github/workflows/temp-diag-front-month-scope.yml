@@ -9,8 +9,6 @@ name: TEMP - diagnose front-month resolution scope
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [claude/mfe-fill-instant-precision]
 
 jobs:
   diagnose:

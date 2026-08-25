@@ -11,7 +11,7 @@
 // for the full picture (the embargo, the three market_data_status values).
 import { createClient } from '@supabase/supabase-js'
 import { fetchOhlcv1m, NQ_CONTINUOUS_SYMBOL } from '@/lib/databento'
-import { excursionWindow, computeExcursion, isEmbargoError } from '@/lib/tradeExcursions'
+import { excursionWindow, computeExcursion, isEmbargoError, deriveFillInstants, sliceBarsForWindow, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -45,18 +45,22 @@ export async function POST(req) {
   }
 
   const timezoneOffset = parseFloat(userData.user.user_metadata?.timezone)
-  const window = Number.isNaN(timezoneOffset) ? null : excursionWindow(trade, timezoneOffset)
-  if (!window) {
+  const rawWindow = Number.isNaN(timezoneOffset) ? null : excursionWindow(trade, timezoneOffset)
+  if (!rawWindow) {
     await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', tradeId)
     return json({ status: 'unavailable', reason: 'no timezone or exit window' })
   }
 
+  // Padded well beyond findFillInstant's own ±1-minute search margin, so
+  // this fetch's start/end boundary handling can never be the reason a bar
+  // the search actually needs gets clipped - see FILL_SEARCH_PAD_MINUTES.
+  const padMs = FILL_SEARCH_PAD_MINUTES * 60000
   let bars
   try {
     bars = await fetchOhlcv1m({
       symbol: NQ_CONTINUOUS_SYMBOL,
-      start: window.entryInstant.toISOString(),
-      end: window.exitInstant.toISOString(),
+      start: new Date(rawWindow.entryInstant.getTime() - padMs).toISOString(),
+      end: new Date(rawWindow.exitInstant.getTime() + padMs).toISOString(),
     })
   } catch (err) {
     if (isEmbargoError(err)) {
@@ -72,13 +76,21 @@ export async function POST(req) {
     return json({ status: 'unavailable', reason: 'no bars returned' })
   }
 
-  const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({ bars, entry: trade.entry, direction: trade.direction })
+  const { entryInstant, exitInstant, usedFallback } = deriveFillInstants({ rawWindow, entryPrice: trade.entry, bars })
+  const windowBars = sliceBarsForWindow(bars, entryInstant, exitInstant)
+  if (windowBars.length === 0) {
+    await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', tradeId)
+    return json({ status: 'unavailable', reason: 'no bars in derived window' })
+  }
+
+  const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({ bars: windowBars, entry: trade.entry, direction: trade.direction })
   await admin.from('trades').update({
     mfe_points: mfePoints,
     mae_points: maePoints,
     drawdown_seconds: drawdownSeconds,
     market_data_status: 'complete',
+    excursion_fallback: usedFallback,
   }).eq('id', tradeId)
 
-  return json({ status: 'complete' })
+  return json({ status: 'complete', usedFallback })
 }

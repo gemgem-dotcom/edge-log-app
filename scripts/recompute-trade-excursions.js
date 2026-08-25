@@ -1,21 +1,34 @@
 #!/usr/bin/env node
 
-// Hourly retry for trades whose MFE/MAE/drawdown fetch was blocked by this
-// account's Databento embargo at save time (market_data_status = 'pending')
-// - see the .github/workflows/retry-trade-excursions.yml this runs under,
-// lib/tradeExcursions.js, and schema.sql's comment above `mfe_points` for
-// the full picture.
+// One-time, manually-run recompute of MFE/MAE/drawdown for every trade
+// already marked market_data_status = 'complete' - not scheduled, not
+// part of any workflow, run once after the fill-instant-derivation fix
+// (see lib/tradeExcursions.js's findFillInstant/deriveFillInstants and
+// schema.sql's comment above `excursion_fallback`) to overwrite values
+// computed under the old logic, which trusted a trade's logged
+// trade_time/exit_time second directly as the query window's boundary.
+// That second is frequently a TimePicker default, not a real observation
+// - every 'complete' trade computed under the old logic has unverified
+// values under it, whether or not the mismatch happened to be visible,
+// not just the ones that looked obviously wrong.
+//
+// Uses the live Databento API rather than a downloaded DBN file (unlike
+// scripts/backfill_trade_excursions_from_dbn.py) so it isn't limited to
+// that one file's fixed historical date range - Databento's historical
+// API retains full history for any trade date, the only real availability
+// constraint is the ~8h access embargo on very recent data (see
+// EMBARGO_HOURS below), which no 'complete' trade should still be within.
+// This covers every 'complete' trade regardless of whether the live
+// route, the retry job, or the DBN backfill originally computed it - none
+// of that matters once this recomputes fresh from the corrected logic.
 //
 // Standalone rather than importing lib/tradeExcursions.js or lib/
-// databento.js: this repo has no "type": "module", so ESM lib files aren't
-// reliably loadable from a plain `node scripts/...` invocation the way
-// Next.js's own bundler handles it - same reason scripts/fetch-daily-
-// market-stats.js is already a fully separate script. The pieces
-// duplicated below (the Databento HTTP call, the embargo-error check, the
-// excursion window/math) are kept intentionally minimal and mirror those
-// files exactly, so there's little for the copies to drift on.
+// databento.js - same reason scripts/retry-trade-excursions.js already
+// is (this repo has no "type": "module"). The pieces duplicated below are
+// kept intentionally minimal and mirror those files exactly, same as
+// that script's own copies.
 //
-// Usage: node scripts/retry-trade-excursions.js
+// Usage: node scripts/recompute-trade-excursions.js
 // Env: DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
 const { createClient } = require('@supabase/supabase-js')
@@ -25,6 +38,12 @@ const NQ_CONTINUOUS_SYMBOL = 'NQ.c.0'
 const PRICE_SCALE = 1e9
 const EMBARGO_HOURS = 8
 const BAR_SECONDS = 60
+const FILL_SEARCH_PAD_MINUTES = 2
+const FILL_PRICE_EPSILON = 0.0001
+// A recomputed value within this of the old one counts as "unchanged" -
+// covers float round-trip noise from the PRICE_SCALE division, not a
+// real difference in what the fix found.
+const CHANGE_EPSILON = 0.005
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args)
@@ -80,10 +99,6 @@ function isEmbargoError(err) {
   return msg.includes('dataset_unavailable_range') || msg.includes('data_end_after_available_end')
 }
 
-// trade_date/trade_time is a wall-clock reading, not a real instant, until
-// combined with the account's own saved UTC offset - same conversion
-// lib/tradeSessions.js's wallClockToInstant (and lib/tradeExcursions.js's
-// copy of it) do.
 function wallClockToInstant(dateStr, timeStr, offsetHours) {
   if (!dateStr || !timeStr) return null
   const [y, mo, d] = dateStr.split('-').map(Number)
@@ -98,10 +113,6 @@ function addOneDay(dateStr) {
   return dt.toISOString().slice(0, 10)
 }
 
-// Entry-to-final-exit window - see lib/tradeExcursions.js's excursionWindow
-// for the full explanation (this is the same logic, standalone). Returns
-// legs (each exit's own raw { price, instant }) alongside entryInstant/
-// exitInstant, same shape as that file's own return value.
 function excursionWindow(trade, offsetHours) {
   if (!trade.trade_date || !trade.trade_time || Number.isNaN(offsetHours)) return null
   const entryInstant = wallClockToInstant(trade.trade_date, trade.trade_time, offsetHours)
@@ -127,12 +138,6 @@ function excursionWindow(trade, offsetHours) {
   }
   return { entryInstant, legs, exitInstant: legs[legs.length - 1].instant }
 }
-
-// See lib/tradeExcursions.js's FILL_SEARCH_PAD_MINUTES/findFillInstant/
-// deriveFillInstants/sliceBarsForWindow for the full explanation - this is
-// the same logic, standalone (same reason excursionWindow above is).
-const FILL_SEARCH_PAD_MINUTES = 2
-const FILL_PRICE_EPSILON = 0.0001
 
 function barTouchesPrice(bar, price) {
   return price >= bar.low - FILL_PRICE_EPSILON && price <= bar.high + FILL_PRICE_EPSILON
@@ -223,56 +228,59 @@ async function getUserTimezone(supabaseUrl, serviceKey, userId, cache) {
   return result
 }
 
+function valueChanged(oldVal, newVal) {
+  if (oldVal === null || oldVal === undefined) return newVal !== null && newVal !== undefined
+  if (newVal === null || newVal === undefined) return true
+  return Math.abs(Number(oldVal) - Number(newVal)) > CHANGE_EPSILON
+}
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supabaseUrl || !serviceKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set')
   const admin = createClient(supabaseUrl, serviceKey)
 
-  const { data: pending, error } = await admin.from('trades').select('*').eq('market_data_status', 'pending')
-  if (error) throw new Error(`Failed to load pending trades: ${error.message}`)
+  const { data: complete, error } = await admin.from('trades').select('*').eq('market_data_status', 'complete')
+  if (error) throw new Error(`Failed to load complete trades: ${error.message}`)
 
-  log(`${pending.length} trade(s) pending.`)
-  if (pending.length === 0) return
+  log(`${complete.length} trade(s) currently marked complete.`)
+  if (complete.length === 0) return
 
-  const instrumentIds = [...new Set(pending.map((t) => t.instrument_id))]
+  const instrumentIds = [...new Set(complete.map((t) => t.instrument_id))]
   const { data: instruments } = await admin.from('instruments').select('id, data_symbol').in('id', instrumentIds)
   const dataSymbolById = new Map((instruments || []).map((i) => [i.id, i.data_symbol]))
 
   const timezoneCache = new Map()
-  let readyCount = 0
-  let stillPending = 0
-  let completed = 0
-  let unavailable = 0
+  let recomputed = 0
+  let changed = 0
+  let skippedNotNq = 0
+  let skippedNoWindow = 0
+  let skippedStillEmbargoed = 0
+  let skippedNoBars = 0
+  let skippedError = 0
 
-  for (const trade of pending) {
-    // Only NQ-family instruments have a Databento symbol resolved anywhere
-    // in this app - a 'pending' trade on anything else should never have
-    // happened, but this is a genuine, permanent miss if it did.
+  for (const trade of complete) {
     if (dataSymbolById.get(trade.instrument_id) !== 'NQ') {
-      await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-      unavailable += 1
+      skippedNotNq += 1
       continue
     }
 
     const offsetHours = await getUserTimezone(supabaseUrl, serviceKey, trade.user_id, timezoneCache)
     const rawWindow = offsetHours === null ? null : excursionWindow(trade, offsetHours)
     if (!rawWindow) {
-      await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-      unavailable += 1
+      skippedNoWindow += 1
       continue
     }
 
     const embargoClears = rawWindow.exitInstant.getTime() + EMBARGO_HOURS * 3600000
     if (Date.now() < embargoClears) {
-      stillPending += 1
+      // Shouldn't happen for a trade already marked complete, but leave its
+      // existing values untouched rather than guess if it somehow does.
+      skippedStillEmbargoed += 1
       continue
     }
-    readyCount += 1
 
     try {
-      // Padded well beyond findFillInstant's own ±1-minute search margin -
-      // see lib/tradeExcursions.js's FILL_SEARCH_PAD_MINUTES.
       const padMs = FILL_SEARCH_PAD_MINUTES * 60000
       const bars = await fetchOhlcv1m({
         symbol: NQ_CONTINUOUS_SYMBOL,
@@ -280,18 +288,22 @@ async function main() {
         end: new Date(rawWindow.exitInstant.getTime() + padMs).toISOString(),
       })
       if (bars.length === 0) {
-        await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-        unavailable += 1
+        skippedNoBars += 1
         continue
       }
       const { entryInstant, exitInstant, usedFallback } = deriveFillInstants({ rawWindow, entryPrice: trade.entry, bars })
       const windowBars = sliceBarsForWindow(bars, entryInstant, exitInstant)
       if (windowBars.length === 0) {
-        await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-        unavailable += 1
+        skippedNoBars += 1
         continue
       }
       const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({ bars: windowBars, entry: trade.entry, direction: trade.direction })
+
+      const isChanged = valueChanged(trade.mfe_points, mfePoints) ||
+        valueChanged(trade.mae_points, maePoints) ||
+        valueChanged(trade.drawdown_seconds, drawdownSeconds) ||
+        Boolean(trade.excursion_fallback) !== usedFallback
+
       await admin.from('trades').update({
         mfe_points: mfePoints,
         mae_points: maePoints,
@@ -299,22 +311,22 @@ async function main() {
         market_data_status: 'complete',
         excursion_fallback: usedFallback,
       }).eq('id', trade.id)
-      completed += 1
-    } catch (err) {
-      if (isEmbargoError(err)) {
-        // Still blocked despite clearing our own 8h estimate - leave it
-        // pending rather than guessing further; next hour will retry.
-        stillPending += 1
-        log(`Trade ${trade.id} still embargoed past expected clear time: ${err.message}`)
-      } else {
-        await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-        unavailable += 1
-        log(`Trade ${trade.id} failed non-embargo: ${err.message}`)
+
+      recomputed += 1
+      if (isChanged) {
+        changed += 1
+        log(`Trade ${trade.id} changed: mfe ${trade.mfe_points} -> ${mfePoints.toFixed(2)}, mae ${trade.mae_points} -> ${maePoints.toFixed(2)}, drawdown ${trade.drawdown_seconds}s -> ${drawdownSeconds}s${usedFallback ? ' [fallback timestamp used]' : ''}`)
       }
+    } catch (err) {
+      // A recompute failure should never destroy already-good stored
+      // values - leave the trade's existing complete values as they are.
+      skippedError += 1
+      log(`Trade ${trade.id} recompute failed, left unchanged: ${err.message}`)
     }
   }
 
-  log(`Ready to retry: ${readyCount}. Completed: ${completed}. Still pending (embargo not cleared yet): ${stillPending}. Marked unavailable: ${unavailable}.`)
+  log(`Recomputed: ${recomputed}. Values actually changed: ${changed}. Unchanged (recomputed to the same values): ${recomputed - changed}.`)
+  log(`Skipped - not NQ-family: ${skippedNotNq}. No timezone/exit window: ${skippedNoWindow}. Still within embargo: ${skippedStillEmbargoed}. No bars found: ${skippedNoBars}. Errored (left untouched): ${skippedError}.`)
 }
 
 main().catch((err) => {

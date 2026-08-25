@@ -25,12 +25,6 @@ on:
   schedule:
     - cron: '17 * * * *'
   workflow_dispatch: {}
-  # TEMPORARY - a brand new workflow can't be dispatched until GitHub has
-  # seen it once; this registers + fires it immediately for the PR #117
-  # live confirmation, without merging to main first. Removed right after.
-  push:
-    branches:
-      - claude/mfe-mae-drawdown
 
 jobs:
   retry:

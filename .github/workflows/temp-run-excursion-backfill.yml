@@ -1,0 +1,47 @@
+# TEMPORARY, one-off workflow - not part of the app's permanent CI surface.
+# Exists only to run scripts/backfill_trade_excursions_from_dbn.py once,
+# since this session's own sandboxed network can't reach Supabase directly
+# (same egress restriction the daily/retry jobs' live confirmations hit
+# before). Mirrors one-off-dbn-backfill.yml (Part B's market_session_stats
+# backfill), same reasoning. Deleted after the one run this exists for -
+# see PR #118.
+name: TEMP - one-off trade excursion backfill
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [claude/backfill-existing-trade-excursions]
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install databento requests
+
+      # The release + asset were uploaded by hand for this one-off run.
+      # github.token has read access to release assets in this same repo,
+      # no extra secret needed.
+      - name: Download the DBN file from the scratch release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sL -H "Authorization: token $GH_TOKEN" -H "Accept: application/octet-stream" \
+            https://api.github.com/repos/${{ github.repository }}/releases/assets/529184909 \
+            -o download.zip
+          unzip -o download.zip -d dbn
+
+      - name: Run the backfill
+        env:
+          DATABENTO_DBN_FILE: dbn/glbx-mdp3-20260525-20260824.ohlcv-1s.dbn.zst
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: python3 scripts/backfill_trade_excursions_from_dbn.py

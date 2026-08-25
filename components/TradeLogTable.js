@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
-import { formatExcursionR, excursionStatusMessage } from '../lib/tradeExcursions'
+import { formatExcursionPoints, excursionStatusMessage } from '../lib/tradeExcursions'
 import { reverseTrade } from '../lib/edgeBeliefs'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -498,11 +498,11 @@ export default function TradeLogTable({
                           </div>
                           <div>
                             <label>MFE</label>
-                            <div>{excursionCell(t, timezoneOffset, formatExcursionR(t.mfe_points, t.stop_distance))}</div>
+                            <div>{excursionCell(t, timezoneOffset, formatExcursionPoints(t.mfe_points))}</div>
                           </div>
                           <div>
                             <label>MAE</label>
-                            <div>{excursionCell(t, timezoneOffset, formatExcursionR(t.mae_points, t.stop_distance))}</div>
+                            <div>{excursionCell(t, timezoneOffset, formatExcursionPoints(t.mae_points))}</div>
                           </div>
                           <div>
                             <label>Time in drawdown</label>

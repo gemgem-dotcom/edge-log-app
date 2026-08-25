@@ -578,3 +578,18 @@ alter table trades add column if not exists mfe_points numeric;
 alter table trades add column if not exists mae_points numeric;
 alter table trades add column if not exists drawdown_seconds integer;
 alter table trades add column if not exists market_data_status text;
+
+-- trade_time/exit_time are only reliably accurate to the minute - the
+-- seconds field is frequently a TimePicker default, not a real observation
+-- (see lib/tradeExcursions.js's findFillInstant/deriveFillInstants for the
+-- full mechanism). Rather than trust that logged second as the window
+-- boundary, the entry/exit instants actually fed into computeExcursion are
+-- derived from the first bar where price touches the real fill level
+-- (entry price / that leg's own exit price), searched within the logged
+-- minute and the one immediately before/after. excursion_fallback is true
+-- when that search failed for the entry or any exit leg and fell back to
+-- the raw logged timestamp instead - a trade marked true still carries the
+-- original second-level imprecision this mechanism exists to remove, so
+-- it needs to stay visible and queryable, not silently indistinguishable
+-- from a trade whose window was fully price-derived.
+alter table trades add column if not exists excursion_fallback boolean;

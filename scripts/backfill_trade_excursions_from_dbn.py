@@ -18,6 +18,12 @@ boundary. BAR_SECONDS is 1 here, not 60 like the live path's ohlcv-1m bars,
 because this file is ohlcv-1s - the one formula constant that's genuinely
 different between the two paths, not a copy that drifted.
 
+The entry/exit boundaries fed into compute_excursion are not the raw
+logged trade_time/exit_time - see find_fill_instant/derive_fill_instants
+below (mirroring lib/tradeExcursions.js's own findFillInstant/
+deriveFillInstants) for why a logged second is not trustworthy enough to
+use directly and what's derived instead.
+
 Scope, deliberately narrower than the rest of this codebase's usual
 data_symbol('NQ') grouping (which treats NQ and MNQ as the same
 underlying series for market-data purposes): this backfill matches on the
@@ -88,30 +94,86 @@ def excursion_window(trade, offset_hours):
     """Mirrors lib/tradeExcursions.js's excursionWindow exactly - entry to
     the *final* exit, walking the primary exit then each additional_exits
     leg in order, rolling to the next calendar day whenever an exit's
-    clock time is earlier than the previous instant's."""
+    clock time is earlier than the previous instant's. Returns a dict with
+    `legs` (each exit's own raw {price, instant}) alongside entry_instant/
+    exit_instant, same shape as that file's own return value - each leg's
+    own raw instant is what find_fill_instant below anchors its search on,
+    not just the final exit_instant."""
     if not trade.get('trade_date') or not trade.get('trade_time') or offset_hours is None:
         return None
     entry_instant = wall_clock_to_instant(trade['trade_date'], trade['trade_time'], offset_hours)
     if entry_instant is None:
         return None
 
-    exit_times = [trade.get('exit_time')] + [e.get('exit_time') for e in (trade.get('additional_exits') or [])]
-    exit_times = [t for t in exit_times if t]
-    if not exit_times:
+    exit_legs = [{'price': trade.get('exit_price'), 'time': trade.get('exit_time')}] + [
+        {'price': e.get('exit_price'), 'time': e.get('exit_time')} for e in (trade.get('additional_exits') or [])
+    ]
+    exit_legs = [leg for leg in exit_legs if leg['time']]
+    if not exit_legs:
         return None
 
     current_date = trade['trade_date']
     current_instant = entry_instant
-    exit_instant = entry_instant
-    for exit_time in exit_times:
-        instant = wall_clock_to_instant(current_date, exit_time, offset_hours)
+    legs = []
+    for leg in exit_legs:
+        instant = wall_clock_to_instant(current_date, leg['time'], offset_hours)
         if instant < current_instant:
             current_date = add_one_day(current_date)
-            instant = wall_clock_to_instant(current_date, exit_time, offset_hours)
+            instant = wall_clock_to_instant(current_date, leg['time'], offset_hours)
         current_instant = instant
-        exit_instant = instant
+        legs.append({'price': leg['price'], 'instant': instant})
 
-    return entry_instant, exit_instant
+    return {'entry_instant': entry_instant, 'legs': legs, 'exit_instant': legs[-1]['instant']}
+
+
+# See lib/tradeExcursions.js's FILL_SEARCH_PAD_MINUTES/findFillInstant/
+# deriveFillInstants/sliceBarsForWindow for the full explanation - this is
+# the same logic, reimplemented rather than imported (this file can't
+# import a JS module - see the file header). Unlike the JS live/retry
+# path's ohlcv-1m bars, this file's bars are ohlcv-1s, decoded through the
+# official Python client's own DataFrame index rather than a hand-parsed
+# ts_event - so there's no analog here of lib/tradeExcursions.js's
+# parseBarInstant uncertainty, and the search resolves to the actual
+# second within the winning minute, not just the minute itself. A real
+# precision difference between the two paths, driven by the data each
+# already fetches, not a rule mismatch - both still search the logged
+# minute first, then the minute immediately before and after, in that
+# order, and both fall back to the raw instant on a total miss.
+FILL_SEARCH_PAD_MINUTES = 2
+FILL_PRICE_EPSILON = 0.0001
+
+
+def bar_touches_price(row, price):
+    return row['low'] - FILL_PRICE_EPSILON <= price <= row['high'] + FILL_PRICE_EPSILON
+
+
+def minute_bucket_start(ts, minute_offset):
+    return (ts + timedelta(minutes=minute_offset)).replace(second=0, microsecond=0)
+
+
+def find_fill_instant(bars, rough_instant, price):
+    for minute_offset in (0, -1, 1):
+        bucket_start = minute_bucket_start(rough_instant, minute_offset)
+        bucket_end = bucket_start + timedelta(minutes=1)
+        candidates = bars[(bars.index >= bucket_start) & (bars.index < bucket_end)].sort_index()
+        for ts, row in candidates.iterrows():
+            if bar_touches_price(row, price):
+                return ts, True
+    return rough_instant, False
+
+
+def derive_fill_instants(raw_window, entry_price, bars):
+    entry_instant, matched = find_fill_instant(bars, raw_window['entry_instant'], entry_price)
+    used_fallback = not matched
+    last_instant = entry_instant
+
+    for leg in raw_window['legs']:
+        leg_instant, matched = find_fill_instant(bars, leg['instant'], leg['price'])
+        if not matched:
+            used_fallback = True
+        last_instant = leg_instant
+
+    return entry_instant, last_instant, used_fallback
 
 
 def session_date_for(ts_utc):
@@ -222,11 +284,13 @@ def main():
     print(f'{len(trades)} trade(s) on symbol "{EXACT_SYMBOL}".')
 
     updated = 0
+    updated_with_fallback = 0
     skipped_already_complete = 0
     skipped_no_window = 0
     skipped_truncated = 0
     skipped_no_bars = 0
     tz_cache = {}
+    pad = timedelta(minutes=FILL_SEARCH_PAD_MINUTES)
 
     for trade in trades:
         if trade.get('market_data_status') == 'complete':
@@ -234,21 +298,26 @@ def main():
             continue
 
         offset_hours = get_user_timezone(supabase_url, headers, trade['user_id'], tz_cache)
-        window = excursion_window(trade, offset_hours) if offset_hours is not None else None
-        if window is None:
+        raw_window = excursion_window(trade, offset_hours) if offset_hours is not None else None
+        if raw_window is None:
             skipped_no_window += 1
             continue
-        entry_instant, exit_instant = window
 
         # A window that pokes even slightly past either edge of the file's
         # actual coverage is a truncated read, not a complete one - would
         # understate MFE/MAE rather than reflect what really happened.
-        if entry_instant < file_start or exit_instant > file_end:
+        # Checked against the raw (unpadded) window, same as before this
+        # fix - the padding below is a fill-instant search margin, not a
+        # widening of what counts as "in scope."
+        if raw_window['entry_instant'] < file_start or raw_window['exit_instant'] > file_end:
             skipped_truncated += 1
             continue
 
-        window_bars = outright.loc[entry_instant:exit_instant]
-        window_bars = window_bars[window_bars['symbol'] == window_bars['session_date'].map(front_month_by_date)]
+        padded_bars = outright.loc[raw_window['entry_instant'] - pad:raw_window['exit_instant'] + pad]
+        padded_bars = padded_bars[padded_bars['symbol'] == padded_bars['session_date'].map(front_month_by_date)]
+
+        entry_instant, exit_instant, used_fallback = derive_fill_instants(raw_window, trade['entry'], padded_bars)
+        window_bars = padded_bars.loc[entry_instant:exit_instant]
         if len(window_bars) == 0:
             skipped_no_bars += 1
             continue
@@ -262,15 +331,19 @@ def main():
                                     'mae_points': mae_points,
                                     'drawdown_seconds': drawdown_seconds,
                                     'market_data_status': 'complete',
+                                    'excursion_fallback': used_fallback,
                                 })
         if not patch.ok:
             print(f'Update failed for trade {trade["id"]}: {patch.status_code} {patch.text}', file=sys.stderr)
             continue
         updated += 1
-        print(f'  {trade["id"]}: mfe={mfe_points:.2f} mae={mae_points:.2f} drawdown={drawdown_seconds}s')
+        if used_fallback:
+            updated_with_fallback += 1
+        fallback_note = ' [fallback timestamp used]' if used_fallback else ''
+        print(f'  {trade["id"]}: mfe={mfe_points:.2f} mae={mae_points:.2f} drawdown={drawdown_seconds}s{fallback_note}')
 
     print()
-    print(f'Updated: {updated}')
+    print(f'Updated: {updated} (of which {updated_with_fallback} used a fallback timestamp for at least one leg)')
     print(f'Skipped - already complete: {skipped_already_complete}')
     print(f'Skipped - no timezone/exit window: {skipped_no_window}')
     print(f'Skipped - window truncated at file edge: {skipped_truncated}')

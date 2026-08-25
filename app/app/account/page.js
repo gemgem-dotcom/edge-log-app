@@ -12,7 +12,6 @@ import PreferencesSection from '@/components/account/PreferencesSection'
 import PasswordSection from '@/components/account/PasswordSection'
 import TwoFactorSection from '@/components/account/TwoFactorSection'
 import SignInHistorySection from '@/components/account/SignInHistorySection'
-import BillingSection from '@/components/account/BillingSection'
 import DataExportSection from '@/components/account/DataExportSection'
 import DangerZoneSection from '@/components/account/DangerZoneSection'
 import PageLoading from '@/components/PageLoading'
@@ -115,18 +114,11 @@ export default function AccountPage() {
           <SignInHistorySection initialEvents={loginEvents} timezone={timezone} />
         </div>
 
-        <BillingSection />
-
         <DataExportSection />
 
         <DangerZoneSection email={email} hasPassword={hasPassword} />
 
         <div className="account-legal">
-          <div className="account-legal-links">
-            <a href="/privacy?from=account">Privacy Policy</a>
-            <span aria-hidden="true">·</span>
-            <a href="/terms?from=account">Terms of Service</a>
-          </div>
           <div className="copyright-line">© 2026 EdgeLog</div>
         </div>
       </div>

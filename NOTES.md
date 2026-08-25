@@ -174,6 +174,33 @@ this daily job is the only place in the whole pass that talks to Databento on a
 recurring basis, keeping usage small and predictable against the signed-up $125 free
 credit.
 
+### Known excursion (MFE/MAE/drawdown) data issues - needs a human look
+
+Two trades' `mfe_points`/`mae_points`/`drawdown_seconds` were deliberately left
+un-recomputed by PR #122's fix and excluded from its bulk recompute, rather than
+silently "fixed" or silently left stale:
+
+- **`7e8616fb-334b-4465-8a2f-e572b634df5a`** - two independent, unrelated corrections
+  (fill-instant precision, and volume-based front-month resolution near a quarterly
+  roll) both failed to find real price action matching this trade's logged entry/exit
+  levels nearby its logged times, on either candidate contract. The trade's own logged
+  fields are internally consistent (correct stop/target sides for a short, exact
+  target hit, `r_multiple` matching entry/stop/exit exactly) - so this isn't a garbled
+  entry. Most likely explanation: a timestamp off by more than the ~1-minute margin
+  either fix searches, or the wrong calendar day - something a human needs to check
+  against whatever the trader actually remembers about this trade, not something
+  either automated fix could reasonably guess at.
+- **`137c4594-c6d0-40f1-904f-acb9e71d9ef6`** - also failed to find a matching bar for
+  at least one leg (`excursion_fallback = true`) under the fill-instant fix, same as
+  `7e8616fb`, but *not* near any quarterly roll - so the front-month question doesn't
+  apply here. Flagged during PR #122's diagnostic and deliberately not investigated
+  further per that PR's own scope - noted here so it isn't quietly forgotten once the
+  PR closes.
+
+Both trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
+`excursion_fallback` values they already had before this note was written - nothing
+in PR #122 touched them.
+
 ## Removing an instrument
 
 The kebab menu next to the title on each per-instrument page (Overview, Trade Log,

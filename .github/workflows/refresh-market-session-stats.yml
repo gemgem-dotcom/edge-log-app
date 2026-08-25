@@ -61,7 +61,14 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # 22, not 20 (the app's own package.json target) - @supabase/
+          # supabase-js's createClient always constructs an internal
+          # Realtime (WebSocket) sub-client, even though this script never
+          # uses realtime subscriptions, and that constructor throws under
+          # Node 20 for lacking native WebSocket support (added in Node 21,
+          # stable in 22) rather than silently skipping it. Confirmed live -
+          # this exact error killed a real run before this was pinned to 22.
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install

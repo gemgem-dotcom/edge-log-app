@@ -6,8 +6,6 @@ name: TEMP - apply diagnostic recompute
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [claude/mfe-fill-instant-precision]
 
 jobs:
   apply:

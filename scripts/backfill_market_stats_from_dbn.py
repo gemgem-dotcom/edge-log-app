@@ -15,6 +15,20 @@ that script is intentionally standalone JS with no shared module to import
 from (see its own header comment for why), but the boundary rule itself is
 the same one lib/marketHours.js's computeOpen and that script both use.
 
+A file requested with stype_in='parent' (the Databento portal's normal way
+to download "all of NQ") contains every contract month *and* every calendar
+spread instrument (e.g. NQM6, NQU6, NQM6-NQU6) mixed into one file, not just
+the single front-month contract lib/databento.js's live fetch resolves via
+NQ.c.0 - confirmed by inspecting a real downloaded file mid-development,
+which is exactly the kind of thing that silently produces garbage
+range/volume if you don't check for it first. This script drops every
+calendar-spread row (symbol containing '-') outright, then for each session
+day picks whichever remaining contract traded the most volume that day as
+the front month, and computes that day's range/volume from only that
+contract's own bars. A quarterly roll (~4x in a 92-day window) shows up as
+the volume leader changing symbols on one clean day, not a gradual
+crossover - confirmed against this file's actual May-Aug 2026 data.
+
 Usage:
     pip install databento requests
     DATABENTO_DBN_FILE=/path/to/your/file.dbn.zst \
@@ -35,7 +49,7 @@ Databento's Historical API, which do need it.
 """
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -63,6 +77,19 @@ def session_date_for(ts_utc):
     if ts_et.hour >= 18:
         d = d + timedelta(days=1)
     return d
+
+
+def session_close_instant(session_date, holiday):
+    """The tz-aware instant this session's own close happens - normally
+    5pm ET, or a holiday's own early closeTime. Used only to detect a
+    session the file's own coverage cuts off before reaching (see the
+    incomplete-session check in main) - not to trim any bars."""
+    close_minutes = 17 * 60
+    if holiday and holiday.get('type') == 'early_close':
+        h, m = holiday['closeTime'].split(':')
+        close_minutes = int(h) * 60 + int(m)
+    midnight_et = datetime(session_date.year, session_date.month, session_date.day, tzinfo=ET)
+    return midnight_et + timedelta(minutes=close_minutes)
 
 
 def existing_session_dates(supabase_url, headers):
@@ -93,6 +120,11 @@ def main():
     store = db.DBNStore.from_file(dbn_path)
     df = store.to_df()  # pretty_px/pretty_ts defaults give real floats and tz-aware UTC timestamps
     print(f'Loaded {len(df)} bars spanning {df.index.min()} to {df.index.max()}')
+    file_end = df.index.max()
+
+    before = len(df)
+    df = df[~df['symbol'].str.contains('-')]  # drop calendar spreads (e.g. "NQM6-NQU6")
+    print(f'Dropped {before - len(df)} calendar-spread bars, {len(df)} outright-contract bars remain ({df["symbol"].nunique()} contract months).')
 
     df['session_date'] = [session_date_for(ts) for ts in df.index]
 
@@ -104,19 +136,35 @@ def main():
     skipped_weekend = 0
     skipped_holiday = 0
     skipped_existing = 0
+    skipped_incomplete = 0
 
-    for session_date, group in df.groupby('session_date'):
+    for session_date, day_group in df.groupby('session_date'):
         ds = session_date.isoformat()
+        holiday = holidays.get(ds)
 
         if session_date.weekday() >= 5:  # Saturday/Sunday - no real CME session lands here
             skipped_weekend += 1
             continue
-        if holidays.get(ds, {}).get('type') == 'closed':
+        if holiday and holiday.get('type') == 'closed':
             skipped_holiday += 1
             continue
         if ds in existing:
             skipped_existing += 1
             continue
+        # The file's own coverage can end mid-session (e.g. a download
+        # requested through "yesterday" still has a sliver of today's
+        # already-open session in it) - a session whose expected close is
+        # after the file's last bar is a partial slice, not a real day, and
+        # storing it would badly undercount range/volume and corrupt every
+        # trailing-average comparison that reads this row later.
+        if file_end < session_close_instant(session_date, holiday):
+            skipped_incomplete += 1
+            continue
+
+        # Front month = whichever contract traded the most volume this
+        # session - robust across a roll without needing a roll calendar.
+        front_symbol = day_group.groupby('symbol')['volume'].sum().idxmax()
+        group = day_group[day_group['symbol'] == front_symbol]
 
         total_range = float(group['high'].max() - group['low'].min())
         total_volume = float(group['volume'].sum())
@@ -127,7 +175,7 @@ def main():
             'total_volume': total_volume,
         })
 
-    print(f'Skipped: {skipped_weekend} weekend buckets, {skipped_holiday} full holidays, {skipped_existing} already in the table.')
+    print(f'Skipped: {skipped_weekend} weekend buckets, {skipped_holiday} full holidays, {skipped_existing} already in the table, {skipped_incomplete} incomplete (file ends mid-session).')
     print(f'Upserting {len(rows)} new rows...')
 
     if rows:

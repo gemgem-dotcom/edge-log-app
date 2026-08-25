@@ -10,6 +10,13 @@ name: TEMP - one-off DBN backfill
 
 on:
   workflow_dispatch: {}
+  # A brand new workflow can't be dispatched via the API/UI until GitHub has
+  # seen it at least once - temporarily also firing on push to this branch
+  # so the very next push runs it, without needing to merge to main first
+  # just to register it. Removed again once this has actually run.
+  push:
+    branches:
+      - claude/nq-market-data-backfill
 
 jobs:
   backfill:

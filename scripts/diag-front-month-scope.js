@@ -110,9 +110,16 @@ function nearestRollDistanceDays(dateUtcMidnight) {
   return Math.round(best)
 }
 
+// Confirmed against a real response (see this file's earlier raw-dump
+// pass): there is no `symbol` field on an OHLCV record - only
+// `hd.instrument_id`, a raw numeric ID that needs a separate symbology
+// lookup to become a human-readable contract symbol. ts_event lives under
+// `hd` too, as a numeric string of nanoseconds - matches lib/
+// tradeExcursions.js's parseBarInstant exactly, now confirmed rather than
+// just defended against.
 function normalizeOhlcv(record) {
   return {
-    symbol: record.symbol,
+    instrumentId: record.hd?.instrument_id ?? null,
     high: record.high / PRICE_SCALE,
     low: record.low / PRICE_SCALE,
     open: record.open / PRICE_SCALE,
@@ -159,80 +166,102 @@ async function main() {
   const { start, end } = sessionBoundsUtc(sessionDate)
   log(`Session bounds (UTC): ${start.toISOString()} to ${end.toISOString()}`)
 
-  // --- RAW SHAPE DUMP FIRST: neither of this file's two symbology guesses
-  // (symbology.resolve's stype_out=raw_symbol, and a plain `symbol` field
-  // on parent-symbol OHLCV records) has ever been confirmed against a
-  // real response - the first attempt already proved one of them wrong
-  // (a 422). Dumping a tiny raw sample of each before parsing anything,
-  // rather than guessing a second field name blind. ---
-  log('--- RAW: 3 records from a 2-minute stype_in=continuous (NQ.c.0) fetch ---')
+  // --- Live continuous resolution: fetch NQ.c.0 for the whole session and
+  // read its own instrument_id directly, rather than a separate
+  // symbology.resolve call (confirmed by the earlier raw-dump pass to
+  // reject stype_in=continuous/stype_out=raw_symbol for this dataset -
+  // this sidesteps that rather than guessing a third parameter combo). ---
+  let continuousInstrumentId = null
   try {
-    const sampleEnd = new Date(start.getTime() + 2 * 60000)
-    const rawContinuous = await databentoGet('/v0/timeseries.get_range', {
+    const text = await databentoGet('/v0/timeseries.get_range', {
       dataset: DATASET,
       schema: 'ohlcv-1m',
       symbols: 'NQ.c.0',
       stype_in: 'continuous',
       start: start.toISOString(),
-      end: sampleEnd.toISOString(),
+      end: end.toISOString(),
       encoding: 'json',
     })
-    log(rawContinuous.trim().split('\n').slice(0, 3).join('\n'))
+    const bars = parseNdjson(text, normalizeOhlcv)
+    continuousInstrumentId = bars[0]?.instrumentId ?? null
+    log(`NQ.c.0 (live continuous resolution) resolved to instrument_id=${continuousInstrumentId} for this session (${bars.length} bars).`)
   } catch (err) {
-    log(`continuous raw sample failed: ${err.message}`)
+    log(`continuous fetch failed: ${err.message}`)
   }
 
-  log('--- RAW: 3 records from a 2-minute stype_in=parent (NQ.FUT) fetch ---')
+  // --- Manual method: whichever contract traded the most volume this
+  // whole session - same methodology as scripts/
+  // backfill_trade_excursions_from_dbn.py, reproduced here against live
+  // data instead of a downloaded file. ---
+  log('--- Per-contract volume for the full session (stype_in=parent, NQ.FUT) ---')
+  let parentBars = []
   try {
-    const sampleEnd = new Date(start.getTime() + 2 * 60000)
-    const rawParent = await databentoGet('/v0/timeseries.get_range', {
+    const text = await databentoGet('/v0/timeseries.get_range', {
       dataset: DATASET,
       schema: 'ohlcv-1m',
       symbols: 'NQ.FUT',
       stype_in: 'parent',
       start: start.toISOString(),
-      end: sampleEnd.toISOString(),
+      end: end.toISOString(),
       encoding: 'json',
     })
-    log(rawParent.trim().split('\n').slice(0, 6).join('\n'))
+    parentBars = parseNdjson(text, normalizeOhlcv)
+    log(`Fetched ${parentBars.length} bars across all NQ contracts for the session.`)
   } catch (err) {
-    log(`parent raw sample failed: ${err.message}`)
+    log(`parent-symbol fetch failed: ${err.message}`)
   }
 
-  log('--- Stopping here for this pass - fixing the parser against the real shapes above before doing the full comparison. ---')
-  return
-
-  const bySymbol = new Map()
+  const byInstrument = new Map()
   for (const bar of parentBars) {
-    if (!bar.symbol || bar.symbol.includes('-')) continue // drop spreads
-    const agg = bySymbol.get(bar.symbol) || { volume: 0, high: -Infinity, low: Infinity, bars: 0 }
+    if (bar.instrumentId === null) continue
+    const agg = byInstrument.get(bar.instrumentId) || { volume: 0, high: -Infinity, low: Infinity, bars: 0 }
     agg.volume += bar.volume
     agg.high = Math.max(agg.high, bar.high)
     agg.low = Math.min(agg.low, bar.low)
     agg.bars += 1
-    bySymbol.set(bar.symbol, agg)
+    byInstrument.set(bar.instrumentId, agg)
   }
-  const ranked = [...bySymbol.entries()].sort((a, b) => b[1].volume - a[1].volume)
-  log('Per-contract session summary (sorted by volume):')
-  for (const [symbol, agg] of ranked) {
-    log(`  ${symbol}: volume=${agg.volume} high=${agg.high} low=${agg.low} bars=${agg.bars}`)
+  const ranked = [...byInstrument.entries()].sort((a, b) => b[1].volume - a[1].volume)
+  log('Per-contract session summary (sorted by volume, top 5):')
+  for (const [instrumentId, agg] of ranked.slice(0, 5)) {
+    log(`  instrument_id=${instrumentId}: volume=${agg.volume} high=${agg.high} low=${agg.low} bars=${agg.bars}`)
   }
-  const manualFrontMonth = ranked[0]?.[0]
-  log(`Manual (highest-volume) method picks: ${manualFrontMonth}`)
+  const manualFrontMonthId = ranked[0]?.[0]
+  log(`Manual (highest-volume) method picks: instrument_id=${manualFrontMonthId}`)
+  log(`Live continuous (NQ.c.0) resolved to: instrument_id=${continuousInstrumentId}`)
+  log(continuousInstrumentId === manualFrontMonthId
+    ? 'AGREE: both methods picked the same contract.'
+    : 'DISAGREE: the two methods picked different contracts for this session.')
 
-  // --- If the entry/exit window's own bars differ between candidates,
-  // show that difference directly (not just the whole-session summary) ---
-  if (ranked.length >= 2) {
-    const [topSymbol] = ranked[0]
-    const [secondSymbol] = ranked[1]
-    log(`--- Comparing ${topSymbol} vs ${secondSymbol} over just the trade's own entry-exit window ---`)
-    const windowBars = parentBars.filter((b) => {
-      // We don't have per-bar timestamps parsed here (kept minimal) - this
-      // section is best-effort context, the whole-session summary above is
-      // the authoritative comparison.
-      return b.symbol === topSymbol || b.symbol === secondSymbol
-    })
-    log(`(${windowBars.length} bars available across both candidates for the whole session; see per-contract summary above for the actual high/low/volume comparison.)`)
+  // --- Resolve both instrument_ids to human-readable symbols ---
+  log('--- Resolving instrument_id -> raw_symbol ---')
+  for (const label of ['live (NQ.c.0)', 'manual (highest volume)']) {
+    const id = label.startsWith('live') ? continuousInstrumentId : manualFrontMonthId
+    if (id === null || id === undefined) continue
+    try {
+      const resolveText = await databentoGet('/v0/symbology.resolve', {
+        dataset: DATASET,
+        symbols: String(id),
+        stype_in: 'instrument_id',
+        stype_out: 'raw_symbol',
+        start_date: sessionDateStr,
+        end_date: sessionDateStr,
+      })
+      log(`  ${label} instrument_id=${id}: ${resolveText.trim()}`)
+    } catch (err) {
+      log(`  ${label} instrument_id=${id}: resolve failed: ${err.message}`)
+    }
+  }
+
+  // --- If the two methods disagree, show the full session price series
+  // for both candidates side by side, not just their high/low summary. ---
+  if (continuousInstrumentId !== null && manualFrontMonthId !== undefined && continuousInstrumentId !== manualFrontMonthId) {
+    log(`--- Full session comparison: instrument_id=${continuousInstrumentId} (live) vs instrument_id=${manualFrontMonthId} (manual) ---`)
+    for (const id of [continuousInstrumentId, manualFrontMonthId]) {
+      const bars = parentBars.filter((b) => b.instrumentId === id).sort((a, b) => a.open - b.open) // stable order not critical here
+      const agg = byInstrument.get(id)
+      log(`  instrument_id=${id}: session_high=${agg.high} session_low=${agg.low} total_volume=${agg.volume} bar_count=${agg.bars}`)
+    }
   }
 
   // --- Part 2: scope across every complete trade, any product, any roll ---

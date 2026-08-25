@@ -159,43 +159,48 @@ async function main() {
   const { start, end } = sessionBoundsUtc(sessionDate)
   log(`Session bounds (UTC): ${start.toISOString()} to ${end.toISOString()}`)
 
-  // --- Live continuous resolution: what does NQ.c.0 resolve to? ---
-  log('--- symbology.resolve for NQ.c.0 (stype_in=continuous) ---')
-  let resolveRaw
+  // --- RAW SHAPE DUMP FIRST: neither of this file's two symbology guesses
+  // (symbology.resolve's stype_out=raw_symbol, and a plain `symbol` field
+  // on parent-symbol OHLCV records) has ever been confirmed against a
+  // real response - the first attempt already proved one of them wrong
+  // (a 422). Dumping a tiny raw sample of each before parsing anything,
+  // rather than guessing a second field name blind. ---
+  log('--- RAW: 3 records from a 2-minute stype_in=continuous (NQ.c.0) fetch ---')
   try {
-    resolveRaw = await databentoGet('/v0/symbology.resolve', {
+    const sampleEnd = new Date(start.getTime() + 2 * 60000)
+    const rawContinuous = await databentoGet('/v0/timeseries.get_range', {
       dataset: DATASET,
+      schema: 'ohlcv-1m',
       symbols: 'NQ.c.0',
       stype_in: 'continuous',
-      stype_out: 'raw_symbol',
-      start_date: sessionDateStr,
-      end_date: sessionDateStr,
+      start: start.toISOString(),
+      end: sampleEnd.toISOString(),
+      encoding: 'json',
     })
-    log(resolveRaw)
+    log(rawContinuous.trim().split('\n').slice(0, 3).join('\n'))
   } catch (err) {
-    log(`symbology.resolve failed: ${err.message}`)
+    log(`continuous raw sample failed: ${err.message}`)
   }
 
-  // --- Live volume-by-contract for the whole session (reproducing the
-  // DBN backfill's "highest volume that session" method, using live data
-  // instead of a downloaded file) ---
-  log('--- Per-contract volume for the full session (stype_in=parent, NQ.FUT) ---')
-  let parentBars = []
+  log('--- RAW: 3 records from a 2-minute stype_in=parent (NQ.FUT) fetch ---')
   try {
-    const text = await databentoGet('/v0/timeseries.get_range', {
+    const sampleEnd = new Date(start.getTime() + 2 * 60000)
+    const rawParent = await databentoGet('/v0/timeseries.get_range', {
       dataset: DATASET,
       schema: 'ohlcv-1m',
       symbols: 'NQ.FUT',
       stype_in: 'parent',
       start: start.toISOString(),
-      end: end.toISOString(),
+      end: sampleEnd.toISOString(),
       encoding: 'json',
     })
-    parentBars = parseNdjson(text, normalizeOhlcv)
-    log(`Fetched ${parentBars.length} bars across all NQ contracts for the session.`)
+    log(rawParent.trim().split('\n').slice(0, 6).join('\n'))
   } catch (err) {
-    log(`parent-symbol fetch failed: ${err.message}`)
+    log(`parent raw sample failed: ${err.message}`)
   }
+
+  log('--- Stopping here for this pass - fixing the parser against the real shapes above before doing the full comparison. ---')
+  return
 
   const bySymbol = new Map()
   for (const bar of parentBars) {

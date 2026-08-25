@@ -307,7 +307,7 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .dir-btn, .discard-btn, .auth-oauth-btn, .icon-btn, .icon-btn-profile,
 .theme-toggle-btn, .calendar-nav-btn, .back-btn, .eye-btn, .strategy-menu-btn,
 .icon-edit-btn, .file-upload-btn, .screenshot-remove-btn, .field-tooltip-btn,
-.dt-picker-icon-btn, .dt-picker-nav-btn, .dt-picker-spin-btn, .col-filter-btn,
+.dt-picker-icon-btn, .dt-picker-nav-btn, .dt-picker-spin-btn, .dt-picker-day, .col-filter-btn,
 .trade-tag-filter-btn, .econ-impact-filter-btn, .econ-today-btn, .row-action-btn{
   box-shadow:none;
 }
@@ -317,7 +317,7 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .dir-btn:hover, .discard-btn:hover, .auth-oauth-btn:hover, .icon-btn:hover, .icon-btn-profile:hover,
 .theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .strategy-menu-btn:hover,
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
-.dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .col-filter-btn:hover,
+.dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .dt-picker-day:hover, .col-filter-btn:hover,
 .trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-today-btn:hover, .row-action-btn:hover{
   transform:none; box-shadow:none;
 }

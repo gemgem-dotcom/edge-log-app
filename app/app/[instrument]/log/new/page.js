@@ -7,6 +7,7 @@ import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { applyTrade } from '@/lib/edgeBeliefs'
+import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm, { EMPTY_TRADE_FORM } from '@/components/TradeForm'
@@ -93,6 +94,7 @@ export default function NewTradePage({ params, searchParams }) {
     } catch (beliefError) {
       console.error('applyTrade failed:', beliefError)
     }
+    requestTradeExcursionBackfill(symbol, inserted.id)
 
     toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)

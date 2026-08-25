@@ -1,0 +1,46 @@
+# TEMPORARY - verifies the test trade(s) from PR #117's live confirmation
+# actually got sane mfe_points/mae_points/drawdown_seconds, then deletes
+# them (test data doesn't belong in the real journal, same discipline
+# CLAUDE.md's Vercel-preview rule already establishes for this DB).
+name: TEMP - verify and clean up test trades
+
+on:
+  push:
+    branches:
+      - claude/mfe-mae-drawdown-cleanup
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: |
+          python3 - <<'PYEOF'
+          import os
+          import requests
+
+          url = os.environ['NEXT_PUBLIC_SUPABASE_URL']
+          key = os.environ['SUPABASE_SERVICE_ROLE_KEY']
+          headers = {'apikey': key, 'Authorization': f'Bearer {key}'}
+
+          r = requests.get(f'{url}/rest/v1/trades',
+                            params={'select': 'id,market_data_status,mfe_points,mae_points,drawdown_seconds,entry,stop_distance',
+                                     'reasoning': 'ilike.*TEMP test trade*'},
+                            headers=headers)
+          r.raise_for_status()
+          trades = r.json()
+          print(f'{len(trades)} test trade(s) found:')
+          for t in trades:
+              print(t)
+
+          for t in trades:
+              d = requests.delete(f'{url}/rest/v1/trades', params={'id': f'eq.{t["id"]}'}, headers=headers)
+              print(f'Deleted {t["id"]}: {d.status_code}')
+          PYEOF

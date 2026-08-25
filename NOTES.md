@@ -132,11 +132,27 @@ Databento Node/JS SDK, so both talk to the underlying `v0/timeseries.get_range` 
 endpoint directly with `fetch` - `databento.com` itself isn't reachable from this
 project's dev/CI network egress, so that request/response shape was cross-checked
 against a community Databento MCP server's TypeScript implementation on GitHub instead
-of official docs. Worth a real smoke test against a live `DATABENTO_API_KEY` before
-trusting it in production.
+of official docs.
 
-`.github/workflows/refresh-market-session-stats.yml` runs the fetch once daily (23:30
-UTC, safely after CME's latest possible close), computing that day's total range and
+Smoke-tested live against a real `DATABENTO_API_KEY` (2026-08-24/25) - the request
+shape itself was confirmed correct (Databento parsed it and replied with a proper
+structured error, not an auth failure), but the job as first scheduled couldn't
+actually get data: **this account's access to `GLBX.MDP3` lags wall-clock time by
+~8 hours**, gated behind an explicit "requires a subscription and/or license" error.
+The original schedule (23:30 UTC, same evening) asked for a session that had closed
+on the calendar but that an 8-hours-behind account couldn't see yet - CME's own close
+(~21:00-22:00 UTC) is itself less than 8 hours before 23:30 UTC, so the job was
+structurally scheduled too early for what this account can access, no matter how the
+request window was tuned. Fixed by moving the schedule to the following morning
+(09:30 UTC, comfortably past the embargo from even the latest possible close) and
+having the script fetch *yesterday's* ET session instead of "today's" - confirmed
+with a real row landing in `market_session_stats` afterward. Nothing downstream needs
+same-evening freshness (every reader already works off "the most recently completed
+session"), so this cost nothing.
+
+`.github/workflows/refresh-market-session-stats.yml` runs the fetch once daily (09:30
+UTC, fixed - not a DST-aware local-time translation, since the embargo above is
+wall-clock-based, not ET-based), computing the previous session's total range and
 total volume from the fetched 1-minute bars and upserting one row into
 `market_session_stats`, keyed by `data_symbol` ('NQ') rather than a specific
 `instruments` row - see the long comment above `create table market_session_stats` in

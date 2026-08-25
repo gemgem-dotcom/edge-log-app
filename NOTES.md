@@ -206,8 +206,23 @@ silently "fixed" or silently left stale:
   at least one leg (`excursion_fallback = true`) under the fill-instant fix, same as
   `7e8616fb`, but *not* near any quarterly roll - so the front-month question doesn't
   apply here. Flagged during PR #122's diagnostic and deliberately not investigated
-  further per that PR's own scope - noted here so it isn't quietly forgotten once the
-  PR closes.
+  further per that PR's own scope.
+
+  **Follow-up (real match found, needs a human decision - not yet corrected):** this
+  losing long (entry 29572, stop/exit 29536, logged 09:51:52-09:58:38 ET) was
+  suspected to be the "MAE and exit coincide, no distinct bar" case, but the actual
+  ±5-minute bar data around the logged times rules that out. The *only* one-minute
+  bar in that window touching entry, exit, and stop simultaneously is
+  `2026-08-19T13:48:00Z` (O 29583.75 / H 29592.25 / L 29515 / C 29517.25) - about 4
+  minutes before the logged entry instant (13:51:52Z) and about 10 minutes before
+  the logged exit instant (13:58:38Z). By the logged entry instant, price had
+  already fallen well past the stop (low 29406.5 on the 13:51 bar) - i.e. real price
+  action shows this trade's entry and stop-out both happening inside that same
+  single minute, a much faster and earlier move than the ~7-minute duration
+  currently logged. This is the same class of issue as `7e8616fb` (logged timestamp
+  not matching real price action), not the hypothesized mechanism, and it looks
+  resolvable here where `7e8616fb` wasn't - flagged for a decision before writing
+  anything.
 
 Both trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
 `excursion_fallback` values they already had before this note was written - nothing

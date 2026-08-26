@@ -37,6 +37,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         run: node scripts/temp-dryrun-7e8616fb.js 2>&1 | tee /tmp/dryrun-output.txt
 
+      - name: Check final state
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: node scripts/temp-check-final.js 2>&1 | tee /tmp/final-output.txt
+
       - name: Post output as PR comment
         if: always()
         run: |
@@ -49,6 +55,10 @@ jobs:
             echo "**Dry-run 7e8616fb output (no writes):**"
             echo '```'
             cat /tmp/dryrun-output.txt
+            echo '```'
+            echo "**Final state check:**"
+            echo '```'
+            cat /tmp/final-output.txt
             echo '```'
           } > /tmp/comment-body.txt
           curl -sS -X POST \

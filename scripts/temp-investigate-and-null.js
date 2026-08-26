@@ -1,17 +1,13 @@
 #!/usr/bin/env node
-// 1. Diagnostic (read-only): check whether Databento's plain continuous
-//    symbol (NQ.c.0, i.e. NQ1-style front-month continuous - what the
-//    trader says their own charting platform shows) has real prints near
-//    7e8616fb's logged entry price, at its logged entry time - testing
-//    whether continuous-vs-dated-contract choice explains the mismatch.
-//    (076af9b3 is skipped here - the trader corrected its logged entry
-//    price directly, which should already have gone through the live
-//    edit-triggered recompute, so this run only checks its current state
-//    rather than re-investigating the old, now-superseded mismatch.)
-// 2. Current-state check for 076af9b3 (did the trader's own correction +
-//    auto-recompute already fix it?) and conditional null of whichever of
-//    the two trades still shows a fallback-derived (unverified, possibly
-//    wrong) MFE/MAE - never nulling a trade that's already genuinely fixed.
+// Corrected re-run: the first pass had two bugs - (1) it selected a
+// nonexistent `updated_at` column on `trades` (that's an edge_beliefs
+// column) without checking the returned `error`, so the "current state"
+// section silently printed null/null instead of failing loudly; (2) the
+// NQ.c.0 continuous-symbol comparison window for 7e8616fb was a guessed
+// date/time, not derived from the trade's actual logged trade_date/
+// trade_time - so its "3875 prints within 5pts" result isn't trustworthy
+// evidence either way. This version pulls the trade's real fields first
+// and derives the comparison window from them.
 const { createClient } = require('@supabase/supabase-js')
 
 const DATASET = 'GLBX.MDP3'
@@ -22,15 +18,9 @@ function authHeader() {
   if (!apiKey) throw new Error('DATABENTO_API_KEY is not set')
   return 'Basic ' + Buffer.from(`${apiKey}:`).toString('base64')
 }
-
 function normalizeTradeRecord(record) {
-  return {
-    tsEvent: record.ts_event ?? record.hd?.ts_event ?? null,
-    price: record.price / PRICE_SCALE,
-    size: Number(record.size),
-  }
+  return { tsEvent: record.ts_event ?? record.hd?.ts_event ?? null, price: record.price / PRICE_SCALE, size: Number(record.size) }
 }
-
 function parseRecords(text, normalize) {
   const trimmed = text.trim()
   if (!trimmed) return []
@@ -41,7 +31,6 @@ function parseRecords(text, normalize) {
   } catch {}
   return trimmed.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => normalize(JSON.parse(l)))
 }
-
 async function fetchTrades({ symbol, start, end, stypeIn = 'continuous' }) {
   const url = new URL('/v0/timeseries.get_range', 'https://hist.databento.com')
   url.searchParams.set('dataset', DATASET)
@@ -51,7 +40,6 @@ async function fetchTrades({ symbol, start, end, stypeIn = 'continuous' }) {
   url.searchParams.set('start', start)
   url.searchParams.set('end', end)
   url.searchParams.set('encoding', 'json')
-
   const res = await fetch(url, { headers: { Authorization: authHeader() } })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
@@ -59,44 +47,70 @@ async function fetchTrades({ symbol, start, end, stypeIn = 'continuous' }) {
   }
   return parseRecords(await res.text(), normalizeTradeRecord)
 }
-
+function wallClockToInstant(dateStr, timeStr, offsetHours) {
+  if (!dateStr || !timeStr) return null
+  const [y, mo, d] = dateStr.split('-').map(Number)
+  const [hh, mm, ss] = timeStr.split(':').map(Number)
+  return new Date(Date.UTC(y, mo - 1, d, hh, mm, ss || 0) - offsetHours * 3600000)
+}
+async function getUserTimezone(supabaseUrl, serviceKey, userId) {
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  })
+  if (!res.ok) return null
+  const user = await res.json()
+  const offset = parseFloat(user?.user_metadata?.timezone)
+  return Number.isNaN(offset) ? null : offset
+}
 function summarize(ticks) {
   if (ticks.length === 0) return 'no prints'
   const prices = ticks.map((t) => t.price)
-  return `${ticks.length} print(s), price range ${Math.min(...prices)}-${Math.max(...prices)}, first=${ticks[0].price} last=${ticks[ticks.length - 1].price}`
-}
-
-async function investigate() {
-  console.log('=== 7e8616fb: continuous NQ.c.0 near logged entry 29737.5 ===')
-  const t1Start = '2026-06-23T13:30:00Z'
-  const t1End = '2026-06-23T14:00:00Z'
-  try {
-    const ticks = await fetchTrades({ symbol: 'NQ.c.0', stypeIn: 'continuous', start: t1Start, end: t1End })
-    console.log(`NQ.c.0 continuous, ${t1Start} to ${t1End}: ${summarize(ticks)}`)
-    const near29737 = ticks.filter((t) => Math.abs(t.price - 29737.5) <= 5)
-    console.log(`Prints within 5pts of 29737.5: ${near29737.length}${near29737.length ? ' e.g. ' + JSON.stringify(near29737.slice(0, 3)) : ''}`)
-  } catch (err) {
-    console.log(`NQ.c.0 fetch failed: ${err.message}`)
-  }
+  return `${ticks.length} print(s), price range ${Math.min(...prices)}-${Math.max(...prices)}`
 }
 
 async function main() {
-  await investigate()
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const admin = createClient(supabaseUrl, serviceKey)
 
-  console.log('\n=== Current state check ===')
   const TRADE_IDS = [
     '7e8616fb-334b-4465-8a2f-e572b634df5a',
     '076af9b3-312c-47c8-9987-1e6176545a6b',
   ]
+
+  console.log('=== Current trade state ===')
   const rows = {}
   for (const id of TRADE_IDS) {
-    const { data } = await admin.from('trades').select('id, entry, market_data_status, mfe_points, mae_points, drawdown_seconds, excursion_fallback, trade_time_unverified, updated_at').eq('id', id).single()
+    const { data, error } = await admin.from('trades')
+      .select('id, user_id, trade_date, trade_time, entry, direction, stop, target, exit_price, exit_time, market_data_status, mfe_points, mae_points, drawdown_seconds, excursion_fallback, trade_time_unverified')
+      .eq('id', id).single()
+    if (error) {
+      console.log(`${id}: query error - ${error.message}`)
+      continue
+    }
     console.log(JSON.stringify(data))
     rows[id] = data
+  }
+
+  console.log('\n=== NQ.c.0 continuous check around real logged entry instant ===')
+  for (const id of TRADE_IDS) {
+    const row = rows[id]
+    if (!row) continue
+    const offsetHours = await getUserTimezone(supabaseUrl, serviceKey, row.user_id)
+    if (offsetHours === null) { console.log(`${id}: no timezone, skipping continuous check`); continue }
+    const entryInstant = wallClockToInstant(row.trade_date, row.trade_time, offsetHours)
+    const padMs = 15 * 60000
+    const start = new Date(entryInstant.getTime() - padMs).toISOString()
+    const end = new Date(entryInstant.getTime() + padMs).toISOString()
+    console.log(`${id}: logged entry ${row.trade_date} ${row.trade_time} (offset ${offsetHours}) -> ${entryInstant.toISOString()}, checking NQ.c.0 ${start} to ${end}`)
+    try {
+      const ticks = await fetchTrades({ symbol: 'NQ.c.0', stypeIn: 'continuous', start, end })
+      console.log(`  NQ.c.0: ${summarize(ticks)}`)
+      const near = ticks.filter((t) => Math.abs(t.price - row.entry) <= 2)
+      console.log(`  Prints within 2pts of logged entry ${row.entry}: ${near.length}${near.length ? ' e.g. ' + JSON.stringify(near.slice(0, 2)) : ''}`)
+    } catch (err) {
+      console.log(`  NQ.c.0 fetch failed: ${err.message}`)
+    }
   }
 
   console.log('\n=== Conditional null (only for a trade still showing a fallback-derived value) ===')

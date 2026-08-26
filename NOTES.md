@@ -356,6 +356,24 @@ tick-level path too).
 Live-recomputed again after this fix - see the numbers below for what
 changed.
 
+**Follow-up bug in the fix above:** the "earliest at or after the previous
+anchor" rule had no upper bound, so a leg whose price coincides with an
+*earlier* anchor's price - most commonly a breakeven trade, where the exit
+price equals the entry price - would trivially re-match the entry fill's
+own tick (which of course also "touches" that same price), collapsing the
+whole window to ~0 duration and erasing every minute of real price action
+in between. A trader reported exactly this: a 50-minute breakeven trade
+showing MFE, MAE, and Time in drawdown all reading 0.
+`findFillTick` now bounds each leg's search to `roughInstant ±
+FILL_SEARCH_PAD_MINUTES` (its *own* logged time), not just "anywhere after
+the previous anchor" - so a same-price exit 50 minutes later correctly
+searches near the real logged exit time instead of immediately re-matching
+entry. Verified against three scenarios before going live again: the
+original first-touch case, this breakeven case, and the multi-touch
+(`7e8616fb`-style) case that motivated the `afterInstant` floor in the
+first place - all three had to hold together, not just the one being
+fixed.
+
 `scripts/backfill_trade_excursions_from_dbn.py` (the one-time, already-run
 DBN-file backfill) was **not** upgraded to tick-level - it only ever reads
 whatever schema its one already-downloaded file contains (`ohlcv-1s`, one

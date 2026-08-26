@@ -305,17 +305,25 @@ function parseTickInstant(tsEvent) {
 }
 
 // See lib/tradeExcursions.js's own copy of this function for the full
-// explanation of why this picks the *earliest* qualifying match (at or
-// after afterInstant) rather than the closest-in-time one - this is the
-// same logic, standalone.
+// explanation of why this picks the *earliest* qualifying match within
+// roughInstant ± FILL_SEARCH_PAD_MINUTES (further floored at afterInstant
+// when given) rather than the closest-in-time one, and why the ± window
+// bound matters specifically for a leg whose price coincides with an
+// earlier anchor's (e.g. a breakeven exit) - this is the same logic,
+// standalone.
 function findFillTick({ ticks, roughInstant, price, afterInstant }) {
+  const padMs = FILL_SEARCH_PAD_MINUTES * 60000
+  const windowStartMs = Math.max(roughInstant.getTime() - padMs, afterInstant ? afterInstant.getTime() : -Infinity)
+  const windowEndMs = roughInstant.getTime() + padMs
+
   let best = null
   for (const tick of ticks) {
     if (!tickTouchesPrice(tick, price)) continue
     const instant = parseTickInstant(tick.tsEvent)
     if (!instant) continue
-    if (afterInstant && instant.getTime() < afterInstant.getTime()) continue
-    if (!best || instant.getTime() < best.getTime()) best = instant
+    const ms = instant.getTime()
+    if (ms < windowStartMs || ms > windowEndMs) continue
+    if (!best || ms < best.getTime()) best = instant
   }
   if (best) return { instant: best, matched: true }
   return { instant: roughInstant, matched: false }

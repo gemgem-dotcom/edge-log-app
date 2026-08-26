@@ -1,0 +1,41 @@
+name: temp-recompute-retry
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [claude/mfe-mae-stop-target-cap]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - name: Run recompute and capture output
+        run: node scripts/recompute-trade-excursions.js > recompute_output.txt 2>&1 || true
+        env:
+          DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      - name: Show output in job log too
+        run: cat recompute_output.txt
+      - name: Post result as a PR comment (log download host is blocked from this session)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY=$(node -e "
+            const fs = require('fs');
+            const text = fs.readFileSync('recompute_output.txt', 'utf8').slice(0, 60000);
+            console.log(JSON.stringify('### Recompute retry after Databento budget top-up\n\n\`\`\`\n' + text + '\n\`\`\`'));
+          ")
+          curl -s -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/125/comments" \
+            -d "{\"body\": $BODY}"

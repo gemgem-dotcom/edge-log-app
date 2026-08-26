@@ -1,4 +1,4 @@
-name: TEMP - check 7e8616fb after trader's fix
+name: TEMP - investigate 20212645 unavailable status
 
 on:
   workflow_dispatch: {}
@@ -23,30 +23,31 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Check 7e8616fb
+      - name: Dump full row for 20212645
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: node scripts/temp-check-20212645.js 2>&1 | tee /tmp/row-output.txt
+
+      - name: Dry-run standard pipeline for 20212645
         env:
           DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        run: node scripts/temp-check-7e8616fb.js 2>&1 | tee /tmp/output.txt
-
-      - name: Find all trades on 2026-06-24
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        run: node scripts/temp-find-trade.js 2>&1 | tee /tmp/find-output.txt
+        run: node scripts/temp-check-20212645-pipeline.js 2>&1 | tee /tmp/pipeline-output.txt
 
       - name: Post output as PR comment
         if: always()
         run: |
           {
-            echo "### TEMP check-7e8616fb output"
+            echo "### TEMP investigate 20212645"
+            echo "**Full row:**"
             echo '```'
-            cat /tmp/output.txt
+            cat /tmp/row-output.txt
             echo '```'
-            echo "**All trades on 2026-06-24:**"
+            echo "**Pipeline dry-run:**"
             echo '```'
-            cat /tmp/find-output.txt
+            cat /tmp/pipeline-output.txt
             echo '```'
           } > /tmp/comment-body.txt
           curl -sS -X POST \

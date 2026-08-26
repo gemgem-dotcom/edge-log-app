@@ -235,7 +235,7 @@ async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const admin = createClient(supabaseUrl, serviceKey)
-  const id = '7e8616fb-334b-4465-8a2f-e572b634df5a'
+  const id = '20212645-30c0-457d-a310-0158b1b4350a'
 
   const { data: trade, error } = await admin.from('trades').select('*').eq('id', id).single()
   if (error) throw new Error(`Failed to load trade: ${error.message}`)

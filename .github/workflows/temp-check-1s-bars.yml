@@ -1,0 +1,19 @@
+name: temp-check-1s-bars
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [claude/mfe-mae-stop-target-cap]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: node scripts/diag-check-1s-bars.js
+        env:
+          DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}

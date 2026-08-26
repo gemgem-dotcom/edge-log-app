@@ -413,7 +413,6 @@ async function main() {
   // an automated recompute would produce.
   const MANUAL_REVIEW_TRADE_IDS = new Set([
     '7e8616fb-334b-4465-8a2f-e572b634df5a',
-    '137c4594-c6d0-40f1-904f-acb9e71d9ef6',
     '076af9b3-312c-47c8-9987-1e6176545a6b',
   ])
 

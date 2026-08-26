@@ -499,16 +499,19 @@ async function main() {
         start: new Date(rawWindow.entryInstant.getTime() - padMs).toISOString(),
         end: new Date(rawWindow.exitInstant.getTime() + padMs).toISOString(),
       })
+      // See app/api/backfill-trade-excursion/route.js's own copy of this
+      // comment - a real NQ session window this narrow essentially never
+      // has zero real trade prints, so this is treated as transient
+      // (leave 'pending', already is) rather than a permanent miss. No
+      // write needed - the trade is already 'pending'.
       if (ticks.length === 0) {
-        await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-        unavailable += 1
+        stillPending += 1
         continue
       }
       const { entryInstant, exitInstant, usedFallback } = deriveFillTicks({ rawWindow, entryPrice: trade.entry, ticks })
       const windowTicks = sliceTicksForWindow(ticks, entryInstant, exitInstant)
       if (windowTicks.length === 0) {
-        await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-        unavailable += 1
+        stillPending += 1
         continue
       }
       const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({

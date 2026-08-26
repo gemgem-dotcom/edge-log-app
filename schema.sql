@@ -578,12 +578,17 @@ alter table trades add column if not exists volume_regime text;
 -- flag: 'pending' means blocked on this account's confirmed ~8-hour
 -- GLBX.MDP3 access embargo (not a bug - see NOTES.md) *or* on a fetch
 -- attempt that failed for some other, not-reliably-classifiable reason
--- (network hiccup, transient 5xx, rate limit) - left retryable by design,
--- since a real trade was once silently and permanently lost to exactly
--- this (a transient failure treated as terminal) before this comment was
--- corrected; see NOTES.md. 'unavailable' means a genuine, deterministic,
--- non-retryable miss (wrong/unsupported instrument, no timezone or exit
--- window, zero bars returned, zero bars in the derived fill window) - set
+-- (network hiccup, transient 5xx, rate limit) *or* on a successful fetch
+-- that returned zero trade prints - a real NQ session window this narrow
+-- essentially never genuinely lacks real prints, so an empty response is
+-- treated as transient too, not just a thrown error (a real trade proved
+-- this: 'unavailable' with zero ticks one moment, 20k+ ticks and a clean
+-- fill match on the exact same window minutes later). All three are left
+-- retryable by design, since a real trade was once silently and
+-- permanently lost to exactly this pattern (a transient failure treated
+-- as terminal) before this comment was corrected; see NOTES.md.
+-- 'unavailable' means a genuine, deterministic, non-retryable miss
+-- (wrong/unsupported instrument, no timezone or exit window) - set
 -- explicitly rather than left stuck in 'pending' forever. null (no
 -- default) means this trade has never been attempted yet, or isn't on an
 -- NQ-family instrument - same "not yet applicable" principle as

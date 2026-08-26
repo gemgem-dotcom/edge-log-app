@@ -100,16 +100,27 @@ export async function POST(req) {
     return json({ status: 'pending', reason: err.message })
   }
 
+  // A real NQ session window this narrow (roughly the trade's own
+  // duration ± FILL_SEARCH_PAD_MINUTES) essentially never has zero real
+  // trade prints during market hours - every trade checked this way so
+  // far has had thousands. Confirmed live: a trade that returned zero
+  // ticks here once resolved cleanly (24k+ ticks, clean fill match) on a
+  // simple re-fetch of the exact same window moments later - the same
+  // "transient, not deterministic" lesson the fetch-error handling above
+  // already learned, just for a successful-but-empty response instead of
+  // a thrown error. Left 'pending' for the hourly retry rather than
+  // marked 'unavailable', so a Databento hiccup can't permanently discard
+  // data that's actually there.
   if (ticks.length === 0) {
-    await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', tradeId)
-    return json({ status: 'unavailable', reason: 'no trade prints returned' })
+    await admin.from('trades').update({ market_data_status: 'pending' }).eq('id', tradeId)
+    return json({ status: 'pending', reason: 'no trade prints returned' })
   }
 
   const { entryInstant, exitInstant, usedFallback } = deriveFillTicks({ rawWindow, entryPrice: trade.entry, ticks })
   const windowTicks = sliceTicksForWindow(ticks, entryInstant, exitInstant)
   if (windowTicks.length === 0) {
-    await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', tradeId)
-    return json({ status: 'unavailable', reason: 'no trade prints in derived window' })
+    await admin.from('trades').update({ market_data_status: 'pending' }).eq('id', tradeId)
+    return json({ status: 'pending', reason: 'no trade prints in derived window' })
   }
 
   const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({

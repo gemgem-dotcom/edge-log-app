@@ -332,6 +332,25 @@ fixed code now runs automatically (`mfe_points=137.75`, `mae_points=16.75`,
 found in this state at the time, but any future occurrence should now
 self-heal within an hour instead of getting stuck.
 
+**Follow-up: the same bug had a second form.** Trade `20212645-30c0-457d-a310-
+0158b1b4350a` (2026-06-24, long, entry 29725, target/exit 29901) was cleanly
+`complete` from an earlier bulk recompute, but was later found sitting on
+`market_data_status = 'unavailable'` with its old (still-correct) numbers
+frozen underneath - something had re-triggered the excursion route (an edit)
+and that attempt hit the "zero trade prints returned" branch, which the fix
+above never touched: it still treated a *successful but empty* fetch response
+as a permanent, deterministic miss, unlike a *thrown* fetch error. A live
+re-check of the exact same window moments later returned 24,677 real ticks and
+a clean fill match - proving this was transient too, the same as the original
+bug, just one branch over. `app/api/backfill-trade-excursion/route.js` and
+`scripts/retry-trade-excursions.js` now leave the trade `pending` on zero
+ticks returned or zero ticks in the derived window, same as any other
+non-embargo fetch problem - see `schema.sql`'s comment above
+`market_data_status` for the corrected semantics. This trade was manually
+corrected to the values the fixed pipeline found: `trade_time` 10:39:21 →
+10:39:48, `mfe_points = 176.00`, `mae_points = 14.75`, `drawdown_seconds = 85`,
+`excursion_fallback = false`.
+
 ### MFE/MAE/drawdown are computed from real trade prints, not 1-minute bars
 
 The formula's history, in order:

@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
-      - run: node scripts/diag-unavailable-trade.js
+      - run: node scripts/fix-trade-471db32c.js
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

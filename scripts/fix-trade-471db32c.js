@@ -1,9 +1,14 @@
 #!/usr/bin/env node
-// TEMPORARY, read-only diagnostic - not part of the app, never meant to be
-// merged. Finds recent NQ trades with market_data_status = 'unavailable'
-// and reproduces the exact backfill-trade-excursion logic against them to
-// pin down which specific step marked them unavailable. Writes nothing to
-// the database.
+// TEMPORARY, one-off - not part of the app, never meant to be merged.
+// Trade 471db32c-4be5-4fbc-9014-7c59db1f5326 was permanently marked
+// market_data_status = 'unavailable' by a non-embargo fetch error during
+// an hourly retry, a bug just fixed in scripts/retry-trade-excursions.js
+// and app/api/backfill-trade-excursion/route.js (see NOTES.md). A
+// read-only diagnostic already confirmed Databento has good data for this
+// trade's window right now (20 bars, clean fill-instant match on both
+// entry and exit, no fallback needed). This re-runs that exact same
+// backfill logic for this one trade and writes the result, the same way
+// the fixed route/retry job would have.
 
 const { createClient } = require('@supabase/supabase-js')
 const ROLLOVER_DATES = require('../lib/contractRollover.json')
@@ -247,102 +252,78 @@ function sliceBarsForWindow(bars, entryInstant, exitInstant) {
   })
 }
 
+function computeExcursion({ bars, entry, direction }) {
+  const highs = bars.map((b) => b.high)
+  const lows = bars.map((b) => b.low)
+  const maxHigh = Math.max(...highs)
+  const minLow = Math.min(...lows)
+  const mfePoints = direction === 'long' ? maxHigh - entry : entry - minLow
+  const maePoints = direction === 'long' ? entry - minLow : maxHigh - entry
+  let underwaterBars = 0
+  for (const bar of bars) {
+    const underwater = direction === 'long' ? bar.low < entry : bar.high > entry
+    if (underwater) underwaterBars += 1
+  }
+  return { mfePoints, maePoints, drawdownSeconds: underwaterBars * 60 }
+}
+
+const TRADE_ID = '471db32c-4be5-4fbc-9014-7c59db1f5326'
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supabaseUrl || !serviceKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set')
   const admin = createClient(supabaseUrl, serviceKey)
 
-  const { data: instruments } = await admin.from('instruments').select('id, data_symbol').eq('data_symbol', 'NQ')
-  const nqInstrumentIds = (instruments || []).map((i) => i.id)
-  log(`NQ-family instrument ids: ${JSON.stringify(nqInstrumentIds)}`)
-
-  const { data: trades, error } = await admin
-    .from('trades')
-    .select('*')
-    .in('instrument_id', nqInstrumentIds)
-    .eq('market_data_status', 'unavailable')
-    .order('created_at', { ascending: false })
-    .limit(10)
+  const { data: trade, error } = await admin.from('trades').select('*').eq('id', TRADE_ID).single()
   if (error) throw new Error(error.message)
+  log(`Trade ${trade.id}: trade_date=${trade.trade_date} trade_time=${trade.trade_time} exit_time=${trade.exit_time} direction=${trade.direction} entry=${trade.entry} exit_price=${trade.exit_price} current market_data_status=${trade.market_data_status}`)
 
-  log(`${trades.length} NQ trade(s) with market_data_status = 'unavailable' (most recent 10 by created_at).`)
+  const { data: { user }, error: userErr } = await admin.auth.admin.getUserById(trade.user_id)
+  if (userErr) throw new Error(`Could not load user: ${userErr.message}`)
+  const offsetHours = parseFloat(user?.user_metadata?.timezone)
+  if (Number.isNaN(offsetHours)) throw new Error('No valid timezone offset on the account - refusing to write.')
 
-  for (const trade of trades) {
-    log('---')
-    log(`Trade ${trade.id}: trade_date=${trade.trade_date} trade_time=${trade.trade_time} exit_time=${trade.exit_time} direction=${trade.direction} entry=${trade.entry} exit_price=${trade.exit_price} multi_exit=${trade.multi_exit} additional_exits=${JSON.stringify(trade.additional_exits)} created_at=${trade.created_at}`)
+  const rawWindow = excursionWindow(trade, offsetHours)
+  if (!rawWindow) throw new Error('excursionWindow returned null - refusing to write.')
+  log(`entryInstant=${rawWindow.entryInstant.toISOString()} exitInstant=${rawWindow.exitInstant.toISOString()}`)
 
-    const { data: { user }, error: userErr } = await admin.auth.admin.getUserById(trade.user_id)
-    if (userErr) {
-      log(`  Could not load user: ${userErr.message}`)
-      continue
+  const padMs = FILL_SEARCH_PAD_MINUTES * 60000
+  let symbol = NQ_CONTINUOUS_SYMBOL
+  let stypeIn = 'continuous'
+  if (isNearRollover('NQ', trade.trade_date)) {
+    const { start: sessionStart, end: sessionEnd } = sessionBoundsFor(rawWindow.entryInstant)
+    const frontMonthId = await resolveFrontMonthByVolume({ sessionStart, sessionEnd })
+    if (frontMonthId !== null) {
+      symbol = String(frontMonthId)
+      stypeIn = 'instrument_id'
     }
-    const offsetHours = parseFloat(user?.user_metadata?.timezone)
-    log(`  Timezone offset: ${offsetHours} (raw metadata: ${JSON.stringify(user?.user_metadata?.timezone)})`)
-
-    if (Number.isNaN(offsetHours)) {
-      log(`  => Would be marked unavailable: no valid timezone offset on the account.`)
-      continue
-    }
-
-    const rawWindow = excursionWindow(trade, offsetHours)
-    if (!rawWindow) {
-      log(`  => Would be marked unavailable: excursionWindow returned null (missing trade_date/trade_time/exit_time).`)
-      continue
-    }
-    log(`  entryInstant=${rawWindow.entryInstant.toISOString()} exitInstant=${rawWindow.exitInstant.toISOString()}`)
-
-    const embargoClears = rawWindow.exitInstant.getTime() + EMBARGO_HOURS * 3600000
-    log(`  Embargo would have cleared at ${new Date(embargoClears).toISOString()} (now=${new Date().toISOString()})`)
-
-    const padMs = FILL_SEARCH_PAD_MINUTES * 60000
-    let symbol = NQ_CONTINUOUS_SYMBOL
-    let stypeIn = 'continuous'
-    const nearRoll = isNearRollover('NQ', trade.trade_date)
-    log(`  isNearRollover: ${nearRoll}`)
-    if (nearRoll) {
-      const { start: sessionStart, end: sessionEnd } = sessionBoundsFor(rawWindow.entryInstant)
-      log(`  Session bounds for volume resolution: ${sessionStart.toISOString()} to ${sessionEnd.toISOString()}`)
-      const frontMonthId = await resolveFrontMonthByVolume({ sessionStart, sessionEnd })
-      log(`  resolveFrontMonthByVolume => ${frontMonthId}`)
-      if (frontMonthId !== null) {
-        symbol = String(frontMonthId)
-        stypeIn = 'instrument_id'
-      }
-    }
-    log(`  Using symbol=${symbol} stypeIn=${stypeIn}`)
-
-    const start = new Date(rawWindow.entryInstant.getTime() - padMs).toISOString()
-    const end = new Date(rawWindow.exitInstant.getTime() + padMs).toISOString()
-    log(`  Fetching bars: start=${start} end=${end}`)
-
-    let bars
-    try {
-      bars = await fetchOhlcv1m({ symbol, stypeIn, start, end })
-    } catch (err) {
-      log(`  Fetch threw: ${err.message}`)
-      log(`  isEmbargoError: ${isEmbargoError(err)}`)
-      log(`  => This is the reason: ${isEmbargoError(err) ? 'would be pending, not unavailable - inconsistent with stored status!' : 'fetch error (see message above)'}`)
-      continue
-    }
-
-    log(`  ${bars.length} bar(s) fetched.`)
-    if (bars.length === 0) {
-      log(`  => Reason: 'no bars returned' - Databento returned zero bars for this window/symbol.`)
-      continue
-    }
-
-    const { entryInstant, exitInstant, usedFallback } = deriveFillInstants({ rawWindow, entryPrice: trade.entry, bars })
-    log(`  Derived entryInstant=${entryInstant.toISOString()} exitInstant=${exitInstant.toISOString()} usedFallback=${usedFallback}`)
-    const windowBars = sliceBarsForWindow(bars, entryInstant, exitInstant)
-    log(`  windowBars.length = ${windowBars.length}`)
-    if (windowBars.length === 0) {
-      log(`  => Reason: 'no bars in derived window' - entryInstant/exitInstant derived outside the fetched bar range.`)
-      continue
-    }
-
-    log(`  => No obvious failure reproduced - a fresh attempt right now would likely succeed. (Bars/logic all look fine at this moment; something at original-attempt time may have been transient, e.g. the resolveFrontMonthByVolume fetch or a rate limit.)`)
   }
+  log(`Using symbol=${symbol} stypeIn=${stypeIn}`)
+
+  const start = new Date(rawWindow.entryInstant.getTime() - padMs).toISOString()
+  const end = new Date(rawWindow.exitInstant.getTime() + padMs).toISOString()
+  const bars = await fetchOhlcv1m({ symbol, stypeIn, start, end })
+  log(`${bars.length} bar(s) fetched.`)
+  if (bars.length === 0) throw new Error('No bars returned - refusing to write.')
+
+  const { entryInstant, exitInstant, usedFallback } = deriveFillInstants({ rawWindow, entryPrice: trade.entry, bars })
+  log(`Derived entryInstant=${entryInstant.toISOString()} exitInstant=${exitInstant.toISOString()} usedFallback=${usedFallback}`)
+  const windowBars = sliceBarsForWindow(bars, entryInstant, exitInstant)
+  if (windowBars.length === 0) throw new Error('No bars in derived window - refusing to write.')
+
+  const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({ bars: windowBars, entry: trade.entry, direction: trade.direction })
+  log(`Computed: mfe_points=${mfePoints.toFixed(2)} mae_points=${maePoints.toFixed(2)} drawdown_seconds=${drawdownSeconds} excursion_fallback=${usedFallback}`)
+
+  const { error: writeErr } = await admin.from('trades').update({
+    mfe_points: mfePoints,
+    mae_points: maePoints,
+    drawdown_seconds: drawdownSeconds,
+    market_data_status: 'complete',
+    excursion_fallback: usedFallback,
+  }).eq('id', TRADE_ID)
+  if (writeErr) throw new Error(`Write failed: ${writeErr.message}`)
+  log('Write succeeded.')
 }
 
 main().catch((err) => {

@@ -257,41 +257,64 @@ fixed code now runs automatically (`mfe_points=137.75`, `mae_points=16.75`,
 found in this state at the time, but any future occurrence should now
 self-heal within an hour instead of getting stuck.
 
-### MFE/MAE are capped at the trade's own target/stop, not the raw bar extreme
+### MFE/MAE/drawdown are computed from real trade prints, not 1-minute bars
 
-`computeExcursion` (`lib/tradeExcursions.js`) caps MFE at the target and MAE
-at the stop whenever the trade's final exit leg actually landed on that
-level - specified against two worked examples:
+The formula's history, in order:
 
-- Entry, price runs to a new high, trader closes manually before ever
-  touching a stop or target: MFE is the full excursion (the actual highest
-  point reached while the trade was open), uncapped - e.g. entry 1000,
-  price reaches 1100, trader closes at 1090 -> MFE is 100 (not 90, the
-  realized/closed-at amount - MFE always reflects the best point reached,
-  not the exit price).
-- Trader gets stopped out after being in profit: MFE is still the highest
-  point reached before the stop was hit (uncapped, same as above - nothing
-  about a stop-out changes how MFE is computed), but MAE is now capped
-  exactly at the stop distance rather than whatever the closing 1-minute
-  bar's low shows. A resting stop-loss order closes the position the
-  instant price reaches it, so any move a bar's low shows beyond the stop
-  within that same minute is intra-bar movement the trade was never
-  actually exposed to - counting it would overstate real risk taken. The
-  mirror case (a trade that closes exactly at target) caps MFE at the
-  target distance the same way, for the same reason.
+1. Originally: 1-minute-bar (`ohlcv-1m`) high/low over the entry-to-exit
+   window, uncapped.
+2. Briefly: MFE capped at the target and MAE capped at the stop whenever
+   the trade's final exit leg actually landed on that level - specified
+   against two worked examples (entry 1000, runs to 1100, manual close at
+   1090 -> MFE is the full 100, uncapped, since neither level was touched;
+   entry 1000, stop 950, runs to 1050 in profit then reverses and stops
+   out -> MFE stays the real highest point reached (uncapped), MAE is
+   capped exactly at the 50-point stop distance rather than whatever the
+   closing bar's low showed, since a resting stop order closes the
+   position the instant price reaches it - any bar movement beyond that
+   within the same minute is intra-bar noise the trade was never actually
+   exposed to).
+3. **Current**: superseded (2) entirely. Live access to Databento's
+   `trades` (tick-level) and `ohlcv-1s` schemas was confirmed for this
+   account's plan - not just `ohlcv-1m` - which removes the reason (2)
+   existed in the first place: a real trade print has no coarse-minute
+   ambiguity to correct for, so there's nothing to cap. It's also more
+   robust than (2) was, independent of a concern raised directly: `stop`/
+   `target` are ordinary, freely-editable fields with no history of what
+   they were when a trade was actually live, so capping by them trusted
+   values that could have been changed after the fact. `entry`/`exit_price`
+   don't have that problem - they're tied to real price action via the
+   fill-tick matching itself.
 
-Detection: the trade's final exit leg (the last of `additional_exits`, or
-`exit_price` itself for a single-exit trade) is compared to `stop`/`target`
-- landing on one within a small float-tolerance epsilon triggers that
-side's cap. A trade that closes anywhere else (manual exit, partial scale-
-out before either level) keeps the plain bar-derived figure on both sides,
-since nothing about how it closed capped its real exposure.
+`computeExcursion` (`lib/tradeExcursions.js`) now takes real trade prints
+already sliced to `[entryInstant, exitInstant]`: MFE/MAE are the true
+highest/lowest traded price in that window, full stop, and drawdown_seconds
+walks consecutive prints to total real elapsed underwater time (the price a
+print establishes persists until the next one) rather than multiplying a
+bar count by 60. `findFillTick`/`deriveFillTicks` replace the old
+`findFillInstant`/`deriveFillInstants`: same idea (match the trade's
+logged entry/exit price against real market data near the logged time,
+falling back to the raw wall-clock instant if nothing matches), but
+picking whichever matching tick is closest in time rather than checking a
+priority-ordered set of minute buckets, since a tick doesn't need bucket
+alignment the way a bar did.
 
-Every existing `complete` trade's `mfe_points`/`mae_points` was recomputed
-under this rule (`scripts/recompute-trade-excursions.js`, run live via a
-temporary GitHub Actions workflow) - except the two trades flagged above
-under "Known excursion data issues," which are excluded from every
-automated recompute until a human looks at them directly.
+Every existing `complete` trade's `mfe_points`/`mae_points`/
+`drawdown_seconds` was recomputed under this rule
+(`scripts/recompute-trade-excursions.js`, run live via a temporary GitHub
+Actions workflow) - except the two trades flagged above under "Known
+excursion data issues," which are excluded from every automated recompute
+until a human looks at them directly.
+
+`scripts/backfill_trade_excursions_from_dbn.py` (the one-time, already-run
+DBN-file backfill) was **not** upgraded to tick-level - it only ever reads
+whatever schema its one already-downloaded file contains (`ohlcv-1s`, one
+step coarser than the live path now, but still finer than `ohlcv-1m`), and
+there's no tick-level DBN file available to re-verify against. Its
+stop/target-capping was reverted back to the plain bar-derived formula for
+consistency with the rest of the codebase, since that heuristic is gone
+everywhere else - it should not be re-run without a matching tick-level
+file if it's ever needed again.
 
 ## Removing an instrument
 

@@ -2,13 +2,15 @@
 
 // One-time, manually-run recompute of MFE/MAE/drawdown for every trade
 // already marked market_data_status = 'complete' - not scheduled, not
-// part of any workflow. Originally run once after the fill-instant-
-// derivation fix (see lib/tradeExcursions.js's findFillInstant/
-// deriveFillInstants and schema.sql's comment above `excursion_fallback`);
-// run again after the MFE/MAE stop/target-capping change (see
-// lib/tradeExcursions.js's computeExcursion) to overwrite every existing
-// value with the capped one. Each time, every 'complete' trade computed
-// under the old logic has unverified values under it, whether or not the
+// part of any workflow. Run repeatedly, once per correction to the
+// underlying formula (see lib/tradeExcursions.js's computeExcursion for
+// the current one): first after the fill-instant-derivation fix, again
+// after a since-superseded stop/target-capping change, and now again after
+// switching from ohlcv-1m bars to real trade prints (schema `trades`) -
+// real prices have no coarse-minute ambiguity to correct for in the first
+// place, and don't depend on trusting `stop`/`target` values a trader
+// could edit at any time. Each time, every 'complete' trade computed under
+// the old logic has unverified values under it, whether or not the
 // mismatch happened to be visible, not just the ones that looked obviously
 // wrong - so this always recomputes everything rather than trying to guess
 // which trades are affected.
@@ -47,7 +49,6 @@ const DATASET = 'GLBX.MDP3'
 const NQ_CONTINUOUS_SYMBOL = 'NQ.c.0'
 const PRICE_SCALE = 1e9
 const EMBARGO_HOURS = 8
-const BAR_SECONDS = 60
 const FILL_SEARCH_PAD_MINUTES = 2
 const FILL_PRICE_EPSILON = 0.0001
 // See lib/databento.js's ROLL_PROXIMITY_DAYS for the full explanation.
@@ -77,19 +78,31 @@ function normalizeRecord(record) {
   }
 }
 
-function parseOhlcvRecords(text) {
+// One trade print - schema `trades`, tick-level. See lib/databento.js's
+// own copy of this function for the full explanation.
+function normalizeTradeRecord(record) {
+  return {
+    tsEvent: record.ts_event ?? record.hd?.ts_event ?? null,
+    price: record.price / PRICE_SCALE,
+    size: Number(record.size),
+  }
+}
+
+function parseRecords(text, normalize) {
   const trimmed = text.trim()
   if (!trimmed) return []
   try {
     const whole = JSON.parse(trimmed)
-    if (Array.isArray(whole)) return whole.map(normalizeRecord)
-    if (Array.isArray(whole?.records)) return whole.records.map(normalizeRecord)
+    if (Array.isArray(whole)) return whole.map(normalize)
+    if (Array.isArray(whole?.records)) return whole.records.map(normalize)
   } catch {
     // Not a single JSON document - fall through to line-delimited parsing.
   }
-  return trimmed.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => normalizeRecord(JSON.parse(l)))
+  return trimmed.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => normalize(JSON.parse(l)))
 }
 
+// Session-level aggregates only (resolveFrontMonthByVolume) - the
+// excursion path below uses fetchTrades instead.
 async function fetchOhlcv1m({ symbol, start, end, stypeIn = 'continuous' }) {
   const url = new URL('/v0/timeseries.get_range', 'https://hist.databento.com')
   url.searchParams.set('dataset', DATASET)
@@ -105,7 +118,27 @@ async function fetchOhlcv1m({ symbol, start, end, stypeIn = 'continuous' }) {
     const body = await res.text().catch(() => '')
     throw new Error(`Databento get_range failed: ${res.status} ${res.statusText} ${body}`.trim())
   }
-  return parseOhlcvRecords(await res.text())
+  return parseRecords(await res.text(), normalizeRecord)
+}
+
+// MFE/MAE/drawdown path - real trade prints, not ohlcv-1m bars. See
+// lib/databento.js's fetchTrades for the full explanation.
+async function fetchTrades({ symbol, start, end, stypeIn = 'continuous' }) {
+  const url = new URL('/v0/timeseries.get_range', 'https://hist.databento.com')
+  url.searchParams.set('dataset', DATASET)
+  url.searchParams.set('schema', 'trades')
+  url.searchParams.set('symbols', symbol)
+  url.searchParams.set('stype_in', stypeIn)
+  url.searchParams.set('start', start)
+  url.searchParams.set('end', end)
+  url.searchParams.set('encoding', 'json')
+
+  const res = await fetch(url, { headers: { Authorization: authHeader() } })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Databento get_range failed: ${res.status} ${res.statusText} ${body}`.trim())
+  }
+  return parseRecords(await res.text(), normalizeTradeRecord)
 }
 
 function isEmbargoError(err) {
@@ -252,11 +285,14 @@ function excursionWindow(trade, offsetHours) {
   return { entryInstant, legs, exitInstant: legs[legs.length - 1].instant }
 }
 
-function barTouchesPrice(bar, price) {
-  return price >= bar.low - FILL_PRICE_EPSILON && price <= bar.high + FILL_PRICE_EPSILON
+// See lib/tradeExcursions.js's FILL_SEARCH_PAD_MINUTES/findFillTick/
+// deriveFillTicks/sliceTicksForWindow for the full explanation - this is
+// the same logic, standalone.
+function tickTouchesPrice(tick, price) {
+  return Math.abs(tick.price - price) <= FILL_PRICE_EPSILON
 }
 
-function parseBarInstant(tsEvent) {
+function parseTickInstant(tsEvent) {
   if (tsEvent === null || tsEvent === undefined) return null
   if (typeof tsEvent === 'string' && /^\d+$/.test(tsEvent)) {
     return new Date(Number(BigInt(tsEvent) / 1000000n))
@@ -268,32 +304,30 @@ function parseBarInstant(tsEvent) {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-function minuteBucketStart(instant, minuteOffset) {
-  const bucket = new Date(instant.getTime() + minuteOffset * 60000)
-  bucket.setUTCSeconds(0, 0)
-  return bucket.getTime()
-}
-
-function findFillInstant({ bars, roughInstant, price }) {
-  for (const minuteOffset of [0, -1, 1]) {
-    const bucketStart = minuteBucketStart(roughInstant, minuteOffset)
-    const candidates = bars
-      .map((bar) => ({ bar, instant: parseBarInstant(bar.tsEvent) }))
-      .filter(({ instant }) => instant && minuteBucketStart(instant, 0) === bucketStart)
-      .sort((a, b) => a.instant.getTime() - b.instant.getTime())
-    const hit = candidates.find(({ bar }) => barTouchesPrice(bar, price))
-    if (hit) return { instant: hit.instant, matched: true }
+function findFillTick({ ticks, roughInstant, price }) {
+  let best = null
+  let bestDiffMs = Infinity
+  for (const tick of ticks) {
+    if (!tickTouchesPrice(tick, price)) continue
+    const instant = parseTickInstant(tick.tsEvent)
+    if (!instant) continue
+    const diffMs = Math.abs(instant.getTime() - roughInstant.getTime())
+    if (diffMs < bestDiffMs) {
+      bestDiffMs = diffMs
+      best = instant
+    }
   }
+  if (best) return { instant: best, matched: true }
   return { instant: roughInstant, matched: false }
 }
 
-function deriveFillInstants({ rawWindow, entryPrice, bars }) {
-  const entryFill = findFillInstant({ bars, roughInstant: rawWindow.entryInstant, price: entryPrice })
+function deriveFillTicks({ rawWindow, entryPrice, ticks }) {
+  const entryFill = findFillTick({ ticks, roughInstant: rawWindow.entryInstant, price: entryPrice })
   let usedFallback = !entryFill.matched
   let lastInstant = entryFill.instant
 
   for (const leg of rawWindow.legs) {
-    const legFill = findFillInstant({ bars, roughInstant: leg.instant, price: leg.price })
+    const legFill = findFillTick({ ticks, roughInstant: leg.instant, price: leg.price })
     if (!legFill.matched) usedFallback = true
     lastInstant = legFill.instant
   }
@@ -301,39 +335,29 @@ function deriveFillInstants({ rawWindow, entryPrice, bars }) {
   return { entryInstant: entryFill.instant, exitInstant: lastInstant, usedFallback }
 }
 
-function sliceBarsForWindow(bars, entryInstant, exitInstant) {
-  return bars.filter((bar) => {
-    const instant = parseBarInstant(bar.tsEvent)
-    return instant && instant.getTime() >= entryInstant.getTime() && instant.getTime() <= exitInstant.getTime()
-  })
+function sliceTicksForWindow(ticks, entryInstant, exitInstant) {
+  return ticks
+    .map((tick) => ({ ...tick, instant: parseTickInstant(tick.tsEvent) }))
+    .filter((tick) => tick.instant && tick.instant.getTime() >= entryInstant.getTime() && tick.instant.getTime() <= exitInstant.getTime())
+    .sort((a, b) => a.instant.getTime() - b.instant.getTime())
 }
 
 // See lib/tradeExcursions.js's own copy of this function for the full
-// explanation of the stop/target capping - this is the same logic,
-// standalone.
-const EXIT_LEVEL_EPSILON = 0.0001
+// explanation - this is the same logic, standalone.
+function computeExcursion({ ticks, entry, direction }) {
+  const prices = ticks.map((t) => t.price)
+  const maxPrice = Math.max(...prices)
+  const minPrice = Math.min(...prices)
 
-function computeExcursion({ bars, entry, direction, stop, target, exitPrice }) {
-  const highs = bars.map((b) => b.high)
-  const lows = bars.map((b) => b.low)
-  const maxHigh = Math.max(...highs)
-  const minLow = Math.min(...lows)
+  const mfePoints = direction === 'long' ? maxPrice - entry : entry - minPrice
+  const maePoints = direction === 'long' ? entry - minPrice : maxPrice - entry
 
-  const hitStop = stop !== null && stop !== undefined && exitPrice !== null && exitPrice !== undefined && Math.abs(exitPrice - stop) <= EXIT_LEVEL_EPSILON
-  const hitTarget = target !== null && target !== undefined && exitPrice !== null && exitPrice !== undefined && Math.abs(exitPrice - target) <= EXIT_LEVEL_EPSILON
-
-  const rawMfe = direction === 'long' ? maxHigh - entry : entry - minLow
-  const rawMae = direction === 'long' ? entry - minLow : maxHigh - entry
-
-  const mfePoints = hitTarget ? Math.abs(target - entry) : rawMfe
-  const maePoints = hitStop ? Math.abs(stop - entry) : rawMae
-
-  let underwaterBars = 0
-  for (const bar of bars) {
-    const underwater = direction === 'long' ? bar.low < entry : bar.high > entry
-    if (underwater) underwaterBars += 1
+  let drawdownMs = 0
+  for (let i = 0; i < ticks.length - 1; i++) {
+    const underwater = direction === 'long' ? ticks[i].price < entry : ticks[i].price > entry
+    if (underwater) drawdownMs += ticks[i + 1].instant.getTime() - ticks[i].instant.getTime()
   }
-  return { mfePoints, maePoints, drawdownSeconds: underwaterBars * BAR_SECONDS }
+  return { mfePoints, maePoints, drawdownSeconds: Math.round(drawdownMs / 1000) }
 }
 
 async function getUserTimezone(supabaseUrl, serviceKey, userId, cache) {
@@ -389,7 +413,7 @@ async function main() {
   let skippedNotNq = 0
   let skippedNoWindow = 0
   let skippedStillEmbargoed = 0
-  let skippedNoBars = 0
+  let skippedNoTicks = 0
   let skippedError = 0
   let skippedManualReview = 0
 
@@ -430,30 +454,26 @@ async function main() {
           stypeIn = 'instrument_id'
         }
       }
-      const bars = await fetchOhlcv1m({
+      const ticks = await fetchTrades({
         symbol,
         stypeIn,
         start: new Date(rawWindow.entryInstant.getTime() - padMs).toISOString(),
         end: new Date(rawWindow.exitInstant.getTime() + padMs).toISOString(),
       })
-      if (bars.length === 0) {
-        skippedNoBars += 1
+      if (ticks.length === 0) {
+        skippedNoTicks += 1
         continue
       }
-      const { entryInstant, exitInstant, usedFallback } = deriveFillInstants({ rawWindow, entryPrice: trade.entry, bars })
-      const windowBars = sliceBarsForWindow(bars, entryInstant, exitInstant)
-      if (windowBars.length === 0) {
-        skippedNoBars += 1
+      const { entryInstant, exitInstant, usedFallback } = deriveFillTicks({ rawWindow, entryPrice: trade.entry, ticks })
+      const windowTicks = sliceTicksForWindow(ticks, entryInstant, exitInstant)
+      if (windowTicks.length === 0) {
+        skippedNoTicks += 1
         continue
       }
-      const finalExitPrice = rawWindow.legs[rawWindow.legs.length - 1].price
       const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({
-        bars: windowBars,
+        ticks: windowTicks,
         entry: trade.entry,
         direction: trade.direction,
-        stop: trade.stop,
-        target: trade.target,
-        exitPrice: finalExitPrice,
       })
 
       const isChanged = valueChanged(trade.mfe_points, mfePoints) ||
@@ -483,7 +503,7 @@ async function main() {
   }
 
   log(`Recomputed: ${recomputed}. Values actually changed: ${changed}. Unchanged (recomputed to the same values): ${recomputed - changed}.`)
-  log(`Skipped - flagged for manual review: ${skippedManualReview}. Not NQ-family: ${skippedNotNq}. No timezone/exit window: ${skippedNoWindow}. Still within embargo: ${skippedStillEmbargoed}. No bars found: ${skippedNoBars}. Errored (left untouched): ${skippedError}.`)
+  log(`Skipped - flagged for manual review: ${skippedManualReview}. Not NQ-family: ${skippedNotNq}. No timezone/exit window: ${skippedNoWindow}. Still within embargo: ${skippedStillEmbargoed}. No trade prints found: ${skippedNoTicks}. Errored (left untouched): ${skippedError}.`)
 }
 
 main().catch((err) => {

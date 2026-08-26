@@ -556,20 +556,23 @@ alter table trades add column if not exists volume_regime text;
 -- MFE/MAE/drawdown (lib/tradeExcursions.js, app/api/backfill-trade-
 -- excursion/route.js, scripts/retry-trade-excursions.js) - computed once
 -- from a fixed entry-to-final-exit window (trades are only ever logged
--- after they've closed, so there's no "still updating" state), from NQ
--- 1-minute bars. mfe_points/mae_points are raw, direction-aware points
--- (long: mfe = high-entry, mae = entry-low; short: mirrored) - displayed
--- as an R-multiple (divide by stop_distance) rather than stored twice, the
--- same pattern realized R already follows. Both are capped at the trade's
--- own target/stop whenever the final exit leg actually landed there (a
--- stopped-out or target-hit trade can't have been exposed to whatever a
--- 1-minute bar's high/low shows beyond that exact level) - see
--- lib/tradeExcursions.js's computeExcursion and NOTES.md for the two
--- worked examples this was specified against. drawdown_seconds is
--- cumulative time the position's unrealized P&L was underwater, summed
--- across every separate underwater period, not just time-to-first-
--- recovery - unaffected by the capping above, which is only about not
--- overstating how far an excursion went, not about when it happened.
+-- after they've closed, so there's no "still updating" state), from real
+-- NQ trade prints (Databento's `trades` schema, tick-level - not ohlcv-1m
+-- bars; this account's plan has confirmed live access to both `ohlcv-1s`
+-- and `trades`). mfe_points/mae_points are raw, direction-aware points
+-- (long: mfe = high-entry, mae = entry-low; short: mirrored), the true
+-- highest/lowest price the market actually traded at between entry and
+-- exit - displayed as an R-multiple (divide by stop_distance) rather than
+-- stored twice, the same pattern realized R already follows. An earlier
+-- version of this capped MFE/MAE at the trade's own stop/target instead of
+-- using 1-minute-bar extremes directly, to correct for coarse-bar
+-- ambiguity - superseded by the move to tick-level data, which has no such
+-- ambiguity to correct for and doesn't depend on trusting `stop`/`target`
+-- values a trader could edit after the fact (see NOTES.md). drawdown_
+-- seconds is cumulative real elapsed time the position's unrealized P&L
+-- was underwater (walking consecutive trade prints, not a bar-count
+-- multiple), summed across every separate underwater period, not just
+-- time-to-first-recovery.
 --
 -- market_data_status drives display and the retry job, not just a cache
 -- flag: 'pending' means blocked on this account's confirmed ~8-hour

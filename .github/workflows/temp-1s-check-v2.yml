@@ -1,4 +1,4 @@
-name: temp-check-1s-bars
+name: temp-1s-check-v2
 
 on:
   workflow_dispatch: {}
@@ -6,7 +6,7 @@ on:
     branches: [claude/mfe-mae-stop-target-cap]
 
 jobs:
-  run:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

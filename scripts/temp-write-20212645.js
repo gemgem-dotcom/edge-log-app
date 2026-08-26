@@ -279,12 +279,17 @@ async function main() {
   const correctedTradeTime = verifiedTimes.entry.matched ? instantToWallClockTime(verifiedTimes.entry.instant, offsetHours) : trade.trade_time
   const correctedExitTime = verifiedTimes.legs[0]?.matched ? instantToWallClockTime(verifiedTimes.legs[0].instant, offsetHours) : trade.exit_time
 
-  log('DRY RUN result (not written):')
-  log(JSON.stringify({
+  const payload = {
     mfe_points: mfePoints, mae_points: maePoints, drawdown_seconds: drawdownSeconds,
+    market_data_status: 'complete',
     excursion_fallback: usedFallback, trade_time: correctedTradeTime, exit_time: correctedExitTime,
     trade_time_unverified: verifiedTimes.anyUnverified,
-  }))
+  }
+  log("WRITING:", JSON.stringify(payload))
+  const { error: updateError } = await admin.from('trades').update(payload).eq('id', id)
+  if (updateError) { log(`WRITE FAILED: ${updateError.message}`); return }
+  const { data: after } = await admin.from('trades').select('id, trade_time, exit_time, mfe_points, mae_points, drawdown_seconds, market_data_status, excursion_fallback, trade_time_unverified').eq('id', id).single()
+  log('AFTER WRITE:', JSON.stringify(after))
 }
 
 main().catch((err) => { console.error(err); process.exit(1) })

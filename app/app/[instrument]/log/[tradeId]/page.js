@@ -23,13 +23,17 @@ function fmtNum(value) {
 
 // One cell for MFE/MAE/Time in drawdown: `realValue` is whatever the
 // caller already computed for the 'complete' case (or null otherwise) -
-// this only decides what to show when there's nothing real to display yet,
-// via lib/tradeExcursions.js's excursionStatusMessage ('pending'/
-// 'unavailable' get their own distinct copy). A null market_data_status
-// (never attempted, or not an NQ-family trade) falls through to the same
-// plain "—" every other not-yet-applicable field on this page already uses.
+// this only decides what to show when there's nothing real (or nothing
+// trustworthy) to display yet, via lib/tradeExcursions.js's
+// excursionStatusMessage ('pending'/'unavailable'/fallback-unverified each
+// get their own distinct copy). A 'complete' trade whose fill couldn't be
+// verified (excursion_fallback) is treated the same as not having a real
+// value at all - see excursionStatusMessage's own comment for why. A null
+// market_data_status (never attempted, or not an NQ-family trade) falls
+// through to the same plain "—" every other not-yet-applicable field on
+// this page already uses.
 function excursionCell(trade, timezoneOffset, realValue) {
-  if (trade.market_data_status === 'complete' && realValue !== null && realValue !== undefined) return realValue
+  if (trade.market_data_status === 'complete' && !trade.excursion_fallback && realValue !== null && realValue !== undefined) return realValue
   return excursionStatusMessage(trade, timezoneOffset) || '—'
 }
 

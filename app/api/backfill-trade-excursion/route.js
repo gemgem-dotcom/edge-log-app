@@ -112,7 +112,19 @@ export async function POST(req) {
     return json({ status: 'unavailable', reason: 'no bars in derived window' })
   }
 
-  const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({ bars: windowBars, entry: trade.entry, direction: trade.direction })
+  // The final exit leg (last of rawWindow.legs - trade.exit_price itself
+  // for a single-exit trade, or the last additional_exits row for a
+  // multi-exit one) is what computeExcursion checks against stop/target to
+  // decide whether to cap MFE/MAE - see that function's own comment.
+  const finalExitPrice = rawWindow.legs[rawWindow.legs.length - 1].price
+  const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({
+    bars: windowBars,
+    entry: trade.entry,
+    direction: trade.direction,
+    stop: trade.stop,
+    target: trade.target,
+    exitPrice: finalExitPrice,
+  })
   await admin.from('trades').update({
     mfe_points: mfePoints,
     mae_points: maePoints,

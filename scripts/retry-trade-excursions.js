@@ -309,14 +309,25 @@ function sliceBarsForWindow(bars, entryInstant, exitInstant) {
   })
 }
 
-function computeExcursion({ bars, entry, direction }) {
+// See lib/tradeExcursions.js's own copy of this function for the full
+// explanation of the stop/target capping - this is the same logic,
+// standalone.
+const EXIT_LEVEL_EPSILON = 0.0001
+
+function computeExcursion({ bars, entry, direction, stop, target, exitPrice }) {
   const highs = bars.map((b) => b.high)
   const lows = bars.map((b) => b.low)
   const maxHigh = Math.max(...highs)
   const minLow = Math.min(...lows)
 
-  const mfePoints = direction === 'long' ? maxHigh - entry : entry - minLow
-  const maePoints = direction === 'long' ? entry - minLow : maxHigh - entry
+  const hitStop = stop !== null && stop !== undefined && exitPrice !== null && exitPrice !== undefined && Math.abs(exitPrice - stop) <= EXIT_LEVEL_EPSILON
+  const hitTarget = target !== null && target !== undefined && exitPrice !== null && exitPrice !== undefined && Math.abs(exitPrice - target) <= EXIT_LEVEL_EPSILON
+
+  const rawMfe = direction === 'long' ? maxHigh - entry : entry - minLow
+  const rawMae = direction === 'long' ? entry - minLow : maxHigh - entry
+
+  const mfePoints = hitTarget ? Math.abs(target - entry) : rawMfe
+  const maePoints = hitStop ? Math.abs(stop - entry) : rawMae
 
   let underwaterBars = 0
   for (const bar of bars) {
@@ -426,7 +437,15 @@ async function main() {
         unavailable += 1
         continue
       }
-      const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({ bars: windowBars, entry: trade.entry, direction: trade.direction })
+      const finalExitPrice = rawWindow.legs[rawWindow.legs.length - 1].price
+      const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({
+        bars: windowBars,
+        entry: trade.entry,
+        direction: trade.direction,
+        stop: trade.stop,
+        target: trade.target,
+        exitPrice: finalExitPrice,
+      })
       await admin.from('trades').update({
         mfe_points: mfePoints,
         mae_points: maePoints,

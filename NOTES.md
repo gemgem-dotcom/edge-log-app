@@ -257,6 +257,42 @@ fixed code now runs automatically (`mfe_points=137.75`, `mae_points=16.75`,
 found in this state at the time, but any future occurrence should now
 self-heal within an hour instead of getting stuck.
 
+### MFE/MAE are capped at the trade's own target/stop, not the raw bar extreme
+
+`computeExcursion` (`lib/tradeExcursions.js`) caps MFE at the target and MAE
+at the stop whenever the trade's final exit leg actually landed on that
+level - specified against two worked examples:
+
+- Entry, price runs to a new high, trader closes manually before ever
+  touching a stop or target: MFE is the full excursion (the actual highest
+  point reached while the trade was open), uncapped - e.g. entry 1000,
+  price reaches 1100, trader closes at 1090 -> MFE is 100 (not 90, the
+  realized/closed-at amount - MFE always reflects the best point reached,
+  not the exit price).
+- Trader gets stopped out after being in profit: MFE is still the highest
+  point reached before the stop was hit (uncapped, same as above - nothing
+  about a stop-out changes how MFE is computed), but MAE is now capped
+  exactly at the stop distance rather than whatever the closing 1-minute
+  bar's low shows. A resting stop-loss order closes the position the
+  instant price reaches it, so any move a bar's low shows beyond the stop
+  within that same minute is intra-bar movement the trade was never
+  actually exposed to - counting it would overstate real risk taken. The
+  mirror case (a trade that closes exactly at target) caps MFE at the
+  target distance the same way, for the same reason.
+
+Detection: the trade's final exit leg (the last of `additional_exits`, or
+`exit_price` itself for a single-exit trade) is compared to `stop`/`target`
+- landing on one within a small float-tolerance epsilon triggers that
+side's cap. A trade that closes anywhere else (manual exit, partial scale-
+out before either level) keeps the plain bar-derived figure on both sides,
+since nothing about how it closed capped its real exposure.
+
+Every existing `complete` trade's `mfe_points`/`mae_points` was recomputed
+under this rule (`scripts/recompute-trade-excursions.js`, run live via a
+temporary GitHub Actions workflow) - except the two trades flagged above
+under "Known excursion data issues," which are excluded from every
+automated recompute until a human looks at them directly.
+
 ## Removing an instrument
 
 The kebab menu next to the title on each per-instrument page (Overview, Trade Log,

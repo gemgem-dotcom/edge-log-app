@@ -560,9 +560,16 @@ alter table trades add column if not exists volume_regime text;
 -- 1-minute bars. mfe_points/mae_points are raw, direction-aware points
 -- (long: mfe = high-entry, mae = entry-low; short: mirrored) - displayed
 -- as an R-multiple (divide by stop_distance) rather than stored twice, the
--- same pattern realized R already follows. drawdown_seconds is cumulative
--- time the position's unrealized P&L was underwater, summed across every
--- separate underwater period, not just time-to-first-recovery.
+-- same pattern realized R already follows. Both are capped at the trade's
+-- own target/stop whenever the final exit leg actually landed there (a
+-- stopped-out or target-hit trade can't have been exposed to whatever a
+-- 1-minute bar's high/low shows beyond that exact level) - see
+-- lib/tradeExcursions.js's computeExcursion and NOTES.md for the two
+-- worked examples this was specified against. drawdown_seconds is
+-- cumulative time the position's unrealized P&L was underwater, summed
+-- across every separate underwater period, not just time-to-first-
+-- recovery - unaffected by the capping above, which is only about not
+-- overstating how far an excursion went, not about when it happened.
 --
 -- market_data_status drives display and the retry job, not just a cache
 -- flag: 'pending' means blocked on this account's confirmed ~8-hour

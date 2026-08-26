@@ -188,21 +188,38 @@ def session_date_for(ts_utc):
     return d
 
 
-def compute_excursion(bars, entry, direction):
+EXIT_LEVEL_EPSILON = 0.0001
+
+
+def compute_excursion(bars, entry, direction, stop=None, target=None, exit_price=None):
     """Mirrors lib/tradeExcursions.js's computeExcursion: MFE/MAE and
     per-bar drawdown via each bar's high/low (not closes), summing every
-    separate underwater run of bars rather than just the first."""
+    separate underwater run of bars rather than just the first.
+
+    MFE/MAE are capped at the trade's own target/stop whenever the trade's
+    final exit leg (exit_price) actually landed on that level - a stop-loss
+    or take-profit order closes the position the instant price reaches it,
+    so anything a 1-minute bar's high/low shows beyond that level for the
+    same minute is intra-bar movement the trade was never actually exposed
+    to. See lib/tradeExcursions.js's own copy of this function for the full
+    explanation."""
     highs = bars['high'].tolist()
     lows = bars['low'].tolist()
     max_high = max(highs)
     min_low = min(lows)
 
+    hit_stop = stop is not None and exit_price is not None and abs(exit_price - stop) <= EXIT_LEVEL_EPSILON
+    hit_target = target is not None and exit_price is not None and abs(exit_price - target) <= EXIT_LEVEL_EPSILON
+
     if direction == 'long':
-        mfe_points = max_high - entry
-        mae_points = entry - min_low
+        raw_mfe = max_high - entry
+        raw_mae = entry - min_low
     else:
-        mfe_points = entry - min_low
-        mae_points = max_high - entry
+        raw_mfe = entry - min_low
+        raw_mae = max_high - entry
+
+    mfe_points = abs(target - entry) if hit_target else raw_mfe
+    mae_points = abs(stop - entry) if hit_stop else raw_mae
 
     underwater_bars = 0
     for high, low in zip(highs, lows):
@@ -322,7 +339,11 @@ def main():
             skipped_no_bars += 1
             continue
 
-        mfe_points, mae_points, drawdown_seconds = compute_excursion(window_bars, trade['entry'], trade['direction'])
+        final_exit_price = raw_window['legs'][-1]['price']
+        mfe_points, mae_points, drawdown_seconds = compute_excursion(
+            window_bars, trade['entry'], trade['direction'],
+            stop=trade.get('stop'), target=trade.get('target'), exit_price=final_exit_price,
+        )
         patch = requests.patch(f'{supabase_url}/rest/v1/trades',
                                 params={'id': f'eq.{trade["id"]}'},
                                 headers=headers,

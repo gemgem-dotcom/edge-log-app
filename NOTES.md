@@ -224,9 +224,30 @@ silently "fixed" or silently left stale:
   resolvable here where `7e8616fb` wasn't - flagged for a decision before writing
   anything.
 
-Both trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
-`excursion_fallback` values they already had before this note was written - nothing
-in PR #122 touched them.
+- **`076af9b3-312c-47c8-9987-1e6176545a6b`** - found surfacing a negative MAE
+  (`-12.00`) under the tick-level rewrite below; `excursion_fallback = true`.
+  This trade's date (2026-06-16) is 3 days before the June 2026 quarterly
+  roll, squarely in `ROLL_PROXIMITY_DAYS` - an initial check against plain
+  `NQ.c.0` found a ~350-point gap between the logged entry (30901) and real
+  price at that time, which looked like the roll-resolution bug PR #122
+  fixed, but was actually a mistake in the diagnostic itself (it fetched the
+  continuous symbol directly without applying the roll-aware volume
+  resolution the live code uses). Redone correctly, against the actual
+  volume-winning contract (NQU6, instrument_id 42004177): the **exit** price
+  (30669.25) matches cleanly, 34 real prints touching it right around the
+  logged exit time. The **entry** price (30901) does not - nearest real
+  trade at the logged entry instant was 30861.25, about 40 points away, and
+  it stays untouched across the whole ±15-minute window checked. Same class
+  of issue as `7e8616fb` (a logged price that doesn't match real market
+  data, not a timestamp or algorithm problem), and the trade's own fields
+  are otherwise internally consistent (stop/target correctly derived from
+  entry via distance for a short). Flagged for a decision before writing
+  anything - not corrected.
+
+All three trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
+`excursion_fallback` values they already had before this note was written -
+nothing here touched them, and all three are excluded from every automated
+recompute (`scripts/recompute-trade-excursions.js`'s `MANUAL_REVIEW_TRADE_IDS`).
 
 ### A transient Databento fetch error could permanently discard excursion data
 

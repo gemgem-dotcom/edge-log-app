@@ -176,9 +176,9 @@ credit.
 
 ### Known excursion (MFE/MAE/drawdown) data issues - needs a human look
 
-Two trades' `mfe_points`/`mae_points`/`drawdown_seconds` were deliberately left
-un-recomputed by PR #122's fix and excluded from its bulk recompute, rather than
-silently "fixed" or silently left stale:
+Two trades' `mfe_points`/`mae_points`/`drawdown_seconds` remain deliberately
+un-recomputed and excluded from the bulk recompute, rather than silently
+"fixed" or silently left stale:
 
 - **`7e8616fb-334b-4465-8a2f-e572b634df5a`** - two independent, unrelated corrections
   (fill-instant precision, and volume-based front-month resolution near a quarterly
@@ -202,28 +202,6 @@ silently "fixed" or silently left stale:
   corrected timestamp could be identified from this data source with any
   confidence, so nothing was written - this needs the trader's own memory of the
   trade, not further automated searching.
-- **`137c4594-c6d0-40f1-904f-acb9e71d9ef6`** - also failed to find a matching bar for
-  at least one leg (`excursion_fallback = true`) under the fill-instant fix, same as
-  `7e8616fb`, but *not* near any quarterly roll - so the front-month question doesn't
-  apply here. Flagged during PR #122's diagnostic and deliberately not investigated
-  further per that PR's own scope.
-
-  **Follow-up (real match found, needs a human decision - not yet corrected):** this
-  losing long (entry 29572, stop/exit 29536, logged 09:51:52-09:58:38 ET) was
-  suspected to be the "MAE and exit coincide, no distinct bar" case, but the actual
-  ±5-minute bar data around the logged times rules that out. The *only* one-minute
-  bar in that window touching entry, exit, and stop simultaneously is
-  `2026-08-19T13:48:00Z` (O 29583.75 / H 29592.25 / L 29515 / C 29517.25) - about 4
-  minutes before the logged entry instant (13:51:52Z) and about 10 minutes before
-  the logged exit instant (13:58:38Z). By the logged entry instant, price had
-  already fallen well past the stop (low 29406.5 on the 13:51 bar) - i.e. real price
-  action shows this trade's entry and stop-out both happening inside that same
-  single minute, a much faster and earlier move than the ~7-minute duration
-  currently logged. This is the same class of issue as `7e8616fb` (logged timestamp
-  not matching real price action), not the hypothesized mechanism, and it looks
-  resolvable here where `7e8616fb` wasn't - flagged for a decision before writing
-  anything.
-
 - **`076af9b3-312c-47c8-9987-1e6176545a6b`** - found surfacing a negative MAE
   (`-12.00`) under the tick-level rewrite below; `excursion_fallback = true`.
   This trade's date (2026-06-16) is 3 days before the June 2026 quarterly
@@ -244,10 +222,23 @@ silently "fixed" or silently left stale:
   entry via distance for a short). Flagged for a decision before writing
   anything - not corrected.
 
-All three trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
+Both trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
 `excursion_fallback` values they already had before this note was written -
-nothing here touched them, and all three are excluded from every automated
+nothing here touched them, and both are excluded from every automated
 recompute (`scripts/recompute-trade-excursions.js`'s `MANUAL_REVIEW_TRADE_IDS`).
+
+**A third flagged trade, `137c4594-c6d0-40f1-904f-acb9e71d9ef6`, has since been
+corrected and removed from that set.** It was flagged for the same reason as
+the two above (`excursion_fallback = true`, no matching bar for at least one
+leg) but, unlike them, a specific real fill instant *could* be identified with
+confidence: a manual tick-level search (`trades` schema, wide window) found
+the actual entry print at `2026-08-19T13:41:51.549Z` and exit print at
+`2026-08-19T13:48:35.070Z` - both about 10 minutes earlier than this trade's
+originally logged times, which the trader confirmed was a logging error made
+at the time. Corrected and written by hand (not by the automated recompute):
+`trade_time` 09:41:51 ET, `exit_time` 09:48:35 ET, `mfe_points = 63.50`,
+`mae_points = 36.00`, `drawdown_seconds = 39`, `market_data_status =
+'complete'`, `excursion_fallback = false`.
 
 ### A transient Databento fetch error could permanently discard excursion data
 

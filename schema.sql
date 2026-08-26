@@ -595,15 +595,35 @@ alter table trades add column if not exists market_data_status text;
 
 -- trade_time/exit_time are only reliably accurate to the minute - the
 -- seconds field is frequently a TimePicker default, not a real observation
--- (see lib/tradeExcursions.js's findFillInstant/deriveFillInstants for the
--- full mechanism). Rather than trust that logged second as the window
--- boundary, the entry/exit instants actually fed into computeExcursion are
--- derived from the first bar where price touches the real fill level
--- (entry price / that leg's own exit price), searched within the logged
--- minute and the one immediately before/after. excursion_fallback is true
--- when that search failed for the entry or any exit leg and fell back to
--- the raw logged timestamp instead - a trade marked true still carries the
--- original second-level imprecision this mechanism exists to remove, so
--- it needs to stay visible and queryable, not silently indistinguishable
--- from a trade whose window was fully price-derived.
+-- (see lib/tradeExcursions.js's findFillTick/deriveFillTicks for the full
+-- mechanism). Rather than trust that logged second as the window boundary,
+-- the entry/exit instants actually fed into computeExcursion are derived
+-- from the first real trade print that touches the fill level (entry price
+-- / that leg's own exit price), searched within roughInstant ±
+-- FILL_SEARCH_PAD_MINUTES. excursion_fallback is true when that search
+-- failed for the entry or any exit leg and fell back to the raw logged
+-- timestamp instead - a trade marked true still carries the original
+-- second-level imprecision this mechanism exists to remove, so it needs to
+-- stay visible and queryable, not silently indistinguishable from a trade
+-- whose window was fully price-derived.
 alter table trades add column if not exists excursion_fallback boolean;
+
+-- Whether trade_time/exit_time's *own logged second* could be corrected to
+-- a real one. Unlike excursion_fallback above, this doesn't touch the
+-- ±FILL_SEARCH_PAD_MINUTES search used for MFE/MAE windowing - it's a
+-- separate, stricter search (lib/tradeExcursions.js's
+-- findVerifiedMinuteFill/deriveVerifiedTimes) bounded to exactly the
+-- trader's own logged minute, on the premise that the minute itself is
+-- trustworthy and only the second (usually just a TimePicker default, per
+-- the comment above) isn't. app/api/backfill-trade-excursion/route.js
+-- overwrites trade_time/exit_time (and each additional_exits leg) with the
+-- real second whenever that search succeeds, using the same trade-print
+-- fetch already made for excursion computation - no extra Databento call.
+-- trade_time_unverified is true when it *didn't* for the entry or some
+-- exit leg - that logged price never actually traded during its own
+-- logged minute, so that field was left exactly as logged and the trader
+-- should double-check it. Surfaced on the trade detail page and the trade
+-- log's expand row (unlike excursion_fallback, which stays developer-only)
+-- for exactly that reason - it's a claim about what the trader themselves
+-- logged, not an internal computation detail.
+alter table trades add column if not exists trade_time_unverified boolean;

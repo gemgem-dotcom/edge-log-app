@@ -343,6 +343,55 @@ function deriveFillTicks({ rawWindow, entryPrice, ticks }) {
   return { entryInstant: entryFill.instant, exitInstant: lastInstant, usedFallback }
 }
 
+// See lib/tradeExcursions.js's floorToMinute/findVerifiedMinuteFill/
+// deriveVerifiedTimes/instantToWallClockTime for the full explanation -
+// this is the same logic, standalone.
+function floorToMinute(instant) {
+  return new Date(Math.floor(instant.getTime() / 60000) * 60000)
+}
+
+function findVerifiedMinuteFill({ ticks, roughInstant, price, afterInstant }) {
+  const minuteStartMs = floorToMinute(roughInstant).getTime()
+  const minuteEndMs = minuteStartMs + 59999
+  const windowStartMs = Math.max(minuteStartMs, afterInstant ? afterInstant.getTime() : -Infinity)
+
+  let best = null
+  for (const tick of ticks) {
+    if (!tickTouchesPrice(tick, price)) continue
+    const instant = parseTickInstant(tick.tsEvent)
+    if (!instant) continue
+    const ms = instant.getTime()
+    if (ms < windowStartMs || ms > minuteEndMs) continue
+    if (!best || ms < best.getTime()) best = instant
+  }
+  if (best) return { instant: best, matched: true }
+  return { instant: new Date(minuteStartMs), matched: false }
+}
+
+function deriveVerifiedTimes({ rawWindow, entryPrice, ticks }) {
+  const entryFill = findVerifiedMinuteFill({ ticks, roughInstant: rawWindow.entryInstant, price: entryPrice })
+  let anyUnverified = !entryFill.matched
+  let lastInstant = entryFill.instant
+
+  const legs = []
+  for (const leg of rawWindow.legs) {
+    const legFill = findVerifiedMinuteFill({ ticks, roughInstant: leg.instant, price: leg.price, afterInstant: lastInstant })
+    if (!legFill.matched) anyUnverified = true
+    legs.push(legFill)
+    lastInstant = legFill.instant
+  }
+
+  return { entry: entryFill, legs, anyUnverified }
+}
+
+function instantToWallClockTime(instant, offsetHours) {
+  const local = new Date(instant.getTime() + offsetHours * 3600000)
+  const hh = String(local.getUTCHours()).padStart(2, '0')
+  const mm = String(local.getUTCMinutes()).padStart(2, '0')
+  const ss = String(local.getUTCSeconds()).padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
+}
+
 function sliceTicksForWindow(ticks, entryInstant, exitInstant) {
   return ticks
     .map((tick) => ({ ...tick, instant: parseTickInstant(tick.tsEvent) }))
@@ -418,6 +467,8 @@ async function main() {
 
   let recomputed = 0
   let changed = 0
+  let timesCorrected = 0
+  let timesFlagged = 0
   let skippedNotNq = 0
   let skippedNoWindow = 0
   let skippedStillEmbargoed = 0
@@ -489,18 +540,46 @@ async function main() {
         valueChanged(trade.drawdown_seconds, drawdownSeconds) ||
         Boolean(trade.excursion_fallback) !== usedFallback
 
+      // See app/api/backfill-trade-excursion/route.js for why this reuses
+      // the same fetched `ticks` rather than a second Databento call.
+      const verifiedTimes = deriveVerifiedTimes({ rawWindow, entryPrice: trade.entry, ticks })
+      const correctedTradeTime = verifiedTimes.entry.matched
+        ? instantToWallClockTime(verifiedTimes.entry.instant, offsetHours)
+        : trade.trade_time
+      const correctedExitTime = verifiedTimes.legs[0]?.matched
+        ? instantToWallClockTime(verifiedTimes.legs[0].instant, offsetHours)
+        : trade.exit_time
+      const correctedAdditionalExits = (trade.additional_exits || []).map((exit, i) => {
+        const legFill = verifiedTimes.legs[i + 1]
+        return legFill?.matched ? { ...exit, exit_time: instantToWallClockTime(legFill.instant, offsetHours) } : exit
+      })
+      const timeChanged = correctedTradeTime !== trade.trade_time ||
+        correctedExitTime !== trade.exit_time ||
+        correctedAdditionalExits.some((exit, i) => exit.exit_time !== (trade.additional_exits || [])[i]?.exit_time)
+
       await admin.from('trades').update({
         mfe_points: mfePoints,
         mae_points: maePoints,
         drawdown_seconds: drawdownSeconds,
         market_data_status: 'complete',
         excursion_fallback: usedFallback,
+        trade_time: correctedTradeTime,
+        exit_time: correctedExitTime,
+        additional_exits: correctedAdditionalExits,
+        trade_time_unverified: verifiedTimes.anyUnverified,
       }).eq('id', trade.id)
 
       recomputed += 1
       if (isChanged) {
         changed += 1
         log(`Trade ${trade.id} changed: mfe ${trade.mfe_points} -> ${mfePoints.toFixed(2)}, mae ${trade.mae_points} -> ${maePoints.toFixed(2)}, drawdown ${trade.drawdown_seconds}s -> ${drawdownSeconds}s${usedFallback ? ' [fallback timestamp used]' : ''}`)
+      }
+      if (timeChanged) {
+        timesCorrected += 1
+        log(`Trade ${trade.id} time corrected: trade_time ${trade.trade_time} -> ${correctedTradeTime}, exit_time ${trade.exit_time} -> ${correctedExitTime}`)
+      }
+      if (verifiedTimes.anyUnverified) {
+        timesFlagged += 1
       }
     } catch (err) {
       // A recompute failure should never destroy already-good stored
@@ -511,6 +590,7 @@ async function main() {
   }
 
   log(`Recomputed: ${recomputed}. Values actually changed: ${changed}. Unchanged (recomputed to the same values): ${recomputed - changed}.`)
+  log(`Trade times corrected to a verified second: ${timesCorrected}. Flagged trade_time_unverified (logged price didn't verify in its own minute): ${timesFlagged}.`)
   log(`Skipped - flagged for manual review: ${skippedManualReview}. Not NQ-family: ${skippedNotNq}. No timezone/exit window: ${skippedNoWindow}. Still within embargo: ${skippedStillEmbargoed}. No trade prints found: ${skippedNoTicks}. Errored (left untouched): ${skippedError}.`)
 }
 

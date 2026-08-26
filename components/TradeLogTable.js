@@ -444,7 +444,10 @@ export default function TradeLogTable({
                             <label>Entry</label>
                             <div>
                               {fmtNum(t.entry)}
-                              <div className="detail-subvalue">{formatTime12h(t.trade_time)}</div>
+                              <div className="detail-subvalue">
+                                {formatTime12h(t.trade_time)}
+                                {t.trade_time_unverified && <span className="time-unverified-badge" title="The entry or exit price logged for this trade wasn't seen trading during its own logged minute - double-check the times/prices you entered.">Unverified</span>}
+                              </div>
                             </div>
                           </div>
                           <div>

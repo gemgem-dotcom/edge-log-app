@@ -339,6 +339,55 @@ function deriveFillTicks({ rawWindow, entryPrice, ticks }) {
   return { entryInstant: entryFill.instant, exitInstant: lastInstant, usedFallback }
 }
 
+// See lib/tradeExcursions.js's floorToMinute/findVerifiedMinuteFill/
+// deriveVerifiedTimes/instantToWallClockTime for the full explanation -
+// this is the same logic, standalone.
+function floorToMinute(instant) {
+  return new Date(Math.floor(instant.getTime() / 60000) * 60000)
+}
+
+function findVerifiedMinuteFill({ ticks, roughInstant, price, afterInstant }) {
+  const minuteStartMs = floorToMinute(roughInstant).getTime()
+  const minuteEndMs = minuteStartMs + 59999
+  const windowStartMs = Math.max(minuteStartMs, afterInstant ? afterInstant.getTime() : -Infinity)
+
+  let best = null
+  for (const tick of ticks) {
+    if (!tickTouchesPrice(tick, price)) continue
+    const instant = parseTickInstant(tick.tsEvent)
+    if (!instant) continue
+    const ms = instant.getTime()
+    if (ms < windowStartMs || ms > minuteEndMs) continue
+    if (!best || ms < best.getTime()) best = instant
+  }
+  if (best) return { instant: best, matched: true }
+  return { instant: new Date(minuteStartMs), matched: false }
+}
+
+function deriveVerifiedTimes({ rawWindow, entryPrice, ticks }) {
+  const entryFill = findVerifiedMinuteFill({ ticks, roughInstant: rawWindow.entryInstant, price: entryPrice })
+  let anyUnverified = !entryFill.matched
+  let lastInstant = entryFill.instant
+
+  const legs = []
+  for (const leg of rawWindow.legs) {
+    const legFill = findVerifiedMinuteFill({ ticks, roughInstant: leg.instant, price: leg.price, afterInstant: lastInstant })
+    if (!legFill.matched) anyUnverified = true
+    legs.push(legFill)
+    lastInstant = legFill.instant
+  }
+
+  return { entry: entryFill, legs, anyUnverified }
+}
+
+function instantToWallClockTime(instant, offsetHours) {
+  const local = new Date(instant.getTime() + offsetHours * 3600000)
+  const hh = String(local.getUTCHours()).padStart(2, '0')
+  const mm = String(local.getUTCMinutes()).padStart(2, '0')
+  const ss = String(local.getUTCSeconds()).padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
+}
+
 function sliceTicksForWindow(ticks, entryInstant, exitInstant) {
   return ticks
     .map((tick) => ({ ...tick, instant: parseTickInstant(tick.tsEvent) }))
@@ -467,12 +516,31 @@ async function main() {
         entry: trade.entry,
         direction: trade.direction,
       })
+
+      // See app/api/backfill-trade-excursion/route.js for why this reuses
+      // the same fetched `ticks` rather than a second Databento call.
+      const verifiedTimes = deriveVerifiedTimes({ rawWindow, entryPrice: trade.entry, ticks })
+      const correctedTradeTime = verifiedTimes.entry.matched
+        ? instantToWallClockTime(verifiedTimes.entry.instant, offsetHours)
+        : trade.trade_time
+      const correctedExitTime = verifiedTimes.legs[0]?.matched
+        ? instantToWallClockTime(verifiedTimes.legs[0].instant, offsetHours)
+        : trade.exit_time
+      const correctedAdditionalExits = (trade.additional_exits || []).map((exit, i) => {
+        const legFill = verifiedTimes.legs[i + 1]
+        return legFill?.matched ? { ...exit, exit_time: instantToWallClockTime(legFill.instant, offsetHours) } : exit
+      })
+
       await admin.from('trades').update({
         mfe_points: mfePoints,
         mae_points: maePoints,
         drawdown_seconds: drawdownSeconds,
         market_data_status: 'complete',
         excursion_fallback: usedFallback,
+        trade_time: correctedTradeTime,
+        exit_time: correctedExitTime,
+        additional_exits: correctedAdditionalExits,
+        trade_time_unverified: verifiedTimes.anyUnverified,
       }).eq('id', trade.id)
       completed += 1
     } catch (err) {

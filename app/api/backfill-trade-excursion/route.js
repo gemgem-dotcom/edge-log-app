@@ -13,7 +13,7 @@
 // ohlcv-1m bars).
 import { createClient } from '@supabase/supabase-js'
 import { fetchTrades, NQ_CONTINUOUS_SYMBOL, isNearRollover, sessionBoundsFor, resolveFrontMonthByVolume } from '@/lib/databento'
-import { excursionWindow, computeExcursion, isEmbargoError, deriveFillTicks, sliceTicksForWindow, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
+import { excursionWindow, computeExcursion, isEmbargoError, deriveFillTicks, sliceTicksForWindow, deriveVerifiedTimes, instantToWallClockTime, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -117,13 +117,36 @@ export async function POST(req) {
     entry: trade.entry,
     direction: trade.direction,
   })
+
+  // Separate, stricter minute-bounded search over the same already-fetched
+  // `ticks` - see deriveVerifiedTimes for why this can't just reuse
+  // entryInstant/exitInstant above. Only overwrites a field whose logged
+  // price actually verified against a real print in its own logged
+  // minute; anything that didn't stays exactly as logged, flagged via
+  // trade_time_unverified for the trader to double-check.
+  const verifiedTimes = deriveVerifiedTimes({ rawWindow, entryPrice: trade.entry, ticks })
+  const correctedTradeTime = verifiedTimes.entry.matched
+    ? instantToWallClockTime(verifiedTimes.entry.instant, timezoneOffset)
+    : trade.trade_time
+  const correctedExitTime = verifiedTimes.legs[0]?.matched
+    ? instantToWallClockTime(verifiedTimes.legs[0].instant, timezoneOffset)
+    : trade.exit_time
+  const correctedAdditionalExits = (trade.additional_exits || []).map((exit, i) => {
+    const legFill = verifiedTimes.legs[i + 1]
+    return legFill?.matched ? { ...exit, exit_time: instantToWallClockTime(legFill.instant, timezoneOffset) } : exit
+  })
+
   await admin.from('trades').update({
     mfe_points: mfePoints,
     mae_points: maePoints,
     drawdown_seconds: drawdownSeconds,
     market_data_status: 'complete',
     excursion_fallback: usedFallback,
+    trade_time: correctedTradeTime,
+    exit_time: correctedExitTime,
+    additional_exits: correctedAdditionalExits,
+    trade_time_unverified: verifiedTimes.anyUnverified,
   }).eq('id', tradeId)
 
-  return json({ status: 'complete', usedFallback })
+  return json({ status: 'complete', usedFallback, timeUnverified: verifiedTimes.anyUnverified })
 }

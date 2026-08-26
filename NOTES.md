@@ -240,6 +240,40 @@ at the time. Corrected and written by hand (not by the automated recompute):
 `mae_points = 36.00`, `drawdown_seconds = 39`, `market_data_status =
 'complete'`, `excursion_fallback = false`.
 
+### trade_time/exit_time's own logged second can be corrected, separately from MFE/MAE
+
+`137c4594`'s correction above was done by hand because the discrepancy was a
+whole ~10 minutes - a real "the trader mislogged this" case needing a human
+decision, not something to automate. But the much smaller, universal version of
+that problem - the *second* within an otherwise-correct logged minute being
+untrustworthy (a TimePicker default, not a real observation - see the
+`excursion_fallback` comment above and schema.sql's) - doesn't need a human
+per trade. If the trader is trusted to have logged the right minute, and their
+entry/exit price actually traded at some point during that exact minute, the
+real trade print that touched it *is* the real second.
+
+`lib/tradeExcursions.js`'s `findVerifiedMinuteFill`/`deriveVerifiedTimes` do
+that: for each of entry and every exit leg, search the *already-fetched* trade
+prints (no extra Databento call) for the earliest one touching that leg's
+price, bounded strictly to that leg's own logged minute - not the wider
+±`FILL_SEARCH_PAD_MINUTES` window `findFillTick`/`deriveFillTicks` use for MFE/
+MAE windowing, since that window exists to tolerate a somewhat-off instant, not
+to license relabeling which minute a logged time belongs to. When a leg's
+price never actually traded during its own logged minute, that field is left
+exactly as logged rather than guessed at, and the whole trade gets
+`trade_time_unverified = true` - unlike `excursion_fallback`, this is shown to
+the trader (trade detail page, log table's expand row), since it's a claim
+about what *they* logged, not an internal computation detail.
+
+Wired into all three places that already compute MFE/MAE from trade prints -
+the live route (`app/api/backfill-trade-excursion/route.js`), the hourly retry
+job, and the one-time recompute script - so `trade_time`/`exit_time` (and each
+`additional_exits` leg) get corrected going forward for every new trade, and
+were corrected in bulk for every existing `complete` trade in the same
+`scripts/recompute-trade-excursions.js` run that shipped this (see that run's
+own log for exactly how many trades' times actually changed vs. how many got
+flagged unverified).
+
 ### A transient Databento fetch error could permanently discard excursion data
 
 Found investigating a user report of a trade whose MFE/MAE/Time in drawdown

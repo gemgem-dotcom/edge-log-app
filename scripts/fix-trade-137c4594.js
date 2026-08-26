@@ -73,9 +73,16 @@ function instantToWallClockTime(instant, offsetHours) {
   return `${hh}:${mm}:${ss}`
 }
 
+// A clean, explicit, generous window - wide enough to comfortably contain
+// the ~10-minute discrepancy already observed for this trade, applied
+// consistently to both entry and exit (the previous run used a narrower,
+// inconsistently-derived window that clipped the true earliest entry
+// touch by well under a second, cascading into slightly wrong values).
+const MANUAL_SEARCH_PAD_MINUTES = 20
+
 function tickTouchesPrice(t, p) { return Math.abs(t.price - p) <= FILL_PRICE_EPSILON }
 function findFillTick({ ticks, roughInstant, price, afterInstant }) {
-  const padMs = FILL_SEARCH_PAD_MINUTES * 60000 * 5 // wide margin for this manual re-derivation
+  const padMs = MANUAL_SEARCH_PAD_MINUTES * 60000
   const windowStartMs = Math.max(roughInstant.getTime() - padMs, afterInstant ? afterInstant.getTime() : -Infinity)
   const windowEndMs = roughInstant.getTime() + padMs
   let best = null
@@ -109,12 +116,20 @@ async function main() {
   const roughEntryInstant = wallClockToInstant(trade.trade_date, trade.trade_time, offsetHours)
   const roughExitInstant = wallClockToInstant(trade.trade_date, trade.exit_time, offsetHours)
 
-  const padMs = 15 * 60000
-  const start = new Date(roughEntryInstant.getTime() - padMs).toISOString()
-  const end = new Date(roughExitInstant.getTime() + padMs).toISOString()
+  const fetchPadMs = MANUAL_SEARCH_PAD_MINUTES * 60000
+  const start = new Date(roughEntryInstant.getTime() - fetchPadMs).toISOString()
+  const end = new Date(roughExitInstant.getTime() + fetchPadMs).toISOString()
   const rawTicks = await fetchTrades({ symbol: 'NQ.c.0', start, end })
   const ticks = rawTicks.map((t) => ({ ...t, instant: parseTickInstant(t.tsEvent) })).filter((t) => t.instant).sort((a, b) => a.instant.getTime() - b.instant.getTime())
-  log(`${ticks.length} tick(s) fetched.`)
+  log(`${ticks.length} tick(s) fetched (fetch window ±${MANUAL_SEARCH_PAD_MINUTES}min).`)
+
+  // Sanity check: how many distinct touches of each price exist in the
+  // whole fetched window - confirms this is a clean, unambiguous match
+  // rather than a commonly-retested level (the 7e8616fb-style problem).
+  const entryTouches = ticks.filter((t) => tickTouchesPrice(t, trade.entry))
+  const exitTouches = ticks.filter((t) => tickTouchesPrice(t, trade.exit_price))
+  log(`Entry price ${trade.entry} touched ${entryTouches.length} time(s) in the fetch window; first=${entryTouches[0]?.instant.toISOString()}, last=${entryTouches[entryTouches.length - 1]?.instant.toISOString()}`)
+  log(`Exit price ${trade.exit_price} touched ${exitTouches.length} time(s) in the fetch window; first=${exitTouches[0]?.instant.toISOString()}, last=${exitTouches[exitTouches.length - 1]?.instant.toISOString()}`)
 
   const entryFill = findFillTick({ ticks, roughInstant: roughEntryInstant, price: trade.entry })
   if (!entryFill.matched) throw new Error('Entry fill not matched - refusing to write.')

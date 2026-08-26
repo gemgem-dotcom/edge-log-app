@@ -86,8 +86,18 @@ export async function POST(req) {
       await admin.from('trades').update({ market_data_status: 'pending' }).eq('id', tradeId)
       return json({ status: 'pending' })
     }
-    await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', tradeId)
-    return json({ status: 'unavailable', reason: err.message })
+    // A fetch-level failure here (network hiccup, transient 5xx, rate
+    // limit) isn't reliably distinguishable from isEmbargoError's own two
+    // known cases without deeper Databento-specific error taxonomy -
+    // default to retryable rather than silently and permanently
+    // discarding data that's actually recoverable (confirmed happened to
+    // a real trade - see NOTES.md). The hourly retry job
+    // (scripts/retry-trade-excursions.js) picks 'pending' rows back up;
+    // the deterministic misses above (unsupported instrument, no
+    // timezone/window) are genuinely permanent and still go straight to
+    // 'unavailable'.
+    await admin.from('trades').update({ market_data_status: 'pending' }).eq('id', tradeId)
+    return json({ status: 'pending', reason: err.message })
   }
 
   if (bars.length === 0) {

@@ -228,6 +228,35 @@ Both trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
 `excursion_fallback` values they already had before this note was written - nothing
 in PR #122 touched them.
 
+### A transient Databento fetch error could permanently discard excursion data
+
+Found investigating a user report of a trade whose MFE/MAE/Time in drawdown
+never filled in. Trade `471db32c-4be5-4fbc-9014-7c59db1f5326` (2026-08-25,
+short, entry 29398, exit 29268) correctly went `pending` at save time (still
+within the ~8h Databento access embargo), but was later found stuck on
+`market_data_status = 'unavailable'` - a status the hourly retry job
+(`scripts/retry-trade-excursions.js`) never revisits. A live re-fetch of the
+exact same window found Databento had perfectly good data the whole time (20
+bars, clean fill-instant match on both legs, no fallback needed) - so the
+data was never actually unrecoverable.
+
+Root cause: both `app/api/backfill-trade-excursion/route.js` and
+`scripts/retry-trade-excursions.js` treated *any* non-embargo error from the
+Databento fetch call as a permanent miss, identical to a genuinely
+deterministic one (unsupported instrument, no bars returned). A one-off
+network hiccup, transient 5xx, or rate limit during a single hourly retry was
+enough to permanently bury a trade's data with no way back. Fixed in both
+places to leave the trade `pending` instead on a non-embargo fetch error, so
+the hourly retry job keeps trying - the same treatment an embargo holdover
+past its expected clear time already got. See `schema.sql`'s comment above
+`market_data_status` for the corrected state semantics.
+
+This one trade was manually corrected afterward using the same logic the
+fixed code now runs automatically (`mfe_points=137.75`, `mae_points=16.75`,
+`drawdown_seconds=120`, `excursion_fallback=false`) - no other trades were
+found in this state at the time, but any future occurrence should now
+self-heal within an hour instead of getting stuck.
+
 ## Removing an instrument
 
 The kebab menu next to the title on each per-instrument page (Overview, Trade Log,

@@ -442,9 +442,17 @@ async function main() {
         stillPending += 1
         log(`Trade ${trade.id} still embargoed past expected clear time: ${err.message}`)
       } else {
-        await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', trade.id)
-        unavailable += 1
-        log(`Trade ${trade.id} failed non-embargo: ${err.message}`)
+        // A fetch-level failure here (network hiccup, transient 5xx, rate
+        // limit) isn't reliably distinguishable from a genuinely permanent
+        // one without deeper Databento-specific error taxonomy than
+        // isEmbargoError covers - leave it pending for next hour's retry
+        // rather than permanently discarding data that may well be
+        // recoverable (confirmed happened to a real trade - see NOTES.md).
+        // The deterministic misses above (unsupported instrument, no
+        // timezone/window, zero bars, zero window bars) are genuinely
+        // permanent and still go straight to 'unavailable'.
+        stillPending += 1
+        log(`Trade ${trade.id} failed non-embargo, left pending for retry: ${err.message}`)
       }
     }
   }

@@ -566,11 +566,15 @@ alter table trades add column if not exists volume_regime text;
 --
 -- market_data_status drives display and the retry job, not just a cache
 -- flag: 'pending' means blocked on this account's confirmed ~8-hour
--- GLBX.MDP3 access embargo (not a bug - see NOTES.md), not on unbuilt
--- infrastructure, so it reads differently in the UI than a plain
--- placeholder. 'unavailable' means a genuine, non-retryable miss (wrong/
--- unsupported instrument, no bars returned, a non-embargo API error) -
--- set explicitly rather than left stuck in 'pending' forever. null (no
+-- GLBX.MDP3 access embargo (not a bug - see NOTES.md) *or* on a fetch
+-- attempt that failed for some other, not-reliably-classifiable reason
+-- (network hiccup, transient 5xx, rate limit) - left retryable by design,
+-- since a real trade was once silently and permanently lost to exactly
+-- this (a transient failure treated as terminal) before this comment was
+-- corrected; see NOTES.md. 'unavailable' means a genuine, deterministic,
+-- non-retryable miss (wrong/unsupported instrument, no timezone or exit
+-- window, zero bars returned, zero bars in the derived fill window) - set
+-- explicitly rather than left stuck in 'pending' forever. null (no
 -- default) means this trade has never been attempted yet, or isn't on an
 -- NQ-family instrument - same "not yet applicable" principle as
 -- volatility_regime/volume_regime above, not a fourth status to branch on.

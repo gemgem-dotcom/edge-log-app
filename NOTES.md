@@ -295,9 +295,10 @@ bar count by 60. `findFillTick`/`deriveFillTicks` replace the old
 `findFillInstant`/`deriveFillInstants`: same idea (match the trade's
 logged entry/exit price against real market data near the logged time,
 falling back to the raw wall-clock instant if nothing matches), but
-picking whichever matching tick is closest in time rather than checking a
-priority-ordered set of minute buckets, since a tick doesn't need bucket
-alignment the way a bar did.
+picking the *earliest* qualifying match rather than checking a priority-
+ordered set of minute buckets, since a tick doesn't need bucket alignment
+the way a bar did (see the correction below for why "earliest," not
+"closest in time," is the right rule).
 
 Every existing `complete` trade's `mfe_points`/`mae_points`/
 `drawdown_seconds` was recomputed under this rule
@@ -305,6 +306,34 @@ Every existing `complete` trade's `mfe_points`/`mae_points`/
 Actions workflow) - except the two trades flagged above under "Known
 excursion data issues," which are excluded from every automated recompute
 until a human looks at them directly.
+
+### Fill matching picks the *first* touch of the price, not the closest-in-time one
+
+The initial tick-level version above still had a bug: `findFillTick`
+picked whichever matching tick was closest in time to the trade's logged
+(only ~1-minute-accurate) clock time, not the first one chronologically.
+Those aren't the same thing, and the difference matters: if price touched
+the entry level, moved adverse, recovered, and touched it again nearer the
+logged time, closest-in-time would anchor the window at the *later*
+touch - silently missing the real adverse move in between. This is exactly
+what a trader's report of some trades showing `mae = 0` traced back to,
+and is also what produced trade `076af9b3`'s negative MAE (investigated
+below).
+
+The correct rule: MAE/MFE should count from the exact moment the market
+*first* reached the price the trader entered at - a limit order fills on
+first touch, and a market/stop order's fill price is whatever price was
+current the instant it triggered. Given logged times are only accurate to
+about a minute, the fix is to pick the earliest matching tick within the
+already-fetched, padded window, not the nearest-in-time one. Chained
+forward per leg (`afterInstant` in `findFillTick`) so a price level
+touched more than once can't accidentally match an exit leg to an earlier
+occurrence than the one that actually closed it (the same failure mode
+`7e8616fb`/`137c4594` hit, applied here to prevent it happening for the
+tick-level path too).
+
+Live-recomputed again after this fix - see the numbers below for what
+changed.
 
 `scripts/backfill_trade_excursions_from_dbn.py` (the one-time, already-run
 DBN-file backfill) was **not** upgraded to tick-level - it only ever reads

@@ -304,18 +304,18 @@ function parseTickInstant(tsEvent) {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-function findFillTick({ ticks, roughInstant, price }) {
+// See lib/tradeExcursions.js's own copy of this function for the full
+// explanation of why this picks the *earliest* qualifying match (at or
+// after afterInstant) rather than the closest-in-time one - this is the
+// same logic, standalone.
+function findFillTick({ ticks, roughInstant, price, afterInstant }) {
   let best = null
-  let bestDiffMs = Infinity
   for (const tick of ticks) {
     if (!tickTouchesPrice(tick, price)) continue
     const instant = parseTickInstant(tick.tsEvent)
     if (!instant) continue
-    const diffMs = Math.abs(instant.getTime() - roughInstant.getTime())
-    if (diffMs < bestDiffMs) {
-      bestDiffMs = diffMs
-      best = instant
-    }
+    if (afterInstant && instant.getTime() < afterInstant.getTime()) continue
+    if (!best || instant.getTime() < best.getTime()) best = instant
   }
   if (best) return { instant: best, matched: true }
   return { instant: roughInstant, matched: false }
@@ -327,7 +327,7 @@ function deriveFillTicks({ rawWindow, entryPrice, ticks }) {
   let lastInstant = entryFill.instant
 
   for (const leg of rawWindow.legs) {
-    const legFill = findFillTick({ ticks, roughInstant: leg.instant, price: leg.price })
+    const legFill = findFillTick({ ticks, roughInstant: leg.instant, price: leg.price, afterInstant: lastInstant })
     if (!legFill.matched) usedFallback = true
     lastInstant = legFill.instant
   }

@@ -485,6 +485,24 @@ file stays safe to re-run.
 
 Database edits should be additive (`add column`, `add constraint`). Avoid `drop`.
 
+## Uploaded files must be private and per-user
+
+Any file a user uploads to this app must only ever be viewable by that same user,
+verified through their actual login - never through a permanent or guessable link
+that works regardless of who's asking. Screenshots are the only upload type that
+exists today (`storage-setup.sql`'s `screenshots` bucket - private, not public;
+`lib/screenshots.js` uploads under the owning user's own `{user_id}/...` path and
+reads back through a short-lived signed URL generated at render time, never a
+stored permanent URL) and follow this rule exactly. If any future feature adds
+another kind of file upload, it should default to this same private,
+signed-URL, per-user-path pattern rather than a public bucket, unless there's a
+specific, deliberate reason a particular file needs to be publicly shareable.
+
+Trade data itself (entries, notes, tags) is already private per-user through a
+different, already-correct mechanism - Postgres Row Level Security, checked at
+the database level on every request rather than via a link. It satisfies the
+same principle already; nothing to change there.
+
 ## UI conventions
 
 - Section titles are `<h2 className="section-heading">` and sit **above** the card

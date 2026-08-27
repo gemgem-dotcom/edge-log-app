@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
 import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
 import { reverseTrade } from '../lib/edgeBeliefs'
+import { getScreenshotUrls } from '../lib/screenshots'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
@@ -152,6 +153,11 @@ export default function TradeLogTable({
   // to the right one, not just a bare URL.
   const [preview, setPreview] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  // Resolved signed URLs, keyed by trade id - fetched lazily as each row
+  // expands (not eagerly for every trade in the table) since the bucket is
+  // private and a stored screenshot_urls entry is a storage path, never a
+  // directly usable URL (see lib/screenshots.js's getScreenshotUrls).
+  const [resolvedScreenshots, setResolvedScreenshots] = useState({})
   const { confirm, modal: confirmModal } = useConfirm()
 
   // Filters open from a chevron on each column heading. Day and Strategy
@@ -186,8 +192,20 @@ export default function TradeLogTable({
     if (initial) setFilterStrategies([initial])
   }, [showFilters, showStrategyColumn])
 
+  function shotsFor(trade) {
+    return trade.screenshot_urls?.length ? trade.screenshot_urls : (trade.screenshot_url ? [trade.screenshot_url] : [])
+  }
+
   function toggleExpand(trade) {
+    const expanding = expandedId !== trade.id
     setExpandedId((prev) => (prev === trade.id ? null : trade.id))
+    if (expanding && !resolvedScreenshots[trade.id]) {
+      const shots = shotsFor(trade)
+      if (shots.length === 0) return
+      getScreenshotUrls(shots).then((urls) => {
+        setResolvedScreenshots((prev) => ({ ...prev, [trade.id]: urls }))
+      })
+    }
   }
 
   async function handleDelete(e, trade) {
@@ -391,7 +409,8 @@ export default function TradeLogTable({
             const hasMultipleExits = exitLegs.length > 1
             const totalExitContracts = exitLegs.reduce((sum, leg) => sum + (leg.contracts == null ? 0 : Number(leg.contracts)), 0)
             const lastLeg = exitLegs[exitLegs.length - 1]
-            const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
+            const shots = shotsFor(t)
+            const screenshotUrls = resolvedScreenshots[t.id] || []
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
             return (
@@ -544,14 +563,14 @@ export default function TradeLogTable({
 
                         {shots.length > 0 && (
                           <div className="screenshot-grid" style={{ marginTop: '20px' }}>
-                            {shots.map((url, i) => (
+                            {shots.map((path, i) => (
                               <img
-                                key={url}
-                                src={url}
+                                key={path}
+                                src={screenshotUrls[i]}
                                 alt={`Trade screenshot ${i + 1}`}
                                 className="thumb"
                                 style={{ width: '70px', height: '70px' }}
-                                onClick={(e) => { e.stopPropagation(); setPreview({ shots, index: i }) }}
+                                onClick={(e) => { e.stopPropagation(); setPreview({ shots: screenshotUrls, index: i }) }}
                               />
                             ))}
                           </div>

@@ -7,6 +7,7 @@ import { queueToastForReturn } from '../lib/toast'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple, ADHERENCE_EPSILON } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
+import { getScreenshotUrls } from '../lib/screenshots'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
@@ -167,6 +168,20 @@ export default function TradeForm({
   const [showOutcomeMenu, setShowOutcomeMenu] = useState(false)
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
+  // existingScreenshots itself stays storage paths (that's what gets
+  // submitted back on save) - this is only the resolved, short-lived
+  // signed URL for each one, re-derived whenever the path list changes
+  // (initial load, or a screenshot removed) since the bucket is private
+  // and a stored path was never a directly-usable URL (see
+  // lib/screenshots.js's getScreenshotUrls).
+  const [resolvedExistingUrls, setResolvedExistingUrls] = useState([])
+  useEffect(() => {
+    let cancelled = false
+    getScreenshotUrls(existingScreenshots).then((urls) => {
+      if (!cancelled) setResolvedExistingUrls(urls)
+    })
+    return () => { cancelled = true }
+  }, [existingScreenshots])
   const [screenshots, setScreenshots] = useState([])
   // Index into the combined existingScreenshots + screenshots list below
   // (in that same order) rather than a URL, so ScreenshotLightbox - shared
@@ -703,8 +718,10 @@ export default function TradeForm({
 
   // Same order as the two .map() calls in the screenshot grid below, so a
   // thumbnail's lightboxIndex (set on click) always points at the matching
-  // image here.
-  const allScreenshotUrls = [...existingScreenshots, ...screenshots.map((s) => s.previewUrl)]
+  // image here. Existing screenshots use their resolved signed URL (see
+  // resolvedExistingUrls above); newly picked ones use their local blob
+  // preview URL, which needs no resolution.
+  const allScreenshotUrls = [...resolvedExistingUrls, ...screenshots.map((s) => s.previewUrl)]
 
   // The same three fields (Exit time / Exit price / Contracts) whether
   // this is the trade's only exit or one of several - idx 0 is always the
@@ -1096,10 +1113,10 @@ export default function TradeForm({
             </div>
             {(existingScreenshots.length > 0 || screenshots.length > 0) && (
               <div className="screenshot-grid">
-                {existingScreenshots.map((url, i) => (
-                  <div key={url} className="screenshot-preview-wrap">
+                {existingScreenshots.map((path, i) => (
+                  <div key={path} className="screenshot-preview-wrap">
                     <img
-                      src={url}
+                      src={resolvedExistingUrls[i]}
                       alt={`Screenshot ${i + 1}`}
                       className="screenshot-preview-thumb"
                       onClick={() => setLightboxIndex(i)}

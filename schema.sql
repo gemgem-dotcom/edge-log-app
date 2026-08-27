@@ -556,24 +556,39 @@ alter table trades add column if not exists volume_regime text;
 -- MFE/MAE/drawdown (lib/tradeExcursions.js, app/api/backfill-trade-
 -- excursion/route.js, scripts/retry-trade-excursions.js) - computed once
 -- from a fixed entry-to-final-exit window (trades are only ever logged
--- after they've closed, so there's no "still updating" state), from NQ
--- 1-minute bars. mfe_points/mae_points are raw, direction-aware points
--- (long: mfe = high-entry, mae = entry-low; short: mirrored) - displayed
--- as an R-multiple (divide by stop_distance) rather than stored twice, the
--- same pattern realized R already follows. drawdown_seconds is cumulative
--- time the position's unrealized P&L was underwater, summed across every
--- separate underwater period, not just time-to-first-recovery.
+-- after they've closed, so there's no "still updating" state), from real
+-- NQ trade prints (Databento's `trades` schema, tick-level - not ohlcv-1m
+-- bars; this account's plan has confirmed live access to both `ohlcv-1s`
+-- and `trades`). mfe_points/mae_points are raw, direction-aware points
+-- (long: mfe = high-entry, mae = entry-low; short: mirrored), the true
+-- highest/lowest price the market actually traded at between entry and
+-- exit - displayed as an R-multiple (divide by stop_distance) rather than
+-- stored twice, the same pattern realized R already follows. An earlier
+-- version of this capped MFE/MAE at the trade's own stop/target instead of
+-- using 1-minute-bar extremes directly, to correct for coarse-bar
+-- ambiguity - superseded by the move to tick-level data, which has no such
+-- ambiguity to correct for and doesn't depend on trusting `stop`/`target`
+-- values a trader could edit after the fact (see NOTES.md). drawdown_
+-- seconds is cumulative real elapsed time the position's unrealized P&L
+-- was underwater (walking consecutive trade prints, not a bar-count
+-- multiple), summed across every separate underwater period, not just
+-- time-to-first-recovery.
 --
 -- market_data_status drives display and the retry job, not just a cache
 -- flag: 'pending' means blocked on this account's confirmed ~8-hour
 -- GLBX.MDP3 access embargo (not a bug - see NOTES.md) *or* on a fetch
 -- attempt that failed for some other, not-reliably-classifiable reason
--- (network hiccup, transient 5xx, rate limit) - left retryable by design,
--- since a real trade was once silently and permanently lost to exactly
--- this (a transient failure treated as terminal) before this comment was
--- corrected; see NOTES.md. 'unavailable' means a genuine, deterministic,
--- non-retryable miss (wrong/unsupported instrument, no timezone or exit
--- window, zero bars returned, zero bars in the derived fill window) - set
+-- (network hiccup, transient 5xx, rate limit) *or* on a successful fetch
+-- that returned zero trade prints - a real NQ session window this narrow
+-- essentially never genuinely lacks real prints, so an empty response is
+-- treated as transient too, not just a thrown error (a real trade proved
+-- this: 'unavailable' with zero ticks one moment, 20k+ ticks and a clean
+-- fill match on the exact same window minutes later). All three are left
+-- retryable by design, since a real trade was once silently and
+-- permanently lost to exactly this pattern (a transient failure treated
+-- as terminal) before this comment was corrected; see NOTES.md.
+-- 'unavailable' means a genuine, deterministic, non-retryable miss
+-- (wrong/unsupported instrument, no timezone or exit window) - set
 -- explicitly rather than left stuck in 'pending' forever. null (no
 -- default) means this trade has never been attempted yet, or isn't on an
 -- NQ-family instrument - same "not yet applicable" principle as
@@ -585,15 +600,35 @@ alter table trades add column if not exists market_data_status text;
 
 -- trade_time/exit_time are only reliably accurate to the minute - the
 -- seconds field is frequently a TimePicker default, not a real observation
--- (see lib/tradeExcursions.js's findFillInstant/deriveFillInstants for the
--- full mechanism). Rather than trust that logged second as the window
--- boundary, the entry/exit instants actually fed into computeExcursion are
--- derived from the first bar where price touches the real fill level
--- (entry price / that leg's own exit price), searched within the logged
--- minute and the one immediately before/after. excursion_fallback is true
--- when that search failed for the entry or any exit leg and fell back to
--- the raw logged timestamp instead - a trade marked true still carries the
--- original second-level imprecision this mechanism exists to remove, so
--- it needs to stay visible and queryable, not silently indistinguishable
--- from a trade whose window was fully price-derived.
+-- (see lib/tradeExcursions.js's findFillTick/deriveFillTicks for the full
+-- mechanism). Rather than trust that logged second as the window boundary,
+-- the entry/exit instants actually fed into computeExcursion are derived
+-- from the first real trade print that touches the fill level (entry price
+-- / that leg's own exit price), searched within roughInstant ±
+-- FILL_SEARCH_PAD_MINUTES. excursion_fallback is true when that search
+-- failed for the entry or any exit leg and fell back to the raw logged
+-- timestamp instead - a trade marked true still carries the original
+-- second-level imprecision this mechanism exists to remove, so it needs to
+-- stay visible and queryable, not silently indistinguishable from a trade
+-- whose window was fully price-derived.
 alter table trades add column if not exists excursion_fallback boolean;
+
+-- Whether trade_time/exit_time's *own logged second* could be corrected to
+-- a real one. Unlike excursion_fallback above, this doesn't touch the
+-- ±FILL_SEARCH_PAD_MINUTES search used for MFE/MAE windowing - it's a
+-- separate, stricter search (lib/tradeExcursions.js's
+-- findVerifiedMinuteFill/deriveVerifiedTimes) bounded to exactly the
+-- trader's own logged minute, on the premise that the minute itself is
+-- trustworthy and only the second (usually just a TimePicker default, per
+-- the comment above) isn't. app/api/backfill-trade-excursion/route.js
+-- overwrites trade_time/exit_time (and each additional_exits leg) with the
+-- real second whenever that search succeeds, using the same trade-print
+-- fetch already made for excursion computation - no extra Databento call.
+-- trade_time_unverified is true when it *didn't* for the entry or some
+-- exit leg - that logged price never actually traded during its own
+-- logged minute, so that field was left exactly as logged and the trader
+-- should double-check it. Surfaced on the trade detail page and the trade
+-- log's expand row (unlike excursion_fallback, which stays developer-only)
+-- for exactly that reason - it's a claim about what the trader themselves
+-- logged, not an internal computation detail.
+alter table trades add column if not exists trade_time_unverified boolean;

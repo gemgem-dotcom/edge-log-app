@@ -23,13 +23,17 @@ function fmtNum(value) {
 
 // One cell for MFE/MAE/Time in drawdown: `realValue` is whatever the
 // caller already computed for the 'complete' case (or null otherwise) -
-// this only decides what to show when there's nothing real to display yet,
-// via lib/tradeExcursions.js's excursionStatusMessage ('pending'/
-// 'unavailable' get their own distinct copy). A null market_data_status
-// (never attempted, or not an NQ-family trade) falls through to the same
-// plain "—" every other not-yet-applicable field on this page already uses.
+// this only decides what to show when there's nothing real (or nothing
+// trustworthy) to display yet, via lib/tradeExcursions.js's
+// excursionStatusMessage ('pending'/'unavailable'/fallback-unverified each
+// get their own distinct copy). A 'complete' trade whose fill couldn't be
+// verified (excursion_fallback) is treated the same as not having a real
+// value at all - see excursionStatusMessage's own comment for why. A null
+// market_data_status (never attempted, or not an NQ-family trade) falls
+// through to the same plain "—" every other not-yet-applicable field on
+// this page already uses.
 function excursionCell(trade, timezoneOffset, realValue) {
-  if (trade.market_data_status === 'complete' && realValue !== null && realValue !== undefined) return realValue
+  if (trade.market_data_status === 'complete' && !trade.excursion_fallback && realValue !== null && realValue !== undefined) return realValue
   return excursionStatusMessage(trade, timezoneOffset) || '—'
 }
 
@@ -99,7 +103,7 @@ export default function TradeDetailPage({ params }) {
         <div className="detail-grid">
           <div><label>Instrument</label><div>{symbol}</div></div>
           <div><label>Date</label><div>{trade.trade_date}</div></div>
-          <div><label>Entry time</label><div>{formatTime12h(trade.trade_time)}</div></div>
+          <div><label>Entry time</label><div>{formatTime12h(trade.trade_time)}{trade.trade_time_unverified && <span className="time-unverified-badge" title="The entry or exit price logged for this trade wasn't seen trading during its own logged minute - double-check the times/prices you entered.">Unverified</span>}</div></div>
           <div><label>Direction</label><div style={{ color: trade.direction === 'long' ? 'var(--win)' : 'var(--loss)' }}>{trade.direction.toUpperCase()}</div></div>
           <div><label>Entry price</label><div>{fmtNum(trade.entry)}</div></div>
           <div><label>Stop loss</label><div>{fmtNum(trade.stop)}{trade.stop_distance != null && <div className="detail-subvalue">{fmtNum(trade.stop_distance)} pts</div>}</div></div>

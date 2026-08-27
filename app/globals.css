@@ -5,44 +5,45 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–462  Base: reset, typography, forms, tables, thumbnails,
+     1–463  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   463  Auth pages
-   529  Top nav
-   544  Instrument nav (topbar pill row)
-   608  Page layout
-   660  Tabs
-   670  Misc form helpers
-   676  Detail view
-   692  Holiday notice (site-wide, above the shell)
-   717  Shell layout (sidebar + topbar)
-   929  Expandable trade rows
-   977  Calendar
-   1025  Account settings page
-   1232  Light theme
-   1264  2FA
-   1279  Account fine print
-   1282  Screenshot preview (log new trade)
-   1324  Auth pages always dark
-   1352  Monthly P&L (calendar on Overview)
-   1418  Trade form: sections, validation, currency, screenshots
-   1646  Field tooltips
-   1708  Date/time picker (adds an optional popup to a typed input)
-   1817  In-header column filters (trade log table)
-   1851  Active filter chips
-   1900  Empty states, error banners, skeleton loaders
-   1971  Cross-instrument overview dashboard (/app)
-   2191  Not found / error boundary state pages
-   2204  Toast notifications
-   2232  Public policy pages (Privacy, Terms)
-   2251  Legal links (auth pages + account settings)
-   2290  Economic calendar card (mock - Overview pages)
-   2397  Calendar news badge (Monthly P&L day cells, mock)
-   2418  Streak badge (Overview + strategy detail pages)
-   2435  Market status pill (Overview + strategy detail pages)
-   2461  Key levels, today's brief (mock cards)
-   2487  Market context cards (all-instruments Overview)
-   2546  Strategy detail: performance findings
+   464  Auth pages
+   530  Top nav
+   545  Instrument nav (topbar pill row)
+   609  Page layout
+   661  Tabs
+   671  Misc form helpers
+   677  Detail view
+   693  Holiday notice (site-wide, above the shell)
+   718  Shell layout (sidebar + topbar)
+   930  Expandable trade rows
+   978  Calendar
+   1026  Account settings page
+   1233  Light theme
+   1265  2FA
+   1280  Account fine print
+   1283  Screenshot preview (log new trade)
+   1325  Auth pages always dark
+   1353  Monthly P&L (calendar on Overview)
+   1419  Trade form: sections, validation, currency, screenshots
+   1647  Field tooltips
+   1709  Date/time picker (adds an optional popup to a typed input)
+   1818  In-header column filters (trade log table)
+   1852  Active filter chips
+   1901  Empty states, error banners, skeleton loaders
+   1972  Cross-instrument overview dashboard (/app)
+   2192  Not found / error boundary state pages
+   2205  Toast notifications
+   2233  Public policy pages (Privacy, Terms)
+   2252  Legal links (auth pages + account settings)
+   2291  Economic calendar card (mock - Overview pages)
+   2398  Calendar news badge (Monthly P&L day cells, mock)
+   2419  Streak badge (Overview + strategy detail pages)
+   2436  Market status pill (Overview + strategy detail pages)
+   2462  Key levels, today's brief (mock cards)
+   2488  Market context cards (all-instruments Overview)
+   2547  Strategy detail: performance findings
+   2562  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -2557,3 +2558,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    cell). */
 .muted-note{color:var(--muted); font-style:italic;}
 .session-breakdown-table{margin-top:8px;}
+
+/* ---------- Unverified logged time badge ---------- */
+/* Sits next to a trade's entry time on the detail page and the log
+   table's expand row when trade_time_unverified is true - the logged
+   entry/exit price never traded during its own logged minute (see
+   schema.sql's comment above that column), so the trader should double
+   check what they logged. --loss red matches the app's existing
+   "flagged" convention (see .discipline-tag). Native title attribute
+   for the explanation rather than FieldTooltip, which is reserved for
+   static "what this field means" help text next to a label, not a
+   conditional warning on a value. */
+.time-unverified-badge{
+  display:inline-block; margin-left:8px; padding:2px 7px; border-radius:99px;
+  font-family:'Inter',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  background:rgba(225,92,92,.12); color:var(--loss); border:1px solid rgba(225,92,92,.3);
+  cursor:help; vertical-align:middle;
+}

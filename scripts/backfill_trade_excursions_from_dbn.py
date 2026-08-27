@@ -191,7 +191,19 @@ def session_date_for(ts_utc):
 def compute_excursion(bars, entry, direction):
     """Mirrors lib/tradeExcursions.js's computeExcursion: MFE/MAE and
     per-bar drawdown via each bar's high/low (not closes), summing every
-    separate underwater run of bars rather than just the first."""
+    separate underwater run of bars rather than just the first.
+
+    NOTE: the live path (lib/tradeExcursions.js) has since moved off
+    ohlcv-1m bars entirely, to real trade prints (schema `trades`) - no
+    coarse-bar ambiguity to correct for, and no dependency on `stop`/
+    `target` values a trader could edit after the fact (an earlier,
+    since-reverted version of this function capped MFE/MAE at those values
+    for exactly that reason; see NOTES.md). This script still reads
+    whatever was in the one already-downloaded DBN file it was written
+    against (ohlcv-1s, per this file's own header) - one step coarser than
+    the live path's tick-level data, but this is a one-time, already-run
+    historical backfill, not something to re-run without first getting a
+    tick-level DBN file for it to match."""
     highs = bars['high'].tolist()
     lows = bars['low'].tolist()
     max_high = max(highs)

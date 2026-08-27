@@ -176,9 +176,9 @@ credit.
 
 ### Known excursion (MFE/MAE/drawdown) data issues - needs a human look
 
-Two trades' `mfe_points`/`mae_points`/`drawdown_seconds` were deliberately left
-un-recomputed by PR #122's fix and excluded from its bulk recompute, rather than
-silently "fixed" or silently left stale:
+One trade's `mfe_points`/`mae_points`/`drawdown_seconds` remains deliberately
+un-recomputed and excluded from the bulk recompute, rather than silently
+"fixed" or silently left stale:
 
 - **`7e8616fb-334b-4465-8a2f-e572b634df5a`** - two independent, unrelated corrections
   (fill-instant precision, and volume-based front-month resolution near a quarterly
@@ -202,31 +202,106 @@ silently "fixed" or silently left stale:
   corrected timestamp could be identified from this data source with any
   confidence, so nothing was written - this needs the trader's own memory of the
   trade, not further automated searching.
-- **`137c4594-c6d0-40f1-904f-acb9e71d9ef6`** - also failed to find a matching bar for
-  at least one leg (`excursion_fallback = true`) under the fill-instant fix, same as
-  `7e8616fb`, but *not* near any quarterly roll - so the front-month question doesn't
-  apply here. Flagged during PR #122's diagnostic and deliberately not investigated
-  further per that PR's own scope.
 
-  **Follow-up (real match found, needs a human decision - not yet corrected):** this
-  losing long (entry 29572, stop/exit 29536, logged 09:51:52-09:58:38 ET) was
-  suspected to be the "MAE and exit coincide, no distinct bar" case, but the actual
-  ±5-minute bar data around the logged times rules that out. The *only* one-minute
-  bar in that window touching entry, exit, and stop simultaneously is
-  `2026-08-19T13:48:00Z` (O 29583.75 / H 29592.25 / L 29515 / C 29517.25) - about 4
-  minutes before the logged entry instant (13:51:52Z) and about 10 minutes before
-  the logged exit instant (13:58:38Z). By the logged entry instant, price had
-  already fallen well past the stop (low 29406.5 on the 13:51 bar) - i.e. real price
-  action shows this trade's entry and stop-out both happening inside that same
-  single minute, a much faster and earlier move than the ~7-minute duration
-  currently logged. This is the same class of issue as `7e8616fb` (logged timestamp
-  not matching real price action), not the hypothesized mechanism, and it looks
-  resolvable here where `7e8616fb` wasn't - flagged for a decision before writing
-  anything.
+  **Re-checked again after the tick-level rewrite (still unresolvable):** this
+  investigation predates the switch from 1-minute bars to real trade prints, so it
+  was worth a second attempt with the sharper tool - correct roll-aware contract
+  (NQU6, instrument_id 42004177), 24,161 real ticks fetched in the standard
+  ±`FILL_SEARCH_PAD_MINUTES` window, both the entry-price and the verified-minute
+  searches run for real (not simulated). Neither found a match - `excursion_fallback`
+  and `trade_time_unverified` both come back true, and MFE/MAE recompute to the same
+  -11.00/+170.00 already on file. Confirms the original call rather than overturning
+  it: this genuinely isn't in the data at any granularity tried so far, not a tooling
+  limitation. Still excluded via `MANUAL_REVIEW_TRADE_IDS`, still needs the trader's
+  own memory.
 
-Both trades keep whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
-`excursion_fallback` values they already had before this note was written - nothing
-in PR #122 touched them.
+This trade keeps whatever `mfe_points`/`mae_points`/`drawdown_seconds`/
+`excursion_fallback` values it already had before this note was written -
+nothing here touched them, and it's excluded from every automated recompute
+(`scripts/recompute-trade-excursions.js`'s `MANUAL_REVIEW_TRADE_IDS`).
+
+**Two other flagged trades have since been corrected and removed from that set.**
+
+`137c4594-c6d0-40f1-904f-acb9e71d9ef6` was flagged for the same reason
+(`excursion_fallback = true`, no matching bar for at least one leg) but, unlike
+`7e8616fb`, a specific real fill instant *could* be identified with confidence: a
+manual tick-level search (`trades` schema, wide window) found the actual entry
+print at `2026-08-19T13:41:51.549Z` and exit print at `2026-08-19T13:48:35.070Z` -
+both about 10 minutes earlier than this trade's originally logged times, which the
+trader confirmed was a logging error made at the time. Corrected and written by
+hand (not by the automated recompute): `trade_time` 09:41:51 ET, `exit_time`
+09:48:35 ET, `mfe_points = 63.50`, `mae_points = 36.00`, `drawdown_seconds = 39`,
+`market_data_status = 'complete'`, `excursion_fallback = false`.
+
+`076af9b3-312c-47c8-9987-1e6176545a6b` turned out to be a genuine data-entry
+error, not an algorithm or roll-resolution problem: the original investigation
+found its exit price (30669.25) matched cleanly but its entry (30901) matched no
+real print anywhere within ±15 minutes. The trader identified the actual mistake
+themselves and corrected the logged entry to `30870.25` directly through the edit
+page. That save triggered the normal edit-time recompute, which briefly left the
+trade `pending` (a transient fetch hiccup, not the embargo - this trade is months
+old), picked up cleanly by the next forced run of the hourly retry job with no
+manual intervention needed: `trade_time` 09:47:00 → 09:47:58, `exit_time` 10:30:00
+→ 10:30:03, `mfe_points` 231.75 → 201.00, `mae_points` -12.00 (a physically
+impossible negative) → 18.75, `drawdown_seconds` 0 → 255, `excursion_fallback` and
+`trade_time_unverified` both `false`. This is the case for the general lesson: a
+"couldn't verify" flag can mean the trader mislogged something as easily as it can
+mean a genuine market-data gap, and the fix in that case is just fixing the log
+entry, not touching the pipeline.
+
+### trade_time/exit_time's own logged second can be corrected, separately from MFE/MAE
+
+`137c4594`'s correction above was done by hand because the discrepancy was a
+whole ~10 minutes - a real "the trader mislogged this" case needing a human
+decision, not something to automate. But the much smaller, universal version of
+that problem - the *second* within an otherwise-correct logged minute being
+untrustworthy (a TimePicker default, not a real observation - see the
+`excursion_fallback` comment above and schema.sql's) - doesn't need a human
+per trade. If the trader is trusted to have logged the right minute, and their
+entry/exit price actually traded at some point during that exact minute, the
+real trade print that touched it *is* the real second.
+
+`lib/tradeExcursions.js`'s `findVerifiedMinuteFill`/`deriveVerifiedTimes` do
+that: for each of entry and every exit leg, search the *already-fetched* trade
+prints (no extra Databento call) for the earliest one touching that leg's
+price, bounded strictly to that leg's own logged minute - not the wider
+±`FILL_SEARCH_PAD_MINUTES` window `findFillTick`/`deriveFillTicks` use for MFE/
+MAE windowing, since that window exists to tolerate a somewhat-off instant, not
+to license relabeling which minute a logged time belongs to. When a leg's
+price never actually traded during its own logged minute, that field is left
+exactly as logged rather than guessed at, and the whole trade gets
+`trade_time_unverified = true` - unlike `excursion_fallback`, this is shown to
+the trader (trade detail page, log table's expand row), since it's a claim
+about what *they* logged, not an internal computation detail.
+
+Wired into all three places that already compute MFE/MAE from trade prints -
+the live route (`app/api/backfill-trade-excursion/route.js`), the hourly retry
+job, and the one-time recompute script - so `trade_time`/`exit_time` (and each
+`additional_exits` leg) get corrected going forward for every new trade, and
+were corrected in bulk for every existing `complete` trade in the same
+`scripts/recompute-trade-excursions.js` run that shipped this (see that run's
+own log for exactly how many trades' times actually changed vs. how many got
+flagged unverified).
+
+### A fallback-derived MFE/MAE is hidden, not shown as a real number
+
+`7e8616fb`'s displayed MAE (`+170.00pts`, bigger than its own 55pt stop distance -
+physically impossible for a trade that wasn't stopped out) is what led to it being
+re-investigated in the first place. That number came from `excursion_fallback`
+being true (the fill-tick search couldn't verify entry or an exit leg, so
+`computeExcursion` ran over a window anchored to the raw, unverified logged
+instant instead) - a real, working safety mechanism, but one that only recorded
+the uncertainty in a developer-only column while still rendering a normal-looking
+number to the trader.
+
+`excursionStatusMessage` (`lib/tradeExcursions.js`) now treats `market_data_status
+= 'complete'` with `excursion_fallback = true` the same as any other
+not-yet-trustworthy state, returning `'Unverified'` instead of null - both
+`excursionCell` implementations (trade detail page, log table's expand row) check
+this before falling through to the real number. A future roll-window mismatch (or
+any other fill-verification failure) now shows "Unverified" immediately rather
+than a concrete-but-possibly-wrong figure making it all the way to the trader's
+screen unflagged.
 
 ### A transient Databento fetch error could permanently discard excursion data
 
@@ -256,6 +331,131 @@ fixed code now runs automatically (`mfe_points=137.75`, `mae_points=16.75`,
 `drawdown_seconds=120`, `excursion_fallback=false`) - no other trades were
 found in this state at the time, but any future occurrence should now
 self-heal within an hour instead of getting stuck.
+
+**Follow-up: the same bug had a second form.** Trade `20212645-30c0-457d-a310-
+0158b1b4350a` (2026-06-24, long, entry 29725, target/exit 29901) was cleanly
+`complete` from an earlier bulk recompute, but was later found sitting on
+`market_data_status = 'unavailable'` with its old (still-correct) numbers
+frozen underneath - something had re-triggered the excursion route (an edit)
+and that attempt hit the "zero trade prints returned" branch, which the fix
+above never touched: it still treated a *successful but empty* fetch response
+as a permanent, deterministic miss, unlike a *thrown* fetch error. A live
+re-check of the exact same window moments later returned 24,677 real ticks and
+a clean fill match - proving this was transient too, the same as the original
+bug, just one branch over. `app/api/backfill-trade-excursion/route.js` and
+`scripts/retry-trade-excursions.js` now leave the trade `pending` on zero
+ticks returned or zero ticks in the derived window, same as any other
+non-embargo fetch problem - see `schema.sql`'s comment above
+`market_data_status` for the corrected semantics. This trade was manually
+corrected to the values the fixed pipeline found: `trade_time` 10:39:21 →
+10:39:48, `mfe_points = 176.00`, `mae_points = 14.75`, `drawdown_seconds = 85`,
+`excursion_fallback = false`.
+
+### MFE/MAE/drawdown are computed from real trade prints, not 1-minute bars
+
+The formula's history, in order:
+
+1. Originally: 1-minute-bar (`ohlcv-1m`) high/low over the entry-to-exit
+   window, uncapped.
+2. Briefly: MFE capped at the target and MAE capped at the stop whenever
+   the trade's final exit leg actually landed on that level - specified
+   against two worked examples (entry 1000, runs to 1100, manual close at
+   1090 -> MFE is the full 100, uncapped, since neither level was touched;
+   entry 1000, stop 950, runs to 1050 in profit then reverses and stops
+   out -> MFE stays the real highest point reached (uncapped), MAE is
+   capped exactly at the 50-point stop distance rather than whatever the
+   closing bar's low showed, since a resting stop order closes the
+   position the instant price reaches it - any bar movement beyond that
+   within the same minute is intra-bar noise the trade was never actually
+   exposed to).
+3. **Current**: superseded (2) entirely. Live access to Databento's
+   `trades` (tick-level) and `ohlcv-1s` schemas was confirmed for this
+   account's plan - not just `ohlcv-1m` - which removes the reason (2)
+   existed in the first place: a real trade print has no coarse-minute
+   ambiguity to correct for, so there's nothing to cap. It's also more
+   robust than (2) was, independent of a concern raised directly: `stop`/
+   `target` are ordinary, freely-editable fields with no history of what
+   they were when a trade was actually live, so capping by them trusted
+   values that could have been changed after the fact. `entry`/`exit_price`
+   don't have that problem - they're tied to real price action via the
+   fill-tick matching itself.
+
+`computeExcursion` (`lib/tradeExcursions.js`) now takes real trade prints
+already sliced to `[entryInstant, exitInstant]`: MFE/MAE are the true
+highest/lowest traded price in that window, full stop, and drawdown_seconds
+walks consecutive prints to total real elapsed underwater time (the price a
+print establishes persists until the next one) rather than multiplying a
+bar count by 60. `findFillTick`/`deriveFillTicks` replace the old
+`findFillInstant`/`deriveFillInstants`: same idea (match the trade's
+logged entry/exit price against real market data near the logged time,
+falling back to the raw wall-clock instant if nothing matches), but
+picking the *earliest* qualifying match rather than checking a priority-
+ordered set of minute buckets, since a tick doesn't need bucket alignment
+the way a bar did (see the correction below for why "earliest," not
+"closest in time," is the right rule).
+
+Every existing `complete` trade's `mfe_points`/`mae_points`/
+`drawdown_seconds` was recomputed under this rule
+(`scripts/recompute-trade-excursions.js`, run live via a temporary GitHub
+Actions workflow) - except the two trades flagged above under "Known
+excursion data issues," which are excluded from every automated recompute
+until a human looks at them directly.
+
+### Fill matching picks the *first* touch of the price, not the closest-in-time one
+
+The initial tick-level version above still had a bug: `findFillTick`
+picked whichever matching tick was closest in time to the trade's logged
+(only ~1-minute-accurate) clock time, not the first one chronologically.
+Those aren't the same thing, and the difference matters: if price touched
+the entry level, moved adverse, recovered, and touched it again nearer the
+logged time, closest-in-time would anchor the window at the *later*
+touch - silently missing the real adverse move in between. This is exactly
+what a trader's report of some trades showing `mae = 0` traced back to,
+and is also what produced trade `076af9b3`'s negative MAE (investigated
+below).
+
+The correct rule: MAE/MFE should count from the exact moment the market
+*first* reached the price the trader entered at - a limit order fills on
+first touch, and a market/stop order's fill price is whatever price was
+current the instant it triggered. Given logged times are only accurate to
+about a minute, the fix is to pick the earliest matching tick within the
+already-fetched, padded window, not the nearest-in-time one. Chained
+forward per leg (`afterInstant` in `findFillTick`) so a price level
+touched more than once can't accidentally match an exit leg to an earlier
+occurrence than the one that actually closed it (the same failure mode
+`7e8616fb`/`137c4594` hit, applied here to prevent it happening for the
+tick-level path too).
+
+Live-recomputed again after this fix - see the numbers below for what
+changed.
+
+**Follow-up bug in the fix above:** the "earliest at or after the previous
+anchor" rule had no upper bound, so a leg whose price coincides with an
+*earlier* anchor's price - most commonly a breakeven trade, where the exit
+price equals the entry price - would trivially re-match the entry fill's
+own tick (which of course also "touches" that same price), collapsing the
+whole window to ~0 duration and erasing every minute of real price action
+in between. A trader reported exactly this: a 50-minute breakeven trade
+showing MFE, MAE, and Time in drawdown all reading 0.
+`findFillTick` now bounds each leg's search to `roughInstant ±
+FILL_SEARCH_PAD_MINUTES` (its *own* logged time), not just "anywhere after
+the previous anchor" - so a same-price exit 50 minutes later correctly
+searches near the real logged exit time instead of immediately re-matching
+entry. Verified against three scenarios before going live again: the
+original first-touch case, this breakeven case, and the multi-touch
+(`7e8616fb`-style) case that motivated the `afterInstant` floor in the
+first place - all three had to hold together, not just the one being
+fixed.
+
+`scripts/backfill_trade_excursions_from_dbn.py` (the one-time, already-run
+DBN-file backfill) was **not** upgraded to tick-level - it only ever reads
+whatever schema its one already-downloaded file contains (`ohlcv-1s`, one
+step coarser than the live path now, but still finer than `ohlcv-1m`), and
+there's no tick-level DBN file available to re-verify against. Its
+stop/target-capping was reverted back to the plain bar-derived formula for
+consistency with the rest of the codebase, since that heuristic is gone
+everywhere else - it should not be re-run without a matching tick-level
+file if it's ever needed again.
 
 ## Removing an instrument
 

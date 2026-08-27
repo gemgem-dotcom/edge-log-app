@@ -106,11 +106,14 @@ function resultOf(trade) {
 
 // Same fallback shape as the trade detail page's own excursionCell -
 // realValue is whatever the caller already computed for 'complete', null
-// otherwise; a null market_data_status (never attempted, or not an
-// NQ-family trade) falls through to the same plain "—" every other
-// not-yet-applicable field in this row already uses.
+// otherwise; a 'complete' trade whose fill couldn't be verified
+// (excursion_fallback) is treated as not having a real value either (see
+// lib/tradeExcursions.js's excursionStatusMessage). A null
+// market_data_status (never attempted, or not an NQ-family trade) falls
+// through to the same plain "—" every other not-yet-applicable field in
+// this row already uses.
 function excursionCell(trade, timezoneOffset, realValue) {
-  if (trade.market_data_status === 'complete' && realValue !== null && realValue !== undefined) return realValue
+  if (trade.market_data_status === 'complete' && !trade.excursion_fallback && realValue !== null && realValue !== undefined) return realValue
   return excursionStatusMessage(trade, timezoneOffset) || '—'
 }
 
@@ -444,7 +447,10 @@ export default function TradeLogTable({
                             <label>Entry</label>
                             <div>
                               {fmtNum(t.entry)}
-                              <div className="detail-subvalue">{formatTime12h(t.trade_time)}</div>
+                              <div className="detail-subvalue">
+                                {formatTime12h(t.trade_time)}
+                                {t.trade_time_unverified && <span className="time-unverified-badge" title="The entry or exit price logged for this trade wasn't seen trading during its own logged minute - double-check the times/prices you entered.">Unverified</span>}
+                              </div>
                             </div>
                           </div>
                           <div>

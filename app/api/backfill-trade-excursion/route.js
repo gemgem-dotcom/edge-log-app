@@ -8,10 +8,12 @@
 // so an edit that changes entry/exit correctly overwrites stale values.
 //
 // See schema.sql's comment above `mfe_points` and lib/tradeExcursions.js
-// for the full picture (the embargo, the three market_data_status values).
+// for the full picture (the embargo, the three market_data_status values,
+// and why this reads real trade prints via fetchTrades rather than
+// ohlcv-1m bars).
 import { createClient } from '@supabase/supabase-js'
-import { fetchOhlcv1m, NQ_CONTINUOUS_SYMBOL, isNearRollover, sessionBoundsFor, resolveFrontMonthByVolume } from '@/lib/databento'
-import { excursionWindow, computeExcursion, isEmbargoError, deriveFillInstants, sliceBarsForWindow, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
+import { fetchTrades, NQ_CONTINUOUS_SYMBOL, isNearRollover, sessionBoundsFor, resolveFrontMonthByVolume } from '@/lib/databento'
+import { excursionWindow, computeExcursion, isEmbargoError, deriveFillTicks, sliceTicksForWindow, deriveVerifiedTimes, instantToWallClockTime, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -51,9 +53,7 @@ export async function POST(req) {
     return json({ status: 'unavailable', reason: 'no timezone or exit window' })
   }
 
-  // Padded well beyond findFillInstant's own ±1-minute search margin, so
-  // this fetch's start/end boundary handling can never be the reason a bar
-  // the search actually needs gets clipped - see FILL_SEARCH_PAD_MINUTES.
+  // Padding around the logged instants - see FILL_SEARCH_PAD_MINUTES.
   const padMs = FILL_SEARCH_PAD_MINUTES * 60000
 
   // Within ROLL_PROXIMITY_DAYS of a quarterly roll, NQ_CONTINUOUS_SYMBOL's
@@ -73,9 +73,9 @@ export async function POST(req) {
     }
   }
 
-  let bars
+  let ticks
   try {
-    bars = await fetchOhlcv1m({
+    ticks = await fetchTrades({
       symbol,
       stypeIn,
       start: new Date(rawWindow.entryInstant.getTime() - padMs).toISOString(),
@@ -100,26 +100,64 @@ export async function POST(req) {
     return json({ status: 'pending', reason: err.message })
   }
 
-  if (bars.length === 0) {
-    await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', tradeId)
-    return json({ status: 'unavailable', reason: 'no bars returned' })
+  // A real NQ session window this narrow (roughly the trade's own
+  // duration ± FILL_SEARCH_PAD_MINUTES) essentially never has zero real
+  // trade prints during market hours - every trade checked this way so
+  // far has had thousands. Confirmed live: a trade that returned zero
+  // ticks here once resolved cleanly (24k+ ticks, clean fill match) on a
+  // simple re-fetch of the exact same window moments later - the same
+  // "transient, not deterministic" lesson the fetch-error handling above
+  // already learned, just for a successful-but-empty response instead of
+  // a thrown error. Left 'pending' for the hourly retry rather than
+  // marked 'unavailable', so a Databento hiccup can't permanently discard
+  // data that's actually there.
+  if (ticks.length === 0) {
+    await admin.from('trades').update({ market_data_status: 'pending' }).eq('id', tradeId)
+    return json({ status: 'pending', reason: 'no trade prints returned' })
   }
 
-  const { entryInstant, exitInstant, usedFallback } = deriveFillInstants({ rawWindow, entryPrice: trade.entry, bars })
-  const windowBars = sliceBarsForWindow(bars, entryInstant, exitInstant)
-  if (windowBars.length === 0) {
-    await admin.from('trades').update({ market_data_status: 'unavailable' }).eq('id', tradeId)
-    return json({ status: 'unavailable', reason: 'no bars in derived window' })
+  const { entryInstant, exitInstant, usedFallback } = deriveFillTicks({ rawWindow, entryPrice: trade.entry, ticks })
+  const windowTicks = sliceTicksForWindow(ticks, entryInstant, exitInstant)
+  if (windowTicks.length === 0) {
+    await admin.from('trades').update({ market_data_status: 'pending' }).eq('id', tradeId)
+    return json({ status: 'pending', reason: 'no trade prints in derived window' })
   }
 
-  const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({ bars: windowBars, entry: trade.entry, direction: trade.direction })
+  const { mfePoints, maePoints, drawdownSeconds } = computeExcursion({
+    ticks: windowTicks,
+    entry: trade.entry,
+    direction: trade.direction,
+  })
+
+  // Separate, stricter minute-bounded search over the same already-fetched
+  // `ticks` - see deriveVerifiedTimes for why this can't just reuse
+  // entryInstant/exitInstant above. Only overwrites a field whose logged
+  // price actually verified against a real print in its own logged
+  // minute; anything that didn't stays exactly as logged, flagged via
+  // trade_time_unverified for the trader to double-check.
+  const verifiedTimes = deriveVerifiedTimes({ rawWindow, entryPrice: trade.entry, ticks })
+  const correctedTradeTime = verifiedTimes.entry.matched
+    ? instantToWallClockTime(verifiedTimes.entry.instant, timezoneOffset)
+    : trade.trade_time
+  const correctedExitTime = verifiedTimes.legs[0]?.matched
+    ? instantToWallClockTime(verifiedTimes.legs[0].instant, timezoneOffset)
+    : trade.exit_time
+  const correctedAdditionalExits = (trade.additional_exits || []).map((exit, i) => {
+    const legFill = verifiedTimes.legs[i + 1]
+    return legFill?.matched ? { ...exit, exit_time: instantToWallClockTime(legFill.instant, timezoneOffset) } : exit
+  })
+
   await admin.from('trades').update({
     mfe_points: mfePoints,
     mae_points: maePoints,
     drawdown_seconds: drawdownSeconds,
     market_data_status: 'complete',
     excursion_fallback: usedFallback,
+    trade_time: correctedTradeTime,
+    exit_time: correctedExitTime,
+    additional_exits: correctedAdditionalExits,
+    trade_time_unverified: verifiedTimes.anyUnverified,
   }).eq('id', tradeId)
 
-  return json({ status: 'complete', usedFallback })
+  return json({ status: 'complete', usedFallback, timeUnverified: verifiedTimes.anyUnverified })
 }

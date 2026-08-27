@@ -721,7 +721,7 @@ export default function TradeForm({
     return (
       <>
         <div className="field wide">
-          <label>Exit time (to the second)</label>
+          <label>Exit time</label>
           <TimePicker value={row.exit_time} onChange={(v) => update('exit_time', v)} />
         </div>
         <div className="field wide">
@@ -817,7 +817,7 @@ export default function TradeForm({
           </div>
 
           <div className="field wide">
-            <label>Entry time (to the second)</label>
+            <label>Entry time</label>
             <TimePicker
               value={setup.trade_time} onChange={(v) => updateSetup('trade_time', v)}
             />

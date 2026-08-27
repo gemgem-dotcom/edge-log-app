@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
 import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '@/lib/tradeExcursions'
 import { reverseTrade } from '@/lib/edgeBeliefs'
+import { getScreenshotUrls } from '@/lib/screenshots'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -49,6 +50,7 @@ export default function TradeDetailPage({ params }) {
   const [strategyName, setStrategyName] = useState('')
   const [previewIndex, setPreviewIndex] = useState(null)
   const [timezoneOffset, setTimezoneOffset] = useState(null)
+  const [screenshotUrls, setScreenshotUrls] = useState([])
   const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
@@ -60,6 +62,12 @@ export default function TradeDetailPage({ params }) {
     const { data: t } = await supabase.from('trades').select('*').eq('id', tradeId).single()
     if (!t) { setLoading(false); return }
     setTrade(t)
+
+    // The bucket is private - a stored screenshot_urls entry is a storage
+    // path, never a directly usable URL, so every render needs a freshly
+    // signed one (see lib/screenshots.js's getScreenshotUrls).
+    const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
+    setScreenshotUrls(await getScreenshotUrls(shots))
 
     const { data: s } = await supabase.from('strategies').select('name').eq('id', t.strategy_id).single()
     setStrategyName(s?.name || '—')
@@ -147,10 +155,10 @@ export default function TradeDetailPage({ params }) {
         </div>
         {shots.length > 0 && (
           <div className="screenshot-grid" style={{ marginTop: '14px' }}>
-            {shots.map((url, i) => (
+            {shots.map((path, i) => (
               <img
-                key={url}
-                src={url}
+                key={path}
+                src={screenshotUrls[i]}
                 alt={`Trade screenshot ${i + 1}`}
                 className="thumb"
                 style={{ width: '80px', height: '80px' }}
@@ -167,7 +175,7 @@ export default function TradeDetailPage({ params }) {
 
       {previewIndex !== null && (
         <ScreenshotLightbox
-          shots={shots}
+          shots={screenshotUrls}
           index={previewIndex}
           onIndexChange={setPreviewIndex}
           onClose={() => setPreviewIndex(null)}

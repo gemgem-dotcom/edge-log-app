@@ -485,6 +485,37 @@ file stays safe to re-run.
 
 Database edits should be additive (`add column`, `add constraint`). Avoid `drop`.
 
+## Uploaded files must be private and per-user
+
+Any file a user uploads to this app must only ever be viewable by that same user,
+verified through their actual login - never through a permanent or guessable link
+that works regardless of who's asking. Screenshots are the only upload type that
+exists today (`storage-setup.sql`'s `screenshots` bucket - private, not public;
+`lib/screenshots.js` uploads under the owning user's own `{user_id}/...` path and
+reads back through a short-lived signed URL generated at render time, never a
+stored permanent URL). If any future feature adds another kind of file upload,
+it should default to this same private, signed-URL, per-user-path pattern rather
+than a public bucket, unless there's a specific, deliberate reason a particular
+file needs to be publicly shareable.
+
+**Known gap: a signed URL is a bearer token, not a login check.** RLS is only
+enforced when `createSignedUrl` is called - it verifies the *requester* owns the
+path before minting the URL, but the resulting URL itself carries no session
+binding. Anyone holding that URL can open it until it expires (1 hour), logged in
+as anyone, logged out, or in another browser entirely - confirmed by hand: copying
+a signed URL from one account and pasting it while logged into a second account
+opened the screenshot. So the actual guarantee here is "not permanent, not
+guessable, not obtainable without first being the owner" - not "verified on every
+view." Closing that last gap would mean serving screenshots through a server-side
+route that checks the requester's session against the object's owner on every
+request, instead of a URL the browser fetches directly - not done, since the
+current level was judged sufficient for now.
+
+Trade data itself (entries, notes, tags) is already private per-user through a
+different, already-correct mechanism - Postgres Row Level Security, checked at
+the database level on every request rather than via a link. It satisfies the
+same principle already; nothing to change there.
+
 ## UI conventions
 
 - Section titles are `<h2 className="section-heading">` and sit **above** the card

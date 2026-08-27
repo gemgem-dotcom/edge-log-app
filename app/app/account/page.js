@@ -107,7 +107,7 @@ export default function AccountPage() {
 
         <div className="section-heading">Security</div>
         <div className="panel">
-          <PasswordSection email={email} hasPassword={hasPassword} />
+          <PasswordSection email={email} hasPassword={hasPassword} onPasswordSet={() => setHasPassword(true)} />
           <div className="panel-divider" />
           <TwoFactorSection initialFactors={mfaFactors} />
           <div className="panel-divider" />

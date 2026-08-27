@@ -7,7 +7,7 @@ import { validatePassword } from '@/lib/validatePassword'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and fields — no .panel wrapper of its own.
-export default function PasswordSection({ email, hasPassword }) {
+export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -71,6 +71,13 @@ export default function PasswordSection({ email, hasPassword }) {
     setCurrentPassword('')
     setNewPassword('')
     setConfirmPassword('')
+
+    // Without this, the parent's hasPassword (computed once on page load from
+    // identities) stays stale for the rest of this visit - this form would
+    // keep rendering as "Set a password" with no current-password field, and
+    // DangerZoneSection would keep accepting just the word DELETE instead of
+    // the password that now actually exists on the account.
+    if (!hasPassword) onPasswordSet?.()
   }
 
   return (

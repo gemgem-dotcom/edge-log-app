@@ -14,36 +14,36 @@
    661  Tabs
    671  Misc form helpers
    677  Detail view
-   693  Holiday notice (site-wide, above the shell)
-   718  Shell layout (sidebar + topbar)
-   930  Expandable trade rows
-   978  Calendar
-   1026  Account settings page
-   1233  Light theme
-   1265  2FA
-   1280  Account fine print
-   1283  Screenshot preview (log new trade)
-   1325  Auth pages always dark
-   1353  Monthly P&L (calendar on Overview)
-   1419  Trade form: sections, validation, currency, screenshots
-   1647  Field tooltips
-   1709  Date/time picker (adds an optional popup to a typed input)
-   1818  In-header column filters (trade log table)
-   1852  Active filter chips
-   1901  Empty states, error banners, skeleton loaders
-   1972  Cross-instrument overview dashboard (/app)
-   2192  Not found / error boundary state pages
-   2205  Toast notifications
-   2233  Public policy pages (Privacy, Terms)
-   2252  Legal links (auth pages + account settings)
-   2291  Economic calendar card (mock - Overview pages)
-   2398  Calendar news badge (Monthly P&L day cells, mock)
-   2419  Streak badge (Overview + strategy detail pages)
-   2436  Market status pill (Overview + strategy detail pages)
-   2462  Key levels, today's brief (mock cards)
-   2488  Market context cards (all-instruments Overview)
-   2547  Strategy detail: performance findings
-   2562  Unverified logged time badge
+   700  Holiday notice (site-wide, above the shell)
+   725  Shell layout (sidebar + topbar)
+   937  Expandable trade rows
+   985  Calendar
+   1033  Account settings page
+   1240  Light theme
+   1272  2FA
+   1287  Account fine print
+   1290  Screenshot preview (log new trade)
+   1332  Auth pages always dark
+   1360  Monthly P&L (calendar on Overview)
+   1426  Trade form: sections, validation, currency, screenshots
+   1654  Field tooltips
+   1716  Date/time picker (adds an optional popup to a typed input)
+   1825  In-header column filters (trade log table)
+   1859  Active filter chips
+   1908  Empty states, error banners, skeleton loaders
+   1979  Cross-instrument overview dashboard (/app)
+   2199  Not found / error boundary state pages
+   2212  Toast notifications
+   2240  Public policy pages (Privacy, Terms)
+   2259  Legal links (auth pages + account settings)
+   2298  Economic calendar card (mock - Overview pages)
+   2405  Calendar news badge (Monthly P&L day cells, mock)
+   2426  Streak badge (Overview + strategy detail pages)
+   2443  Market status pill (Overview + strategy detail pages)
+   2469  Key levels, today's brief (mock cards)
+   2495  Market context cards (all-instruments Overview)
+   2554  Strategy detail: performance findings
+   2569  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -683,6 +683,13 @@ table{min-width:640px;}
   letter-spacing:.06em; margin-bottom:4px;
 }
 .detail-grid > div > div{font-family:'JetBrains Mono',monospace; font-size:14px;}
+/* MFE/MAE's field-label-row (label + FieldTooltip "?") needs the label's
+   own margin-bottom moved onto the row instead - left on the label, that
+   margin becomes part of its flex-item margin box, which align-items:center
+   measures against, so the label's text visibly sits lower than the "?"
+   circle centered in its own shorter, margin-free box. */
+.detail-grid .field-label-row{margin-bottom:4px;}
+.detail-grid .field-label-row label{margin-bottom:0;}
 .detail-subvalue{font-size:12px; margin-top:2px;}
 
 @media (max-width:640px){

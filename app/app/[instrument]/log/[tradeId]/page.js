@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
-import { formatExcursionPoints, excursionStatusMessage } from '@/lib/tradeExcursions'
+import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '@/lib/tradeExcursions'
 import { reverseTrade } from '@/lib/edgeBeliefs'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
 import PageLoading from '@/components/PageLoading'
 import ScreenshotLightbox from '@/components/ScreenshotLightbox'
+import FieldTooltip from '@/components/FieldTooltip'
 
 // Plain thousands-grouped number, no sign/currency - for raw prices and
 // point distances, which are now stored to two decimal places (see
@@ -111,8 +112,8 @@ export default function TradeDetailPage({ params }) {
           <div><label>Risk-to-Reward</label><div>{riskReward === null ? '—' : riskReward.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
           <div><label>Exit price</label><div>{trade.exit_price == null ? '—' : fmtNum(trade.exit_price)}</div></div>
           <div><label>Trade duration</label><div>{formatDuration(tradeDurationMinutes(trade))}</div></div>
-          <div><label>MFE</label><div>{excursionCell(trade, timezoneOffset, formatExcursionPoints(trade.mfe_points))}</div></div>
-          <div><label>MAE</label><div>{excursionCell(trade, timezoneOffset, formatExcursionPoints(trade.mae_points))}</div></div>
+          <div><div className="field-label-row"><label>MFE</label><FieldTooltip text={MFE_HINT} /></div><div>{excursionCell(trade, timezoneOffset, formatExcursionPoints(trade.mfe_points))}</div></div>
+          <div><div className="field-label-row"><label>MAE</label><FieldTooltip text={MAE_HINT} /></div><div>{excursionCell(trade, timezoneOffset, formatExcursionPoints(trade.mae_points))}</div></div>
           <div><label>Time in drawdown</label><div>{excursionCell(trade, timezoneOffset, trade.market_data_status === 'complete' ? formatDuration(Math.round(trade.drawdown_seconds / 60)) : null)}</div></div>
           <div><label>Result</label><div>{closed ? <span className={`r-pill ${rClass}`}>{(trade.r_multiple >= 0 ? '+' : '') + trade.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R</span> : <span className="r-pill r-open">Open</span>}</div></div>
         </div>

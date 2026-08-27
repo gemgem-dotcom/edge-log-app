@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
-import { formatExcursionPoints, excursionStatusMessage } from '../lib/tradeExcursions'
+import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
 import { reverseTrade } from '../lib/edgeBeliefs'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
 import ScreenshotLightbox from './ScreenshotLightbox'
+import FieldTooltip from './FieldTooltip'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
@@ -503,11 +504,11 @@ export default function TradeLogTable({
                             </div>
                           </div>
                           <div>
-                            <label>MFE</label>
+                            <div className="field-label-row"><label>MFE</label><FieldTooltip text={MFE_HINT} /></div>
                             <div>{excursionCell(t, timezoneOffset, formatExcursionPoints(t.mfe_points))}</div>
                           </div>
                           <div>
-                            <label>MAE</label>
+                            <div className="field-label-row"><label>MAE</label><FieldTooltip text={MAE_HINT} /></div>
                             <div>{excursionCell(t, timezoneOffset, formatExcursionPoints(t.mae_points))}</div>
                           </div>
                           <div>

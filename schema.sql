@@ -632,3 +632,29 @@ alter table trades add column if not exists excursion_fallback boolean;
 -- for exactly that reason - it's a claim about what the trader themselves
 -- logged, not an internal computation detail.
 alter table trades add column if not exists trade_time_unverified boolean;
+
+-- edge_beliefs.user_id referenced auth.users with no cascade, same failure
+-- mode login_events had above (see that fix's comment) - any belief row for
+-- a user hard-blocked deleting their account, surfaced as GoTrue's generic
+-- "Database error deleting user" rather than anything pointing at the real
+-- cause. Since a belief row exists per (user, dimension-slice) and gets
+-- created on a user's very first trade (lib/edgeBeliefs.js's applyTrade),
+-- this blocked deletion for essentially any account that had ever logged a
+-- trade. app/api/delete-account/route.js now also clears this table
+-- explicitly, same as trades/strategies/instruments/login_events; this
+-- cascade is the same backstop login_events' fix added, for whichever table
+-- gets forgotten next. Guarded on confdeltype so re-running is a no-op.
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.edge_beliefs'::regclass
+      and conname = 'edge_beliefs_user_id_fkey'
+      and confdeltype <> 'c'
+  ) then
+    alter table edge_beliefs drop constraint edge_beliefs_user_id_fkey;
+    alter table edge_beliefs
+      add constraint edge_beliefs_user_id_fkey
+      foreign key (user_id) references auth.users(id) on delete cascade;
+  end if;
+end $$;

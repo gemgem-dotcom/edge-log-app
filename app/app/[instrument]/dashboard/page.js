@@ -53,16 +53,15 @@ function computeStats(allTrades) {
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const wr = wins.length / perf.n
 
+// expectancyD is the average $ P&L per trade with a recorded dollar value,
+// breakevens included - same fix as lib/edgeEngine.js's expectancy (see
+// its comment): a win-rate-weighted formula only matches this once a slice
+// has zero breakevens.
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
-  const winsD = wins.filter(hasDollar)
-  const lossesD = losses.filter(hasDollar)
-  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
-  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
-  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+  const expectancyD = hasD ? totalD / withD.length : null
 
 return { n: perf.n, tradingDays, winRate: perf.winRate, expectancy: perf.expectancy, totalPnl, profitFactor: perf.profitFactor, totalD, hasD, expectancyD, wins: wins.length, losses: losses.length }
 }
@@ -144,18 +143,17 @@ function computeMonthStats(allTrades) {
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  const wr = wins.length / perf.n
 
 const totalR = trades.reduce((s, t) => s + t.r_multiple, 0)
 
+// expectancyD is the average $ P&L per trade with a recorded dollar value,
+// breakevens included - same fix as lib/edgeEngine.js's expectancy (see
+// its comment): a win-rate-weighted formula only matches this once a slice
+// has zero breakevens.
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
-  const winsD = wins.filter(hasDollar)
-  const lossesD = losses.filter(hasDollar)
-  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
-  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
-  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+  const expectancyD = hasD ? totalD / withD.length : null
 
 return { n: perf.n, tradingDays, winRate: perf.winRate, expectancyR: perf.expectancy, expectancyD, totalR, totalD, hasD, profitFactor: perf.profitFactor, wins: wins.length, losses: losses.length }
 }

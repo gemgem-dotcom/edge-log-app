@@ -452,11 +452,15 @@ alter table trades drop column if exists in_plan;
 -- recomputes stats from scratch from the trades table on every read; this table
 -- instead keeps a running Bayesian posterior per "slice" (the same dimensions
 -- queryPerformance groups by - session, strategy_id, instrument_id, discipline,
--- outcome, volatility/volume regime, and 2-way intersections of these (see
--- lib/edgeEngine.js's COMPOSITE_SLICES, e.g. outcome x discipline or
--- strategy_id x volatility_regime) - plus one root 'overall' slice), updated
--- incrementally at trade save/edit/delete time rather than rebuilt from the
--- full trade history on every read.
+-- outcome, day_of_week, volatility/volume regime, and 2-way intersections of
+-- these (see lib/edgeEngine.js's COMPOSITE_SLICES, e.g. outcome x discipline
+-- or strategy_id x volatility_regime) - plus one root 'overall' slice), plus
+-- one slice per individual discipline tag (lib/edgeBeliefs.js's tagSlices) -
+-- these aren't a queryPerformance groupBy dimension, since a trade can carry
+-- more than one tag at once and contribute to more than one tag slice,
+-- unlike every dimension above where a trade belongs to exactly one value.
+-- Updated incrementally at trade save/edit/delete time rather than rebuilt
+-- from the full trade history on every read.
 --
 -- slice_key is a stable, human-diffable string encoding of bindings, e.g.
 -- 'strategy_id:<uuid>' or 'strategy_id:<uuid>|volatility_regime:high' for a

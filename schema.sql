@@ -452,9 +452,11 @@ alter table trades drop column if exists in_plan;
 -- recomputes stats from scratch from the trades table on every read; this table
 -- instead keeps a running Bayesian posterior per "slice" (the same dimensions
 -- queryPerformance groups by - session, strategy_id, instrument_id, discipline,
--- and later volatility/volume regime and their strategy_id intersections - plus
--- one root 'overall' slice), updated incrementally at trade save/edit/delete
--- time rather than rebuilt from the full trade history on every read.
+-- outcome, volatility/volume regime, and 2-way intersections of these (see
+-- lib/edgeEngine.js's COMPOSITE_SLICES, e.g. outcome x discipline or
+-- strategy_id x volatility_regime) - plus one root 'overall' slice), updated
+-- incrementally at trade save/edit/delete time rather than rebuilt from the
+-- full trade history on every read.
 --
 -- slice_key is a stable, human-diffable string encoding of bindings, e.g.
 -- 'strategy_id:<uuid>' or 'strategy_id:<uuid>|volatility_regime:high' for a
@@ -463,6 +465,15 @@ alter table trades drop column if exists in_plan;
 --
 -- win_alpha/win_beta: beta-binomial posterior over this slice's win rate
 -- (+1 alpha per win, +1 beta per loss; breakeven trades touch neither).
+-- WARNING - degenerate for any slice built on the outcome dimension (e.g.
+-- outcome:loss, outcome:win|discipline:clean): every trade contributing to
+-- such a slice is by definition a win/loss/breakeven, so win_alpha/win_beta
+-- there only restate the slice's own definition rather than measuring
+-- anything, and drift toward 0%/100% as n grows. See the longer warning
+-- above BASE_DIMENSIONS.outcome in lib/edgeEngine.js. avg_r_mean/n remain
+-- meaningful for these slices (average win/loss size is real signal) - only
+-- win_alpha/win_beta-derived "win rate" is degenerate, and no read-side
+-- feature should surface a win rate for a slice_key containing "outcome:".
 -- expectancy_mean/expectancy_m2 and avg_r_mean/avg_r_m2: two Welford
 -- online-update accumulators (mean + M2, the sum-of-squared-deviations
 -- Welford's algorithm carries instead of a running variance directly), both
@@ -474,10 +485,16 @@ alter table trades drop column if exists in_plan;
 --
 -- parent_slice_key: the coarser slice a brand-new row is seeded from (e.g.
 -- 'strategy_id:<uuid>' for 'strategy_id:<uuid>|volatility_regime:high', or
--- 'overall' for a top-level single-dimension slice) - win_alpha/win_beta seed
--- from the parent's posterior mean scaled by a fixed pseudo-count, so a new
--- slice starts from "what we already believe" rather than an uninformative
--- 50/50 prior. null only for the root 'overall' slice, which has no parent.
+-- 'overall' for a top-level single-dimension slice) - win_alpha/win_beta and
+-- avg_r_mean/expectancy_mean alike seed from the parent's current posterior
+-- scaled by a fixed pseudo-count (win_alpha/win_beta additively, avg_r_mean/
+-- expectancy_mean by treating that pseudo-count as phantom prior
+-- observations fed through the same Welford update real trades use), so a
+-- new slice starts from "what we already believe" rather than an
+-- uninformative prior. That same pseudo-count is what a real trade's own
+-- Welford update weights against for as long as the row exists (n +
+-- pseudo-count, not n alone) - see lib/edgeBeliefs.js's buildSliceRow for
+-- why. null only for the root 'overall' slice, which has no parent.
 --
 -- recent_outcomes: a capped (see lib/edgeBeliefs.js's RECENT_OUTCOMES_CAP)
 -- most-recent-first array of {trade_id, r_multiple, trade_date}, used so an

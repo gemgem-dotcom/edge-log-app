@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
@@ -102,7 +103,7 @@ export default function NewTradePage({ params, searchParams }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
+      <Link href={`/app/${symbol}/log`} className="back-link">Back to log</Link>
       <h1 className="page-title">Log new trade</h1>
 
       <ErrorBanner message={strategiesError} />

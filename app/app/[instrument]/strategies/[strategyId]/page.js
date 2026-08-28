@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { invalidateStrategies } from '@/lib/referenceDataCache'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
 import { useClickOutside } from '@/lib/useClickOutside'
@@ -280,6 +282,7 @@ async function handleRename(e) {
   setSavingRename(true)
   const { error } = await supabase.from('strategies').update({ name: renameValue.trim() }).eq('id', strategyId)
   if (!error) {
+    invalidateStrategies(strategy.instrument_id)
     setStrategy((prev) => ({ ...prev, name: renameValue.trim() }))
     setRenaming(false)
     toast.success('Strategy renamed.')
@@ -300,6 +303,7 @@ async function handleDeleteStrategy() {
     setShowDeleteModal(false)
     return
   }
+  invalidateStrategies(strategy.instrument_id)
   toast.success('Strategy deleted.')
   router.push(`/app/${symbol}/dashboard`)
 }
@@ -360,7 +364,7 @@ Delete strategy
   </div>
 )}
 </div>
-<a href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+<Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
   </div>
 
 {renaming && (

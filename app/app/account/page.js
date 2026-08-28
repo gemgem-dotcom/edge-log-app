@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogOut, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -86,8 +87,8 @@ export default function AccountPage() {
     <div>
       <div ref={topbarRef} className={`account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
         <div className="account-topbar-left">
-          <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
-          <a href="/app" className="back-btn">Back to dashboard</a>
+          <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
+          <Link href="/app" className="back-btn">Back to dashboard</Link>
         </div>
         <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
       </div>

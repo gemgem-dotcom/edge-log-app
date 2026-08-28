@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { TrendingUp, Settings, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react'
 import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
@@ -52,22 +53,22 @@ export default function AppShell({ instruments, strategies = [], active, childre
   return (
     <div className="shell">
       <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
-        <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
+        <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
         <InstrumentNav instruments={instruments} />
         <div className="shell-topbar-right">
           <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
           </button>
-          <a href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></a>
+          <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
         </div>
       </header>
       <div className="topbar-spacer" style={spacerStyle} />
 
       <div className="shell-body">
         <aside className="sidebar">
-          <a href="/app" className={`sidebar-item ${active === 'overview' ? 'sidebar-item-active' : ''}`}>
+          <Link href="/app" className={`sidebar-item ${active === 'overview' ? 'sidebar-item-active' : ''}`}>
             Overview
-          </a>
+          </Link>
 
           <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
             <span>Strategies</span>
@@ -81,22 +82,22 @@ export default function AppShell({ instruments, strategies = [], active, childre
               {sortedStrategies.map((s) => {
                 const inst = instrumentById[s.instrument_id]
                 return (
-                  <a key={s.id} href={`/app/${inst?.symbol}/strategies/${s.id}`} className="sidebar-substrategy">
+                  <Link key={s.id} href={`/app/${inst?.symbol}/strategies/${s.id}`} className="sidebar-substrategy">
                     <span className="strategy-dot" style={{ background: inst?.color }} />
                     {s.name}
                     {inst && <span className="sidebar-substrategy-tag">{inst.symbol}</span>}
-                  </a>
+                  </Link>
                 )
               })}
             </div>
           )}
 
-          <a href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
+          <Link href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
             Trade Log
-          </a>
-          <a href={`/app/${instruments[0]?.symbol}/insights`} className="sidebar-item">
+          </Link>
+          <Link href={`/app/${instruments[0]?.symbol}/insights`} className="sidebar-item">
             Insights
-          </a>
+          </Link>
         </aside>
 
         <main className="main-area">{children}</main>

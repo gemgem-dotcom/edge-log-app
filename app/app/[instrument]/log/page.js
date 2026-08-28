@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
@@ -60,7 +61,7 @@ return (
   <div className="page-container">
   <div className="strategy-header-row">
     <h1 className="page-title">Trade log</h1>
-    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
   </div>
   <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>
 

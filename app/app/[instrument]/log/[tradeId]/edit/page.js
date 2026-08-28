@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
@@ -178,7 +179,7 @@ export default function EditTradePage({ params }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
+      <Link href={`/app/${symbol}/log`} className="back-link">Back to log</Link>
       <h1 className="page-title">Edit trade</h1>
 
       <ErrorBanner message={deleteError} />

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
@@ -679,7 +680,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               showTimeInDate
             />
             <div className="panel-link-row">
-              <a href="/app/log" className="panel-link">View all trades</a>
+              <Link href="/app/log" className="panel-link">View all trades</Link>
             </div>
           </div>
         </>

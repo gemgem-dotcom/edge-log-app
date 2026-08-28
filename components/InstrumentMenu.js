@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { invalidateInstruments } from '@/lib/referenceDataCache'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { useConfirm } from '@/lib/useConfirm'
 import { toast } from '@/lib/toast'
@@ -37,6 +38,7 @@ export default function InstrumentMenu({ instrumentId, symbol }) {
       toast.error(`Couldn't remove ${symbol} — ${error.message}`)
       return
     }
+    invalidateInstruments()
     toast.success(`${symbol} removed.`)
     router.push('/app')
   }

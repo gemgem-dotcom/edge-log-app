@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, Fragment } from 'react'
+import Link from 'next/link'
 import { Pencil, Trash2, X, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
@@ -466,14 +467,14 @@ export default function TradeLogTable({
                   )}
                   <td className="row-actions">
                     <span className="row-actions-inner">
-                      <a
+                      <Link
                         href={`/app/${rowSymbol}/log/${t.id}/edit`}
                         className="row-action-btn"
                         onClick={(e) => e.stopPropagation()}
                         title="Edit trade"
                       >
                         <Pencil size={15} />
-                      </a>
+                      </Link>
                       <span
                         className="row-action-btn row-action-danger"
                         onClick={(e) => handleDelete(e, t)}

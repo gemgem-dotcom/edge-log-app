@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { invalidateStrategies } from '@/lib/referenceDataCache'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import StrategiesSkeleton from '@/components/StrategiesSkeleton'
@@ -70,6 +72,7 @@ export default function StrategiesPage({ params }) {
       .from('strategies')
       .insert([{ user_id: user.id, instrument_id: instrumentId, name: newName.trim() }])
     if (!error) {
+      invalidateStrategies(instrumentId)
       setNewName('')
       toast.success('Strategy created.')
       loadStrategies()
@@ -83,6 +86,7 @@ export default function StrategiesPage({ params }) {
     setFormError(null)
     const { error } = await supabase.from('strategies').update({ name: editName.trim() }).eq('id', id)
     if (!error) {
+      invalidateStrategies(instrumentId)
       setEditingId(null)
       toast.success('Strategy renamed.')
       loadStrategies()
@@ -98,6 +102,7 @@ export default function StrategiesPage({ params }) {
       setFormError(error.message)
       return
     }
+    invalidateStrategies(instrumentId)
     loadStrategies()
   }
 
@@ -115,7 +120,7 @@ export default function StrategiesPage({ params }) {
     <div className="page-container">
       <div className="strategy-header-row">
         <h1 className="page-title">Strategies</h1>
-        <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+        <Link href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
       </div>
 
       <ErrorBanner message={formError} />

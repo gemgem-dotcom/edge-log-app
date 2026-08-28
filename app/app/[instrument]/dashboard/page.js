@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
@@ -420,7 +421,7 @@ return (
   <div className="strategy-header-row">
     <h1 className="page-title">{displayName} Futures</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
-    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
   </div>
   <p className="page-subtitle page-subtitle-tight">Your overview for {displayName} futures.</p>
   <div className="header-pills-row">
@@ -434,7 +435,7 @@ return (
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">
-  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unassigned</span> — not counted below until reassigned. <a href={`/app/${symbol}/log?strategy=unclassified`}>View in Trade Log</a>
+  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unassigned</span> — not counted below until reassigned. <Link href={`/app/${symbol}/log?strategy=unclassified`}>View in Trade Log</Link>
     </p>
    )}
 

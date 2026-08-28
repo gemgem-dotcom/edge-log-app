@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
@@ -111,7 +112,7 @@ export default function TradeDetailPage({ params }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
+      <Link href={`/app/${symbol}/log`} className="back-link">Back to log</Link>
       <h1 className="page-title">Trade Detail</h1>
 
       <div className="panel">

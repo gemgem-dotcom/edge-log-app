@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
 import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '@/lib/tradeExcursions'
 import { reverseTrade } from '@/lib/edgeBeliefs'
-import { getScreenshotUrls } from '@/lib/screenshots'
+import { getScreenshotUrls, getThumbnailUrls } from '@/lib/screenshots'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -51,6 +51,7 @@ export default function TradeDetailPage({ params }) {
   const [previewIndex, setPreviewIndex] = useState(null)
   const [timezoneOffset, setTimezoneOffset] = useState(null)
   const [screenshotUrls, setScreenshotUrls] = useState([])
+  const [thumbnailUrls, setThumbnailUrls] = useState([])
   const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
@@ -65,9 +66,15 @@ export default function TradeDetailPage({ params }) {
 
     // The bucket is private - a stored screenshot_urls entry is a storage
     // path, never a directly usable URL, so every render needs a freshly
-    // signed one (see lib/screenshots.js's getScreenshotUrls).
+    // signed one (see lib/screenshots.js's getScreenshotUrls). The grid
+    // below only ever shows an 80x80 tile, so it resolves thumbnails, not
+    // the full image - the full-size signed URLs the lightbox needs are
+    // resolved in the background instead of blocking this page's initial
+    // render, since by the time anyone actually opens one they're very
+    // likely already ready.
     const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
-    setScreenshotUrls(await getScreenshotUrls(shots))
+    setThumbnailUrls(await getThumbnailUrls(shots))
+    getScreenshotUrls(shots).then(setScreenshotUrls)
 
     const { data: s } = await supabase.from('strategies').select('name').eq('id', t.strategy_id).single()
     setStrategyName(s?.name || '—')
@@ -158,7 +165,7 @@ export default function TradeDetailPage({ params }) {
             {shots.map((path, i) => (
               <img
                 key={path}
-                src={screenshotUrls[i]}
+                src={thumbnailUrls[i]}
                 alt={`Trade screenshot ${i + 1}`}
                 className="thumb"
                 style={{ width: '80px', height: '80px' }}

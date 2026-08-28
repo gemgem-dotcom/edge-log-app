@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
 import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
 import { reverseTrade } from '../lib/edgeBeliefs'
-import { getScreenshotUrls } from '../lib/screenshots'
+import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
@@ -153,11 +153,17 @@ export default function TradeLogTable({
   // to the right one, not just a bare URL.
   const [preview, setPreview] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
-  // Resolved signed URLs, keyed by trade id - fetched lazily as each row
+  // Resolved thumbnail URLs, keyed by trade id - fetched lazily as each row
   // expands (not eagerly for every trade in the table) since the bucket is
   // private and a stored screenshot_urls entry is a storage path, never a
-  // directly usable URL (see lib/screenshots.js's getScreenshotUrls).
-  const [resolvedScreenshots, setResolvedScreenshots] = useState({})
+  // directly usable URL (see lib/screenshots.js's getThumbnailUrls). The
+  // grid only ever shows a 70x70 tile, so it never needs the full-size
+  // image - resolvedFull below holds that instead, fetched only once a
+  // specific screenshot is actually opened in the lightbox, since eagerly
+  // resolving full-size URLs for every expanded row would defeat the point
+  // of thumbnails existing at all.
+  const [resolvedThumbnails, setResolvedThumbnails] = useState({})
+  const [resolvedFull, setResolvedFull] = useState({})
   const { confirm, modal: confirmModal } = useConfirm()
 
   // Filters open from a chevron on each column heading. Day and Strategy
@@ -199,13 +205,33 @@ export default function TradeLogTable({
   function toggleExpand(trade) {
     const expanding = expandedId !== trade.id
     setExpandedId((prev) => (prev === trade.id ? null : trade.id))
-    if (expanding && !resolvedScreenshots[trade.id]) {
+    if (expanding && !resolvedThumbnails[trade.id]) {
       const shots = shotsFor(trade)
       if (shots.length === 0) return
-      getScreenshotUrls(shots).then((urls) => {
-        setResolvedScreenshots((prev) => ({ ...prev, [trade.id]: urls }))
+      getThumbnailUrls(shots).then((urls) => {
+        setResolvedThumbnails((prev) => ({ ...prev, [trade.id]: urls }))
       })
     }
+  }
+
+  // Opens the lightbox immediately using whatever thumbnail is already on
+  // screen (instant, since it's already loaded) while the full-size URL
+  // resolves in the background, then swaps it in once ready - better than
+  // either a blank modal for the brief gap or eagerly resolving full-size
+  // URLs for every row that merely expands. The tradeId check guards
+  // against a resolve from a since-closed trade overwriting whatever the
+  // trader has since opened instead.
+  function openPreview(trade, index) {
+    const cached = resolvedFull[trade.id]
+    if (cached) {
+      setPreview({ shots: cached, index, tradeId: trade.id })
+      return
+    }
+    setPreview({ shots: resolvedThumbnails[trade.id] || [], index, tradeId: trade.id })
+    getScreenshotUrls(shotsFor(trade)).then((urls) => {
+      setResolvedFull((prev) => ({ ...prev, [trade.id]: urls }))
+      setPreview((prev) => (prev?.tradeId === trade.id ? { ...prev, shots: urls } : prev))
+    })
   }
 
   async function handleDelete(e, trade) {
@@ -410,7 +436,7 @@ export default function TradeLogTable({
             const totalExitContracts = exitLegs.reduce((sum, leg) => sum + (leg.contracts == null ? 0 : Number(leg.contracts)), 0)
             const lastLeg = exitLegs[exitLegs.length - 1]
             const shots = shotsFor(t)
-            const screenshotUrls = resolvedScreenshots[t.id] || []
+            const thumbUrls = resolvedThumbnails[t.id] || []
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
             return (
@@ -566,11 +592,11 @@ export default function TradeLogTable({
                             {shots.map((path, i) => (
                               <img
                                 key={path}
-                                src={screenshotUrls[i]}
+                                src={thumbUrls[i]}
                                 alt={`Trade screenshot ${i + 1}`}
                                 className="thumb"
                                 style={{ width: '70px', height: '70px' }}
-                                onClick={(e) => { e.stopPropagation(); setPreview({ shots: screenshotUrls, index: i }) }}
+                                onClick={(e) => { e.stopPropagation(); openPreview(t, i) }}
                               />
                             ))}
                           </div>

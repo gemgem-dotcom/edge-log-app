@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
-import { applyTrade, reverseTrade } from '@/lib/edgeBeliefs'
+import { applyTrade, reverseTrade, applyExcursion, reverseExcursion } from '@/lib/edgeBeliefs'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -95,6 +95,18 @@ export default function EditTradePage({ params }) {
     try {
       await reverseTrade(supabase, trade)
       await applyTrade(supabase, updated)
+      // Same reasoning, extended to MFE/MAE/drawdown: trade and updated
+      // always carry identical mfe_points/mae_points/drawdown_seconds
+      // here (this save never touches those columns itself), so this is
+      // always an exact move, not a stale-data risk - even when only
+      // stop_distance changed (which isn't excursionRelevantChanged below,
+      // since mfe_points/mae_points themselves don't depend on it, but the
+      // R-normalized values applyExcursion computes do). If entry/exit did
+      // change, the freshly requested backfill below reverses this exact
+      // contribution again before applying the newly computed one - see
+      // app/api/backfill-trade-excursion/route.js.
+      await reverseExcursion(supabase, trade)
+      await applyExcursion(supabase, updated)
     } catch (beliefError) {
       console.error('belief update failed:', beliefError)
     }
@@ -134,6 +146,7 @@ export default function EditTradePage({ params }) {
     }
     try {
       await reverseTrade(supabase, trade)
+      await reverseExcursion(supabase, trade)
     } catch (beliefError) {
       console.error('reverseTrade failed:', beliefError)
     }

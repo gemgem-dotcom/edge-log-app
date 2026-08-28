@@ -154,9 +154,18 @@ export async function POST(req) {
   // stale, so unapply its old belief contribution before overwriting it.
   // Best-effort, same as every other edge_beliefs call site - a
   // belief-tracking hiccup should never block the trade's own data from
-  // being saved.
+  // being saved. excursionReversed gates the applyExcursion call below:
+  // if there was old data to reverse and reverseExcursion failed, skip
+  // applying the new contribution too, rather than adding it on top of an
+  // old one that was never actually removed - a double-count, not just a
+  // missed update. No such risk when there was nothing to reverse in the
+  // first place (this trade's first-ever backfill).
+  let excursionReversed = trade.mfe_points == null
   try {
-    if (trade.mfe_points != null) await reverseExcursion(admin, trade)
+    if (trade.mfe_points != null) {
+      await reverseExcursion(admin, trade)
+      excursionReversed = true
+    }
   } catch (beliefError) {
     console.error('reverseExcursion failed:', beliefError)
   }
@@ -173,10 +182,12 @@ export async function POST(req) {
     trade_time_unverified: verifiedTimes.anyUnverified,
   }).eq('id', tradeId)
 
-  try {
-    await applyExcursion(admin, { ...trade, mfe_points: mfePoints, mae_points: maePoints, drawdown_seconds: drawdownSeconds })
-  } catch (beliefError) {
-    console.error('applyExcursion failed:', beliefError)
+  if (excursionReversed) {
+    try {
+      await applyExcursion(admin, { ...trade, mfe_points: mfePoints, mae_points: maePoints, drawdown_seconds: drawdownSeconds })
+    } catch (beliefError) {
+      console.error('applyExcursion failed:', beliefError)
+    }
   }
 
   return json({ status: 'complete', usedFallback, timeUnverified: verifiedTimes.anyUnverified })

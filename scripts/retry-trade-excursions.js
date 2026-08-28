@@ -706,9 +706,16 @@ async function main() {
       // app/api/backfill-trade-excursion/route.js's own copy of this
       // step) - unapply the now-stale old contribution before overwriting
       // it. Best-effort, same as every other edge_beliefs call site.
+      // excursionReversed gates the apply call below: if there was old
+      // data to reverse and the reversal failed, skip applying the new
+      // contribution too, rather than adding it on top of an old one that
+      // was never actually removed - see route.js's own copy of this
+      // comment for why that's a double-count, not just a missed update.
+      let excursionReversed = trade.mfe_points == null
       try {
         if (trade.mfe_points != null) {
           await applyOrReverseExcursion(admin, trade, -1, beliefHelpers)
+          excursionReversed = true
         }
       } catch (beliefError) {
         log(`reverseExcursion failed for trade ${trade.id}:`, beliefError.message)
@@ -726,15 +733,17 @@ async function main() {
         trade_time_unverified: verifiedTimes.anyUnverified,
       }).eq('id', trade.id)
 
-      try {
-        await applyOrReverseExcursion(
-          admin,
-          { ...trade, mfe_points: mfePoints, mae_points: maePoints, drawdown_seconds: drawdownSeconds },
-          1,
-          beliefHelpers,
-        )
-      } catch (beliefError) {
-        log(`applyExcursion failed for trade ${trade.id}:`, beliefError.message)
+      if (excursionReversed) {
+        try {
+          await applyOrReverseExcursion(
+            admin,
+            { ...trade, mfe_points: mfePoints, mae_points: maePoints, drawdown_seconds: drawdownSeconds },
+            1,
+            beliefHelpers,
+          )
+        } catch (beliefError) {
+          log(`applyExcursion failed for trade ${trade.id}:`, beliefError.message)
+        }
       }
 
       completed += 1

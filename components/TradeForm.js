@@ -1132,12 +1132,16 @@ export default function TradeForm({
               <div className="screenshot-grid">
                 {existingScreenshots.map((path, i) => (
                   <div key={path} className="screenshot-preview-wrap">
-                    <img
-                      src={resolvedExistingThumbs[i]}
-                      alt={`Screenshot ${i + 1}`}
-                      className="screenshot-preview-thumb"
-                      onClick={() => openExistingLightbox(i)}
-                    />
+                    {resolvedExistingThumbs[i] ? (
+                      <img
+                        src={resolvedExistingThumbs[i]}
+                        alt={`Screenshot ${i + 1}`}
+                        className="screenshot-preview-thumb"
+                        onClick={() => openExistingLightbox(i)}
+                      />
+                    ) : (
+                      <div className="skel skel-thumb" style={{ width: '64px', height: '64px' }} />
+                    )}
                     <button
                       type="button"
                       className="screenshot-remove-btn"

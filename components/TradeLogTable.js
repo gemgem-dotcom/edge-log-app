@@ -590,14 +590,18 @@ export default function TradeLogTable({
                         {shots.length > 0 && (
                           <div className="screenshot-grid" style={{ marginTop: '20px' }}>
                             {shots.map((path, i) => (
-                              <img
-                                key={path}
-                                src={thumbUrls[i]}
-                                alt={`Trade screenshot ${i + 1}`}
-                                className="thumb"
-                                style={{ width: '70px', height: '70px' }}
-                                onClick={(e) => { e.stopPropagation(); openPreview(t, i) }}
-                              />
+                              thumbUrls[i] ? (
+                                <img
+                                  key={path}
+                                  src={thumbUrls[i]}
+                                  alt={`Trade screenshot ${i + 1}`}
+                                  className="thumb"
+                                  style={{ width: '70px', height: '70px' }}
+                                  onClick={(e) => { e.stopPropagation(); openPreview(t, i) }}
+                                />
+                              ) : (
+                                <div key={path} className="skel skel-thumb" style={{ width: '70px', height: '70px' }} />
+                              )
                             ))}
                           </div>
                         )}

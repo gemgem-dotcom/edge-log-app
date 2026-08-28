@@ -163,14 +163,18 @@ export default function TradeDetailPage({ params }) {
         {shots.length > 0 && (
           <div className="screenshot-grid" style={{ marginTop: '14px' }}>
             {shots.map((path, i) => (
-              <img
-                key={path}
-                src={thumbnailUrls[i]}
-                alt={`Trade screenshot ${i + 1}`}
-                className="thumb"
-                style={{ width: '80px', height: '80px' }}
-                onClick={() => setPreviewIndex(i)}
-              />
+              thumbnailUrls[i] ? (
+                <img
+                  key={path}
+                  src={thumbnailUrls[i]}
+                  alt={`Trade screenshot ${i + 1}`}
+                  className="thumb"
+                  style={{ width: '80px', height: '80px' }}
+                  onClick={() => setPreviewIndex(i)}
+                />
+              ) : (
+                <div key={path} className="skel skel-thumb" style={{ width: '80px', height: '80px' }} />
+              )
             ))}
           </div>
         )}

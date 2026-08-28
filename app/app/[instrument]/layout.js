@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import {
     TrendingUp,
 Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 } from 'lucide-react'
     import { supabase } from '@/lib/supabaseClient'
+import { getInstruments, getStrategies, invalidateStrategies } from '@/lib/referenceDataCache'
 import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import InstrumentNav from '@/components/InstrumentNav'
@@ -75,24 +77,14 @@ export default function InstrumentLayout({ children, params }) {
                                                                                     return
                                           }
                   }
-      const { data: instrumentData } = await supabase
-          .from('instruments')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('archived', false)
-          .order('created_at', { ascending: true })
-        setInstruments(instrumentData || [])
+      const instrumentData = await getInstruments(supabase, user.id)
+        setInstruments(instrumentData)
 
-      const current = (instrumentData || []).find((i) => i.symbol === currentSymbol)
+      const current = instrumentData.find((i) => i.symbol === currentSymbol)
         if (current) {
                 setCurrentInstrumentId(current.id)
-                const { data: stratData } = await supabase
-                  .from('strategies')
-                  .select('*')
-                  .eq('instrument_id', current.id)
-                  .eq('archived', false)
-                  .order('created_at', { ascending: true })
-                setStrategies(stratData || [])
+                const stratData = await getStrategies(supabase, current.id)
+                setStrategies(stratData)
         }
   }
 
@@ -105,6 +97,7 @@ export default function InstrumentLayout({ children, params }) {
           .from('strategies')
           .insert([{ user_id: user.id, instrument_id: currentInstrumentId, name: newStrategyName.trim() }])
         if (!error) {
+                invalidateStrategies(currentInstrumentId)
                 setNewStrategyName('')
                 setAddingStrategy(false)
                 loadData()
@@ -133,7 +126,7 @@ export default function InstrumentLayout({ children, params }) {
   return (
         <div className="shell">
           <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
-            <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
+            <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
 
             <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
@@ -141,16 +134,16 @@ export default function InstrumentLayout({ children, params }) {
                               <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
               </button>
-                      <a href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></a>
+                      <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
             </div>
             </header>
       <div className="topbar-spacer" style={spacerStyle} />
 
       <div className="shell-body">
                     <aside className="sidebar">
-                      <a href={`/app/${currentSymbol}/dashboard`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/dashboard`) ? 'sidebar-item-active' : ''}`}>
+                      <Link href={`/app/${currentSymbol}/dashboard`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/dashboard`) ? 'sidebar-item-active' : ''}`}>
             Overview
-            </a>
+            </Link>
 
           <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
             <span>Strategies</span>
@@ -159,14 +152,14 @@ export default function InstrumentLayout({ children, params }) {
  {strategiesExpanded && (
                <div className="sidebar-substrategies">
  {sortedStrategies.map((s) => (
-                   <a
+                   <Link
                                    key={s.id}
                    href={`/app/${currentSymbol}/strategies/${s.id}`}
                   className={`sidebar-substrategy ${isActive(`/app/${currentSymbol}/strategies/${s.id}`) ? 'sidebar-substrategy-active' : ''}`}
                 >
                                       <span className="strategy-dot" style={{ background: strategyColor(colorIndexById[s.id]) }} />
 {s.name}
-</a>
+</Link>
               ))}
 {addingStrategy ? (
                   <>
@@ -195,12 +188,12 @@ export default function InstrumentLayout({ children, params }) {
 </div>
           )}
 
-          <a href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
+          <Link href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
             Trade Log
-            </a>
-          <a href={`/app/${currentSymbol}/insights`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/insights`) ? 'sidebar-item-active' : ''}`}>
+            </Link>
+          <Link href={`/app/${currentSymbol}/insights`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/insights`) ? 'sidebar-item-active' : ''}`}>
             Insights
-            </a>
+            </Link>
             </aside>
 
         <main className="main-area">{children}</main>

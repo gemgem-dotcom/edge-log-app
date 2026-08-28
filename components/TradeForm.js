@@ -8,6 +8,7 @@ import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMult
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
+import { invalidateStrategies } from '../lib/referenceDataCache'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
@@ -489,6 +490,7 @@ export default function TradeForm({
       setFormError(error.message)
       return
     }
+    invalidateStrategies(instrumentId)
     setNewStrategyName('')
     setAddingStrategy(false)
     await onStrategyAdded?.()

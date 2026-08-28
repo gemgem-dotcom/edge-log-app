@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
 
@@ -38,9 +39,9 @@ export default function LogTradeMenu({ instruments }) {
       {open && (
         <div className="strategy-menu-dropdown log-trade-dropdown">
           {instruments.map((inst) => (
-            <a key={inst.id} href={`/app/${inst.symbol}/log/new`} className="strategy-menu-item">
+            <Link key={inst.id} href={`/app/${inst.symbol}/log/new`} className="strategy-menu-item">
               {inst.symbol}
-            </a>
+            </Link>
           ))}
         </div>
       )}

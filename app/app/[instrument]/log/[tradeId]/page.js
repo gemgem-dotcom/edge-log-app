@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, tradeDurationMinutes, formatDuration, formatTime12h } from '@/lib/tradeMath'
@@ -60,6 +61,11 @@ export default function TradeDetailPage({ params }) {
 
   async function loadTrade() {
     setLoading(true)
+    // A lightbox left open from the previous trade would otherwise persist
+    // this index across a soft nav (unlike `trade`/`loading` below, this
+    // component instance itself never unmounts on a tradeId change) and
+    // could point past the end of the new trade's own screenshot array.
+    setPreviewIndex(null)
     const { data: t } = await supabase.from('trades').select('*').eq('id', tradeId).single()
     if (!t) { setLoading(false); return }
     setTrade(t)
@@ -111,7 +117,7 @@ export default function TradeDetailPage({ params }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
+      <Link href={`/app/${symbol}/log`} className="back-link">Back to log</Link>
       <h1 className="page-title">Trade Detail</h1>
 
       <div className="panel">

@@ -452,11 +452,16 @@ alter table trades drop column if exists in_plan;
 -- recomputes stats from scratch from the trades table on every read; this table
 -- instead keeps a running Bayesian posterior per "slice" (the same dimensions
 -- queryPerformance groups by - session, strategy_id, instrument_id, discipline,
--- outcome, volatility/volume regime, and 2-way intersections of these (see
--- lib/edgeEngine.js's COMPOSITE_SLICES, e.g. outcome x discipline or
--- strategy_id x volatility_regime) - plus one root 'overall' slice), updated
--- incrementally at trade save/edit/delete time rather than rebuilt from the
--- full trade history on every read.
+-- outcome, day_of_week, volatility/volume regime, and 2-way intersections of
+-- these (see lib/edgeEngine.js's COMPOSITE_SLICES, e.g. outcome x discipline
+-- or strategy_id x volatility_regime) - plus one root 'overall' slice), plus
+-- one slice per individual discipline tag (lib/edgeBeliefs.js's tagSlices),
+-- plus that same tag crossed with outcome (tagOutcomeSlices) - neither is a
+-- queryPerformance groupBy dimension, since a trade can carry more than one
+-- tag at once and contribute to more than one tag (or tag x outcome) slice,
+-- unlike every dimension above where a trade belongs to exactly one value.
+-- Updated incrementally at trade save/edit/delete time rather than rebuilt
+-- from the full trade history on every read.
 --
 -- slice_key is a stable, human-diffable string encoding of bindings, e.g.
 -- 'strategy_id:<uuid>' or 'strategy_id:<uuid>|volatility_regime:high' for a
@@ -675,3 +680,42 @@ begin
       foreign key (user_id) references auth.users(id) on delete cascade;
   end if;
 end $$;
+
+-- MFE/MAE/drawdown per belief slice (lib/edgeBeliefs.js's applyExcursion/
+-- reverseExcursion) - three more Welford accumulators, same shape as
+-- avg_r_mean/expectancy_mean, but NOT populated by the ordinary
+-- applyTrade/reverseTrade path above. mfe_points/mae_points/
+-- drawdown_seconds (see the comment above that column on `trades`)
+-- usually aren't known yet when a trade is first saved - Databento access
+-- is embargoed for several hours, so this data typically only exists once
+-- app/api/backfill-trade-excursion/route.js or the hourly retry job fills
+-- it in, well after the trade's own core belief contribution has already
+-- been applied - hence the separate apply/reverse pair, triggered from
+-- wherever mfe_points actually gets written, not from the trade save/
+-- edit/delete flow. mfe_r_mean/mae_r_mean store MFE/MAE as an R-multiple
+-- (mfe_points/mae_points divided by the trade's own stop_distance), the
+-- same convention the trade detail page already displays them in, so they
+-- stay comparable across instruments with different point values rather
+-- than being raw, incomparable points. excursion_n is a SEPARATE count
+-- from n above - only some trades in any slice will ever have this data
+-- (currently NQ-family only, though Databento coverage is expected to
+-- extend to other instruments later), so it can't share n's count without
+-- corrupting the Welford weighting for every slice member that never gets
+-- excursion data at all.
+--
+-- scripts/retry-trade-excursions.js keeps its own duplicate copy of the
+-- Welford/seeding math involved here, rather than importing this file -
+-- see that script's own header comment for why (it's a standalone script
+-- outside the app's module system, deliberately self-contained so a
+-- change to the app's tooling can never silently break its hourly run).
+-- If the math in lib/edgeBeliefs.js's applyExcursion/buildExcursionRow
+-- ever changes, mirror the exact same change in that script's copy, or
+-- the two will silently disagree about a slice's MFE/MAE numbers
+-- depending on which of the two paths backfilled a given trade.
+alter table edge_beliefs add column if not exists mfe_r_mean numeric not null default 0;
+alter table edge_beliefs add column if not exists mfe_r_m2 numeric not null default 0;
+alter table edge_beliefs add column if not exists mae_r_mean numeric not null default 0;
+alter table edge_beliefs add column if not exists mae_r_m2 numeric not null default 0;
+alter table edge_beliefs add column if not exists drawdown_seconds_mean numeric not null default 0;
+alter table edge_beliefs add column if not exists drawdown_seconds_m2 numeric not null default 0;
+alter table edge_beliefs add column if not exists excursion_n integer not null default 0;

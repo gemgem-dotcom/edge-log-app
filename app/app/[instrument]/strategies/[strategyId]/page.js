@@ -240,6 +240,19 @@ useEffect(() => {
 async function loadData() {
   setLoading(true)
   setError(null)
+  // Menu/modal open-state and the duration-bucket filter are scoped to
+  // whichever strategy is on screen - left open across a soft nav to a
+  // different strategy (e.g. clicking straight from one strategy card to
+  // another), a still-open delete-confirmation modal would confirm against
+  // the *new* strategyId (read fresh from params on every render), not the
+  // one the trader actually meant to delete. Previously this page always
+  // remounted fresh on navigation, so these defaults doubled as the reset;
+  // a soft nav no longer remounts it.
+  setMenuOpen(false)
+  setRenaming(false)
+  setShowDeleteModal(false)
+  setDurationFilter(null)
+  setFormError(null)
   try {
     // PGRST116 is PostgREST's "0 rows" error for .single() - expected when
     // this strategy was deleted (e.g. a stale sidebar link, or a bookmark/

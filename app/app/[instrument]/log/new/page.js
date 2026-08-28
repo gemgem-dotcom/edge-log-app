@@ -109,6 +109,7 @@ export default function NewTradePage({ params, searchParams }) {
       <ErrorBanner message={strategiesError} />
 
       <TradeForm
+        key={`${symbol}-${preselectedStrategyId ?? 'none'}`}
         symbol={symbol}
         instrumentId={instrumentId}
         strategies={strategies}

@@ -271,6 +271,18 @@ useEffect(() => {
 async function loadData() {
   setLoading(true)
   setError(null)
+  // Strategy ids and regime data are scoped to one instrument - carrying a
+  // filter or regime reading over from whichever instrument was viewed
+  // before would silently misfilter (a strategy id that matches nothing in
+  // the new instrument) or mislabel (an NQ-family regime shown against a
+  // non-NQ instrument) rather than error, so these need to reset on every
+  // instrument switch, not just on first load. Previously this page always
+  // remounted fresh on navigation, so the state's default values doubled as
+  // this reset; a soft nav no longer remounts it.
+  setPerfStrategy('all')
+  setCalStrategy('all')
+  setSelectedDate(null)
+  setRegime(null)
   try {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: instrument } = await supabase

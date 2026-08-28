@@ -7,7 +7,7 @@ import { queueToastForReturn } from '../lib/toast'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple, ADHERENCE_EPSILON } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
-import { getScreenshotUrls } from '../lib/screenshots'
+import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
@@ -169,19 +169,31 @@ export default function TradeForm({
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
   // existingScreenshots itself stays storage paths (that's what gets
-  // submitted back on save) - this is only the resolved, short-lived
-  // signed URL for each one, re-derived whenever the path list changes
-  // (initial load, or a screenshot removed) since the bucket is private
-  // and a stored path was never a directly-usable URL (see
-  // lib/screenshots.js's getScreenshotUrls).
+  // submitted back on save). The preview grid only ever shows a small
+  // tile, so it resolves thumbnails (lib/screenshots.js's
+  // getThumbnailUrls), re-derived whenever the path list changes (initial
+  // load, or a screenshot removed) since the bucket is private and a
+  // stored path was never a directly-usable URL. The full-size signed URL
+  // each one needs for the lightbox is resolved lazily instead, only once
+  // the lightbox is actually opened (see openExistingLightbox below) -
+  // re-fetched fresh on every open rather than cached, since the list is
+  // always small enough that the cost is trivial and it avoids the list
+  // having changed (a screenshot removed) since the last time it was
+  // resolved.
+  const [resolvedExistingThumbs, setResolvedExistingThumbs] = useState([])
   const [resolvedExistingUrls, setResolvedExistingUrls] = useState([])
   useEffect(() => {
     let cancelled = false
-    getScreenshotUrls(existingScreenshots).then((urls) => {
-      if (!cancelled) setResolvedExistingUrls(urls)
+    getThumbnailUrls(existingScreenshots).then((urls) => {
+      if (!cancelled) setResolvedExistingThumbs(urls)
     })
     return () => { cancelled = true }
   }, [existingScreenshots])
+
+  function openExistingLightbox(index) {
+    setLightboxIndex(index)
+    getScreenshotUrls(existingScreenshots).then(setResolvedExistingUrls)
+  }
   const [screenshots, setScreenshots] = useState([])
   // Index into the combined existingScreenshots + screenshots list below
   // (in that same order) rather than a URL, so ScreenshotLightbox - shared
@@ -718,10 +730,15 @@ export default function TradeForm({
 
   // Same order as the two .map() calls in the screenshot grid below, so a
   // thumbnail's lightboxIndex (set on click) always points at the matching
-  // image here. Existing screenshots use their resolved signed URL (see
-  // resolvedExistingUrls above); newly picked ones use their local blob
-  // preview URL, which needs no resolution.
-  const allScreenshotUrls = [...resolvedExistingUrls, ...screenshots.map((s) => s.previewUrl)]
+  // image here. Existing screenshots use their resolved full-size signed
+  // URL once openExistingLightbox has fetched it, falling back to the
+  // already-loaded thumbnail for the brief gap before that resolves rather
+  // than a blank image; newly picked ones use their local blob preview
+  // URL, which needs no resolution either way.
+  const allScreenshotUrls = [
+    ...existingScreenshots.map((_, i) => resolvedExistingUrls[i] || resolvedExistingThumbs[i]),
+    ...screenshots.map((s) => s.previewUrl),
+  ]
 
   // The same three fields (Exit time / Exit price / Contracts) whether
   // this is the trade's only exit or one of several - idx 0 is always the
@@ -1115,12 +1132,16 @@ export default function TradeForm({
               <div className="screenshot-grid">
                 {existingScreenshots.map((path, i) => (
                   <div key={path} className="screenshot-preview-wrap">
-                    <img
-                      src={resolvedExistingUrls[i]}
-                      alt={`Screenshot ${i + 1}`}
-                      className="screenshot-preview-thumb"
-                      onClick={() => setLightboxIndex(i)}
-                    />
+                    {resolvedExistingThumbs[i] ? (
+                      <img
+                        src={resolvedExistingThumbs[i]}
+                        alt={`Screenshot ${i + 1}`}
+                        className="screenshot-preview-thumb"
+                        onClick={() => openExistingLightbox(i)}
+                      />
+                    ) : (
+                      <div className="skel skel-thumb" style={{ width: '64px', height: '64px' }} />
+                    )}
                     <button
                       type="button"
                       className="screenshot-remove-btn"

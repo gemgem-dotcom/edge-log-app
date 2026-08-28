@@ -31,19 +31,19 @@
    1825  In-header column filters (trade log table)
    1859  Active filter chips
    1908  Empty states, error banners, skeleton loaders
-   1979  Cross-instrument overview dashboard (/app)
-   2199  Not found / error boundary state pages
-   2212  Toast notifications
-   2240  Public policy pages (Privacy, Terms)
-   2259  Legal links (auth pages + account settings)
-   2298  Economic calendar card (mock - Overview pages)
-   2405  Calendar news badge (Monthly P&L day cells, mock)
-   2426  Streak badge (Overview + strategy detail pages)
-   2443  Market status pill (Overview + strategy detail pages)
-   2469  Key levels, today's brief (mock cards)
-   2495  Market context cards (all-instruments Overview)
-   2554  Strategy detail: performance findings
-   2569  Unverified logged time badge
+   1987  Cross-instrument overview dashboard (/app)
+   2207  Not found / error boundary state pages
+   2220  Toast notifications
+   2248  Public policy pages (Privacy, Terms)
+   2267  Legal links (auth pages + account settings)
+   2306  Economic calendar card (mock - Overview pages)
+   2413  Calendar news badge (Monthly P&L day cells, mock)
+   2434  Streak badge (Overview + strategy detail pages)
+   2451  Market status pill (Overview + strategy detail pages)
+   2477  Key levels, today's brief (mock cards)
+   2503  Market context cards (all-instruments Overview)
+   2562  Strategy detail: performance findings
+   2577  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -1960,6 +1960,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    since both appear at several different sizes across the skeletons. */
 .skel-pill{height:28px; border-radius:99px;}
 .skel-circle{border-radius:50%;}
+
+/* Stands in for a screenshot thumbnail while its signed URL is still
+   resolving (trade detail page, trade log's expand row, the edit form's
+   existing-screenshot previews) - an <img> with no src yet renders as a
+   broken-image glyph for that brief window, which reads as broken rather
+   than loading. Width/height set inline per use, matching each page's own
+   thumbnail size. */
+.skel-thumb{border:1px solid var(--line);}
 
 /* Embedded loading treatment for the content below a skeleton's header -
    used where the eventual content shape is too unpredictable to mimic

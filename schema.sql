@@ -455,9 +455,10 @@ alter table trades drop column if exists in_plan;
 -- outcome, day_of_week, volatility/volume regime, and 2-way intersections of
 -- these (see lib/edgeEngine.js's COMPOSITE_SLICES, e.g. outcome x discipline
 -- or strategy_id x volatility_regime) - plus one root 'overall' slice), plus
--- one slice per individual discipline tag (lib/edgeBeliefs.js's tagSlices) -
--- these aren't a queryPerformance groupBy dimension, since a trade can carry
--- more than one tag at once and contribute to more than one tag slice,
+-- one slice per individual discipline tag (lib/edgeBeliefs.js's tagSlices),
+-- plus that same tag crossed with outcome (tagOutcomeSlices) - neither is a
+-- queryPerformance groupBy dimension, since a trade can carry more than one
+-- tag at once and contribute to more than one tag (or tag x outcome) slice,
 -- unlike every dimension above where a trade belongs to exactly one value.
 -- Updated incrementally at trade save/edit/delete time rather than rebuilt
 -- from the full trade history on every read.

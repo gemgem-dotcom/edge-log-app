@@ -30,20 +30,20 @@
    1716  Date/time picker (adds an optional popup to a typed input)
    1825  In-header column filters (trade log table)
    1859  Active filter chips
-   1908  Empty states, error banners, skeleton loaders
-   1987  Cross-instrument overview dashboard (/app)
-   2166  Not found / error boundary state pages
-   2179  Toast notifications
-   2207  Public policy pages (Privacy, Terms)
-   2226  Legal links (auth pages + account settings)
-   2265  Economic calendar card (mock - Overview pages)
-   2372  Calendar news badge (Monthly P&L day cells, mock)
-   2393  Streak badge (Overview + strategy detail pages)
-   2410  Market status pill (Overview + strategy detail pages)
-   2436  Key levels, today's brief (mock cards)
-   2462  Market context cards (all-instruments Overview)
-   2521  Edge Insights panel
-   2535  Unverified logged time badge
+   1920  Empty states, error banners, skeleton loaders
+   1999  Cross-instrument overview dashboard (/app)
+   2178  Not found / error boundary state pages
+   2191  Toast notifications
+   2219  Public policy pages (Privacy, Terms)
+   2238  Legal links (auth pages + account settings)
+   2277  Economic calendar card (mock - Overview pages)
+   2384  Calendar news badge (Monthly P&L day cells, mock)
+   2405  Streak badge (Overview + strategy detail pages)
+   2422  Market status pill (Overview + strategy detail pages)
+   2448  Key levels, today's brief (mock cards)
+   2474  Market context cards (all-instruments Overview)
+   2533  Edge Insights panel
+   2547  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -1899,6 +1899,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .trade-tag-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
 .table-count{font-size:12px; color:var(--muted); text-align:right; margin-bottom:10px;}
+
+/* Trade log pagination (TradeLogTable.js's pageSize prop) - reuses
+   .calendar-nav-btn's circular icon-button look rather than inventing a
+   second prev/next style. Unlike the calendar's month nav, this one has
+   real boundaries (no page before the first or after the last), so it
+   needs its own disabled state, which the always-cyclable month nav never
+   did. */
+.table-pagination{display:flex; align-items:center; justify-content:space-between; margin-top:14px;}
+.table-pagination-range{font-size:12px; color:var(--muted); font-family:'JetBrains Mono',monospace;}
+.table-pagination-nav{display:flex; align-items:center; gap:8px;}
+.table-pagination-nav .calendar-nav-btn{width:28px; height:28px;}
+.nav-btn-disabled{opacity:.35; cursor:default; pointer-events:none;}
 
 /* nowrap guards against the browser treating the sign's hyphen as a soft
    line-break point and stranding it on its own line above the amount. */

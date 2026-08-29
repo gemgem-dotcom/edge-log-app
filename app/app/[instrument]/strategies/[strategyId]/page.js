@@ -337,6 +337,7 @@ Delete strategy
     showStrategyColumn={false}
     showFilters={true}
     symbol={symbol}
+    pageSize={15}
     emptyState={
       <EmptyState
         title="No trades yet"

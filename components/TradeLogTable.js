@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2, X, Filter } from 'lucide-react'
+import { Pencil, Trash2, X, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
 import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
@@ -145,6 +145,12 @@ export default function TradeLogTable({
   // a tailored EmptyState (with a page-appropriate call to action) instead
   // of this component hardcoding one copy for every context it's reused in.
   emptyState = null,
+  // Opt-in - callers that don't pass this keep showing every matching
+  // trade at once, unchanged. Only the per-strategy page's trade log asks
+  // for this today. Rows arrive already ordered by the caller's own query
+  // (reverse chronological everywhere this table is used), so paging is a
+  // plain slice with no re-sort here.
+  pageSize = null,
 }) {
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
@@ -181,10 +187,19 @@ export default function TradeLogTable({
   // (lib/tradeExcursions.js's excursionStatusMessage) - same account
   // offset trade save/edit already convert wall-clock times with.
   const [timezoneOffset, setTimezoneOffset] = useState(null)
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
     setRows(trades)
+    setPage(0)
   }, [trades])
+
+  // A filter change can shrink the visible set out from under whatever
+  // page was showing (e.g. viewing page 3 of 42 trades, then filtering
+  // down to 5) - land back on page 1 rather than an empty or stale page.
+  useEffect(() => {
+    setPage(0)
+  }, [filterDays, filterStrategies, filterDirection, filterResult, filterTags])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -270,6 +285,15 @@ export default function TradeLogTable({
   if (rows.length === 0) {
     return emptyState || <div className="empty">No trades match this view yet.</div>
   }
+
+  // Clamped against the current `visible` length (not just reset via the
+  // effects above) so a mid-page delete - which shrinks `rows` without
+  // going through those effects - can't strand the view on a now-empty
+  // trailing page.
+  const totalPages = pageSize ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1
+  const safePage = Math.min(page, totalPages - 1)
+  const pageStart = pageSize ? safePage * pageSize : 0
+  const paged = pageSize ? visible.slice(pageStart, pageStart + pageSize) : visible
 
   // Each filter offers its full set of values rather than only the ones the
   // current trades happen to use, so the options stay put as trades come and
@@ -421,7 +445,7 @@ export default function TradeLogTable({
               </td>
             </tr>
           )}
-          {visible.map((t) => {
+          {paged.map((t) => {
             const closed = hasResult(t)
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
             const riskReward = calcRiskReward(t.target_distance, t.stop_distance)
@@ -615,6 +639,30 @@ export default function TradeLogTable({
           })}
         </tbody>
       </table>
+
+      {pageSize && visible.length > pageSize && (
+        <div className="table-pagination">
+          <span className="table-pagination-range">
+            {pageStart + 1}–{Math.min(pageStart + pageSize, visible.length)} of {visible.length}
+          </span>
+          <div className="table-pagination-nav">
+            <span
+              className={`calendar-nav-btn ${safePage === 0 ? 'nav-btn-disabled' : ''}`}
+              onClick={() => safePage > 0 && setPage(safePage - 1)}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+            </span>
+            <span
+              className={`calendar-nav-btn ${safePage >= totalPages - 1 ? 'nav-btn-disabled' : ''}`}
+              onClick={() => safePage < totalPages - 1 && setPage(safePage + 1)}
+              aria-label="Next page"
+            >
+              <ChevronRight size={16} />
+            </span>
+          </div>
+        </div>
+      )}
 
       {preview && (
         <ScreenshotLightbox

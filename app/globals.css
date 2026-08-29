@@ -43,7 +43,7 @@
    2447  Key levels, today's brief (mock cards)
    2473  Market context cards (all-instruments Overview)
    2532  Edge Insights panel
-   2546  Unverified logged time badge
+   2547  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -2536,6 +2536,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    freedom rather than a paragraphs+tables-only contract) needs a little
    spacing so consecutive elements don't run together. */
 .session-breakdown-table{margin-top:8px;}
+.insight-narrative .table-scroll{margin-bottom:16px;}
 .insight-narrative :is(h1,h2,h3,h4){font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:16px 0 8px;}
 .insight-narrative :is(h1,h2,h3,h4):first-child{margin-top:0;}
 .insight-narrative p{margin:0 0 12px;}

@@ -30,20 +30,20 @@
    1716  Date/time picker (adds an optional popup to a typed input)
    1825  In-header column filters (trade log table)
    1859  Active filter chips
-   1908  Empty states, error banners, skeleton loaders
-   1987  Cross-instrument overview dashboard (/app)
-   2155  Not found / error boundary state pages
-   2168  Toast notifications
-   2196  Public policy pages (Privacy, Terms)
-   2215  Legal links (auth pages + account settings)
-   2254  Economic calendar card (mock - Overview pages)
-   2361  Calendar news badge (Monthly P&L day cells, mock)
-   2382  Streak badge (Overview + strategy detail pages)
-   2399  Market status pill (Overview + strategy detail pages)
-   2425  Key levels, today's brief (mock cards)
-   2451  Market context cards (all-instruments Overview)
-   2510  Edge Insights panel
-   2525  Unverified logged time badge
+   1919  Empty states, error banners, skeleton loaders
+   1998  Cross-instrument overview dashboard (/app)
+   2177  Not found / error boundary state pages
+   2190  Toast notifications
+   2218  Public policy pages (Privacy, Terms)
+   2237  Legal links (auth pages + account settings)
+   2276  Economic calendar card (mock - Overview pages)
+   2383  Calendar news badge (Monthly P&L day cells, mock)
+   2404  Streak badge (Overview + strategy detail pages)
+   2421  Market status pill (Overview + strategy detail pages)
+   2447  Key levels, today's brief (mock cards)
+   2473  Market context cards (all-instruments Overview)
+   2532  Edge Insights panel
+   2547  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -1900,6 +1900,17 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .table-count{font-size:12px; color:var(--muted); text-align:right; margin-bottom:10px;}
 
+/* Trade log pagination (TradeLogTable.js's pageSize prop) - reuses
+   .calendar-nav-btn's circular icon-button look rather than inventing a
+   second prev/next style. Unlike the calendar's month nav, this one has
+   real boundaries (no page before the first or after the last), so it
+   needs its own disabled state, which the always-cyclable month nav never
+   did. */
+.table-pagination{display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px;}
+.table-pagination .calendar-nav-btn{width:28px; height:28px;}
+.table-pagination-page{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text); min-width:14px; text-align:center;}
+.nav-btn-disabled{opacity:.35; cursor:default; pointer-events:none;}
+
 /* nowrap guards against the browser treating the sign's hyphen as a soft
    line-break point and stranding it on its own line above the amount. */
 .pnl-pos{color:var(--win); white-space:nowrap;}
@@ -2042,6 +2053,17 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:700px){
   .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
 }
+
+/* Strategy page: the equity curve sits beside a 2x2 stat-card grid that
+   runs noticeably taller than the dashboard's weekday chart (what
+   .equity-chart-svg's fixed 130px height above was tuned to match), which
+   left a bare gap under the chart. Growing the chart itself to fill the
+   stretched column - rather than raising the shared 130px, which would
+   throw off the dashboard's own pairing - closes it; flex-direction:column
+   on the wrap plus flex:1 on the svg keeps equity-chart-labels pinned to
+   the bottom of the column instead of directly under a short chart. */
+.strategy-equity-col .equity-chart-wrap{flex:1; display:flex; flex-direction:column;}
+.strategy-equity-col .equity-chart-svg{height:100%; flex:1;}
 
 /* FlippingStatChips - sits inline with the toolbar's own filter select
    (.calendar-toolbar's flex row), left-aligned right after it rather than
@@ -2423,7 +2445,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
 
 /* ---------- Key levels, today's brief (mock cards) ---------- */
-.brief-card-text, .strategy-context-text{
+.brief-card-text{
   font-size:13px; line-height:1.55; color:var(--text);
 }
 

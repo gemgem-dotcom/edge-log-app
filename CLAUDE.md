@@ -47,7 +47,6 @@ app/
     dashboard/page.js         Overview: stats, strategy performance, P&L calendar
     log/page.js               trade log
     log/new/page.js           log a trade
-    log/[tradeId]/page.js     trade detail, read only
     log/[tradeId]/edit/page.js edit a trade
     strategies/               strategy manager + per-strategy pages
     insights/                 placeholder

@@ -462,6 +462,67 @@ return (
   </div>
 ) : (
   <>
+<div className="instrument-glance-row">
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+    <p className="brief-card-text">
+      {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
+      {briefClause ? ` ${briefClause}` : ''}
+    </p>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Key levels</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Session stats</div>
+    <div className="key-levels-list">
+      <div className="key-levels-row">
+        <span className="th-with-tooltip">
+          Overnight gap
+          <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
+        </span>
+        <span className="stat-placeholder">Needs Phase 2</span>
+      </div>
+      <div className="key-levels-row">
+        <span className="th-with-tooltip">
+          Range vs. typical
+          <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
+        </span>
+        <span className="stat-placeholder">Needs Phase 2</span>
+      </div>
+      <div className="key-levels-row">
+        <span className="th-with-tooltip">
+          Volume vs. typical
+          <TableHeaderTooltip text="How much volume has traded so far this session, compared to the average volume at this same point across the last 20 sessions." />
+        </span>
+        <span className="stat-placeholder">Needs Phase 2</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="market-context-row">
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Next calendar event</div>
+    {upcomingEvents.length > 0 ? (
+      <div className="key-levels-list">
+        {upcomingEvents.map((e, i) => (
+          <div className="key-levels-row" key={i}>
+            <span>{e.event}</span>
+            <span>{fmtCountdown(e.timestamp - now)}</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="brief-card-text">No events in the next 24 hours.</p>
+    )}
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Days to rollover</div>
+    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
+  </div>
+</div>
+
 <div className="section-heading">All-Time Performance</div>
   <div className="panel">
   <div className="calendar-toolbar">
@@ -544,68 +605,6 @@ return (
 <div className="section-heading">Edge Insights</div>
 <div className="panel">
   <EdgeInsightsPanel scope={instrumentId ? `instrument:${instrumentId}` : null} tradeCount={totalTradeCount(allTrades)} />
-</div>
-
-<div className="section-heading">At a glance</div>
-<div className="instrument-glance-row">
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
-    <p className="brief-card-text">
-      {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
-      {briefClause ? ` ${briefClause}` : ''}
-    </p>
-  </div>
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Key levels</div>
-  </div>
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Session stats</div>
-    <div className="key-levels-list">
-      <div className="key-levels-row">
-        <span className="th-with-tooltip">
-          Overnight gap
-          <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
-        </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
-      </div>
-      <div className="key-levels-row">
-        <span className="th-with-tooltip">
-          Range vs. typical
-          <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
-        </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
-      </div>
-      <div className="key-levels-row">
-        <span className="th-with-tooltip">
-          Volume vs. typical
-          <TableHeaderTooltip text="How much volume has traded so far this session, compared to the average volume at this same point across the last 20 sessions." />
-        </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div className="market-context-row">
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Next calendar event</div>
-    {upcomingEvents.length > 0 ? (
-      <div className="key-levels-list">
-        {upcomingEvents.map((e, i) => (
-          <div className="key-levels-row" key={i}>
-            <span>{e.event}</span>
-            <span>{fmtCountdown(e.timestamp - now)}</span>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <p className="brief-card-text">No events in the next 24 hours.</p>
-    )}
-  </div>
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Days to rollover</div>
-    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
-  </div>
 </div>
 
 <div className="section-heading">Monthly P&L</div>

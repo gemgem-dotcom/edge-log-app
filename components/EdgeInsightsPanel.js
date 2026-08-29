@@ -1,32 +1,39 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { getCachedInsight, regenerateInsight } from '@/lib/insightsClient'
-import { parseNarrativeBlocks } from '@/lib/parseNarrative'
 
 function fmtGeneratedAt(iso) {
   if (!iso) return ''
   return `As of ${new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 }
 
-function NarrativeBlocks({ narrative }) {
-  const blocks = parseNarrativeBlocks(narrative)
-  return blocks.map((block, i) => block.type === 'table' ? (
-    <div className="table-scroll" key={i}>
-      <table className="session-breakdown-table">
-        <thead>
-          <tr>{block.headers.map((h, hi) => <th key={hi}>{h}</th>)}</tr>
-        </thead>
-        <tbody>
-          {block.rows.map((row, ri) => (
-            <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>
-          ))}
-        </tbody>
-      </table>
+// Claude's output isn't constrained to a paragraphs+tables contract
+// anymore (explicit trader request: "it doesnt HAVE to use a table, it
+// simply has to present its findings in a way thats most user friendly")
+// - so this renders whatever Markdown it actually wrote, rather than
+// parsing a narrow shape lib/parseNarrative.js used to enforce. Table
+// markup is mapped onto the same look the app's other tables use.
+function Narrative({ narrative }) {
+  return (
+    <div className="insight-narrative">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          table: ({ children }) => (
+            <div className="table-scroll">
+              <table className="session-breakdown-table">{children}</table>
+            </div>
+          ),
+          p: ({ children }) => <p className="brief-card-text">{children}</p>,
+        }}
+      >
+        {narrative}
+      </ReactMarkdown>
     </div>
-  ) : (
-    <p className="brief-card-text" key={i}>{block.text}</p>
-  ))
+  )
 }
 
 // Shared by the All Instruments, per-instrument and per-strategy pages -
@@ -76,14 +83,14 @@ export default function EdgeInsightsPanel({ scope, tradeCount }) {
   return (
     <div>
       {state.narrative ? (
-        <NarrativeBlocks narrative={state.narrative} />
+        <Narrative narrative={state.narrative} />
       ) : (
         <p className="stat-placeholder">
           {state.error ? `Couldn't generate insights — ${state.error}` : 'No insight generated yet.'}
         </p>
       )}
       <div className="panel-link-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="muted-note">{fmtGeneratedAt(state.generatedAt)}</span>
+        <span className="insight-narrative-generated-at">{fmtGeneratedAt(state.generatedAt)}</span>
         {/* A <span onClick>, not a <button> - matches how every other
             clickable-but-non-navigating action in this app is built
             (DatePicker.js's "Today", TradeLogTable.js's "Clear all") so it

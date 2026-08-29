@@ -12,18 +12,18 @@ const ANTHROPIC_MAX_TOKENS = 1536
 // is trusted to judge and state confidence given each finding's own
 // sampleSize, rather than a Bayesian prior pre-deciding that.
 //
-// Output contract: short text, then optional tables - parsed back out by
-// lib/parseNarrative.js, which is a small parser matched exactly to this
-// shape (paragraphs and GFM-style tables separated by a blank line), not
-// a general Markdown renderer. Inline formatting (bold/italics) is
-// explicitly disallowed so that parser never has to deal with it.
+// Output contract: whatever Markdown structure best conveys the findings
+// - a table, a list, prose, or a mix - rendered as-is by
+// components/EdgeInsightsPanel.js via react-markdown/remark-gfm. Earlier
+// this forced a stricter paragraphs+GFM-tables-only shape (parsed by a
+// small hand-rolled parser); removed by explicit trader request not to
+// constrain the model's presentation.
 const SYSTEM_PROMPT = `You are analyzing one trader's own historical trades for their personal trading journal. You will receive raw, unsmoothed statistics (win rate, average R, profit factor, dollar P&L) broken out by dimensions like session, day of week, discipline tags, strategy, and instrument - each with its own real sample size (labeled sampleSize). No number here has been smoothed or blended; every sampleSize is a real trade count. Any duration field (e.g. avgDrawdownDuration) is already formatted as text like "5m 31s" - use it exactly as given, never convert it back into a raw seconds count.
 
-Structure your response as: 2-4 short sentences giving the overall picture, followed by a short table for any specific breakdown that's genuinely worth comparing at a glance (e.g. session or day-of-week performance, or a mistake tag comparison) - each table introduced or followed by one sentence of plain-language explanation of what stands out in it. Only include a table when there are at least 2-3 comparable rows worth seeing side by side; skip a table for a single-number finding and just say it in a sentence instead.
+Open with a few sentences giving the overall picture. Beyond that, you decide the presentation - use whatever mix of plain prose, a Markdown table, or a short list best conveys each finding clearly. A table is one option among several, not a default: reach for one when there are genuinely several comparable rows worth seeing side by side (e.g. session or day-of-week performance, a mistake tag comparison), and skip it - just say it in a sentence - for a single-number finding or anything that doesn't naturally break into rows and columns.
 
 Formatting rules:
-- Format tables as GitHub-flavored markdown: a header row, a "---" separator row, then data rows, all pipe-separated. Nothing else needs markdown syntax.
-- Do not use bold, italics, headers, or bullet lists anywhere, in paragraphs or table cells - plain text only.
+- Standard Markdown is available: headers, bold/italics, bullet or numbered lists, and GitHub-flavored-markdown tables (header row, a "---" separator row, then pipe-separated data rows). Use whichever of these actually earns its place for a given finding - don't reach for structure the content doesn't need.
 - Never write a sample size as mathematical notation like "n=5" or "(n=5)". Weave it naturally into the sentence instead - "based on 5 trades", "just 2 trades so far", "across 14 trades", "in all 3 instances".
 
 Content rules:
@@ -35,9 +35,28 @@ Content rules:
 - If there truly isn't enough data yet to say anything meaningful, say that plainly rather than manufacturing a finding.
 - Write in second person ("you"), plain conversational language.`
 
-async function callClaude(dataset) {
+// Appended only when a previous write-up exists for this same scope, so a
+// bare "no continuity yet" case doesn't carry instructions about a prior
+// version that isn't there. Explicit trader request: regenerating
+// shouldn't read as a blank rewrite each time - findings that still hold
+// should carry over, and what's genuinely new/changed should be called
+// out, rather than every version reading as unrelated to the last.
+const CONTINUITY_INSTRUCTION = `
+
+You previously wrote an analysis of this same trader's data, reproduced below. The data has since been refreshed (more trades, or the same trades with updated numbers) - write a new version informed by it rather than starting from a blank page: keep describing findings that still hold in the current data, update or drop any that no longer do, and note what's meaningfully new or changed since last time (e.g. a pattern that's strengthened, weakened, or newly appeared now that there's more data behind it). Don't just restate the previous text - the current data is the source of truth, the previous version is only there for continuity of framing.
+
+Previous analysis:
+"""
+{previousNarrative}
+"""`
+
+async function callClaude(dataset, previousNarrative) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured')
+
+  const system = previousNarrative
+    ? SYSTEM_PROMPT + CONTINUITY_INSTRUCTION.replace('{previousNarrative}', previousNarrative)
+    : SYSTEM_PROMPT
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -49,7 +68,7 @@ async function callClaude(dataset) {
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
       max_tokens: ANTHROPIC_MAX_TOKENS,
-      system: SYSTEM_PROMPT,
+      system,
       messages: [{ role: 'user', content: JSON.stringify(dataset) }],
     }),
   })
@@ -129,7 +148,7 @@ const MOCK_NARRATIVE = `This is a placeholder insight shown in mock-DB dev mode 
 export async function POST(req) {
   try {
     const body = await req.json().catch(() => ({}))
-    const { scope, tradeCount: clientTradeCount } = body
+    const { scope, tradeCount: clientTradeCount, previousNarrative } = body
     if (!scope) return new Response(JSON.stringify({ error: 'scope is required' }), { status: 400 })
 
     if (process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true') {
@@ -152,7 +171,7 @@ export async function POST(req) {
     const built = await buildDataset(supabase, scope)
     if (!built) return new Response(JSON.stringify({ error: 'Unknown or inaccessible scope' }), { status: 404 })
 
-    const narrative = await callClaude(built.data)
+    const narrative = await callClaude(built.data, previousNarrative)
     const generatedAt = new Date().toISOString()
 
     return new Response(JSON.stringify({ narrative, generatedAt, tradeCount: built.tradeCount }), { status: 200 })

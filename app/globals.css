@@ -42,8 +42,8 @@
    2399  Market status pill (Overview + strategy detail pages)
    2425  Key levels, today's brief (mock cards)
    2451  Market context cards (all-instruments Overview)
-   2510  Edge Insights panel tables
-   2515  Unverified logged time badge
+   2510  Edge Insights panel
+   2524  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -2507,10 +2507,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    normally, but visibly off once compared side-by-side across a header row. */
 .th-with-tooltip{display:inline-flex; align-items:center;}
 
-/* ---------- Edge Insights panel tables ---------- */
-/* The AI-generated insight's own tables (components/EdgeInsightsPanel.js),
-   reusing the same table look the app already establishes elsewhere. */
+/* ---------- Edge Insights panel ---------- */
+/* The AI-generated insight (components/EdgeInsightsPanel.js): its tables
+   reuse the same table look the app already establishes elsewhere, and
+   its own prose (headings/lists/bold, now that Claude has full Markdown
+   freedom rather than a paragraphs+tables-only contract) needs a little
+   spacing so consecutive elements don't run together. */
 .session-breakdown-table{margin-top:8px;}
+.insight-narrative :is(h1,h2,h3,h4){font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:16px 0 8px;}
+.insight-narrative :is(h1,h2,h3,h4):first-child{margin-top:0;}
+.insight-narrative p{margin:0 0 12px;}
+.insight-narrative ul, .insight-narrative ol{margin:0 0 12px; padding-left:20px;}
+.insight-narrative li{margin-bottom:4px;}
+.insight-narrative-generated-at{font-size:11.5px; color:var(--muted);}
 
 /* ---------- Unverified logged time badge ---------- */
 /* Sits next to a trade's entry time on the detail page and the log

@@ -642,25 +642,21 @@ export default function TradeLogTable({
 
       {pageSize && visible.length > pageSize && (
         <div className="table-pagination">
-          <span className="table-pagination-range">
-            {pageStart + 1}–{Math.min(pageStart + pageSize, visible.length)} of {visible.length}
+          <span
+            className={`calendar-nav-btn ${safePage === 0 ? 'nav-btn-disabled' : ''}`}
+            onClick={() => safePage > 0 && setPage(safePage - 1)}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={16} />
           </span>
-          <div className="table-pagination-nav">
-            <span
-              className={`calendar-nav-btn ${safePage === 0 ? 'nav-btn-disabled' : ''}`}
-              onClick={() => safePage > 0 && setPage(safePage - 1)}
-              aria-label="Previous page"
-            >
-              <ChevronLeft size={16} />
-            </span>
-            <span
-              className={`calendar-nav-btn ${safePage >= totalPages - 1 ? 'nav-btn-disabled' : ''}`}
-              onClick={() => safePage < totalPages - 1 && setPage(safePage + 1)}
-              aria-label="Next page"
-            >
-              <ChevronRight size={16} />
-            </span>
-          </div>
+          <span className="table-pagination-page">{safePage + 1}</span>
+          <span
+            className={`calendar-nav-btn ${safePage >= totalPages - 1 ? 'nav-btn-disabled' : ''}`}
+            onClick={() => safePage < totalPages - 1 && setPage(safePage + 1)}
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
+          </span>
         </div>
       )}
 

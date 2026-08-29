@@ -30,20 +30,20 @@
    1716  Date/time picker (adds an optional popup to a typed input)
    1825  In-header column filters (trade log table)
    1859  Active filter chips
-   1920  Empty states, error banners, skeleton loaders
-   1999  Cross-instrument overview dashboard (/app)
-   2178  Not found / error boundary state pages
-   2191  Toast notifications
-   2219  Public policy pages (Privacy, Terms)
-   2238  Legal links (auth pages + account settings)
-   2277  Economic calendar card (mock - Overview pages)
-   2384  Calendar news badge (Monthly P&L day cells, mock)
-   2405  Streak badge (Overview + strategy detail pages)
-   2422  Market status pill (Overview + strategy detail pages)
-   2448  Key levels, today's brief (mock cards)
-   2474  Market context cards (all-instruments Overview)
-   2533  Edge Insights panel
-   2547  Unverified logged time badge
+   1919  Empty states, error banners, skeleton loaders
+   1998  Cross-instrument overview dashboard (/app)
+   2177  Not found / error boundary state pages
+   2190  Toast notifications
+   2218  Public policy pages (Privacy, Terms)
+   2237  Legal links (auth pages + account settings)
+   2276  Economic calendar card (mock - Overview pages)
+   2383  Calendar news badge (Monthly P&L day cells, mock)
+   2404  Streak badge (Overview + strategy detail pages)
+   2421  Market status pill (Overview + strategy detail pages)
+   2447  Key levels, today's brief (mock cards)
+   2473  Market context cards (all-instruments Overview)
+   2532  Edge Insights panel
+   2546  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -1906,10 +1906,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    real boundaries (no page before the first or after the last), so it
    needs its own disabled state, which the always-cyclable month nav never
    did. */
-.table-pagination{display:flex; align-items:center; justify-content:space-between; margin-top:14px;}
-.table-pagination-range{font-size:12px; color:var(--muted); font-family:'JetBrains Mono',monospace;}
-.table-pagination-nav{display:flex; align-items:center; gap:8px;}
-.table-pagination-nav .calendar-nav-btn{width:28px; height:28px;}
+.table-pagination{display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px;}
+.table-pagination .calendar-nav-btn{width:28px; height:28px;}
+.table-pagination-page{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text); min-width:14px; text-align:center;}
 .nav-btn-disabled{opacity:.35; cursor:default; pointer-events:none;}
 
 /* nowrap guards against the browser treating the sign's hyphen as a soft

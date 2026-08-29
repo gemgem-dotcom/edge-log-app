@@ -771,9 +771,10 @@ export default function TradeForm({
         <div className="field wide">
           <label>Contracts</label>
           <input
-            type="number" step="1"
+            type="number" step="1" min="1"
             value={row.contracts} onChange={(e) => update('contracts', e.target.value)}
           />
+          {isPrimary && errors.contracts && <span className="field-error">{errors.contracts}</span>}
         </div>
       </>
     )

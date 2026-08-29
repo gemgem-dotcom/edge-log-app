@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { invalidateStrategies } from '@/lib/referenceDataCache'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
+import { totalTradeCount } from '@/lib/insightData'
+import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -522,6 +524,11 @@ Delete strategy
       </div>
     )}
   </div>
+</div>
+
+<div className="section-heading">Edge Insights</div>
+<div className="panel">
+  <EdgeInsightsPanel scope={`strategy:${strategyId}`} tradeCount={totalTradeCount(trades)} />
 </div>
 
 <div className="section-heading">At a glance</div>

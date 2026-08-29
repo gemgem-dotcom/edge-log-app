@@ -743,3 +743,42 @@ alter table edge_beliefs add column if not exists excursion_n integer not null d
 alter table edge_beliefs add column if not exists pnl_mean numeric not null default 0;
 alter table edge_beliefs add column if not exists pnl_m2 numeric not null default 0;
 alter table edge_beliefs add column if not exists pnl_n integer not null default 0;
+
+-- AI-generated insight narratives (app/api/generate-insights/route.js,
+-- lib/insightsClient.js) - the "read side" for the Overview/per-instrument/
+-- per-strategy dashboard panels replaced this feature with: instead of
+-- fixed statistical tables gated by a confidence-tier threshold, a Claude
+-- call is handed the trader's RAW, unsmoothed queryPerformance breakdowns
+-- (lib/insightData.js - deliberately bypasses edge_beliefs' Bayesian
+-- blending entirely) and asked to write out its own explicit findings,
+-- stating sample sizes and confidence itself in prose rather than a fixed
+-- n<20/50 cutoff hiding a number outright. edge_beliefs itself is
+-- untouched and still powers the existing Today's Brief clause
+-- (lib/todaysBrief.js) - this table is unrelated to it.
+--
+-- One row per (user, scope) - scope is 'overall', 'instrument:<id>', or
+-- 'strategy:<id>', matching whichever of the three dashboard panels asked
+-- for it. Regenerated on a hybrid policy (lib/insightsClient.js's
+-- REGEN_THRESHOLD): a page reads this cached row instantly rather than
+-- paying an LLM round-trip on every view, and only triggers a fresh
+-- generation once a scope has picked up enough new closed trades since
+-- trade_count_at_generation to plausibly change what the narrative says
+-- (or via the panel's own manual "Regenerate" control). narrative is the
+-- literal text Claude returned - no structured fields, since the whole
+-- point of this feature is prose findings, not another table.
+create table edge_insights (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  scope text not null,
+  narrative text not null,
+  trade_count_at_generation integer not null default 0,
+  generated_at timestamptz not null default now(),
+  created_at timestamptz default now(),
+  unique(user_id, scope)
+);
+
+alter table edge_insights enable row level security;
+create policy "Users manage their own AI insights"
+  on edge_insights for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

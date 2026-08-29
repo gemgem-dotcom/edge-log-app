@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
+import { totalTradeCount } from '@/lib/insightData'
+import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
 import { daysToRollover, nextRolloverDate } from '@/lib/contractRollover'
@@ -553,6 +555,11 @@ export default function OverviewDashboard({ instruments, strategies }) {
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="section-heading">Edge Insights</div>
+          <div className="panel">
+            <EdgeInsightsPanel scope="overall" tradeCount={totalTradeCount(allTrades)} />
           </div>
 
           <div className="section-heading">Monthly P&L</div>

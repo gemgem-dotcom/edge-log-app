@@ -8,6 +8,8 @@ import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
+import { totalTradeCount } from '@/lib/insightData'
+import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
@@ -538,6 +540,11 @@ return (
   </div>
   </div>
   </div>
+
+<div className="section-heading">Edge Insights</div>
+<div className="panel">
+  <EdgeInsightsPanel scope={instrumentId ? `instrument:${instrumentId}` : null} tradeCount={totalTradeCount(allTrades)} />
+</div>
 
 <div className="section-heading">At a glance</div>
 <div className="instrument-glance-row">

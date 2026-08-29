@@ -31,12 +31,12 @@ export default function StrategyDetailSkeleton() {
             </div>
           ))}
         </div>
-        <div className="performance-duration-chart">
-          <div className="skel skel-line" style={{ width: '120px', height: '12px', marginBottom: '16px' }} />
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className="skel skel-line" key={i} style={{ marginBottom: '12px' }} />
-          ))}
-        </div>
+      </div>
+
+      <div className="section-heading">Edge Insights</div>
+      <div className="panel">
+        <div className="skel skel-line" />
+        <div className="skel skel-line" style={{ width: '80%' }} />
       </div>
 
       <div className="section-heading">At a glance</div>

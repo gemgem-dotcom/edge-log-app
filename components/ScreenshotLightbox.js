@@ -3,9 +3,9 @@
 import { useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-// Screenshot viewer shared by the Trade Detail page and the Trade Log's
-// expand row - both let a trader step through every screenshot on one
-// trade with arrow buttons, when there's more than one.
+// Screenshot viewer shared by the Trade Log's expand row and the trade
+// form (new/edit) - both let a trader step through every screenshot on
+// one trade with arrow buttons, when there's more than one.
 //
 // The arrows are ordinary flex siblings of .modal-content (see
 // .modal-overlay in globals.css), not absolutely positioned - two earlier

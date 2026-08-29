@@ -198,8 +198,8 @@ export default function TradeForm({
   const [screenshots, setScreenshots] = useState([])
   // Index into the combined existingScreenshots + screenshots list below
   // (in that same order) rather than a URL, so ScreenshotLightbox - shared
-  // with the read-only Trade Detail page and Trade Log's expand row - can
-  // step between them with its arrows/keyboard nav the same way there.
+  // with Trade Log's expand row - can step between them with its
+  // arrows/keyboard nav the same way there.
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const [tags, setTags] = useState(initial.tags || [])

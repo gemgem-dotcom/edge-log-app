@@ -18,6 +18,7 @@ import TradeLogTable from '@/components/TradeLogTable'
 import StreakBadge from '@/components/StreakBadge'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import WinRateGauge from '@/components/WinRateGauge'
+import EquityCurveChart from '@/components/EquityCurveChart'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -59,6 +60,32 @@ async function computeStrategyStats(allTrades) {
     n: perf.n, winRate: perf.winRate, expectancy: perf.expectancy, expectancyD, totalPnl, totalD,
     hasD, profitFactor: perf.profitFactor, wins: wins.length, losses: losses.length,
   }
+}
+
+// Cumulative $ P&L by day, ordered by trade_date - the same grouping
+// OverviewDashboard.js defaults its own equity curve to, minus that
+// page's day/week/month selector (not asked for here). Only trades with
+// a recorded $ amount contribute, matching EquityCurveChart's existing
+// dollar-only contract elsewhere in the app - an R-only strategy renders
+// the chart's own "not enough closed trades" empty state.
+function buildEquityCurve(trades) {
+  const withD = trades
+    .filter(hasResult)
+    .filter(hasDollar)
+    .slice()
+    .sort((a, b) => a.trade_date.localeCompare(b.trade_date) || (a.trade_time || '').localeCompare(b.trade_time || ''))
+
+  const byDate = new Map()
+  for (const t of withD) {
+    byDate.set(t.trade_date, (byDate.get(t.trade_date) || 0) + t.pnl)
+  }
+
+  const dates = [...byDate.keys()].sort()
+  let running = 0
+  return dates.map((key) => {
+    running += byDate.get(key)
+    return { key, cumulative: running }
+  })
 }
 
 function fmtR(val) {
@@ -191,6 +218,7 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
 const streak = computeStreak(trades)
+const equityPoints = buildEquityCurve(trades)
 
 return (
   <div className="page-container">
@@ -238,39 +266,47 @@ Delete strategy
 
 <div className="section-heading">Performance</div>
 <div className="panel">
-  <div className="stats stats-5">
-    <div className="stat">
-      <div className="stat-label">Total P&amp;L</div>
-      <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
-        {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+  <div className="performance-card-subgrid" style={{ marginTop: 0 }}>
+    <div className="stats stats-2">
+      <div className="stat">
+        <div className="stat-label">Total P&amp;L</div>
+        <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
+          {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+        </div>
+        {stats.hasD && (
+          <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+        )}
       </div>
-      {stats.hasD && (
-        <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
-      )}
-    </div>
-    <div className="stat">
-      <div className="stat-label">Expectancy</div>
-      <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
-        {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+      <div className="stat">
+        <div className="stat-label">Expectancy</div>
+        <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
+          {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+        </div>
+        {stats.expectancyD !== null && (
+          <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+        )}
       </div>
-      {stats.expectancyD !== null && (
-        <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+      <div className="stat stat-gauge">
+        <div className="stat-label">Win rate</div>
+        <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
+      </div>
+      <div className="stat">
+        <div className="stat-label">Profit factor</div>
+        <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+      </div>
+    </div>
+
+    <div>
+      <div className="stat-label dashboard-card-title">Equity curve</div>
+      <EquityCurveChart points={equityPoints} />
+      {equityPoints.length > 0 && (
+        <div className="equity-chart-labels">
+          <span>{equityPoints[0].key}</span>
+          <span>{equityPoints[equityPoints.length - 1].key}</span>
+        </div>
       )}
-    </div>
-    <div className="stat stat-gauge">
-      <div className="stat-label">Win rate</div>
-      <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
-    </div>
-    <div className="stat">
-      <div className="stat-label">Profit factor</div>
-      <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
-    </div>
-    <div className="stat">
-      <div className="stat-label">Total trades</div>
-      <div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
     </div>
   </div>
-
 </div>
 
 <div className="section-heading">Edge Insights</div>

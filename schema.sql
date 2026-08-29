@@ -452,14 +452,17 @@ alter table trades drop column if exists in_plan;
 -- recomputes stats from scratch from the trades table on every read; this table
 -- instead keeps a running Bayesian posterior per "slice" (the same dimensions
 -- queryPerformance groups by - session, strategy_id, instrument_id, discipline,
--- outcome, day_of_week, volatility/volume regime, and 2-way intersections of
--- these (see lib/edgeEngine.js's COMPOSITE_SLICES, e.g. outcome x discipline
--- or strategy_id x volatility_regime) - plus one root 'overall' slice), plus
--- one slice per individual discipline tag (lib/edgeBeliefs.js's tagSlices),
--- plus that same tag crossed with outcome (tagOutcomeSlices) - neither is a
+-- outcome, day_of_week, volatility/volume regime, and 2-way or 3-way
+-- intersections of these (see lib/edgeEngine.js's COMPOSITE_SLICES, e.g.
+-- outcome x discipline, strategy_id x volatility_regime, or strategy_id x
+-- day_of_week x outcome) - plus one root 'overall' slice), plus one slice
+-- per individual discipline tag (lib/edgeBeliefs.js's tagSlices), that same
+-- tag crossed with outcome (tagOutcomeSlices), with strategy_id or
+-- instrument_id (tagCrossSlices), and strategy_id x tag x {outcome,
+-- session, day_of_week} (tagStrategyExtraSlices) - none of these four are a
 -- queryPerformance groupBy dimension, since a trade can carry more than one
--- tag at once and contribute to more than one tag (or tag x outcome) slice,
--- unlike every dimension above where a trade belongs to exactly one value.
+-- tag at once and contribute to more than one tag-involving slice, unlike
+-- every dimension above where a trade belongs to exactly one value.
 -- Updated incrementally at trade save/edit/delete time rather than rebuilt
 -- from the full trade history on every read.
 --
@@ -719,3 +722,24 @@ alter table edge_beliefs add column if not exists mae_r_m2 numeric not null defa
 alter table edge_beliefs add column if not exists drawdown_seconds_mean numeric not null default 0;
 alter table edge_beliefs add column if not exists drawdown_seconds_m2 numeric not null default 0;
 alter table edge_beliefs add column if not exists excursion_n integer not null default 0;
+
+-- Dollar P&L, unlike every other accumulator above, is only ever tracked
+-- for a slice built from strategy_id (lib/edgeBeliefs.js's
+-- hasStrategyBinding) - R-multiple is comparable across trades of
+-- different position sizes and instruments, which is why every other
+-- metric in this table uses it, but raw dollars aren't comparable that
+-- way. A strategy is normally tied to a consistent instrument/sizing
+-- context for a given trader, which is what makes averaging dollars
+-- meaningful once a slice is already anchored to one - a bare `session`
+-- or `discipline` slice blends every strategy/instrument together, where
+-- it wouldn't be. Whether a given slice qualifies is read off its own
+-- `bindings` column at write time, not hand-listed, so it automatically
+-- covers every current and future composite that keeps strategy_id in
+-- its combination (strategy_id alone, any 2-way or 3-way composite with
+-- it) and excludes everything else. pnl_n is its own count, same
+-- reasoning as excursion_n - pnl is an optional field on a trade (like
+-- contracts), so not every trade in a qualifying slice will necessarily
+-- have a dollar figure to contribute.
+alter table edge_beliefs add column if not exists pnl_mean numeric not null default 0;
+alter table edge_beliefs add column if not exists pnl_m2 numeric not null default 0;
+alter table edge_beliefs add column if not exists pnl_n integer not null default 0;

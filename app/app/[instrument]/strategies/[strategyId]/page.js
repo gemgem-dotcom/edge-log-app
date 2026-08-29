@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { invalidateStrategies } from '@/lib/referenceDataCache'
 import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
+import { strategyFindings } from '@/lib/edgeFindings'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -211,6 +212,7 @@ const [loading, setLoading] = useState(true)
   const [strategy, setStrategy] = useState(null)
   const [trades, setTrades] = useState([])
   const [stats, setStats] = useState(null)
+  const [edgeInsights, setEdgeInsights] = useState(null)
   usePageTitle(strategy ? strategy.name : 'Strategy')
 
 const [menuOpen, setMenuOpen] = useState(false)
@@ -252,6 +254,7 @@ async function loadData() {
   setShowDeleteModal(false)
   setDurationFilter(null)
   setFormError(null)
+  setEdgeInsights(null)
   try {
     // PGRST116 is PostgREST's "0 rows" error for .single() - expected when
     // this strategy was deleted (e.g. a stale sidebar link, or a bookmark/
@@ -274,6 +277,10 @@ async function loadData() {
     setTrades(tradeData || [])
     const computed = await computeStrategyStats(tradeData || [])
     setStats(computed)
+
+    // Fire-and-forget, same reasoning as the other two dashboard pages'
+    // edge_beliefs lookups.
+    strategyFindings(strategyId, tradeData || []).then(setEdgeInsights).catch(() => setEdgeInsights(null))
   } catch (err) {
     setError(err.message || "Couldn't load this strategy — something went wrong.")
   } finally {
@@ -522,6 +529,117 @@ Delete strategy
       </div>
     )}
   </div>
+</div>
+
+<div className="section-heading">Edge Insights</div>
+<div className="panel">
+  {!edgeInsights ? (
+    <div className="stat-placeholder">Building your edge profile…</div>
+  ) : (
+    <div className="strategy-findings">
+      <div className="strategy-finding">
+        <div className="strategy-finding-label">Costliest session</div>
+        {edgeInsights.sessionLossRows.length === 0 ? (
+          <div className="stat-placeholder">Not enough losses yet.</div>
+        ) : (
+          <div className="table-scroll">
+            <table className="session-breakdown-table">
+              <thead><tr><th>Session</th><th>Losses</th><th>Avg loss</th></tr></thead>
+              <tbody>
+                {edgeInsights.sessionLossRows.map((row) => (
+                  <tr key={row.key}>
+                    <td>{row.key}</td>
+                    <td>{row.n}</td>
+                    <td><span className={colorClass(row.avgR)}>{fmtR(row.avgR)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="strategy-finding">
+        <div className="strategy-finding-label">Costliest day</div>
+        {edgeInsights.dayLossRows.length === 0 ? (
+          <div className="stat-placeholder">Not enough losses yet.</div>
+        ) : (
+          <div className="table-scroll">
+            <table className="session-breakdown-table">
+              <thead><tr><th>Day</th><th>Losses</th><th>Avg loss</th></tr></thead>
+              <tbody>
+                {edgeInsights.dayLossRows.map((row) => (
+                  <tr key={row.key}>
+                    <td>{row.key}</td>
+                    <td>{row.n}</td>
+                    <td><span className={colorClass(row.avgR)}>{fmtR(row.avgR)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="strategy-finding">
+        <div className="strategy-finding-label">Sharpest mistake, and when</div>
+        {!edgeInsights.mistakeTag ? (
+          <div className="stat-placeholder">Not enough tagged losses yet.</div>
+        ) : (
+          <p className="strategy-finding-text">
+            &quot;{edgeInsights.mistakeTag.tag}&quot; on this strategy averages{' '}
+            <strong className={colorClass(edgeInsights.mistakeTag.avgR)}>{fmtR(edgeInsights.mistakeTag.avgR)}</strong>
+            {' '}across {edgeInsights.mistakeTag.n} trades
+            {edgeInsights.mistakeTag.when && (
+              <>
+                {' '}— worst in the <strong>{edgeInsights.mistakeTag.when.label}</strong> (
+                <span className={colorClass(edgeInsights.mistakeTag.when.avgR)}>{fmtR(edgeInsights.mistakeTag.when.avgR)}</span>
+                {' '}avg, {edgeInsights.mistakeTag.when.n} trades).
+              </>
+            )}
+          </p>
+        )}
+      </div>
+
+      <div className="strategy-finding">
+        <div className="strategy-finding-label">Stop utilization</div>
+        {!edgeInsights.stratBelief || !edgeInsights.stratBelief.excursion ? (
+          <div className="stat-placeholder">No MFE/MAE data yet (NQ-family only).</div>
+        ) : (
+          <p className="strategy-finding-text">
+            Price typically runs <strong className="pos">{fmtR(edgeInsights.stratBelief.excursion.mfeR)}</strong> in your favor before you exit, and moves{' '}
+            <strong className="neg">{fmtR(edgeInsights.stratBelief.excursion.maeR)}</strong> against you at worst — a stop closer to that MAE figure
+            {' '}may be capturing less unnecessary risk ({edgeInsights.stratBelief.excursion.n} trades with excursion data).
+          </p>
+        )}
+      </div>
+
+      <div className="strategy-finding">
+        <div className="strategy-finding-label">Time in drawdown</div>
+        {!edgeInsights.stratBelief || !edgeInsights.stratBelief.excursion ? (
+          <div className="stat-placeholder">No excursion data yet.</div>
+        ) : (
+          <p className="strategy-finding-text">
+            On average, a trade on this strategy spends{' '}
+            <strong>{formatDuration(Math.round(edgeInsights.stratBelief.excursion.drawdownSeconds / 60))}</strong> underwater before it closes.
+          </p>
+        )}
+      </div>
+
+      <div className="strategy-finding">
+        <div className="strategy-finding-label">Smoothed $ per trade</div>
+        {!edgeInsights.stratBelief || !edgeInsights.stratBelief.pnl ? (
+          <div className="stat-placeholder">No dollar P&amp;L recorded yet.</div>
+        ) : (
+          <p className="strategy-finding-text">
+            Bayesian-smoothed, this strategy nets{' '}
+            <strong className={colorClass(edgeInsights.stratBelief.pnl.mean)}>{fmtD(edgeInsights.stratBelief.pnl.mean)}</strong> per trade
+            {' '}({edgeInsights.stratBelief.pnl.n} trades with a recorded dollar value).
+          </p>
+        )}
+      </div>
+    </div>
+  )}
 </div>
 
 <div className="section-heading">At a glance</div>

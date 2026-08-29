@@ -4,7 +4,7 @@
 // status pill) is skeletoned - that part renders identically whether or
 // not the instrument turns out to have any trades. The content below it
 // doesn't: zero trades collapses to one small EmptyState panel, where any
-// trades at all bring the full All-Time Performance/At a glance/Monthly
+// trades at all bring the full glance-cards/All-Time Performance/Monthly
 // P&L stack, and there's no way to know which is coming until the fetch
 // resolves. Guessing either shape would be wrong about as often as it's
 // right, so that part falls back to the plain animated-bars loading

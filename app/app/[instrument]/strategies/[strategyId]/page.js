@@ -304,7 +304,7 @@ Delete strategy
       </div>
     </div>
 
-    <div>
+    <div className="strategy-equity-col">
       <div className="stat-label dashboard-card-title">Equity curve</div>
       <EquityCurveChart points={equityPoints} />
       {equityPoints.length > 0 && (

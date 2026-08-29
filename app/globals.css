@@ -32,18 +32,18 @@
    1859  Active filter chips
    1908  Empty states, error banners, skeleton loaders
    1987  Cross-instrument overview dashboard (/app)
-   2155  Not found / error boundary state pages
-   2168  Toast notifications
-   2196  Public policy pages (Privacy, Terms)
-   2215  Legal links (auth pages + account settings)
-   2254  Economic calendar card (mock - Overview pages)
-   2361  Calendar news badge (Monthly P&L day cells, mock)
-   2382  Streak badge (Overview + strategy detail pages)
-   2399  Market status pill (Overview + strategy detail pages)
-   2425  Key levels, today's brief (mock cards)
-   2451  Market context cards (all-instruments Overview)
-   2510  Edge Insights panel
-   2524  Unverified logged time badge
+   2166  Not found / error boundary state pages
+   2179  Toast notifications
+   2207  Public policy pages (Privacy, Terms)
+   2226  Legal links (auth pages + account settings)
+   2265  Economic calendar card (mock - Overview pages)
+   2372  Calendar news badge (Monthly P&L day cells, mock)
+   2393  Streak badge (Overview + strategy detail pages)
+   2410  Market status pill (Overview + strategy detail pages)
+   2436  Key levels, today's brief (mock cards)
+   2462  Market context cards (all-instruments Overview)
+   2521  Edge Insights panel
+   2535  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -2042,6 +2042,17 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 @media (max-width:700px){
   .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
 }
+
+/* Strategy page: the equity curve sits beside a 2x2 stat-card grid that
+   runs noticeably taller than the dashboard's weekday chart (what
+   .equity-chart-svg's fixed 130px height above was tuned to match), which
+   left a bare gap under the chart. Growing the chart itself to fill the
+   stretched column - rather than raising the shared 130px, which would
+   throw off the dashboard's own pairing - closes it; flex-direction:column
+   on the wrap plus flex:1 on the svg keeps equity-chart-labels pinned to
+   the bottom of the column instead of directly under a short chart. */
+.strategy-equity-col .equity-chart-wrap{flex:1; display:flex; flex-direction:column;}
+.strategy-equity-col .equity-chart-svg{height:100%; flex:1;}
 
 /* FlippingStatChips - sits inline with the toolbar's own filter select
    (.calendar-toolbar's flex row), left-aligned right after it rather than

@@ -2446,7 +2446,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
 
 /* ---------- Key levels, today's brief (mock cards) ---------- */
-.brief-card-text, .strategy-context-text{
+.brief-card-text{
   font-size:13px; line-height:1.55; color:var(--text);
 }
 

@@ -322,14 +322,6 @@ Delete strategy
   <EdgeInsightsPanel scope={`strategy:${strategyId}`} tradeCount={totalTradeCount(trades)} />
 </div>
 
-<div className="section-heading">At a glance</div>
-<div className="panel">
-  <div className="stat-label dashboard-card-title">Trades around today&apos;s events?</div>
-  {/* Mock only - a real version should check this strategy's name/tags
-      against today's economic-calendar events instead of a fixed line. */}
-  <p className="strategy-context-text">This strategy often trades around scheduled Fed events — one lands today at 10:00.</p>
-</div>
-
 <div className="section-heading">Trade log — {strategy.name}</div>
 <div className="panel">
   <TradeLogTable

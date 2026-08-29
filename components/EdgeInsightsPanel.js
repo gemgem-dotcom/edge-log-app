@@ -4,13 +4,6 @@ import { useEffect, useState } from 'react'
 import { getCachedInsight, regenerateInsight } from '@/lib/insightsClient'
 import { parseNarrativeBlocks } from '@/lib/parseNarrative'
 
-// Neutralizes the browser's default <button> chrome (border/background/
-// padding/font) so it reads as the same plain text-link style
-// .panel-link already gives an <a> elsewhere - a <button> is the more
-// correct element here since it triggers an action rather than
-// navigating anywhere.
-const LINK_BUTTON_STYLE = { background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }
-
 function fmtGeneratedAt(iso) {
   if (!iso) return ''
   return `As of ${new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
@@ -91,9 +84,20 @@ export default function EdgeInsightsPanel({ scope, tradeCount }) {
       )}
       <div className="panel-link-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span className="muted-note">{fmtGeneratedAt(state.generatedAt)}</span>
-        <button type="button" className="panel-link" style={LINK_BUTTON_STYLE} onClick={handleGenerate} disabled={regenerating}>
+        {/* A <span onClick>, not a <button> - matches how every other
+            clickable-but-non-navigating action in this app is built
+            (DatePicker.js's "Today", TradeLogTable.js's "Clear all") so it
+            picks up .panel-link's hover underline cleanly instead of a
+            <button>'s own default text-decoration rendering (confirmed
+            live: a <button> here showed a doubled/thick underline on
+            hover that this doesn't). */}
+        <span
+          className="panel-link"
+          style={{ cursor: regenerating ? 'default' : 'pointer', opacity: regenerating ? 0.6 : 1 }}
+          onClick={regenerating ? undefined : handleGenerate}
+        >
           {genLabel}
-        </button>
+        </span>
       </div>
     </div>
   )

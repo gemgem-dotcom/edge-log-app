@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
-import { overallFindings } from '@/lib/edgeFindings'
+import { totalTradeCount } from '@/lib/insightData'
+import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
 import { daysToRollover, nextRolloverDate } from '@/lib/contractRollover'
@@ -54,14 +55,6 @@ function fmtPF(val) {
 function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
   return val > 0 ? 'pos' : val < 0 ? 'neg' : 'neu'
-}
-function fmtPct(val) {
-  if (val === null || val === undefined) return '—'
-  return Math.round(val) + '%'
-}
-function fmtPctDelta(val) {
-  if (val === null || val === undefined) return '—'
-  return (val >= 0 ? '+' : '') + Math.round(val) + 'pp'
 }
 function toDateStr(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -226,7 +219,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [allTrades, setAllTrades] = useState([])
-  const [edgeInsights, setEdgeInsights] = useState(null)
   const [greeting, setGreeting] = useState('')
   const [equityGroup, setEquityGroup] = useState('day')
   const [perfInstrument, setPerfInstrument] = useState('all')
@@ -243,7 +235,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
   async function loadData() {
     setLoading(true)
     setError(null)
-    setEdgeInsights(null)
     try {
       const ids = instruments.map((i) => i.id)
 
@@ -255,12 +246,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
       const { data: { user } } = await supabase.auth.getUser()
       setGreeting(pickGreeting(user?.user_metadata?.full_name))
-
-      // Fire-and-forget, separate from the main loading state - edge_beliefs
-      // is a read the rest of the page doesn't depend on, so a slow or
-      // failed lookup shouldn't hold up (or blank) everything above it. The
-      // Edge Insights panel below shows its own loading/empty state.
-      overallFindings(tradeData || []).then(setEdgeInsights).catch(() => setEdgeInsights(null))
     } catch (err) {
       setError(err.message || "Couldn't load your dashboard — something went wrong.")
     } finally {
@@ -574,122 +559,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
           <div className="section-heading">Edge Insights</div>
           <div className="panel">
-            {!edgeInsights ? (
-              <div className="stat-placeholder">Building your edge profile…</div>
-            ) : (
-              <div className="strategy-findings">
-                <div className="strategy-finding">
-                  <div className="strategy-finding-label">Overall edge</div>
-                  {!edgeInsights.overallBelief || edgeInsights.overallBelief.confidenceTier === 'too_early' ? (
-                    <div className="stat-placeholder">Not enough trades yet to form a reliable picture.</div>
-                  ) : (
-                    <p className="strategy-finding-text">
-                      Across every instrument, your Bayesian-smoothed win rate sits at{' '}
-                      <strong>{fmtPct(edgeInsights.overallBelief.winRate)}</strong>, averaging{' '}
-                      <strong className={colorClass(edgeInsights.overallBelief.avgR)}>{fmtR(edgeInsights.overallBelief.avgR)}</strong> per trade
-                      {' '}({edgeInsights.overallBelief.n} trades, {edgeInsights.overallBelief.confidenceTier.replace('_', ' ')}).
-                    </p>
-                  )}
-                </div>
-
-                <div className="strategy-finding">
-                  <div className="strategy-finding-label">By instrument</div>
-                  {edgeInsights.instrumentRows.length === 0 ? (
-                    <div className="stat-placeholder">No data yet.</div>
-                  ) : (
-                    <div className="table-scroll">
-                      <table className="session-breakdown-table">
-                        <thead><tr><th>Instrument</th><th>Trades</th><th>Win rate</th><th>Avg R</th></tr></thead>
-                        <tbody>
-                          {edgeInsights.instrumentRows.map((row) => (
-                            <tr key={row.key}>
-                              <td>{instrumentById[row.key]?.symbol || row.key}</td>
-                              <td>{row.n}</td>
-                              <td>{row.confidenceTier === 'too_early' ? <span className="muted-note">Too few trades</span> : fmtPct(row.winRate)}</td>
-                              <td>{row.confidenceTier === 'too_early' ? <span className="muted-note">—</span> : <span className={colorClass(row.avgR)}>{fmtR(row.avgR)}</span>}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                <div className="strategy-finding">
-                  <div className="strategy-finding-label">Session breakdown</div>
-                  {edgeInsights.sessionRows.length === 0 ? (
-                    <div className="stat-placeholder">No session data yet.</div>
-                  ) : (
-                    <div className="table-scroll">
-                      <table className="session-breakdown-table">
-                        <thead><tr><th>Session</th><th>Trades</th><th>Win rate</th><th>vs. overall</th></tr></thead>
-                        <tbody>
-                          {edgeInsights.sessionRows.map((row) => (
-                            <tr key={row.key}>
-                              <td>{row.key}</td>
-                              <td>{row.n}</td>
-                              <td>{row.confidenceTier === 'too_early' ? <span className="muted-note">Too few trades</span> : fmtPct(row.winRate)}</td>
-                              <td>{row.confidenceTier === 'too_early' ? <span className="muted-note">—</span> : <span className={colorClass(row.deltaVsBaseline?.winRate)}>{fmtPctDelta(row.deltaVsBaseline?.winRate)}</span>}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                <div className="strategy-finding">
-                  <div className="strategy-finding-label">Day-of-week breakdown</div>
-                  {edgeInsights.dayRows.length === 0 ? (
-                    <div className="stat-placeholder">No data yet.</div>
-                  ) : (
-                    <div className="table-scroll">
-                      <table className="session-breakdown-table">
-                        <thead><tr><th>Day</th><th>Trades</th><th>Win rate</th><th>vs. overall</th></tr></thead>
-                        <tbody>
-                          {edgeInsights.dayRows.map((row) => (
-                            <tr key={row.key}>
-                              <td>{row.key}</td>
-                              <td>{row.n}</td>
-                              <td>{row.confidenceTier === 'too_early' ? <span className="muted-note">Too few trades</span> : fmtPct(row.winRate)}</td>
-                              <td>{row.confidenceTier === 'too_early' ? <span className="muted-note">—</span> : <span className={colorClass(row.deltaVsBaseline?.winRate)}>{fmtPctDelta(row.deltaVsBaseline?.winRate)}</span>}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                <div className="strategy-finding">
-                  <div className="strategy-finding-label">Discipline</div>
-                  {(() => {
-                    const clean = edgeInsights.disciplineRows.find((r) => r.key === 'clean')
-                    const flagged = edgeInsights.disciplineRows.find((r) => r.key === 'flagged')
-                    if (!clean && !flagged) return <div className="stat-placeholder">No data yet.</div>
-                    return (
-                      <p className="strategy-finding-text">
-                        Clean trades win <strong>{clean && clean.confidenceTier !== 'too_early' ? fmtPct(clean.winRate) : '—'}</strong> of the time vs.{' '}
-                        <strong>{flagged && flagged.confidenceTier !== 'too_early' ? fmtPct(flagged.winRate) : '—'}</strong> for flagged trades.
-                      </p>
-                    )
-                  })()}
-                </div>
-
-                <div className="strategy-finding">
-                  <div className="strategy-finding-label">Costliest mistake tag</div>
-                  {!edgeInsights.costliestTag || !edgeInsights.costliestTag.belief || edgeInsights.costliestTag.belief.confidenceTier === 'too_early' ? (
-                    <div className="stat-placeholder">Not enough tagged trades yet.</div>
-                  ) : (
-                    <p className="strategy-finding-text">
-                      &quot;{edgeInsights.costliestTag.tag}&quot; is your costliest tag, averaging{' '}
-                      <strong className={colorClass(edgeInsights.costliestTag.belief.avgR)}>{fmtR(edgeInsights.costliestTag.belief.avgR)}</strong> per trade
-                      {' '}across {edgeInsights.costliestTag.belief.n} trades.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+            <EdgeInsightsPanel scope="overall" tradeCount={totalTradeCount(allTrades)} />
           </div>
 
           <div className="section-heading">Monthly P&L</div>

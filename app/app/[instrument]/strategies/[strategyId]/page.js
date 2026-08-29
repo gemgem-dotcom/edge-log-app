@@ -267,32 +267,40 @@ Delete strategy
 <div className="section-heading">Performance</div>
 <div className="panel">
   <div className="performance-card-subgrid" style={{ marginTop: 0 }}>
-    <div className="stats stats-2">
-      <div className="stat">
-        <div className="stat-label">Total P&amp;L</div>
-        <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
-          {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+    {/* Wrapped in a plain div, rather than putting stats/stats-2 directly
+        under .performance-card-subgrid - that selector's own
+        ">div{display:flex; flex-direction:column}" rule (meant for
+        stacking a chart's title/graph/labels in the other column) has
+        higher specificity than .stats's display:grid and was silently
+        collapsing these 4 cards into a single column instead of 2x2. */}
+    <div>
+      <div className="stats stats-2">
+        <div className="stat">
+          <div className="stat-label">Total P&amp;L</div>
+          <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
+            {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+          </div>
+          {stats.hasD && (
+            <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+          )}
         </div>
-        {stats.hasD && (
-          <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
-        )}
-      </div>
-      <div className="stat">
-        <div className="stat-label">Expectancy</div>
-        <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
-          {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+        <div className="stat">
+          <div className="stat-label">Expectancy</div>
+          <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
+            {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+          </div>
+          {stats.expectancyD !== null && (
+            <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+          )}
         </div>
-        {stats.expectancyD !== null && (
-          <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
-        )}
-      </div>
-      <div className="stat stat-gauge">
-        <div className="stat-label">Win rate</div>
-        <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
-      </div>
-      <div className="stat">
-        <div className="stat-label">Profit factor</div>
-        <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+        <div className="stat stat-gauge">
+          <div className="stat-label">Win rate</div>
+          <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
+        </div>
+        <div className="stat">
+          <div className="stat-label">Profit factor</div>
+          <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+        </div>
       </div>
     </div>
 

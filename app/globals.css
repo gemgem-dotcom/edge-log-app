@@ -32,18 +32,18 @@
    1859  Active filter chips
    1908  Empty states, error banners, skeleton loaders
    1987  Cross-instrument overview dashboard (/app)
-   2207  Not found / error boundary state pages
-   2220  Toast notifications
-   2248  Public policy pages (Privacy, Terms)
-   2267  Legal links (auth pages + account settings)
-   2306  Economic calendar card (mock - Overview pages)
-   2413  Calendar news badge (Monthly P&L day cells, mock)
-   2434  Streak badge (Overview + strategy detail pages)
-   2451  Market status pill (Overview + strategy detail pages)
-   2477  Key levels, today's brief (mock cards)
-   2503  Market context cards (all-instruments Overview)
-   2562  Strategy detail: performance findings
-   2577  Unverified logged time badge
+   2155  Not found / error boundary state pages
+   2168  Toast notifications
+   2196  Public policy pages (Privacy, Terms)
+   2215  Legal links (auth pages + account settings)
+   2254  Economic calendar card (mock - Overview pages)
+   2361  Calendar news badge (Monthly P&L day cells, mock)
+   2382  Streak badge (Overview + strategy detail pages)
+   2399  Market status pill (Overview + strategy detail pages)
+   2425  Key levels, today's brief (mock cards)
+   2451  Market context cards (all-instruments Overview)
+   2510  Edge Insights panel
+   2524  Unverified logged time badge
    ============================================================ */
 
 :root{
@@ -2110,58 +2110,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   width:80px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;
 }
 
-/* Strategy detail page's Performance card - the duration histogram sits
-   below the stats-5 row, inside the same panel (see .performance-card-
-   subgrid above for the equivalent two-column layout other pages use;
-   this one's a single chart rather than two side by side, so it doesn't
-   need a grid - width:50% instead keeps it from stretching bar labels/
-   tracks across the panel's full width, which read as too sparse for
-   what's usually a handful of buckets). Back to full width once 50%
-   would squeeze the 96px label column against a narrow track. */
-.performance-duration-chart{margin-top:28px; width:50%;}
-@media (max-width:900px){
-  .performance-duration-chart{width:100%;}
-}
-/* One bar per duration bucket - unlike .weekday-chart's diverging lanes
-   either side of a zero line, a trade count has no negative direction,
-   so this is a single bar growing from the label outward, split into
-   win/loss (and, if any, neutral - breakeven or still-unresolved)
-   segments. .duration-chart-track's own background is the "full width"
-   reference the fill sits inside, scaled against the shared axis below
-   (see .duration-chart-axis) rather than a per-row number - bars read
-   against that axis, exact counts are a hover away. */
-.duration-chart{display:flex; flex-direction:column; gap:9px;}
-.duration-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
-.duration-chart-label{
-  width:96px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
-  font-size:10.5px; color:var(--muted); letter-spacing:.04em;
-  transition:color .15s ease;
-}
-/* Only buckets with at least one trade in them are wired up as a filter
-   (see the component - an empty bucket has nothing for onSelect to show),
-   so only these get the pointer cursor + accent-colored label hinting
-   that. */
-.duration-chart-row-clickable{cursor:pointer;}
-.duration-chart-row-clickable:hover .duration-chart-label{color:var(--accent);}
-.duration-chart-track{flex:1; height:10px; min-width:0; background:var(--line); border-radius:3px; overflow:hidden;}
-.duration-chart-fill{height:100%; display:flex;}
-.duration-chart-seg-win{background:var(--win);}
-.duration-chart-seg-loss{background:var(--loss);}
-.duration-chart-seg-neu{background:var(--muted-2);}
-/* Axis row - a spacer matching .duration-chart-label's own width keeps
-   its track aligned under the bars above, the same trick
-   .duration-chart-row's flex layout uses. Tick labels are positioned
-   absolutely by percentage (not a flex row) since they need to sit at
-   exact fractions of the track's width to line up with where each
-   bar's own percentage-width would reach, not spaced evenly by count. */
-.duration-chart-axis{display:flex; align-items:center; gap:10px; margin-top:4px;}
-.duration-chart-axis-spacer{width:96px; flex-shrink:0;}
-.duration-chart-axis-track{position:relative; flex:1; min-width:0; height:14px;}
-.duration-chart-axis-tick{
-  position:absolute; top:0; font-family:'JetBrains Mono',monospace;
-  font-size:10px; color:var(--muted);
-}
-
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
 .donut-svg{width:160px; height:160px; flex-shrink:0;}
 .donut-arc{cursor:pointer;}
@@ -2559,20 +2507,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    normally, but visibly off once compared side-by-side across a header row. */
 .th-with-tooltip{display:inline-flex; align-items:center;}
 
-/* ---------- Strategy detail: performance findings ---------- */
-/* Sits below .performance-duration-chart inside the same Performance
-   panel, not a separate top-level section - see the strategy detail
-   page's Performance panel for how these two stack together. */
-.strategy-findings{display:flex; flex-direction:column; gap:20px; margin-top:28px;}
-.strategy-finding-label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
-.strategy-finding-text{font-size:13px; line-height:1.6; color:var(--text);}
-/* A session row's win rate/expectancy cells fall back to this instead of
-   a number once that row's own trade count misses the confidence gate -
-   a session-specific "not enough data yet" note, distinct from
-   .stat-placeholder (which replaces a whole stat block, not one table
-   cell). */
-.muted-note{color:var(--muted); font-style:italic;}
+/* ---------- Edge Insights panel ---------- */
+/* The AI-generated insight (components/EdgeInsightsPanel.js): its tables
+   reuse the same table look the app already establishes elsewhere, and
+   its own prose (headings/lists/bold, now that Claude has full Markdown
+   freedom rather than a paragraphs+tables-only contract) needs a little
+   spacing so consecutive elements don't run together. */
 .session-breakdown-table{margin-top:8px;}
+.insight-narrative :is(h1,h2,h3,h4){font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:16px 0 8px;}
+.insight-narrative :is(h1,h2,h3,h4):first-child{margin-top:0;}
+.insight-narrative p{margin:0 0 12px;}
+.insight-narrative ul, .insight-narrative ol{margin:0 0 12px; padding-left:20px;}
+.insight-narrative li{margin-bottom:4px;}
+.insight-narrative-generated-at{font-size:11.5px; color:var(--muted);}
 
 /* ---------- Unverified logged time badge ---------- */
 /* Sits next to a trade's entry time on the detail page and the log

@@ -259,7 +259,7 @@ Delete strategy
   <MarketStatusPill />
   <StreakBadge
     streak={streak}
-    winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
+    winLabel={(n) => `${n}-trade win streak`}
     lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
   />
 </div>

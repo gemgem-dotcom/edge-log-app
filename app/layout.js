@@ -18,11 +18,16 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Runs before paint — reads the saved theme and applies it
             immediately, so there's no flash of dark-then-light (or
-            vice versa) while the page loads. */}
+            vice versa) while the page loads. The inline script below sets
+            data-theme on this element directly, before React hydrates -
+            a deliberate, expected mismatch against the server-rendered
+            markup (which has no way to know the saved theme), so
+            suppressHydrationWarning tells React not to flag it. Scoped to
+            just this element/attribute, not a blanket suppression. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `

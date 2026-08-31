@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
@@ -19,8 +19,9 @@ import ErrorBanner from '@/components/ErrorBanner'
 
 export default function EditTradePage({ params }) {
   usePageTitle('Edit Trade')
-  const symbol = params.instrument
-  const tradeId = params.tradeId
+  const resolvedParams = use(params)
+  const symbol = resolvedParams.instrument
+  const tradeId = resolvedParams.tradeId
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)

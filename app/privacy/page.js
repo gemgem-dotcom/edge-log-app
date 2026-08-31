@@ -4,8 +4,8 @@ export const metadata = {
   title: 'Privacy Policy — EdgeLog',
 }
 
-export default function PrivacyPolicyPage({ searchParams }) {
-  const backLink = resolveBackLink(searchParams?.from)
+export default async function PrivacyPolicyPage({ searchParams }) {
+  const backLink = resolveBackLink((await searchParams)?.from)
   return (
     <div className="simple-page-wrap">
       <div className="policy-header">

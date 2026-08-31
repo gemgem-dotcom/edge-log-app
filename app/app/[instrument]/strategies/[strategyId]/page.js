@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus } from 'lucide-react'
@@ -106,8 +106,9 @@ function colorClass(val) {
   return val > 0 ? 'pos' : val < 0 ? 'neg' : 'neu'
 }
 export default function StrategyDetailPage({ params }) {
-  const symbol = params.instrument
-  const strategyId = params.strategyId
+  const resolvedParams = use(params)
+  const symbol = resolvedParams.instrument
+  const strategyId = resolvedParams.strategyId
   const router = useRouter()
 
 const [loading, setLoading] = useState(true)

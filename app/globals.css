@@ -5,45 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–463  Base: reset, typography, forms, tables, thumbnails,
+     1–464  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   464  Auth pages
-   530  Top nav
-   545  Instrument nav (topbar pill row)
-   609  Page layout
-   661  Tabs
-   671  Misc form helpers
-   677  Detail view
-   700  Holiday notice (site-wide, above the shell)
-   725  Shell layout (sidebar + topbar)
-   937  Expandable trade rows
-   985  Calendar
-   1033  Account settings page
-   1240  Light theme
-   1272  2FA
-   1287  Account fine print
-   1290  Screenshot preview (log new trade)
-   1332  Auth pages always dark
-   1360  Monthly P&L (calendar on Overview)
-   1426  Trade form: sections, validation, currency, screenshots
-   1654  Field tooltips
-   1716  Date/time picker (adds an optional popup to a typed input)
-   1825  In-header column filters (trade log table)
-   1859  Active filter chips
-   1919  Empty states, error banners, skeleton loaders
-   1998  Cross-instrument overview dashboard (/app)
-   2177  Not found / error boundary state pages
-   2190  Toast notifications
-   2218  Public policy pages (Privacy, Terms)
-   2237  Legal links (auth pages + account settings)
-   2276  Economic calendar card (mock - Overview pages)
-   2383  Calendar news badge (Monthly P&L day cells, mock)
-   2404  Streak badge (Overview + strategy detail pages)
-   2421  Market status pill (Overview + strategy detail pages)
-   2447  Key levels, today's brief (mock cards)
-   2473  Market context cards (all-instruments Overview)
-   2532  Edge Insights panel
-   2547  Unverified logged time badge
+   465  Auth pages
+   531  Top nav
+   546  Instrument nav (topbar pill row)
+   610  Page layout
+   662  Tabs
+   672  Misc form helpers
+   678  Detail view
+   701  Holiday notice (site-wide, above the shell)
+   726  Shell layout (sidebar + topbar)
+   938  Expandable trade rows
+   986  Calendar
+   1034  Account settings page
+   1241  Light theme
+   1273  2FA
+   1288  Account fine print
+   1291  Screenshot preview (log new trade)
+   1333  Auth pages always dark
+   1361  Monthly P&L (calendar on Overview)
+   1427  Trade form: sections, validation, currency, screenshots
+   1655  Field tooltips
+   1717  Date/time picker (adds an optional popup to a typed input)
+   1826  In-header column filters (trade log table)
+   1860  Active filter chips
+   1920  Empty states, error banners, skeleton loaders
+   1999  Cross-instrument overview dashboard (/app)
+   2178  Not found / error boundary state pages
+   2191  Toast notifications
+   2219  Public policy pages (Privacy, Terms)
+   2238  Legal links (auth pages + account settings)
+   2277  Economic calendar card (mock - Overview pages)
+   2384  Calendar news badge (Monthly P&L day cells, mock)
+   2405  Streak badge (Overview + strategy detail pages)
+   2422  Market status pill (Overview + strategy detail pages)
+   2448  Key levels, today's brief (mock cards)
+   2474  Market context cards (all-instruments Overview)
+   2533  Edge Insights panel
+   2548  Unverified logged time badge
+   2565  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -2560,3 +2561,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   background:rgba(225,92,92,.12); color:var(--loss); border:1px solid rgba(225,92,92,.3);
   cursor:help; vertical-align:middle;
 }
+
+/* ---------- Theme toggle (suppress transition flash) ---------- */
+/* handleThemeToggle (AppShell.js, [instrument]/layout.js) adds this class
+   to <html> for one frame around flipping data-theme. Without it, the
+   toggle looks like a harsh flash rather than a clean switch: most
+   surfaces (body, .panel, .stat, inputs) have no transition on their own
+   and snap to the new theme instantly, while buttons/badges/sidebar rows
+   carry a transition:background-color meant for hover and visibly fade
+   over ~150ms instead - two different speeds fighting on screen at once. */
+.theme-switching, .theme-switching *{transition:none !important;}

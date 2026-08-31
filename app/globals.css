@@ -16,35 +16,35 @@
    697  Detail view
    720  Holiday notice (site-wide, above the shell)
    745  Shell layout (sidebar + topbar)
-   957  Expandable trade rows
-   1005  Calendar
-   1053  Account settings page
-   1262  Light theme
-   1295  2FA
-   1310  Account fine print
-   1313  Screenshot preview (log new trade)
-   1355  Auth pages always dark
-   1383  Monthly P&L (calendar on Overview)
-   1449  Trade form: sections, validation, currency, screenshots
-   1677  Field tooltips
-   1739  Date/time picker (adds an optional popup to a typed input)
-   1848  In-header column filters (trade log table)
-   1882  Active filter chips
-   1943  Empty states, error banners, skeleton loaders
-   2022  Cross-instrument overview dashboard (/app)
-   2201  Not found / error boundary state pages
-   2214  Toast notifications
-   2242  Public policy pages (Privacy, Terms)
-   2261  Legal links (auth pages + account settings)
-   2300  Economic calendar card (mock - Overview pages)
-   2407  Calendar news badge (Monthly P&L day cells, mock)
-   2428  Streak badge (Overview + strategy detail pages)
-   2445  Market status pill (Overview + strategy detail pages)
-   2471  Key levels, today's brief (mock cards)
-   2497  Market context cards (all-instruments Overview)
-   2556  Edge Insights panel
-   2571  Unverified logged time badge
-   2588  Theme toggle (suppress transition flash)
+   962  Expandable trade rows
+   1010  Calendar
+   1058  Account settings page
+   1267  Light theme
+   1300  2FA
+   1315  Account fine print
+   1318  Screenshot preview (log new trade)
+   1360  Auth pages always dark
+   1388  Monthly P&L (calendar on Overview)
+   1454  Trade form: sections, validation, currency, screenshots
+   1682  Field tooltips
+   1744  Date/time picker (adds an optional popup to a typed input)
+   1853  In-header column filters (trade log table)
+   1887  Active filter chips
+   1957  Empty states, error banners, skeleton loaders
+   2036  Cross-instrument overview dashboard (/app)
+   2215  Not found / error boundary state pages
+   2228  Toast notifications
+   2256  Public policy pages (Privacy, Terms)
+   2275  Legal links (auth pages + account settings)
+   2314  Economic calendar card (mock - Overview pages)
+   2425  Calendar news badge (Monthly P&L day cells, mock)
+   2446  Streak badge (Overview + strategy detail pages)
+   2463  Market status pill (Overview + strategy detail pages)
+   2489  Key levels, today's brief (mock cards)
+   2515  Market context cards (all-instruments Overview)
+   2574  Edge Insights panel
+   2589  Unverified logged time badge
+   2606  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -807,6 +807,11 @@ a.shell-logo{color:inherit; text-decoration:none;}
 }
 .icon-btn:hover{background:var(--panel-2); color:var(--text);}
 .icon-btn-profile{background:var(--panel-2); border:1px solid var(--line); border-radius:50%;}.theme-toggle-btn{background:none; border:none; cursor:pointer;} .theme-toggle-btn svg{width:19px; height:19px; flex-shrink:0;}
+/* Transparent at rest like .icon-btn, so it needs the same hover
+   background - without it, the shared reset above (which exists to strip
+   button:hover's brightness filter) leaves this with literally no visible
+   hover state at all. */
+.theme-toggle-btn:hover{background:var(--panel-2); color:var(--text);}
 
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
@@ -1916,6 +1921,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    .econ-impact-filter-btn (EconomicCalendarCard.js) uses for the same
    reason. */
 .trade-tag-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
+/* .calendar-strategy-filter (the other class on this same element) already
+   sets a panel-2 background/line border at rest, so a hover state needs to
+   step past that rather than repeat it - same accent-border treatment
+   .calendar-nav-btn/.back-btn use, not the plain panel-2 background
+   .icon-btn-style buttons use since panel-2 is already this button's rest
+   state. Without this, the shared reset above (which exists to strip
+   button:hover's brightness filter) leaves this with no visible hover
+   state at all. */
+.trade-tag-filter-btn:hover{border-color:var(--accent); color:var(--accent); background:rgba(59,167,255,.1);}
 /* Absolute, not .col-filter-menu's own fixed - this toolbar sits above the
    table in normal flow, not inside #tableWrap's horizontally-scrolling
    ancestor that a fixed-position menu would need to escape. */
@@ -2312,6 +2326,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    native <select>'s chevron background-image - this is a flex button with
    its own SVG chevron child instead, so that reserved space just left a gap. */
 .econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
+/* Same reasoning as .trade-tag-filter-btn:hover above - .calendar-strategy-
+   filter already sets a panel-2 background/line border at rest, so hover
+   steps past it with an accent border/tint rather than repeating panel-2. */
+.econ-impact-filter-btn:hover{border-color:var(--accent); color:var(--accent); background:rgba(59,167,255,.1);}
 .econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
 /* Impact checklist + date range picker toolbar reuses .calendar-toolbar

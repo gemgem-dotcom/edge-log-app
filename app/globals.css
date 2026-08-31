@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–475  Base: reset, typography, forms, tables, thumbnails,
+     1–483  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   476  Auth pages
-   542  Top nav
-   557  Instrument nav (topbar pill row)
-   621  Page layout
-   673  Tabs
-   683  Misc form helpers
-   689  Detail view
-   712  Holiday notice (site-wide, above the shell)
-   737  Shell layout (sidebar + topbar)
-   949  Expandable trade rows
-   997  Calendar
-   1045  Account settings page
-   1252  Light theme
-   1285  2FA
-   1300  Account fine print
-   1303  Screenshot preview (log new trade)
-   1345  Auth pages always dark
-   1373  Monthly P&L (calendar on Overview)
-   1439  Trade form: sections, validation, currency, screenshots
-   1667  Field tooltips
-   1729  Date/time picker (adds an optional popup to a typed input)
-   1838  In-header column filters (trade log table)
-   1872  Active filter chips
-   1933  Empty states, error banners, skeleton loaders
-   2012  Cross-instrument overview dashboard (/app)
-   2191  Not found / error boundary state pages
-   2204  Toast notifications
-   2232  Public policy pages (Privacy, Terms)
-   2251  Legal links (auth pages + account settings)
-   2290  Economic calendar card (mock - Overview pages)
-   2397  Calendar news badge (Monthly P&L day cells, mock)
-   2418  Streak badge (Overview + strategy detail pages)
-   2435  Market status pill (Overview + strategy detail pages)
-   2461  Key levels, today's brief (mock cards)
-   2487  Market context cards (all-instruments Overview)
-   2546  Edge Insights panel
-   2561  Unverified logged time badge
-   2578  Theme toggle (suppress transition flash)
+   484  Auth pages
+   550  Top nav
+   565  Instrument nav (topbar pill row)
+   629  Page layout
+   681  Tabs
+   691  Misc form helpers
+   697  Detail view
+   720  Holiday notice (site-wide, above the shell)
+   745  Shell layout (sidebar + topbar)
+   957  Expandable trade rows
+   1005  Calendar
+   1053  Account settings page
+   1262  Light theme
+   1295  2FA
+   1310  Account fine print
+   1313  Screenshot preview (log new trade)
+   1355  Auth pages always dark
+   1383  Monthly P&L (calendar on Overview)
+   1449  Trade form: sections, validation, currency, screenshots
+   1677  Field tooltips
+   1739  Date/time picker (adds an optional popup to a typed input)
+   1848  In-header column filters (trade log table)
+   1882  Active filter chips
+   1943  Empty states, error banners, skeleton loaders
+   2022  Cross-instrument overview dashboard (/app)
+   2201  Not found / error boundary state pages
+   2214  Toast notifications
+   2242  Public policy pages (Privacy, Terms)
+   2261  Legal links (auth pages + account settings)
+   2300  Economic calendar card (mock - Overview pages)
+   2407  Calendar news badge (Monthly P&L day cells, mock)
+   2428  Streak badge (Overview + strategy detail pages)
+   2445  Market status pill (Overview + strategy detail pages)
+   2471  Key levels, today's brief (mock cards)
+   2497  Market context cards (all-instruments Overview)
+   2556  Edge Insights panel
+   2571  Unverified logged time badge
+   2588  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -332,7 +332,15 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
 .dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .dt-picker-day:hover, .col-filter-btn:hover,
 .trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-today-btn:hover, .row-action-btn:hover{
-  transform:none; box-shadow:none;
+  /* filter:none is the important part here, not just transform/box-shadow -
+     without it the base button:hover rule's brightness(1.08) still applies
+     (filter is a separate property, untouched by resetting the other two),
+     which is invisible on a dark background but in light theme brightens
+     an already-pale --panel-2 pill enough to nearly vanish into --panel
+     behind it. Found via a light-theme hover screenshot of the trade log's
+     Filter button and the economic calendar's impact filter looking
+     washed-out/borderless compared to their own rest state. */
+  transform:none; box-shadow:none; filter:none;
 }
 button:disabled{opacity:.5; cursor:not-allowed;}
 /* Undoes the pill treatment above - plain grey text next to Save changes
@@ -1113,7 +1121,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    uses transform for its own layout (vertical centering) rather than
    just a decorative hover lift, so clearing it outright made the icon
    visibly jump up by half its own height on hover. */
-.eye-btn:hover{color:var(--text); transform:translateY(-50%); box-shadow:none;}
+.eye-btn:hover{color:var(--text); transform:translateY(-50%); box-shadow:none; filter:none;}
 .field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px; margin-bottom:10px;}
 
 .danger-panel{border-color:rgba(225,92,92,.35);}
@@ -1125,10 +1133,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
   transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-/* box-shadow explicitly overridden here (not just left to inherit) - the
-   base button:hover rule below would otherwise still win the cascade and
-   apply its own lift/shadow timing on top of this one. */
-.btn-danger-outline:hover{background:rgba(225,92,92,.1); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
+/* box-shadow (and filter) explicitly overridden here (not just left to
+   inherit) - the base button:hover rule below would otherwise still win
+   the cascade for those properties and apply its own brightness(1.08) on
+   top of this rgba background, same bug the trade-tag-filter-btn/
+   econ-impact-filter-btn list above had. */
+.btn-danger-outline:hover{background:rgba(225,92,92,.1); filter:none; transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 /* Same shape as the danger button, in the accent colour — for the safe
    choice in a confirm modal, so red is reserved for the destructive one. */
 .btn-accent-outline{

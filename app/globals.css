@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–472  Base: reset, typography, forms, tables, thumbnails,
+     1–475  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   473  Auth pages
-   539  Top nav
-   554  Instrument nav (topbar pill row)
-   618  Page layout
-   670  Tabs
-   680  Misc form helpers
-   686  Detail view
-   709  Holiday notice (site-wide, above the shell)
-   734  Shell layout (sidebar + topbar)
-   946  Expandable trade rows
-   994  Calendar
-   1042  Account settings page
-   1249  Light theme
-   1282  2FA
-   1297  Account fine print
-   1300  Screenshot preview (log new trade)
-   1342  Auth pages always dark
-   1370  Monthly P&L (calendar on Overview)
-   1436  Trade form: sections, validation, currency, screenshots
-   1664  Field tooltips
-   1726  Date/time picker (adds an optional popup to a typed input)
-   1835  In-header column filters (trade log table)
-   1869  Active filter chips
-   1930  Empty states, error banners, skeleton loaders
-   2009  Cross-instrument overview dashboard (/app)
-   2188  Not found / error boundary state pages
-   2201  Toast notifications
-   2229  Public policy pages (Privacy, Terms)
-   2248  Legal links (auth pages + account settings)
-   2287  Economic calendar card (mock - Overview pages)
-   2394  Calendar news badge (Monthly P&L day cells, mock)
-   2415  Streak badge (Overview + strategy detail pages)
-   2432  Market status pill (Overview + strategy detail pages)
-   2458  Key levels, today's brief (mock cards)
-   2484  Market context cards (all-instruments Overview)
-   2543  Edge Insights panel
-   2558  Unverified logged time badge
-   2575  Theme toggle (suppress transition flash)
+   476  Auth pages
+   542  Top nav
+   557  Instrument nav (topbar pill row)
+   621  Page layout
+   673  Tabs
+   683  Misc form helpers
+   689  Detail view
+   712  Holiday notice (site-wide, above the shell)
+   737  Shell layout (sidebar + topbar)
+   949  Expandable trade rows
+   997  Calendar
+   1045  Account settings page
+   1252  Light theme
+   1285  2FA
+   1300  Account fine print
+   1303  Screenshot preview (log new trade)
+   1345  Auth pages always dark
+   1373  Monthly P&L (calendar on Overview)
+   1439  Trade form: sections, validation, currency, screenshots
+   1667  Field tooltips
+   1729  Date/time picker (adds an optional popup to a typed input)
+   1838  In-header column filters (trade log table)
+   1872  Active filter chips
+   1933  Empty states, error banners, skeleton loaders
+   2012  Cross-instrument overview dashboard (/app)
+   2191  Not found / error boundary state pages
+   2204  Toast notifications
+   2232  Public policy pages (Privacy, Terms)
+   2251  Legal links (auth pages + account settings)
+   2290  Economic calendar card (mock - Overview pages)
+   2397  Calendar news badge (Monthly P&L day cells, mock)
+   2418  Streak badge (Overview + strategy detail pages)
+   2435  Market status pill (Overview + strategy detail pages)
+   2461  Key levels, today's brief (mock cards)
+   2487  Market context cards (all-instruments Overview)
+   2546  Edge Insights panel
+   2561  Unverified logged time badge
+   2578  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -299,21 +299,24 @@ button{
   transition:filter .15s ease, background-color .15s ease, opacity .15s ease, transform .15s ease, box-shadow .15s ease;
   box-shadow:0 1px 2px rgba(0,0,0,.3);
 }
-/* Lift + accent-tinted glow for every plain solid-accent button (the
-   base look for a submit/primary action across the app). */
-button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3), 0 0 20px rgba(59,167,255,.3);}
+/* Lift + a plain neutral shadow for every plain solid-accent button (the
+   base look for a submit/primary action across the app) - no colored glow,
+   which used to be inconsistent with the flat/no-glow hover most other
+   buttons across the app already used. */
+button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 /* Every secondary/icon/nav button class overrides `background` away from
-   --accent (panel-2, transparent, a semantic color), so a blue glow on
-   hover would read as a mismatch rather than a variant - reset it here
-   rather than trying to select "still solid-accent" some other way. These
-   stay flat at rest too - the base button{} rule's box-shadow is meant for
+   --accent (panel-2, transparent, a semantic color), so this lifted shadow
+   would read as a mismatch rather than a variant - reset it here rather
+   than trying to select "still solid-accent" some other way. These stay
+   flat at rest too - the base button{} rule's box-shadow is meant for
    solid-accent primary buttons, not a bare icon/nav control, so it's
    reset unconditionally here, not just on :hover.
-   .btn-accent-outline/.btn-danger-outline get their own color-matched
-   glow below instead of a flat reset, since they're accent/semantic-
-   colored themselves and a glow still reads correctly on them, just not
-   this hardcoded blue one. A new secondary button class needs adding to
-   this list (or its own box-shadow override) to avoid inheriting the glow. */
+   .btn-accent-outline/.btn-danger-outline get their own lift + neutral
+   shadow below instead of a flat reset, since they're still full-sized
+   pill buttons where that hover feedback still reads correctly, just not
+   this button's solid-accent background. A new secondary button class
+   needs adding to this list (or its own box-shadow override) to avoid
+   inheriting the shadow. */
 .dir-btn, .discard-btn, .auth-oauth-btn, .icon-btn, .icon-btn-profile,
 .theme-toggle-btn, .calendar-nav-btn, .back-btn, .eye-btn, .strategy-menu-btn,
 .icon-edit-btn, .file-upload-btn, .screenshot-remove-btn, .field-tooltip-btn,
@@ -803,9 +806,9 @@ a.shell-logo{color:inherit; text-decoration:none;}
   white-space:nowrap; flex-shrink:0; transition:filter .15s ease, transform .15s ease, box-shadow .15s ease;
   box-shadow:0 1px 2px rgba(0,0,0,.3);
 }
-/* Not a <button>, so it doesn't inherit the base button:hover glow - given
+/* Not a <button>, so it doesn't inherit the base button:hover rule - given
    its own copy since it's the app's most-repeated primary CTA. */
-.new-trade-btn:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3), 0 0 20px rgba(59,167,255,.3);}
+.new-trade-btn:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 
 .shell-body{display:flex; flex:1; min-height:0;}
 
@@ -1123,9 +1126,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
 /* box-shadow explicitly overridden here (not just left to inherit) - the
-   base button:hover rule below would otherwise still win the cascade for
-   that property and put a blue glow around a red destructive button. */
-.btn-danger-outline:hover{background:rgba(225,92,92,.1); box-shadow:0 0 16px rgba(225,92,92,.25);}
+   base button:hover rule below would otherwise still win the cascade and
+   apply its own lift/shadow timing on top of this one. */
+.btn-danger-outline:hover{background:rgba(225,92,92,.1); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 /* Same shape as the danger button, in the accent colour — for the safe
    choice in a confirm modal, so red is reserved for the destructive one. */
 .btn-accent-outline{
@@ -1133,7 +1136,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
   transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-.btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none; box-shadow:0 0 16px rgba(59,167,255,.25);}
+.btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none; transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 
 .account-msg{border-radius:7px; padding:9px 12px; font-size:12.5px; margin-top:12px;}
 .account-msg-error{background:rgba(225,92,92,.12); border:1px solid var(--loss); color:var(--loss);}

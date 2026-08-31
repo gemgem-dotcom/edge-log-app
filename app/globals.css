@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–464  Base: reset, typography, forms, tables, thumbnails,
+     1–472  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   465  Auth pages
-   531  Top nav
-   546  Instrument nav (topbar pill row)
-   610  Page layout
-   662  Tabs
-   672  Misc form helpers
-   678  Detail view
-   701  Holiday notice (site-wide, above the shell)
-   726  Shell layout (sidebar + topbar)
-   938  Expandable trade rows
-   986  Calendar
-   1034  Account settings page
-   1241  Light theme
-   1273  2FA
-   1288  Account fine print
-   1291  Screenshot preview (log new trade)
-   1333  Auth pages always dark
-   1361  Monthly P&L (calendar on Overview)
-   1427  Trade form: sections, validation, currency, screenshots
-   1655  Field tooltips
-   1717  Date/time picker (adds an optional popup to a typed input)
-   1826  In-header column filters (trade log table)
-   1860  Active filter chips
-   1920  Empty states, error banners, skeleton loaders
-   1999  Cross-instrument overview dashboard (/app)
-   2178  Not found / error boundary state pages
-   2191  Toast notifications
-   2219  Public policy pages (Privacy, Terms)
-   2238  Legal links (auth pages + account settings)
-   2277  Economic calendar card (mock - Overview pages)
-   2384  Calendar news badge (Monthly P&L day cells, mock)
-   2405  Streak badge (Overview + strategy detail pages)
-   2422  Market status pill (Overview + strategy detail pages)
-   2448  Key levels, today's brief (mock cards)
-   2474  Market context cards (all-instruments Overview)
-   2533  Edge Insights panel
-   2548  Unverified logged time badge
-   2565  Theme toggle (suppress transition flash)
+   473  Auth pages
+   539  Top nav
+   554  Instrument nav (topbar pill row)
+   618  Page layout
+   670  Tabs
+   680  Misc form helpers
+   686  Detail view
+   709  Holiday notice (site-wide, above the shell)
+   734  Shell layout (sidebar + topbar)
+   946  Expandable trade rows
+   994  Calendar
+   1042  Account settings page
+   1249  Light theme
+   1282  2FA
+   1297  Account fine print
+   1300  Screenshot preview (log new trade)
+   1342  Auth pages always dark
+   1370  Monthly P&L (calendar on Overview)
+   1436  Trade form: sections, validation, currency, screenshots
+   1664  Field tooltips
+   1726  Date/time picker (adds an optional popup to a typed input)
+   1835  In-header column filters (trade log table)
+   1869  Active filter chips
+   1929  Empty states, error banners, skeleton loaders
+   2008  Cross-instrument overview dashboard (/app)
+   2187  Not found / error boundary state pages
+   2200  Toast notifications
+   2228  Public policy pages (Privacy, Terms)
+   2247  Legal links (auth pages + account settings)
+   2286  Economic calendar card (mock - Overview pages)
+   2393  Calendar news badge (Monthly P&L day cells, mock)
+   2414  Streak badge (Overview + strategy detail pages)
+   2431  Market status pill (Overview + strategy detail pages)
+   2457  Key levels, today's brief (mock cards)
+   2483  Market context cards (all-instruments Overview)
+   2542  Edge Insights panel
+   2557  Unverified logged time badge
+   2574  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -72,6 +72,14 @@
      its own transparency live via --topbar-glass-alpha, rather than being
      stuck with --glass's fixed alpha. */
   --glass-rgb: 255,255,255;
+  /* --panel's own color, as bare channels - the pinned topbar's background
+     interpolates toward this (not --glass-rgb) as it scrolls further from
+     the top, so a heavily-scrolled reveal reads as "the same panel color,
+     just softened" rather than the mismatched white/near-black --glass
+     tint, which only reads as a subtle sheen at --glass's own very low
+     fixed alpha and turns into a jarring off-theme block at the higher
+     alpha a legible nav bar over arbitrary content actually needs. */
+  --panel-rgb: 20,29,48;
 
   /* Spacing scale for new work going forward. The file predates this and is
      full of one-off px values hand-tuned against specific type sizes and
@@ -762,7 +770,7 @@ table{min-width:640px;}
    fallback covers the instant the class first applies, before that
    scroll event's write has landed. */
 .shell-topbar.topbar-pinned{
-  background:rgba(var(--glass-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.55)); border-color:var(--glass-border);
   backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
@@ -1048,7 +1056,7 @@ a.shell-logo{color:inherit; text-decoration:none;}
 }
 .account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
 .account-topbar.topbar-pinned{
-  background:rgba(var(--glass-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.55)); border-color:var(--glass-border);
   backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
@@ -1253,6 +1261,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   --glass: rgba(20,22,26,0.04);
   --glass-border: rgba(20,22,26,0.08);
   --glass-rgb: 20,22,26;
+  --panel-rgb: 255,255,255;
   /* Lighter than the dark-theme --panel-shadow above - the same alpha
      values read as much harsher against a white panel than a near-black
      one, so this halves the opacity of both layers. */

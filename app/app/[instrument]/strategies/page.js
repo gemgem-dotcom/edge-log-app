@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -14,7 +14,7 @@ import ErrorBanner from '@/components/ErrorBanner'
 
 export default function StrategiesPage({ params }) {
   usePageTitle('Strategies')
-  const symbol = params.instrument
+  const symbol = use(params).instrument
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [formError, setFormError] = useState(null)

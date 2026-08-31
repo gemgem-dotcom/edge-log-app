@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import {
@@ -16,7 +16,7 @@ import InstrumentNav from '@/components/InstrumentNav'
 export default function InstrumentLayout({ children, params }) {
     const router = useRouter()
     const pathname = usePathname()
-    const currentSymbol = params.instrument
+    const currentSymbol = use(params).instrument
   const [instruments, setInstruments] = useState([])
     const [strategies, setStrategies] = useState([])
     const [currentInstrumentId, setCurrentInstrumentId] = useState(null)

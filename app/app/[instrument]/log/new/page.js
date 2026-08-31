@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
@@ -16,13 +16,13 @@ import ErrorBanner from '@/components/ErrorBanner'
 
 export default function NewTradePage({ params, searchParams }) {
   usePageTitle('Log New Trade')
-  const symbol = params.instrument
+  const symbol = use(params).instrument
   const router = useRouter()
   // Arriving from a strategy's own page (its "Log new trade" button)
   // preselects that strategy instead of auto-selecting the first one -
   // the trader already told us which strategy this trade belongs to just
   // by where they clicked from.
-  const preselectedStrategyId = searchParams?.strategy || null
+  const preselectedStrategyId = use(searchParams)?.strategy || null
 
   const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])

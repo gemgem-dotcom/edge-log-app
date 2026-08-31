@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -13,7 +13,7 @@ import PageError from '@/components/PageError'
 
 export default function LogPage({ params }) {
   usePageTitle('Trade Log')
-  const symbol = params.instrument
+  const symbol = use(params).instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
 
 const [loading, setLoading] = useState(true)

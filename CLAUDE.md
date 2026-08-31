@@ -3,9 +3,12 @@
 A trading journal: log futures trades against named strategies, and see win rate,
 R-multiple and P&L statistics per instrument and per strategy.
 
-Next.js 14 App Router (JavaScript, no TypeScript) + Supabase (Postgres, auth,
+Next.js 16 App Router (JavaScript, no TypeScript) + Supabase (Postgres, auth,
 storage), deployed on Vercel. Imports use the `@/` alias for anything more than
-one directory away — see `jsconfig.json`.
+one directory away — see `jsconfig.json`. One deliberate exception:
+`lib/supabaseClient` is always imported via `@/lib/supabaseClient`, even from
+files one directory away, so `next.config.js`'s single mock-DB Turbopack alias
+(see its own comment) covers every import site with one entry.
 
 `NOTES.md` is the full working-notes file — read it for anything below that needs
 more detail. `README.md` is the first-time setup guide.
@@ -164,3 +167,13 @@ yet wired up. Same story for the volatility and key-levels cards on those pages.
   file's actual `/* ---------- Section ---------- */` banners. Run it after any CSS
   edit that adds, removes, or moves a section — `npm run css:toc:check` reports
   (without writing) whether it's currently stale, for a sanity check before a commit.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

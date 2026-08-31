@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -249,7 +249,7 @@ const weeks = []
 
 export default function DashboardPage({ params }) {
   usePageTitle('Overview')
-  const symbol = params.instrument
+  const symbol = use(params).instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

@@ -16,35 +16,35 @@
    697  Detail view
    720  Holiday notice (site-wide, above the shell)
    745  Shell layout (sidebar + topbar)
-   962  Expandable trade rows
-   1010  Calendar
-   1058  Account settings page
-   1267  Light theme
-   1300  2FA
-   1315  Account fine print
-   1318  Screenshot preview (log new trade)
-   1360  Auth pages always dark
-   1388  Monthly P&L (calendar on Overview)
-   1454  Trade form: sections, validation, currency, screenshots
-   1682  Field tooltips
-   1744  Date/time picker (adds an optional popup to a typed input)
-   1853  In-header column filters (trade log table)
-   1887  Active filter chips
-   1957  Empty states, error banners, skeleton loaders
-   2036  Cross-instrument overview dashboard (/app)
-   2215  Not found / error boundary state pages
-   2228  Toast notifications
-   2256  Public policy pages (Privacy, Terms)
-   2275  Legal links (auth pages + account settings)
-   2314  Economic calendar card (mock - Overview pages)
-   2425  Calendar news badge (Monthly P&L day cells, mock)
-   2446  Streak badge (Overview + strategy detail pages)
-   2463  Market status pill (Overview + strategy detail pages)
-   2489  Key levels, today's brief (mock cards)
-   2515  Market context cards (all-instruments Overview)
-   2574  Edge Insights panel
-   2589  Unverified logged time badge
-   2606  Theme toggle (suppress transition flash)
+   965  Expandable trade rows
+   1013  Calendar
+   1061  Account settings page
+   1270  Light theme
+   1303  2FA
+   1318  Account fine print
+   1321  Screenshot preview (log new trade)
+   1363  Auth pages always dark
+   1391  Monthly P&L (calendar on Overview)
+   1469  Trade form: sections, validation, currency, screenshots
+   1697  Field tooltips
+   1759  Date/time picker (adds an optional popup to a typed input)
+   1868  In-header column filters (trade log table)
+   1906  Active filter chips
+   1969  Empty states, error banners, skeleton loaders
+   2048  Cross-instrument overview dashboard (/app)
+   2227  Not found / error boundary state pages
+   2240  Toast notifications
+   2268  Public policy pages (Privacy, Terms)
+   2287  Legal links (auth pages + account settings)
+   2326  Economic calendar card (mock - Overview pages)
+   2440  Calendar news badge (Monthly P&L day cells, mock)
+   2461  Streak badge (Overview + strategy detail pages)
+   2478  Market status pill (Overview + strategy detail pages)
+   2504  Key levels, today's brief (mock cards)
+   2530  Market context cards (all-instruments Overview)
+   2589  Edge Insights panel
+   2604  Unverified logged time badge
+   2621  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -321,7 +321,7 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .theme-toggle-btn, .calendar-nav-btn, .back-btn, .eye-btn, .strategy-menu-btn,
 .icon-edit-btn, .file-upload-btn, .screenshot-remove-btn, .field-tooltip-btn,
 .dt-picker-icon-btn, .dt-picker-nav-btn, .dt-picker-spin-btn, .dt-picker-day, .col-filter-btn,
-.trade-tag-filter-btn, .econ-impact-filter-btn, .econ-today-btn, .row-action-btn{
+.trade-tag-filter-btn, .econ-impact-filter-btn, .econ-date-range-trigger, .econ-today-btn, .row-action-btn{
   box-shadow:none;
 }
 /* .eye-btn excluded here on purpose - see its own :hover rule below,
@@ -331,7 +331,7 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .strategy-menu-btn:hover,
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
 .dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .dt-picker-day:hover, .col-filter-btn:hover,
-.trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-today-btn:hover, .row-action-btn:hover{
+.trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-date-range-trigger:hover, .econ-today-btn:hover, .row-action-btn:hover{
   /* filter:none is the important part here, not just transform/box-shadow -
      without it the base button:hover rule's brightness(1.08) still applies
      (filter is a separate property, untouched by resetting the other two),
@@ -807,11 +807,14 @@ a.shell-logo{color:inherit; text-decoration:none;}
 }
 .icon-btn:hover{background:var(--panel-2); color:var(--text);}
 .icon-btn-profile{background:var(--panel-2); border:1px solid var(--line); border-radius:50%;}.theme-toggle-btn{background:none; border:none; cursor:pointer;} .theme-toggle-btn svg{width:19px; height:19px; flex-shrink:0;}
-/* Transparent at rest like .icon-btn, so it needs the same hover
-   background - without it, the shared reset above (which exists to strip
-   button:hover's brightness filter) leaves this with literally no visible
-   hover state at all. */
-.theme-toggle-btn:hover{background:var(--panel-2); color:var(--text);}
+/* --line reads as "one step lighter than the surrounding panel" in dark
+   theme and "one step darker" in light theme (it's defined that way in
+   both palettes - see :root and the light-theme override below), so a
+   flat background swap to it is a theme-correct hover cue on its own, no
+   color/border change needed. Without something here at all, the shared
+   reset above (which exists to strip button:hover's brightness filter)
+   leaves this with literally no visible hover state. */
+.theme-toggle-btn:hover{background:var(--line);}
 
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
@@ -1396,7 +1399,19 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
        sets, since this class is more specific and wins the cascade. */
     width:auto; background-color:var(--panel-2); border:1px solid var(--line); border-radius:7px;
     color:var(--text); padding:8px 34px 8px 12px; font-size:12.5px; font-family:'Inter',sans-serif;
+    transition:background-color .15s ease;
 }
+/* One rule covers every use of this class - the "All strategies" native
+   <select> dropdowns as well as .trade-tag-filter-btn/.econ-impact-
+   filter-btn/.econ-date-range-trigger (all combine this class with their
+   own for the chevron-padding override, see each's own comment). --line
+   is a flat step along the panel/panel-2/line ramp - lighter than
+   --panel-2 in dark theme, darker in light theme, by definition in both
+   palettes - so a background-only swap is a correct, theme-safe hover in
+   both directions with no lift, shadow, or accent color needed. Still
+   background-color, for the same chevron-image reason as the rest state
+   above. */
+.calendar-strategy-filter:hover{background-color:var(--line);}
 .calendar-month-nav{display:flex; align-items:center; gap:12px;}
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
@@ -1861,7 +1876,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   transition:background-color .15s ease, color .15s ease;
 }
-.col-filter-btn:hover{background:var(--panel-2); color:var(--text); filter:none;}
+/* --line, not --panel-2 - this sits transparent on a .panel table header,
+   so panel-2 (darker than --panel in dark theme) was a hover that read as
+   dimming rather than lightening; --line steps the other way in both
+   themes. */
+.col-filter-btn:hover{background:var(--line); filter:none;}
 .col-filter-btn-active{color:var(--accent);}
 .col-filter-btn svg{width:13px; height:13px; flex-shrink:0;}
 
@@ -1920,16 +1939,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    its own SVG chevron child instead, same override as
    .econ-impact-filter-btn (EconomicCalendarCard.js) uses for the same
    reason. */
+/* No :hover of its own - .calendar-strategy-filter:hover (the other class
+   combined on this element) already covers it. */
 .trade-tag-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
-/* .calendar-strategy-filter (the other class on this same element) already
-   sets a panel-2 background/line border at rest, so a hover state needs to
-   step past that rather than repeat it - same accent-border treatment
-   .calendar-nav-btn/.back-btn use, not the plain panel-2 background
-   .icon-btn-style buttons use since panel-2 is already this button's rest
-   state. Without this, the shared reset above (which exists to strip
-   button:hover's brightness filter) leaves this with no visible hover
-   state at all. */
-.trade-tag-filter-btn:hover{border-color:var(--accent); color:var(--accent); background:rgba(59,167,255,.1);}
 /* Absolute, not .col-filter-menu's own fixed - this toolbar sits above the
    table in normal flow, not inside #tableWrap's horizontally-scrolling
    ancestor that a fixed-position menu would need to escape. */
@@ -2325,11 +2337,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* Overrides .calendar-strategy-filter's 34px right padding, sized for a
    native <select>'s chevron background-image - this is a flex button with
    its own SVG chevron child instead, so that reserved space just left a gap. */
+/* No :hover of its own - .calendar-strategy-filter:hover (the other class
+   combined on this element) already covers it. */
 .econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
-/* Same reasoning as .trade-tag-filter-btn:hover above - .calendar-strategy-
-   filter already sets a panel-2 background/line border at rest, so hover
-   steps past it with an accent border/tint rather than repeating panel-2. */
-.econ-impact-filter-btn:hover{border-color:var(--accent); color:var(--accent); background:rgba(59,167,255,.1);}
 .econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
 /* Impact checklist + date range picker toolbar reuses .calendar-toolbar
@@ -2337,6 +2347,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    top spacing matches every other filter+nav toolbar in the app instead of
    inventing its own margin. */
 .date-range-picker-wrap{position:relative;}
+/* No :hover of its own - .calendar-strategy-filter:hover (the other class
+   combined on this element) already covers it; the two shared reset lists
+   above strip the base button:hover's lift/shadow/brightness-filter, since
+   this one's a <button> (unlike the "All strategies" <select>s that also
+   use .calendar-strategy-filter) and would otherwise still inherit them. */
 .econ-date-range-trigger{display:flex; align-items:center; gap:8px; cursor:pointer;}
 /* Fixed-positioned popover (see CalendarNewsBadge/ColumnFilter for the same
    pattern) rather than absolute, since this toolbar can end up inside a

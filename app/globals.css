@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–493  Base: reset, typography, forms, tables, thumbnails,
+     1–496  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   494  Auth pages
-   560  Top nav
-   575  Instrument nav (topbar pill row)
-   639  Page layout
-   691  Tabs
-   701  Misc form helpers
-   707  Detail view
-   730  Holiday notice (site-wide, above the shell)
-   755  Shell layout (sidebar + topbar)
-   976  Expandable trade rows
-   1024  Calendar
-   1072  Account settings page
-   1281  Light theme
-   1318  2FA
-   1333  Account fine print
-   1336  Screenshot preview (log new trade)
-   1378  Auth pages always dark
-   1407  Monthly P&L (calendar on Overview)
-   1485  Trade form: sections, validation, currency, screenshots
-   1713  Field tooltips
-   1775  Date/time picker (adds an optional popup to a typed input)
-   1884  In-header column filters (trade log table)
-   1924  Active filter chips
-   1987  Empty states, error banners, skeleton loaders
-   2066  Cross-instrument overview dashboard (/app)
-   2245  Not found / error boundary state pages
-   2258  Toast notifications
-   2286  Public policy pages (Privacy, Terms)
-   2305  Legal links (auth pages + account settings)
-   2344  Economic calendar card (mock - Overview pages)
-   2458  Calendar news badge (Monthly P&L day cells, mock)
-   2479  Streak badge (Overview + strategy detail pages)
-   2496  Market status pill (Overview + strategy detail pages)
-   2522  Key levels, today's brief (mock cards)
-   2548  Market context cards (all-instruments Overview)
-   2607  Edge Insights panel
-   2622  Unverified logged time badge
-   2639  Theme toggle (suppress transition flash)
+   497  Auth pages
+   563  Top nav
+   578  Instrument nav (topbar pill row)
+   642  Page layout
+   694  Tabs
+   704  Misc form helpers
+   710  Detail view
+   733  Holiday notice (site-wide, above the shell)
+   758  Shell layout (sidebar + topbar)
+   979  Expandable trade rows
+   1027  Calendar
+   1075  Account settings page
+   1284  Light theme
+   1321  2FA
+   1336  Account fine print
+   1339  Screenshot preview (log new trade)
+   1381  Auth pages always dark
+   1410  Monthly P&L (calendar on Overview)
+   1488  Trade form: sections, validation, currency, screenshots
+   1716  Field tooltips
+   1778  Date/time picker (adds an optional popup to a typed input)
+   1887  In-header column filters (trade log table)
+   1927  Active filter chips
+   1990  Empty states, error banners, skeleton loaders
+   2069  Cross-instrument overview dashboard (/app)
+   2248  Not found / error boundary state pages
+   2261  Toast notifications
+   2289  Public policy pages (Privacy, Terms)
+   2308  Legal links (auth pages + account settings)
+   2347  Economic calendar card (mock - Overview pages)
+   2461  Calendar news badge (Monthly P&L day cells, mock)
+   2482  Streak badge (Overview + strategy detail pages)
+   2499  Market status pill (Overview + strategy detail pages)
+   2525  Key levels, today's brief (mock cards)
+   2551  Market context cards (all-instruments Overview)
+   2610  Edge Insights panel
+   2625  Unverified logged time badge
+   2642  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -63,11 +63,14 @@
      --panel/--panel-2 (all ~45-57% saturation), rather than reusing --line
      - which is only ~15% saturated and reads as an unrelated flat grey
      dropped onto a blue page, not "the same surface, slightly lighter."
+     A first attempt at this (#182849, +9 lightness points over --panel-2)
+     read as too bright a jump - this is a smaller +5 point lift, closer to
+     --panel's own lightness than to a new, more attention-grabbing shade.
      Light theme doesn't need a separate value: its own --panel-2 (17% sat)
      and --line (15% sat) are already close enough that --line reads
      correctly as a same-family step there - see the light theme override
      below, where this is just set equal to --line. */
-  --panel-hover: #182849;
+  --panel-hover: #131f39;
   --text: #e7e6e2;
   --muted: #7d8590;
   --muted-2: #5C6167;
@@ -1381,7 +1384,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
     --panel: #141d30;
     --panel-2: #0b1428;
     --line: #23272f;
-    --panel-hover: #182849;
+    --panel-hover: #131f39;
     --text: #e7e6e2;
     --muted: #7d8590;
 }

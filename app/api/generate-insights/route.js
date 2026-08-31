@@ -95,12 +95,21 @@ function scopedClient(token) {
   })
 }
 
+// Every column lib/insightData.js's breakdowns (via queryPerformance's
+// dimensions, plus its own excursion/duration/dollar stats) actually read
+// off a trade - see that file and lib/edgeEngine.js's BASE_DIMENSIONS for
+// the exhaustive list. This route has no trade-log table on the page the
+// way the dashboard/log pages do, so there's no reason to fetch the rest
+// (notes, reasoning, screenshot_urls, entry/exit prices, ...) just to
+// throw it away before the dataset ever reaches Claude.
+const INSIGHT_TRADE_COLUMNS = 'r_multiple, session, trade_date, strategy_id, instrument_id, discipline_tags, reviewed_no_issues, volatility_regime, volume_regime, pnl, mfe_points, mae_points, stop_distance, drawdown_seconds, trade_time, exit_time'
+
 async function buildDataset(supabase, scope) {
   if (scope === 'overall') {
     const { data: instruments } = await supabase.from('instruments').select('*').eq('archived', false)
     const ids = (instruments || []).map((i) => i.id)
     const { data: trades } = ids.length
-      ? await supabase.from('trades').select('*').in('instrument_id', ids)
+      ? await supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).in('instrument_id', ids)
       : { data: [] }
     return { data: overallInsightData(trades || [], instruments || []), tradeCount: totalTradeCount(trades || []) }
   }
@@ -110,7 +119,7 @@ async function buildDataset(supabase, scope) {
     const { data: instrument } = await supabase.from('instruments').select('*').eq('id', instrumentId).single()
     if (!instrument) return null
     const { data: strategies } = await supabase.from('strategies').select('*').eq('instrument_id', instrumentId).eq('archived', false)
-    const { data: trades } = await supabase.from('trades').select('*').eq('instrument_id', instrumentId)
+    const { data: trades } = await supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).eq('instrument_id', instrumentId)
     return {
       data: instrumentInsightData(trades || [], strategies || [], instrument.symbol),
       tradeCount: totalTradeCount(trades || []),
@@ -121,7 +130,7 @@ async function buildDataset(supabase, scope) {
     const strategyId = scope.slice('strategy:'.length)
     const { data: strategy } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
     if (!strategy) return null
-    const { data: trades } = await supabase.from('trades').select('*').eq('strategy_id', strategyId)
+    const { data: trades } = await supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).eq('strategy_id', strategyId)
     return {
       data: strategyInsightData(trades || [], strategy.name),
       tradeCount: totalTradeCount(trades || []),

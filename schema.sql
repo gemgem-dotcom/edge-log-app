@@ -447,96 +447,6 @@ alter table trades drop column if exists in_plan;
 -- dropped, since there's no way to be certain every existing row's
 -- one-time backfill into screenshot_urls above actually ran.
 
--- Edge Engine belief state (lib/edgeBeliefs.js) - a persistent, incrementally
--- updated companion to lib/edgeEngine.js's queryPerformance(). queryPerformance
--- recomputes stats from scratch from the trades table on every read; this table
--- instead keeps a running Bayesian posterior per "slice" (the same dimensions
--- queryPerformance groups by - session, strategy_id, instrument_id, discipline,
--- outcome, day_of_week, volatility/volume regime, and 2-way or 3-way
--- intersections of these (see lib/edgeEngine.js's COMPOSITE_SLICES, e.g.
--- outcome x discipline, strategy_id x volatility_regime, or strategy_id x
--- day_of_week x outcome) - plus one root 'overall' slice), plus one slice
--- per individual discipline tag (lib/edgeBeliefs.js's tagSlices), that same
--- tag crossed with outcome (tagOutcomeSlices), with strategy_id or
--- instrument_id (tagCrossSlices), and strategy_id x tag x {outcome,
--- session, day_of_week} (tagStrategyExtraSlices) - none of these four are a
--- queryPerformance groupBy dimension, since a trade can carry more than one
--- tag at once and contribute to more than one tag-involving slice, unlike
--- every dimension above where a trade belongs to exactly one value.
--- Updated incrementally at trade save/edit/delete time rather than rebuilt
--- from the full trade history on every read.
---
--- slice_key is a stable, human-diffable string encoding of bindings, e.g.
--- 'strategy_id:<uuid>' or 'strategy_id:<uuid>|volatility_regime:high' for a
--- 2-way intersection - see lib/edgeBeliefs.js's sliceKeyFor. bindings holds
--- the same information structured, for querying without parsing the key.
---
--- win_alpha/win_beta: beta-binomial posterior over this slice's win rate
--- (+1 alpha per win, +1 beta per loss; breakeven trades touch neither).
--- WARNING - degenerate for any slice built on the outcome dimension (e.g.
--- outcome:loss, outcome:win|discipline:clean): every trade contributing to
--- such a slice is by definition a win/loss/breakeven, so win_alpha/win_beta
--- there only restate the slice's own definition rather than measuring
--- anything, and drift toward 0%/100% as n grows. See the longer warning
--- above BASE_DIMENSIONS.outcome in lib/edgeEngine.js. avg_r_mean/n remain
--- meaningful for these slices (average win/loss size is real signal) - only
--- win_alpha/win_beta-derived "win rate" is degenerate, and no read-side
--- feature should surface a win rate for a slice_key containing "outcome:".
--- expectancy_mean/expectancy_m2 and avg_r_mean/avg_r_m2: two Welford
--- online-update accumulators (mean + M2, the sum-of-squared-deviations
--- Welford's algorithm carries instead of a running variance directly), both
--- currently fed the same per-trade r_multiple samples - see the comment in
--- lib/edgeBeliefs.js's applyOutcome for why they're kept as separate
--- accumulators today even though that makes them numerically identical to
--- each other (and to queryPerformance's own expectancy, which is likewise
--- identical to avgR by construction there).
---
--- parent_slice_key: the coarser slice a brand-new row is seeded from (e.g.
--- 'strategy_id:<uuid>' for 'strategy_id:<uuid>|volatility_regime:high', or
--- 'overall' for a top-level single-dimension slice) - win_alpha/win_beta and
--- avg_r_mean/expectancy_mean alike seed from the parent's current posterior
--- scaled by a fixed pseudo-count (win_alpha/win_beta additively, avg_r_mean/
--- expectancy_mean by treating that pseudo-count as phantom prior
--- observations fed through the same Welford update real trades use), so a
--- new slice starts from "what we already believe" rather than an
--- uninformative prior. That same pseudo-count is what a real trade's own
--- Welford update weights against for as long as the row exists (n +
--- pseudo-count, not n alone) - see lib/edgeBeliefs.js's buildSliceRow for
--- why. null only for the root 'overall' slice, which has no parent.
---
--- recent_outcomes: a capped (see lib/edgeBeliefs.js's RECENT_OUTCOMES_CAP)
--- most-recent-first array of {trade_id, r_multiple, trade_date}, used so an
--- edit/delete can reverse a specific trade's contribution by trade_id rather
--- than only ever being able to undo the last one applied.
-create table edge_beliefs (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  slice_key text not null,
-  bindings jsonb not null,
-  parent_slice_key text,
-  win_alpha numeric not null,
-  win_beta numeric not null,
-  expectancy_mean numeric,
-  expectancy_m2 numeric,
-  avg_r_mean numeric,
-  avg_r_m2 numeric,
-  n integer not null default 0,
-  confidence_tier text not null default 'too_early',
-  recent_outcomes jsonb not null default '[]'::jsonb,
-  last_trade_at timestamptz,
-  last_revised_at timestamptz,
-  revision_note text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique(user_id, slice_key)
-);
-
-alter table edge_beliefs enable row level security;
-create policy "Users manage their own belief state"
-  on edge_beliefs for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
 -- Daily completed-session market data (lib/databento.js, scripts/
 -- fetch-daily-market-stats.js) - one row per trading day, shared by every
 -- trader rather than duplicated per user. The brief this shipped under
@@ -658,103 +568,14 @@ alter table trades add column if not exists excursion_fallback boolean;
 -- logged, not an internal computation detail.
 alter table trades add column if not exists trade_time_unverified boolean;
 
--- edge_beliefs.user_id referenced auth.users with no cascade, same failure
--- mode login_events had above (see that fix's comment) - any belief row for
--- a user hard-blocked deleting their account, surfaced as GoTrue's generic
--- "Database error deleting user" rather than anything pointing at the real
--- cause. Since a belief row exists per (user, dimension-slice) and gets
--- created on a user's very first trade (lib/edgeBeliefs.js's applyTrade),
--- this blocked deletion for essentially any account that had ever logged a
--- trade. app/api/delete-account/route.js now also clears this table
--- explicitly, same as trades/strategies/instruments/login_events; this
--- cascade is the same backstop login_events' fix added, for whichever table
--- gets forgotten next. Guarded on confdeltype so re-running is a no-op.
-do $$
-begin
-  if exists (
-    select 1 from pg_constraint
-    where conrelid = 'public.edge_beliefs'::regclass
-      and conname = 'edge_beliefs_user_id_fkey'
-      and confdeltype <> 'c'
-  ) then
-    alter table edge_beliefs drop constraint edge_beliefs_user_id_fkey;
-    alter table edge_beliefs
-      add constraint edge_beliefs_user_id_fkey
-      foreign key (user_id) references auth.users(id) on delete cascade;
-  end if;
-end $$;
-
--- MFE/MAE/drawdown per belief slice (lib/edgeBeliefs.js's applyExcursion/
--- reverseExcursion) - three more Welford accumulators, same shape as
--- avg_r_mean/expectancy_mean, but NOT populated by the ordinary
--- applyTrade/reverseTrade path above. mfe_points/mae_points/
--- drawdown_seconds (see the comment above that column on `trades`)
--- usually aren't known yet when a trade is first saved - Databento access
--- is embargoed for several hours, so this data typically only exists once
--- app/api/backfill-trade-excursion/route.js or the hourly retry job fills
--- it in, well after the trade's own core belief contribution has already
--- been applied - hence the separate apply/reverse pair, triggered from
--- wherever mfe_points actually gets written, not from the trade save/
--- edit/delete flow. mfe_r_mean/mae_r_mean store MFE/MAE as an R-multiple
--- (mfe_points/mae_points divided by the trade's own stop_distance), the
--- same convention the trade detail page already displays them in, so they
--- stay comparable across instruments with different point values rather
--- than being raw, incomparable points. excursion_n is a SEPARATE count
--- from n above - only some trades in any slice will ever have this data
--- (currently NQ-family only, though Databento coverage is expected to
--- extend to other instruments later), so it can't share n's count without
--- corrupting the Welford weighting for every slice member that never gets
--- excursion data at all.
---
--- scripts/retry-trade-excursions.js keeps its own duplicate copy of the
--- Welford/seeding math involved here, rather than importing this file -
--- see that script's own header comment for why (it's a standalone script
--- outside the app's module system, deliberately self-contained so a
--- change to the app's tooling can never silently break its hourly run).
--- If the math in lib/edgeBeliefs.js's applyExcursion/buildExcursionRow
--- ever changes, mirror the exact same change in that script's copy, or
--- the two will silently disagree about a slice's MFE/MAE numbers
--- depending on which of the two paths backfilled a given trade.
-alter table edge_beliefs add column if not exists mfe_r_mean numeric not null default 0;
-alter table edge_beliefs add column if not exists mfe_r_m2 numeric not null default 0;
-alter table edge_beliefs add column if not exists mae_r_mean numeric not null default 0;
-alter table edge_beliefs add column if not exists mae_r_m2 numeric not null default 0;
-alter table edge_beliefs add column if not exists drawdown_seconds_mean numeric not null default 0;
-alter table edge_beliefs add column if not exists drawdown_seconds_m2 numeric not null default 0;
-alter table edge_beliefs add column if not exists excursion_n integer not null default 0;
-
--- Dollar P&L, unlike every other accumulator above, is only ever tracked
--- for a slice built from strategy_id (lib/edgeBeliefs.js's
--- hasStrategyBinding) - R-multiple is comparable across trades of
--- different position sizes and instruments, which is why every other
--- metric in this table uses it, but raw dollars aren't comparable that
--- way. A strategy is normally tied to a consistent instrument/sizing
--- context for a given trader, which is what makes averaging dollars
--- meaningful once a slice is already anchored to one - a bare `session`
--- or `discipline` slice blends every strategy/instrument together, where
--- it wouldn't be. Whether a given slice qualifies is read off its own
--- `bindings` column at write time, not hand-listed, so it automatically
--- covers every current and future composite that keeps strategy_id in
--- its combination (strategy_id alone, any 2-way or 3-way composite with
--- it) and excludes everything else. pnl_n is its own count, same
--- reasoning as excursion_n - pnl is an optional field on a trade (like
--- contracts), so not every trade in a qualifying slice will necessarily
--- have a dollar figure to contribute.
-alter table edge_beliefs add column if not exists pnl_mean numeric not null default 0;
-alter table edge_beliefs add column if not exists pnl_m2 numeric not null default 0;
-alter table edge_beliefs add column if not exists pnl_n integer not null default 0;
-
 -- AI-generated insight narratives (app/api/generate-insights/route.js,
 -- lib/insightsClient.js) - the "read side" for the Overview/per-instrument/
 -- per-strategy dashboard panels replaced this feature with: instead of
 -- fixed statistical tables gated by a confidence-tier threshold, a Claude
 -- call is handed the trader's RAW, unsmoothed queryPerformance breakdowns
--- (lib/insightData.js - deliberately bypasses edge_beliefs' Bayesian
--- blending entirely) and asked to write out its own explicit findings,
+-- (lib/insightData.js) and asked to write out its own explicit findings,
 -- stating sample sizes and confidence itself in prose rather than a fixed
--- n<20/50 cutoff hiding a number outright. edge_beliefs itself is
--- untouched and still powers the existing Today's Brief clause
--- (lib/todaysBrief.js) - this table is unrelated to it.
+-- n<20/50 cutoff hiding a number outright.
 --
 -- One row per (user, scope) - scope is 'overall', 'instrument:<id>', or
 -- 'strategy:<id>', matching whichever of the three dashboard panels asked
@@ -782,3 +603,18 @@ create policy "Users manage their own AI insights"
   on edge_insights for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- edge_beliefs (the Bayesian belief-tracking table this file used to define
+-- here, with win_alpha/win_beta/expectancy_mean/avg_r_mean/mfe_r_mean/etc.
+-- columns and its own RLS policy) is retired. It was written to on every
+-- trade save/edit/delete (lib/edgeBeliefs.js's applyTrade/reverseTrade/
+-- applyExcursion/reverseExcursion, all now deleted) but had no reader
+-- anywhere in the app - a read side was briefly built and wired into three
+-- dashboard panels, then replaced in the same PR by the AI insights feature
+-- above, which deliberately reads raw, unsmoothed queryPerformance numbers
+-- instead (lib/insightData.js). Explicit `drop table`, not the usual
+-- additive `add column if not exists` pattern this file otherwise follows -
+-- a deliberate exception, since there's nothing left to add a column to.
+-- Like every other schema change here, this isn't live until run by hand
+-- in Supabase's SQL editor.
+drop table if exists edge_beliefs;

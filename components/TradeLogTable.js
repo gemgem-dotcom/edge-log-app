@@ -6,7 +6,6 @@ import { Pencil, Trash2, X, Filter, ChevronLeft, ChevronRight } from 'lucide-rea
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
 import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
-import { reverseTrade } from '../lib/edgeBeliefs'
 import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -257,11 +256,6 @@ export default function TradeLogTable({
     setDeleteError(null)
     const { error } = await supabase.from('trades').delete().eq('id', trade.id)
     if (!error) {
-      try {
-        await reverseTrade(supabase, trade)
-      } catch (beliefError) {
-        console.error('reverseTrade failed:', beliefError)
-      }
       setRows((prev) => prev.filter((t) => t.id !== trade.id))
       if (expandedId === trade.id) setExpandedId(null)
     } else {

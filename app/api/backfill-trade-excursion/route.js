@@ -14,7 +14,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { fetchTrades, NQ_CONTINUOUS_SYMBOL, isNearRollover, sessionBoundsFor, resolveFrontMonthByVolume } from '@/lib/databento'
 import { excursionWindow, computeExcursion, isEmbargoError, deriveFillTicks, sliceTicksForWindow, deriveVerifiedTimes, instantToWallClockTime, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
-import { applyExcursion, reverseExcursion } from '@/lib/edgeBeliefs'
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -148,28 +147,6 @@ export async function POST(req) {
     return legFill?.matched ? { ...exit, exit_time: instantToWallClockTime(legFill.instant, timezoneOffset) } : exit
   })
 
-  // A trade can already have excursion data here if this is a re-backfill
-  // after an edit that changed entry/exit (see the edit page's
-  // excursionRelevantChanged check) - that old data is about to become
-  // stale, so unapply its old belief contribution before overwriting it.
-  // Best-effort, same as every other edge_beliefs call site - a
-  // belief-tracking hiccup should never block the trade's own data from
-  // being saved. excursionReversed gates the applyExcursion call below:
-  // if there was old data to reverse and reverseExcursion failed, skip
-  // applying the new contribution too, rather than adding it on top of an
-  // old one that was never actually removed - a double-count, not just a
-  // missed update. No such risk when there was nothing to reverse in the
-  // first place (this trade's first-ever backfill).
-  let excursionReversed = trade.mfe_points == null
-  try {
-    if (trade.mfe_points != null) {
-      await reverseExcursion(admin, trade)
-      excursionReversed = true
-    }
-  } catch (beliefError) {
-    console.error('reverseExcursion failed:', beliefError)
-  }
-
   await admin.from('trades').update({
     mfe_points: mfePoints,
     mae_points: maePoints,
@@ -181,14 +158,6 @@ export async function POST(req) {
     additional_exits: correctedAdditionalExits,
     trade_time_unverified: verifiedTimes.anyUnverified,
   }).eq('id', tradeId)
-
-  if (excursionReversed) {
-    try {
-      await applyExcursion(admin, { ...trade, mfe_points: mfePoints, mae_points: maePoints, drawdown_seconds: drawdownSeconds })
-    } catch (beliefError) {
-      console.error('applyExcursion failed:', beliefError)
-    }
-  }
 
   return json({ status: 'complete', usedFallback, timeUnverified: verifiedTimes.anyUnverified })
 }

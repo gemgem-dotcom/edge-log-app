@@ -11,23 +11,9 @@
 // reliably loadable from a plain `node scripts/...` invocation the way
 // Next.js's own bundler handles it - same reason scripts/fetch-daily-
 // market-stats.js is already a fully separate script. The pieces
-// duplicated below (the Databento HTTP call, the embargo-error check, the
-// excursion window/math, and now the belief-tracking Welford math for
-// MFE/MAE/drawdown - see WELFORD MATH below) are kept intentionally
-// minimal and mirror those files exactly, so there's little for the
-// copies to drift on.
-//
-// One exception: this script DOES dynamically import lib/edgeEngine.js
-// and lib/edgeBeliefs.js (see loadBeliefHelpers below) for the
-// slice-membership list (which belief slices a trade belongs to) rather
-// than keeping a third copy of that logic - unlike the Welford math,
-// which changes rarely, the slice list grows every time a new dimension
-// or composite is added, making a duplicate copy of THAT specifically
-// riskier to keep in sync than the small, stable math is. This only
-// works because those two files (and everything they import) are kept
-// deliberately framework-free - see the CONSTRAINT comment atop
-// lib/edgeEngine.js. If that import ever starts failing, this script
-// throws rather than silently skipping belief updates - see main().
+// duplicated below (the Databento HTTP call, the embargo-error check, and
+// the excursion window/math) are kept intentionally minimal and mirror
+// those files exactly, so there's little for the copies to drift on.
 //
 // Usage: node scripts/retry-trade-excursions.js
 // Env: DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
@@ -49,143 +35,6 @@ const ROLL_PROXIMITY_DAYS = 10
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args)
-}
-
-// ===== WELFORD MATH =====
-// Duplicate of lib/edgeBeliefs.js's PSEUDO_COUNT/welfordAdd/welfordRemove/
-// excursionFor/excursionSeedFromParent/buildExcursionRow - see the
-// CONSTRAINT comment atop lib/edgeEngine.js and this script's own header
-// comment for why this specific piece is duplicated rather than imported
-// (unlike slicesForTrade/fetchBeliefsByKeys below, which ARE imported).
-// If you change any of the functions in this section, make the exact same
-// change to their counterparts in lib/edgeBeliefs.js, or this script will
-// silently compute different MFE/MAE/drawdown numbers than the rest of
-// the app depending on which of the two paths backfilled a given trade.
-// scripts/check-excursion-math-parity.js runs both copies against the
-// same inputs on every CI run specifically to catch that kind of drift.
-const PSEUDO_COUNT = 10
-
-function welfordAdd(mean, m2, count, value) {
-  const newCount = count + 1
-  const delta = value - mean
-  const newMean = mean + delta / newCount
-  const delta2 = value - newMean
-  const newM2 = m2 + delta * delta2
-  return { mean: newMean, m2: newM2, count: newCount }
-}
-
-function welfordRemove(mean, m2, count, value) {
-  const newCount = count - 1
-  if (newCount <= 0) return { mean: 0, m2: 0, count: 0 }
-  const newMean = (mean * count - value) / newCount
-  const delta = value - newMean
-  const delta2 = value - mean
-  const newM2 = m2 - delta * delta2
-  return { mean: newMean, m2: newM2, count: newCount }
-}
-
-function excursionFor(trade) {
-  if (trade.mfe_points == null || trade.mae_points == null || !trade.stop_distance) return null
-  return {
-    mfeR: trade.mfe_points / trade.stop_distance,
-    maeR: trade.mae_points / trade.stop_distance,
-    drawdownSeconds: trade.drawdown_seconds ?? 0,
-  }
-}
-
-function excursionSeedFromParent(parent) {
-  return {
-    mfe_r_mean: parent?.mfe_r_mean ?? 0,
-    mfe_r_m2: 0,
-    mae_r_mean: parent?.mae_r_mean ?? 0,
-    mae_r_m2: 0,
-    drawdown_seconds_mean: parent?.drawdown_seconds_mean ?? 0,
-    drawdown_seconds_m2: 0,
-  }
-}
-
-function buildExcursionRow(existing, parent, trade, sign, nowIso) {
-  if (!existing) return null
-  const excursion = excursionFor(trade)
-  if (!excursion) return null
-
-  const priorCount = existing.excursion_n ?? 0
-  if (sign < 0 && priorCount === 0) return null
-
-  const source = priorCount === 0
-    ? excursionSeedFromParent(parent)
-    : {
-        mfe_r_mean: existing.mfe_r_mean ?? 0,
-        mfe_r_m2: existing.mfe_r_m2 ?? 0,
-        mae_r_mean: existing.mae_r_mean ?? 0,
-        mae_r_m2: existing.mae_r_m2 ?? 0,
-        drawdown_seconds_mean: existing.drawdown_seconds_mean ?? 0,
-        drawdown_seconds_m2: existing.drawdown_seconds_m2 ?? 0,
-      }
-
-  const weight = priorCount + PSEUDO_COUNT
-  const op = sign > 0 ? welfordAdd : welfordRemove
-  const mfeUpdate = op(source.mfe_r_mean, source.mfe_r_m2, weight, excursion.mfeR)
-  const maeUpdate = op(source.mae_r_mean, source.mae_r_m2, weight, excursion.maeR)
-  const drawdownUpdate = op(source.drawdown_seconds_mean, source.drawdown_seconds_m2, weight, excursion.drawdownSeconds)
-
-  return {
-    user_id: existing.user_id,
-    slice_key: existing.slice_key,
-    mfe_r_mean: mfeUpdate.mean,
-    mfe_r_m2: mfeUpdate.m2,
-    mae_r_mean: maeUpdate.mean,
-    mae_r_m2: maeUpdate.m2,
-    drawdown_seconds_mean: drawdownUpdate.mean,
-    drawdown_seconds_m2: drawdownUpdate.m2,
-    excursion_n: Math.max(0, priorCount + sign),
-    updated_at: nowIso,
-  }
-}
-
-// Orchestration only (fetch beliefs, build rows, upsert) - NOT duplicated,
-// since it contains no math of its own, just plumbing around
-// slicesForTrade/fetchBeliefsByKeys (imported for real, see
-// loadBeliefHelpers below) and buildExcursionRow (duplicated above).
-async function applyOrReverseExcursion(admin, trade, sign, { slicesForTrade, fetchBeliefsByKeys }) {
-  if (!trade.user_id) return
-  const slices = slicesForTrade(trade)
-  if (slices.length === 0) return
-
-  const neededKeys = new Set()
-  for (const slice of slices) {
-    neededKeys.add(slice.sliceKey)
-    if (slice.parentSliceKey) neededKeys.add(slice.parentSliceKey)
-  }
-  const beliefs = await fetchBeliefsByKeys(admin, trade.user_id, [...neededKeys])
-
-  const nowIso = new Date().toISOString()
-  const rows = slices
-    .map((slice) => buildExcursionRow(
-      beliefs.get(slice.sliceKey),
-      slice.parentSliceKey ? beliefs.get(slice.parentSliceKey) : null,
-      trade,
-      sign,
-      nowIso,
-    ))
-    .filter((row) => row !== null)
-
-  if (rows.length === 0) return
-  const { error } = await admin.from('edge_beliefs').upsert(rows, { onConflict: 'user_id,slice_key' })
-  if (error) throw error
-}
-// ===== END WELFORD MATH =====
-
-// Dynamically imports the real slice-membership logic from lib/edgeBeliefs.js
-// (which the app also uses) rather than keeping a third copy of it - see
-// this script's header comment for why that's the right call specifically
-// for the slice list, unlike the Welford math above. Called once, at the
-// very top of main(), so a broken import fails the whole run loudly and
-// immediately rather than surfacing as a confusing per-trade failure deep
-// in the retry loop.
-async function loadBeliefHelpers() {
-  const mod = await import('../lib/edgeBeliefs.js')
-  return { slicesForTrade: mod.slicesForTrade, fetchBeliefsByKeys: mod.fetchBeliefsByKeys }
 }
 
 function authHeader() {
@@ -586,22 +435,6 @@ async function main() {
   if (!supabaseUrl || !serviceKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set')
   const admin = createClient(supabaseUrl, serviceKey)
 
-  // Fails the whole run immediately and loudly (non-zero exit, surfaces as
-  // a failed GitHub Actions run) if lib/edgeBeliefs.js/lib/edgeEngine.js
-  // ever stop being importable from plain Node - deliberately NOT folded
-  // into the per-trade try/catch below, which is for ordinary,
-  // expected-to-happen-sometimes Databento hiccups. A broken import means
-  // this run can't determine which belief slices ANY trade belongs to, a
-  // categorically different and more serious problem that shouldn't be
-  // silently absorbed into the routine "left pending for next hour" path.
-  let beliefHelpers
-  try {
-    beliefHelpers = await loadBeliefHelpers()
-  } catch (err) {
-    console.error('CRITICAL: could not load lib/edgeBeliefs.js/lib/edgeEngine.js - excursion data will NOT be tracked in edge_beliefs until this is fixed.', err)
-    throw err
-  }
-
   const { data: pending, error } = await admin.from('trades').select('*').eq('market_data_status', 'pending')
   if (error) throw new Error(`Failed to load pending trades: ${error.message}`)
 
@@ -701,26 +534,6 @@ async function main() {
         return legFill?.matched ? { ...exit, exit_time: instantToWallClockTime(legFill.instant, offsetHours) } : exit
       })
 
-      // A trade can already have excursion data here if this is a
-      // re-backfill after an edit changed entry/exit (same reasoning as
-      // app/api/backfill-trade-excursion/route.js's own copy of this
-      // step) - unapply the now-stale old contribution before overwriting
-      // it. Best-effort, same as every other edge_beliefs call site.
-      // excursionReversed gates the apply call below: if there was old
-      // data to reverse and the reversal failed, skip applying the new
-      // contribution too, rather than adding it on top of an old one that
-      // was never actually removed - see route.js's own copy of this
-      // comment for why that's a double-count, not just a missed update.
-      let excursionReversed = trade.mfe_points == null
-      try {
-        if (trade.mfe_points != null) {
-          await applyOrReverseExcursion(admin, trade, -1, beliefHelpers)
-          excursionReversed = true
-        }
-      } catch (beliefError) {
-        log(`reverseExcursion failed for trade ${trade.id}:`, beliefError.message)
-      }
-
       await admin.from('trades').update({
         mfe_points: mfePoints,
         mae_points: maePoints,
@@ -732,19 +545,6 @@ async function main() {
         additional_exits: correctedAdditionalExits,
         trade_time_unverified: verifiedTimes.anyUnverified,
       }).eq('id', trade.id)
-
-      if (excursionReversed) {
-        try {
-          await applyOrReverseExcursion(
-            admin,
-            { ...trade, mfe_points: mfePoints, mae_points: maePoints, drawdown_seconds: drawdownSeconds },
-            1,
-            beliefHelpers,
-          )
-        } catch (beliefError) {
-          log(`applyExcursion failed for trade ${trade.id}:`, beliefError.message)
-        }
-      }
 
       completed += 1
     } catch (err) {
@@ -772,15 +572,7 @@ async function main() {
   log(`Ready to retry: ${readyCount}. Completed: ${completed}. Still pending (embargo not cleared yet): ${stillPending}. Marked unavailable: ${unavailable}.`)
 }
 
-// Guarded so scripts/check-excursion-math-parity.js can require() this
-// file for its duplicated buildExcursionRow/PSEUDO_COUNT (see the WELFORD
-// MATH section above) without triggering an actual retry run against real
-// Databento/Supabase credentials.
-if (require.main === module) {
-  main().catch((err) => {
-    console.error(err)
-    process.exit(1)
-  })
-}
-
-module.exports = { buildExcursionRow, PSEUDO_COUNT }
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

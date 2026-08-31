@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–483  Base: reset, typography, forms, tables, thumbnails,
+     1–493  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   484  Auth pages
-   550  Top nav
-   565  Instrument nav (topbar pill row)
-   629  Page layout
-   681  Tabs
-   691  Misc form helpers
-   697  Detail view
-   720  Holiday notice (site-wide, above the shell)
-   745  Shell layout (sidebar + topbar)
-   965  Expandable trade rows
-   1013  Calendar
-   1061  Account settings page
-   1270  Light theme
-   1303  2FA
-   1318  Account fine print
-   1321  Screenshot preview (log new trade)
-   1363  Auth pages always dark
-   1391  Monthly P&L (calendar on Overview)
-   1469  Trade form: sections, validation, currency, screenshots
-   1697  Field tooltips
-   1759  Date/time picker (adds an optional popup to a typed input)
-   1868  In-header column filters (trade log table)
-   1906  Active filter chips
-   1969  Empty states, error banners, skeleton loaders
-   2048  Cross-instrument overview dashboard (/app)
-   2227  Not found / error boundary state pages
-   2240  Toast notifications
-   2268  Public policy pages (Privacy, Terms)
-   2287  Legal links (auth pages + account settings)
-   2326  Economic calendar card (mock - Overview pages)
-   2440  Calendar news badge (Monthly P&L day cells, mock)
-   2461  Streak badge (Overview + strategy detail pages)
-   2478  Market status pill (Overview + strategy detail pages)
-   2504  Key levels, today's brief (mock cards)
-   2530  Market context cards (all-instruments Overview)
-   2589  Edge Insights panel
-   2604  Unverified logged time badge
-   2621  Theme toggle (suppress transition flash)
+   494  Auth pages
+   560  Top nav
+   575  Instrument nav (topbar pill row)
+   639  Page layout
+   691  Tabs
+   701  Misc form helpers
+   707  Detail view
+   730  Holiday notice (site-wide, above the shell)
+   755  Shell layout (sidebar + topbar)
+   976  Expandable trade rows
+   1024  Calendar
+   1072  Account settings page
+   1281  Light theme
+   1318  2FA
+   1333  Account fine print
+   1336  Screenshot preview (log new trade)
+   1378  Auth pages always dark
+   1407  Monthly P&L (calendar on Overview)
+   1485  Trade form: sections, validation, currency, screenshots
+   1713  Field tooltips
+   1775  Date/time picker (adds an optional popup to a typed input)
+   1884  In-header column filters (trade log table)
+   1924  Active filter chips
+   1987  Empty states, error banners, skeleton loaders
+   2066  Cross-instrument overview dashboard (/app)
+   2245  Not found / error boundary state pages
+   2258  Toast notifications
+   2286  Public policy pages (Privacy, Terms)
+   2305  Legal links (auth pages + account settings)
+   2344  Economic calendar card (mock - Overview pages)
+   2458  Calendar news badge (Monthly P&L day cells, mock)
+   2479  Streak badge (Overview + strategy detail pages)
+   2496  Market status pill (Overview + strategy detail pages)
+   2522  Key levels, today's brief (mock cards)
+   2548  Market context cards (all-instruments Overview)
+   2607  Edge Insights panel
+   2622  Unverified logged time badge
+   2639  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -58,6 +58,16 @@
   --panel: #141d30;
   --panel-2: #0b1428;
   --line: #23272f;
+  /* A hover step for on-panel controls (dropdowns, the trade log's Filter
+     button, etc.) that stays in the same saturated navy family as --bg/
+     --panel/--panel-2 (all ~45-57% saturation), rather than reusing --line
+     - which is only ~15% saturated and reads as an unrelated flat grey
+     dropped onto a blue page, not "the same surface, slightly lighter."
+     Light theme doesn't need a separate value: its own --panel-2 (17% sat)
+     and --line (15% sat) are already close enough that --line reads
+     correctly as a same-family step there - see the light theme override
+     below, where this is just set equal to --line. */
+  --panel-hover: #182849;
   --text: #e7e6e2;
   --muted: #7d8590;
   --muted-2: #5C6167;
@@ -807,14 +817,15 @@ a.shell-logo{color:inherit; text-decoration:none;}
 }
 .icon-btn:hover{background:var(--panel-2); color:var(--text);}
 .icon-btn-profile{background:var(--panel-2); border:1px solid var(--line); border-radius:50%;}.theme-toggle-btn{background:none; border:none; cursor:pointer;} .theme-toggle-btn svg{width:19px; height:19px; flex-shrink:0;}
-/* --line reads as "one step lighter than the surrounding panel" in dark
-   theme and "one step darker" in light theme (it's defined that way in
-   both palettes - see :root and the light-theme override below), so a
-   flat background swap to it is a theme-correct hover cue on its own, no
-   color/border change needed. Without something here at all, the shared
-   reset above (which exists to strip button:hover's brightness filter)
-   leaves this with literally no visible hover state. */
-.theme-toggle-btn:hover{background:var(--line);}
+/* --panel-hover is "one step lighter than the surrounding panel" in dark
+   theme and "one step darker" in light theme, defined to actually look
+   like a lighter/darker shade of the same surface in both palettes (see
+   --panel-hover's own comment in :root) - so a flat background swap to it
+   is a theme-correct hover cue on its own, no color/border change needed.
+   Without something here at all, the shared reset above (which exists to
+   strip button:hover's brightness filter) leaves this with literally no
+   visible hover state. */
+.theme-toggle-btn:hover{background:var(--panel-hover);}
 
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
@@ -1274,6 +1285,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   --panel: #ffffff;
   --panel-2: #eef0f3;
   --line: #dde1e6;
+  /* Equal to --line here, unlike the dark theme above - see --panel-hover's
+     own comment in :root for why dark needs a distinct value and light
+     doesn't. */
+  --panel-hover: #dde1e6;
   --text: #14161a;
   --muted: #676d78;
   /* --glass/--glass-border are white-alpha, tuned for the dark backdrop
@@ -1366,6 +1381,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
     --panel: #141d30;
     --panel-2: #0b1428;
     --line: #23272f;
+    --panel-hover: #182849;
     --text: #e7e6e2;
     --muted: #7d8590;
 }
@@ -1404,14 +1420,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* One rule covers every use of this class - the "All strategies" native
    <select> dropdowns as well as .trade-tag-filter-btn/.econ-impact-
    filter-btn/.econ-date-range-trigger (all combine this class with their
-   own for the chevron-padding override, see each's own comment). --line
-   is a flat step along the panel/panel-2/line ramp - lighter than
-   --panel-2 in dark theme, darker in light theme, by definition in both
-   palettes - so a background-only swap is a correct, theme-safe hover in
-   both directions with no lift, shadow, or accent color needed. Still
-   background-color, for the same chevron-image reason as the rest state
-   above. */
-.calendar-strategy-filter:hover{background-color:var(--line);}
+   own for the chevron-padding override, see each's own comment).
+   --panel-hover (not --line - see its own comment in :root) is lighter
+   than --panel-2 in dark theme, darker in light theme, and stays in the
+   same family as the surface it's hovering on in both - so a background-
+   only swap is a correct, theme-safe hover in both directions with no
+   lift, shadow, or accent color needed. Still background-color, for the
+   same chevron-image reason as the rest state above. */
+.calendar-strategy-filter:hover{background-color:var(--panel-hover);}
 .calendar-month-nav{display:flex; align-items:center; gap:12px;}
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
@@ -1876,11 +1892,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   transition:background-color .15s ease, color .15s ease;
 }
-/* --line, not --panel-2 - this sits transparent on a .panel table header,
-   so panel-2 (darker than --panel in dark theme) was a hover that read as
-   dimming rather than lightening; --line steps the other way in both
-   themes. */
-.col-filter-btn:hover{background:var(--line); filter:none;}
+/* --panel-hover, not --panel-2 or --line - this sits transparent on a
+   .panel table header, so panel-2 (darker than --panel in dark theme) was
+   a hover that read as dimming rather than lightening, and bare --line
+   reads as an off-family grey in dark theme (see --panel-hover's own
+   comment in :root). --panel-hover steps the right direction in both
+   themes while staying tonally consistent with the panel it sits on. */
+.col-filter-btn:hover{background:var(--panel-hover); filter:none;}
 .col-filter-btn-active{color:var(--accent);}
 .col-filter-btn svg{width:13px; height:13px; flex-shrink:0;}
 

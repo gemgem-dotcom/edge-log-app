@@ -30,9 +30,19 @@ export default function AppShell({ instruments, strategies = [], active, childre
 
   function handleThemeToggle() {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
+    const root = document.documentElement
+    // Suppresses every element's own transition (mostly meant for hover,
+    // not this) for exactly one theme switch - see the .theme-switching
+    // comment in globals.css for why that's needed. Double rAF so the
+    // no-transition switch has actually painted before transitions come
+    // back, rather than racing the removal against the switch itself.
+    root.classList.add('theme-switching')
     setTheme(newTheme)
     localStorage.setItem('edgelog-theme', newTheme)
-    document.documentElement.setAttribute('data-theme', newTheme)
+    root.setAttribute('data-theme', newTheme)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => root.classList.remove('theme-switching'))
+    })
   }
 
   const instrumentById = {}

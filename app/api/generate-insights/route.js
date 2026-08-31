@@ -154,6 +154,20 @@ const MOCK_NARRATIVE = `This is a placeholder insight shown in mock-DB dev mode 
 | London session | 5 trades | 40% |
 | New York AM | 9 trades | 78% |`
 
+// The only server-side defense against runaway Claude spend - the panel's
+// own `regenerating` boolean (client-side, trivially bypassed by a second
+// tab, a second browser, or a direct authenticated request) is otherwise
+// the sole guard on a route that costs real money per call. Independent
+// of the removed trade-count-based REGEN_THRESHOLD (see
+// lib/insightsClient.js's header comment - that was about not
+// regenerating on stale data, not about spend) - this is purely "don't
+// let the same (user, scope) pay for two calls within N seconds of each
+// other," regardless of why a second request arrived. 60s is generous
+// enough that no legitimate manual click pattern hits it (regeneration is
+// already a deliberate, occasional action) while still capping the worst
+// case at one paid call per minute per scope.
+const MIN_REGEN_INTERVAL_MS = 60 * 1000
+
 export async function POST(req) {
   try {
     const body = await req.json().catch(() => ({}))
@@ -175,6 +189,19 @@ export async function POST(req) {
     const { data: userData, error: userError } = await supabase.auth.getUser()
     if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401 })
+    }
+
+    // Checked before touching buildDataset/Claude, not after - a rejected
+    // request should cost nothing beyond this one cheap lookup, not a full
+    // dataset assembly plus a wasted model call.
+    const { data: existingInsight } = await supabase
+      .from('edge_insights').select('generated_at').eq('user_id', userData.user.id).eq('scope', scope).maybeSingle()
+    if (existingInsight?.generated_at) {
+      const elapsedMs = Date.now() - new Date(existingInsight.generated_at).getTime()
+      if (elapsedMs < MIN_REGEN_INTERVAL_MS) {
+        const waitSeconds = Math.ceil((MIN_REGEN_INTERVAL_MS - elapsedMs) / 1000)
+        return new Response(JSON.stringify({ error: `Please wait ${waitSeconds}s before regenerating this again.` }), { status: 429 })
+      }
     }
 
     const built = await buildDataset(supabase, scope)

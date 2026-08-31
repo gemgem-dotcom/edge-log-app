@@ -30,21 +30,21 @@
    1726  Date/time picker (adds an optional popup to a typed input)
    1835  In-header column filters (trade log table)
    1869  Active filter chips
-   1929  Empty states, error banners, skeleton loaders
-   2008  Cross-instrument overview dashboard (/app)
-   2187  Not found / error boundary state pages
-   2200  Toast notifications
-   2228  Public policy pages (Privacy, Terms)
-   2247  Legal links (auth pages + account settings)
-   2286  Economic calendar card (mock - Overview pages)
-   2393  Calendar news badge (Monthly P&L day cells, mock)
-   2414  Streak badge (Overview + strategy detail pages)
-   2431  Market status pill (Overview + strategy detail pages)
-   2457  Key levels, today's brief (mock cards)
-   2483  Market context cards (all-instruments Overview)
-   2542  Edge Insights panel
-   2557  Unverified logged time badge
-   2574  Theme toggle (suppress transition flash)
+   1930  Empty states, error banners, skeleton loaders
+   2009  Cross-instrument overview dashboard (/app)
+   2188  Not found / error boundary state pages
+   2201  Toast notifications
+   2229  Public policy pages (Privacy, Terms)
+   2248  Legal links (auth pages + account settings)
+   2287  Economic calendar card (mock - Overview pages)
+   2394  Calendar news badge (Monthly P&L day cells, mock)
+   2415  Streak badge (Overview + strategy detail pages)
+   2432  Market status pill (Overview + strategy detail pages)
+   2458  Key levels, today's brief (mock cards)
+   2484  Market context cards (all-instruments Overview)
+   2543  Edge Insights panel
+   2558  Unverified logged time badge
+   2575  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -1910,14 +1910,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 .table-count{font-size:12px; color:var(--muted); text-align:right; margin-bottom:10px;}
 
-/* Trade log pagination (TradeLogTable.js's pageSize prop) - reuses
-   .calendar-nav-btn's circular icon-button look rather than inventing a
-   second prev/next style. Unlike the calendar's month nav, this one has
-   real boundaries (no page before the first or after the last), so it
-   needs its own disabled state, which the always-cyclable month nav never
-   did. */
+/* Trade log pagination (TradeLogTable.js's pageSize prop) - a bare chevron,
+   not .calendar-nav-btn's circular icon-button look, by deliberate design
+   choice (unlike the calendar's month nav, which keeps the circle). Unlike
+   that always-cyclable month nav, this one has real boundaries (no page
+   before the first or after the last), so it needs its own disabled state. */
 .table-pagination{display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px;}
-.table-pagination .calendar-nav-btn{width:28px; height:28px;}
+.table-pagination-btn{display:flex; align-items:center; justify-content:center; width:28px; height:28px; color:var(--muted); cursor:pointer;}
+.table-pagination-btn:hover{color:var(--accent);}
+.table-pagination-btn svg{width:16px; height:16px; flex-shrink:0;}
 .table-pagination-page{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text); min-width:14px; text-align:center;}
 .nav-btn-disabled{opacity:.35; cursor:default; pointer-events:none;}
 

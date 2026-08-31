@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–496  Base: reset, typography, forms, tables, thumbnails,
+     1–505  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   497  Auth pages
-   563  Top nav
-   578  Instrument nav (topbar pill row)
-   642  Page layout
-   694  Tabs
-   704  Misc form helpers
-   710  Detail view
-   733  Holiday notice (site-wide, above the shell)
-   758  Shell layout (sidebar + topbar)
-   979  Expandable trade rows
-   1027  Calendar
-   1075  Account settings page
-   1284  Light theme
-   1321  2FA
-   1336  Account fine print
-   1339  Screenshot preview (log new trade)
-   1381  Auth pages always dark
-   1410  Monthly P&L (calendar on Overview)
-   1488  Trade form: sections, validation, currency, screenshots
-   1716  Field tooltips
-   1778  Date/time picker (adds an optional popup to a typed input)
-   1887  In-header column filters (trade log table)
-   1927  Active filter chips
-   1990  Empty states, error banners, skeleton loaders
-   2069  Cross-instrument overview dashboard (/app)
-   2248  Not found / error boundary state pages
-   2261  Toast notifications
-   2289  Public policy pages (Privacy, Terms)
-   2308  Legal links (auth pages + account settings)
-   2347  Economic calendar card (mock - Overview pages)
-   2461  Calendar news badge (Monthly P&L day cells, mock)
-   2482  Streak badge (Overview + strategy detail pages)
-   2499  Market status pill (Overview + strategy detail pages)
-   2525  Key levels, today's brief (mock cards)
-   2551  Market context cards (all-instruments Overview)
-   2610  Edge Insights panel
-   2625  Unverified logged time badge
-   2642  Theme toggle (suppress transition flash)
+   506  Auth pages
+   572  Top nav
+   587  Instrument nav (topbar pill row)
+   651  Page layout
+   703  Tabs
+   713  Misc form helpers
+   719  Detail view
+   742  Holiday notice (site-wide, above the shell)
+   767  Shell layout (sidebar + topbar)
+   988  Expandable trade rows
+   1036  Calendar
+   1084  Account settings page
+   1293  Light theme
+   1330  2FA
+   1345  Account fine print
+   1348  Screenshot preview (log new trade)
+   1390  Auth pages always dark
+   1419  Monthly P&L (calendar on Overview)
+   1497  Trade form: sections, validation, currency, screenshots
+   1725  Field tooltips
+   1787  Date/time picker (adds an optional popup to a typed input)
+   1896  In-header column filters (trade log table)
+   1936  Active filter chips
+   1999  Empty states, error banners, skeleton loaders
+   2078  Cross-instrument overview dashboard (/app)
+   2257  Not found / error boundary state pages
+   2270  Toast notifications
+   2298  Public policy pages (Privacy, Terms)
+   2317  Legal links (auth pages + account settings)
+   2356  Economic calendar card (mock - Overview pages)
+   2470  Calendar news badge (Monthly P&L day cells, mock)
+   2491  Streak badge (Overview + strategy detail pages)
+   2508  Market status pill (Overview + strategy detail pages)
+   2534  Key levels, today's brief (mock cards)
+   2560  Market context cards (all-instruments Overview)
+   2619  Edge Insights panel
+   2634  Unverified logged time badge
+   2651  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -299,6 +299,15 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
    short/theme) keeps its own color under the cursor rather than flashing
    the plain hover background. */
 .dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
+/* Account settings' theme toggle only (.dir-toggle without the trade
+   form's .dir-toggle-square modifier - see that class's own comment).
+   Same --panel-hover-over-plain---line reasoning as the rest of the
+   on-panel hover fixes: this pill rests on --panel-2 same as those, so
+   --line reads as an off-family grey in dark theme. Scoped to just this
+   toggle, not the rule above, since the trade form's Long/Short toggle
+   wasn't reported as having the same issue - leaving it on --line rather
+   than assuming the fix should extend there too. */
+.dir-toggle:not(.dir-toggle-square) .dir-btn:not(.active-theme):hover{background:var(--panel-hover); color:var(--text);}
 /* Direction specifically (not Hit target/Hit stop/Custom or the account-
    settings theme toggle, which still use the pill) - a square box instead,
    to read as one more field box among Entry price/Stop Loss/Take Profit

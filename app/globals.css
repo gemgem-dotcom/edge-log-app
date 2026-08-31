@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–547  Base: reset, typography, forms, tables, thumbnails,
+     1–552  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   548  Auth pages
-   614  Top nav
-   629  Instrument nav (topbar pill row)
-   693  Page layout
-   745  Tabs
-   755  Misc form helpers
-   761  Detail view
-   784  Holiday notice (site-wide, above the shell)
-   809  Shell layout (sidebar + topbar)
-   1029  Expandable trade rows
-   1077  Calendar
-   1125  Account settings page
-   1334  Light theme
-   1371  2FA
-   1386  Account fine print
-   1389  Screenshot preview (log new trade)
-   1431  Auth pages always dark
-   1460  Monthly P&L (calendar on Overview)
-   1539  Trade form: sections, validation, currency, screenshots
-   1767  Field tooltips
-   1829  Date/time picker (adds an optional popup to a typed input)
-   1938  In-header column filters (trade log table)
-   1982  Active filter chips
-   2045  Empty states, error banners, skeleton loaders
-   2124  Cross-instrument overview dashboard (/app)
-   2303  Not found / error boundary state pages
-   2316  Toast notifications
-   2344  Public policy pages (Privacy, Terms)
-   2363  Legal links (auth pages + account settings)
-   2402  Economic calendar card (mock - Overview pages)
-   2516  Calendar news badge (Monthly P&L day cells, mock)
-   2537  Streak badge (Overview + strategy detail pages)
-   2554  Market status pill (Overview + strategy detail pages)
-   2580  Key levels, today's brief (mock cards)
-   2606  Market context cards (all-instruments Overview)
-   2665  Edge Insights panel
-   2680  Unverified logged time badge
-   2697  Theme toggle (suppress transition flash)
+   553  Auth pages
+   619  Top nav
+   634  Instrument nav (topbar pill row)
+   698  Page layout
+   750  Tabs
+   760  Misc form helpers
+   766  Detail view
+   789  Holiday notice (site-wide, above the shell)
+   814  Shell layout (sidebar + topbar)
+   1034  Expandable trade rows
+   1082  Calendar
+   1130  Account settings page
+   1339  Light theme
+   1376  2FA
+   1391  Account fine print
+   1394  Screenshot preview (log new trade)
+   1436  Auth pages always dark
+   1465  Monthly P&L (calendar on Overview)
+   1544  Trade form: sections, validation, currency, screenshots
+   1772  Field tooltips
+   1834  Date/time picker (adds an optional popup to a typed input)
+   1943  In-header column filters (trade log table)
+   1987  Active filter chips
+   2050  Empty states, error banners, skeleton loaders
+   2129  Cross-instrument overview dashboard (/app)
+   2308  Not found / error boundary state pages
+   2321  Toast notifications
+   2349  Public policy pages (Privacy, Terms)
+   2368  Legal links (auth pages + account settings)
+   2407  Economic calendar card (mock - Overview pages)
+   2521  Calendar news badge (Monthly P&L day cells, mock)
+   2542  Streak badge (Overview + strategy detail pages)
+   2559  Market status pill (Overview + strategy detail pages)
+   2585  Key levels, today's brief (mock cards)
+   2611  Market context cards (all-instruments Overview)
+   2670  Edge Insights panel
+   2685  Unverified logged time badge
+   2702  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -74,12 +74,17 @@
      Stays in the same saturated navy family as --bg/--panel/--panel-2
      (all ~45-57% saturation) rather than reusing --line - which is only
      ~15% saturated and reads as an unrelated flat grey dropped onto a
-     blue page, not "the same surface, slightly lighter." Light theme
-     doesn't need a separate value: its own --panel-2 (17% sat) and --line
-     (15% sat) are already close enough that --line reads correctly as a
-     same-family step there - see the light theme override below, where
-     this is just set equal to --line. */
-  --panel-hover: #131f39;
+     blue page, not "the same surface, slightly lighter." +11 lightness
+     points over --panel-2 - a stronger step than this token first shipped
+     with (+5, tuned for the larger filter/dropdown pills before they went
+     back to --line) - because a 16px icon-only circle needs more contrast
+     to register as a hover cue at all than a full pill does; +5 read as
+     not doing anything here.
+     Light theme doesn't need a separate value: its own --panel-2 (17%
+     sat) and --line (15% sat) are already close enough that --line reads
+     correctly as a same-family step there - see the light theme override
+     below, where this is just set equal to --line. */
+  --panel-hover: #1c2e54;
   --text: #e7e6e2;
   --muted: #7d8590;
   --muted-2: #5C6167;
@@ -1434,7 +1439,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
     --panel: #141d30;
     --panel-2: #0b1428;
     --line: #23272f;
-    --panel-hover: #131f39;
+    --panel-hover: #1c2e54;
     --text: #e7e6e2;
     --muted: #7d8590;
 }

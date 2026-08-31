@@ -69,7 +69,7 @@ npm run dev:mock -- -p <a-free-port>
 ```
 
 `dev:mock` runs the app against `lib/supabaseClient.mock.js`, an in-memory fake client, via
-a `next.config.js` webpack alias keyed on `NEXT_PUBLIC_USE_MOCK_DB=true` - nothing about
+a `next.config.js` Turbopack resolveAlias keyed on `NEXT_PUBLIC_USE_MOCK_DB=true` - nothing about
 `lib/supabaseClient.js` itself changes, so there's no file to swap back afterward and no
 risk of a session ending with the real client still replaced. If the change needs a
 specific data shape to exercise (a multi-exit trade, a trade with screenshots, an open
@@ -100,7 +100,7 @@ rm -rf .next
 NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder SUPABASE_SERVICE_ROLE_KEY=placeholder npm run build
 ```
 
-The mock-mode dev server exercises a different code path (`next dev`, webpack alias active)
+The mock-mode dev server exercises a different code path (`next dev`, resolveAlias active)
 than what actually deploys (`next build`, alias inactive) - this catches anything that
 verification step wouldn't. Clean `.next` afterward either way.
 

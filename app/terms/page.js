@@ -4,8 +4,8 @@ export const metadata = {
   title: 'Terms of Service — EdgeLog',
 }
 
-export default function TermsOfServicePage({ searchParams }) {
-  const backLink = resolveBackLink(searchParams?.from)
+export default async function TermsOfServicePage({ searchParams }) {
+  const backLink = resolveBackLink((await searchParams)?.from)
   return (
     <div className="simple-page-wrap">
       <div className="policy-header">

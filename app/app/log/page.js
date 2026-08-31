@@ -85,6 +85,7 @@ export default function AllTradesPage() {
             showInstrumentColumn
             instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
             instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
+            pageSize={25}
             emptyState={
               <EmptyState
                 title="No trades yet"

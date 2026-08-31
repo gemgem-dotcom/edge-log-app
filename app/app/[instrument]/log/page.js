@@ -73,6 +73,7 @@ return (
     showStrategyColumn={true}
     showFilters={true}
     symbol={symbol}
+    pageSize={25}
     emptyState={
       <EmptyState
         title="No trades yet"

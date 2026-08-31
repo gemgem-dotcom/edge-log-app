@@ -3,15 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 // Every table that references auth.users. deleteUser fails if any row still
 // points at the user, and the failure surfaces as an unhelpful empty error,
 // so these have to be cleared first — and in an order that respects the
-// foreign keys between them. edge_beliefs was missing here for a while
-// (added in a later feature, after this list was written) - a belief row
-// exists per (user, dimension-slice) and gets created on a user's very
-// first trade, so this silently blocked deleting the account of anyone
-// who'd ever logged one. schema.sql now also puts an `on delete cascade`
-// backstop on that FK (same fix already applied to login_events once
-// before), but it's kept in this explicit list too, consistent with every
-// other table here.
-const USER_TABLES = ['trades', 'strategies', 'instruments', 'login_events', 'edge_beliefs']
+// foreign keys between them.
+const USER_TABLES = ['trades', 'strategies', 'instruments', 'login_events']
 
 // Deletes every object under this user's own path prefix in the private
 // screenshots bucket (storage-setup.sql's RLS scopes that prefix to

@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
-import { applyTrade, reverseTrade, applyExcursion, reverseExcursion } from '@/lib/edgeBeliefs'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -89,29 +88,6 @@ export default function EditTradePage({ params }) {
       return 'Could not save trade: ' + error.message
     }
 
-    // Best-effort, and in that order deliberately - slice membership itself
-    // can change on an edit (a reassigned strategy, a discipline review), so
-    // reversing the pre-edit row's slices before applying the post-edit
-    // row's is what makes this correct rather than "patch in place."
-    try {
-      await reverseTrade(supabase, trade)
-      await applyTrade(supabase, updated)
-      // Same reasoning, extended to MFE/MAE/drawdown: trade and updated
-      // always carry identical mfe_points/mae_points/drawdown_seconds
-      // here (this save never touches those columns itself), so this is
-      // always an exact move, not a stale-data risk - even when only
-      // stop_distance changed (which isn't excursionRelevantChanged below,
-      // since mfe_points/mae_points themselves don't depend on it, but the
-      // R-normalized values applyExcursion computes do). If entry/exit did
-      // change, the freshly requested backfill below reverses this exact
-      // contribution again before applying the newly computed one - see
-      // app/api/backfill-trade-excursion/route.js.
-      await reverseExcursion(supabase, trade)
-      await applyExcursion(supabase, updated)
-    } catch (beliefError) {
-      console.error('belief update failed:', beliefError)
-    }
-
     // Only re-triggers the (Databento-backed) excursion computation when a
     // field it actually depends on changed - an edit that only touches
     // reasoning/tags/discipline review shouldn't cost another API call
@@ -144,12 +120,6 @@ export default function EditTradePage({ params }) {
     if (error) {
       setDeleteError(`Couldn't delete this trade — ${error.message}`)
       return
-    }
-    try {
-      await reverseTrade(supabase, trade)
-      await reverseExcursion(supabase, trade)
-    } catch (beliefError) {
-      console.error('reverseTrade failed:', beliefError)
     }
     toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)

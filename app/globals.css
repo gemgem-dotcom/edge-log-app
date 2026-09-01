@@ -16,35 +16,35 @@
    761  Detail view
    784  Holiday notice (site-wide, above the shell)
    809  Shell layout (sidebar + topbar)
-   1052  Expandable trade rows
-   1100  Calendar
-   1148  Account settings page
-   1359  Light theme
-   1396  2FA
-   1411  Account fine print
-   1414  Screenshot preview (log new trade)
-   1456  Auth pages always dark
-   1485  Monthly P&L (calendar on Overview)
-   1564  Trade form: sections, validation, currency, screenshots
-   1792  Field tooltips
-   1854  Date/time picker (adds an optional popup to a typed input)
-   1963  In-header column filters (trade log table)
-   2011  Active filter chips
-   2074  Empty states, error banners, skeleton loaders
-   2153  Cross-instrument overview dashboard (/app)
-   2332  Not found / error boundary state pages
-   2345  Toast notifications
-   2373  Public policy pages (Privacy, Terms)
-   2392  Legal links (auth pages + account settings)
-   2431  Economic calendar card (mock - Overview pages)
-   2545  Calendar news badge (Monthly P&L day cells, mock)
-   2566  Streak badge (Overview + strategy detail pages)
-   2583  Market status pill (Overview + strategy detail pages)
-   2609  Key levels, today's brief (mock cards)
-   2635  Market context cards (all-instruments Overview)
-   2694  Edge Insights panel
-   2709  Unverified logged time badge
-   2726  Theme toggle (suppress transition flash)
+   1059  Expandable trade rows
+   1107  Calendar
+   1155  Account settings page
+   1368  Light theme
+   1405  2FA
+   1420  Account fine print
+   1423  Screenshot preview (log new trade)
+   1465  Auth pages always dark
+   1494  Monthly P&L (calendar on Overview)
+   1573  Trade form: sections, validation, currency, screenshots
+   1801  Field tooltips
+   1863  Date/time picker (adds an optional popup to a typed input)
+   1972  In-header column filters (trade log table)
+   2020  Active filter chips
+   2083  Empty states, error banners, skeleton loaders
+   2162  Cross-instrument overview dashboard (/app)
+   2341  Not found / error boundary state pages
+   2354  Toast notifications
+   2382  Public policy pages (Privacy, Terms)
+   2401  Legal links (auth pages + account settings)
+   2440  Economic calendar card (mock - Overview pages)
+   2554  Calendar news badge (Monthly P&L day cells, mock)
+   2575  Streak badge (Overview + strategy detail pages)
+   2592  Market status pill (Overview + strategy detail pages)
+   2618  Key levels, today's brief (mock cards)
+   2644  Market context cards (all-instruments Overview)
+   2703  Edge Insights panel
+   2718  Unverified logged time badge
+   2735  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -834,7 +834,14 @@ table{min-width:640px;}
      it changes, and an animated `top` would have that measurement land
      mid-transition instead of at the settled value. */
   position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
-  transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
+  /* background-color/backdrop-filter/box-shadow slower than transform on
+     purpose - transform is the slide reveal itself, which should track the
+     scroll gesture snappily, while these three are what "un-frost" the bar
+     back to a solid opaque panel the instant it docks at the true top. At
+     the old .2s that read as an abrupt snap from glass to solid; slowing
+     just these three makes docking read as a deliberate fade back to
+     opaque rather than a flicker. */
+  transition:transform .25s ease, background-color .6s ease, backdrop-filter .6s ease, box-shadow .6s ease;
 }
 .shell-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
 /* --topbar-glass-alpha is written directly by useStickyTopbar on every
@@ -1158,7 +1165,9 @@ a.shell-logo{color:inherit; text-decoration:none;}
      the variable can still be transiently non-zero right as the trader
      navigates here away from a page where it was showing. */
   position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
-  transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
+  /* Same slower background-color/backdrop-filter/box-shadow as
+     .shell-topbar - see its comment. */
+  transition:transform .25s ease, background-color .6s ease, backdrop-filter .6s ease, box-shadow .6s ease;
 }
 .account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
 /* Same fix as .shell-topbar.topbar-pinned above - no explicit

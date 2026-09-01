@@ -11,6 +11,7 @@
     "css:toc:check": "node scripts/update-css-toc.js --check"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.45.0",
     "lucide-react": "^0.577.0",
     "next": "^16.3.3",

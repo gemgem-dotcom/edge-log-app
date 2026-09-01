@@ -122,7 +122,11 @@ export default function AllTradesPage() {
             pageSize={PAGE_SIZE}
             remote={{
               filters,
-              onFilterChange: (patch) => setFilters((prev) => ({ ...prev, ...patch })),
+              // See app/app/[instrument]/log/page.js's identical handler
+              // for why page resets here, synchronously, rather than
+              // relying on TradeLogTable's own filter-changed effect to do
+              // it a moment later.
+              onFilterChange: (patch) => { setFilters((prev) => ({ ...prev, ...patch })); setPage(0) },
               page,
               totalCount,
               onPageChange: setPage,

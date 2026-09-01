@@ -111,7 +111,14 @@ export default function LogPage({ params }) {
           pageSize={PAGE_SIZE}
           remote={{
             filters,
-            onFilterChange: (patch) => setFilters((prev) => ({ ...prev, ...patch })),
+            // Resets page to 0 in the same handler, synchronously - not
+            // left for TradeLogTable's own "filters changed, reset page"
+            // effect to do a moment later, which would otherwise fire this
+            // effect twice in a row (once with the new filters but the
+            // still-stale page, once with both corrected) with no
+            // guarantee the second, correct fetch's response is the one
+            // that actually lands last.
+            onFilterChange: (patch) => { setFilters((prev) => ({ ...prev, ...patch })); setPage(0) },
             page,
             totalCount,
             onPageChange: setPage,

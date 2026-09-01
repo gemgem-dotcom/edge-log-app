@@ -96,8 +96,14 @@ function fmtNum(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Numeric (0=Sunday..6=Saturday, matching Date.getDay()), not the display
+// name - has to match trades.day_of_week's own type (schema.sql's
+// generated column, extract(dow from trade_date), also 0-6) so remote
+// mode's filters.days can go straight into a .in('day_of_week', ...)
+// query without a text/number mismatch. Callers that want the name for
+// display go through DAY_NAMES[dayOf(trade)] themselves.
 function dayOf(trade) {
-  return DAY_NAMES[new Date(trade.trade_date + 'T00:00:00').getDay()]
+  return new Date(trade.trade_date + 'T00:00:00').getDay()
 }
 
 function resultOf(trade) {
@@ -355,7 +361,7 @@ export default function TradeLogTable({
   // current trades happen to use, so the options stay put as trades come and
   // go. Picking a value with no matches simply yields an empty table.
   const present = (fn) => new Set(rows.map(fn))
-  const dayOptions = DAY_NAMES.map((d) => ({ value: d, label: d }))
+  const dayOptions = DAY_NAMES.map((d, i) => ({ value: i, label: d }))
   // Every strategy the user has created, plus any a trade still points at
   // (an archived one, say) and Unassigned when some trade has no strategy.
   // In remote mode `rows` is only the current page, so a strategy that's
@@ -411,7 +417,7 @@ export default function TradeLogTable({
   // One chip per selected value, whichever column it came from.
   const chips = [
     ...filterDays.map((d) => ({
-      key: `day-${d}`, label: `Day: ${d}`,
+      key: `day-${d}`, label: `Day: ${DAY_NAMES[d]}`,
       clear: () => setFilterDays((prev) => prev.filter((v) => v !== d)),
     })),
     ...filterStrategies.map((s) => ({
@@ -550,7 +556,7 @@ export default function TradeLogTable({
               <Fragment key={t.id}>
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
                   <td>{t.trade_date}{showTimeInDate && t.trade_time ? ` ${t.trade_time}` : ''}</td>
-                  {showDayColumn && <td>{dayOf(t).toUpperCase()}</td>}
+                  {showDayColumn && <td>{DAY_NAMES[dayOf(t)].toUpperCase()}</td>}
                   {showInstrumentColumn && (
                     <td>
                       <span className="strategy-dot" style={{ background: instrumentColorFor?.(t), marginRight: '8px', verticalAlign: 'middle' }} />

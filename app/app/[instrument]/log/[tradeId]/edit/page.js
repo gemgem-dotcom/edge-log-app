@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
+import { regimesForDate } from '@/lib/tradeRegimes'
+import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast, queueToastForReturn } from '@/lib/toast'
@@ -75,6 +77,12 @@ export default function EditTradePage({ params }) {
     const { data: { user } } = await supabase.auth.getUser()
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
+    // null when this date's session hasn't closed (or the daily job hasn't
+    // reached it) yet - left out of the update below rather than writing
+    // null over it, so an edit that doesn't touch the trade date never
+    // clobbers a regime this trade already had correctly bucketed. See
+    // log/new/page.js's identical comment and lib/tradeRegimes.js's header.
+    const regimes = catalogEntryFor(symbol)?.data_symbol === 'NQ' ? await regimesForDate(values.trade_date) : null
 
     const { data: updated, error } = await supabase.from('trades').update({
       ...values,
@@ -82,6 +90,7 @@ export default function EditTradePage({ params }) {
       screenshot_url: screenshot_urls[0] || null,
       session,
       continued_sessions: continuedSessions,
+      ...regimes,
     }).eq('id', tradeId).select().single()
 
     if (error) {

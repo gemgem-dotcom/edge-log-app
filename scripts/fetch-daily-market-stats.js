@@ -22,6 +22,17 @@
 // Historical only, same as lib/databento.js - never fetches anything less
 // than a full calendar day old.
 //
+// Also backfills volatility_regime/volume_regime (see lib/tradeRegimes.js)
+// on every trade dated the session just fetched, across every user, right
+// after storing that day's stats row - the moment a date's regime becomes
+// computable at all, this closes the gap for everyone at once rather than
+// leaving it for each trader's own next app-open to lazily discover (the
+// old design - see the systems-map audit's "lazily recomputed client-side"
+// finding). bucketFor/HIGH_RATIO/LOW_RATIO/TRAILING_WINDOW below are a
+// duplicate of lib/tradeRegimes.js's own copy for the same reason this
+// file already duplicates the ET-offset math instead of importing it - see
+// the paragraph above.
+//
 // Usage: node scripts/fetch-daily-market-stats.js
 // Env: DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
@@ -44,6 +55,20 @@ const DATA_SYMBOL = 'NQ'
 const DATABENTO_SYMBOL = 'NQ.c.0'
 const DATASET = 'GLBX.MDP3'
 const PRICE_SCALE = 1e9
+
+// Regime-bucketing constants, mirrored from lib/tradeRegimes.js - see that
+// file's own comment on the +/-15% banding choice.
+const TRAILING_WINDOW = 20
+const HIGH_RATIO = 1.15
+const LOW_RATIO = 0.85
+
+function bucketFor(value, average) {
+  if (!average) return 'normal'
+  const ratio = value / average
+  if (ratio >= HIGH_RATIO) return 'high'
+  if (ratio <= LOW_RATIO) return 'low'
+  return 'normal'
+}
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args)
@@ -228,6 +253,58 @@ async function main() {
   if (error) throw new Error(`Supabase upsert failed: ${error.message}`)
 
   log(`Stored ${sessionDate}: range=${totalRange.toFixed(2)} volume=${totalVolume}`)
+
+  // Backfill regime on every trade dated this session, across every user,
+  // now that it's actually computable - see the file header comment. Kept
+  // in its own try/catch so a problem here (or simply too little trailing
+  // history yet - see the trailing.length check) never undoes or fails the
+  // stats write above, which is the primary, already-succeeded job.
+  try {
+    const { data: trailing } = await admin
+      .from('market_session_stats')
+      .select('total_range, total_volume')
+      .eq('data_symbol', DATA_SYMBOL)
+      .lt('session_date', sessionDate)
+      .order('session_date', { ascending: false })
+      .limit(TRAILING_WINDOW)
+
+    if (!trailing || trailing.length === 0) {
+      log(`No trailing history yet for ${sessionDate} - skipping regime backfill.`)
+    } else {
+      const avgRange = trailing.reduce((s, r) => s + r.total_range, 0) / trailing.length
+      const avgVolume = trailing.reduce((s, r) => s + r.total_volume, 0) / trailing.length
+      const volatility_regime = bucketFor(totalRange, avgRange)
+      const volume_regime = bucketFor(totalVolume, avgVolume)
+
+      const { data: nqInstruments } = await admin.from('instruments').select('id').eq('data_symbol', DATA_SYMBOL)
+      const instrumentIds = (nqInstruments || []).map((i) => i.id)
+
+      if (instrumentIds.length === 0) {
+        log(`No NQ instruments to backfill for ${sessionDate}.`)
+      } else {
+        const { data: tradesToBackfill } = await admin
+          .from('trades')
+          .select('id')
+          .in('instrument_id', instrumentIds)
+          .eq('trade_date', sessionDate)
+          .or('volatility_regime.is.null,volume_regime.is.null')
+
+        if (!tradesToBackfill || tradesToBackfill.length === 0) {
+          log(`No trades to backfill regime for ${sessionDate}.`)
+        } else {
+          const { error: backfillError } = await admin
+            .from('trades')
+            .update({ volatility_regime, volume_regime })
+            .in('id', tradesToBackfill.map((t) => t.id))
+          if (backfillError) throw new Error(`Regime backfill update failed: ${backfillError.message}`)
+          log(`Backfilled regime (${volatility_regime}/${volume_regime}) on ${tradesToBackfill.length} trade(s) for ${sessionDate}.`)
+        }
+      }
+    }
+  } catch (err) {
+    Sentry.captureMessage(`Regime backfill failed for ${sessionDate}: ${err.message}`, 'warning')
+    log(`Regime backfill failed for ${sessionDate}: ${err.message}`)
+  }
 }
 
 // A short-lived script's process can exit before Sentry's async transport

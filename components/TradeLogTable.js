@@ -637,7 +637,7 @@ export default function TradeLogTable({
       {pageSize && visible.length > pageSize && (
         <div className="table-pagination">
           <span
-            className={`calendar-nav-btn ${safePage === 0 ? 'nav-btn-disabled' : ''}`}
+            className={`table-pagination-btn ${safePage === 0 ? 'nav-btn-disabled' : ''}`}
             onClick={() => safePage > 0 && setPage(safePage - 1)}
             aria-label="Previous page"
           >
@@ -645,7 +645,7 @@ export default function TradeLogTable({
           </span>
           <span className="table-pagination-page">{safePage + 1}</span>
           <span
-            className={`calendar-nav-btn ${safePage >= totalPages - 1 ? 'nav-btn-disabled' : ''}`}
+            className={`table-pagination-btn ${safePage >= totalPages - 1 ? 'nav-btn-disabled' : ''}`}
             onClick={() => safePage < totalPages - 1 && setPage(safePage + 1)}
             aria-label="Next page"
           >

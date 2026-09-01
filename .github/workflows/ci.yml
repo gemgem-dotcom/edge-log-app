@@ -1,10 +1,12 @@
-# Build check + unit tests
+# Build check + unit tests + lint
 #
-# Runs a full production build of the app, and the Vitest unit suite
+# Runs a full production build of the app, the Vitest unit suite
 # (lib/*.test.js - the pure trade-math/excursion-matching/stats-engine
-# functions), on every push and every pull request. Both jobs run in
-# parallel off the same trigger; either one going red puts a X on the
-# commit, so a broken change gets caught before it can reach the live site.
+# functions), and ESLint (eslint.config.mjs - systems-map audit finding
+# #3: this repo previously had no lint config at all), on every push and
+# every pull request. All three jobs run in parallel off the same
+# trigger; any one going red puts a X on the commit, so a broken change
+# gets caught before it can reach the live site.
 #
 # The Supabase values below are throwaway placeholders. The build only
 # needs them to exist so the Supabase client can be constructed; nothing
@@ -68,3 +70,21 @@ jobs:
 
       - name: Run unit tests
         run: npm test
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint

@@ -53,7 +53,15 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # 22, not 20 (the build job's version) - @supabase/supabase-js's
+          # createClient always constructs an internal Realtime
+          # (WebSocket) sub-client, and that constructor throws under
+          # Node 20 for lacking native WebSocket support. Some test files
+          # transitively import lib/supabaseClient.js (see vitest.setup.js),
+          # so this suite hits the exact same issue the two Databento
+          # scheduled workflows already found and fixed the same way - see
+          # .github/workflows/refresh-market-session-stats.yml's comment.
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install

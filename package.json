@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "css:toc": "node scripts/update-css-toc.js",
-    "css:toc:check": "node scripts/update-css-toc.js --check"
+    "css:toc:check": "node scripts/update-css-toc.js --check",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
@@ -18,5 +19,9 @@
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4"
   }
 }

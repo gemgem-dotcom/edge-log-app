@@ -85,7 +85,7 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
       <div className="panel-title">{hasPassword ? 'Password' : 'Set a password'}</div>
       {!hasPassword && (
         <p className="onboard-note">
-          You signed in with Google, so there's no password on this account yet. Set one below to also be able to log in with your email.
+          You signed in with Google, so there&apos;s no password on this account yet. Set one below to also be able to log in with your email.
         </p>
       )}
       <form onSubmit={(e) => e.preventDefault()}>

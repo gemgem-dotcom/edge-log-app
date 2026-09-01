@@ -1,7 +1,9 @@
-# Build check
+# Build check + lint
 #
-# Runs a full production build of the app on every push and every pull
-# request. If the build fails, GitHub puts a red X on the commit, so a
+# Runs a full production build of the app, and ESLint (eslint.config.mjs -
+# systems-map audit finding #3: this repo previously had no lint config at
+# all), on every push and every pull request. Both jobs run in parallel off
+# the same trigger; either one going red puts a X on the commit, so a
 # broken change gets caught before it can reach the live site.
 #
 # The Supabase values below are throwaway placeholders. The build only
@@ -38,3 +40,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint

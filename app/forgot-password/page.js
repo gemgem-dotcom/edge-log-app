@@ -34,7 +34,7 @@ return (
 {sent ? (
   <>
   <h1 className="auth-welcome">Check your email</h1>
-  <p className="auth-subtitle">We've sent a password reset link to {email}.</p>
+  <p className="auth-subtitle">We&apos;ve sent a password reset link to {email}.</p>
   <div className="auth-switch">
   <Link href="/login">Back to log in</Link>
   </div>
@@ -42,7 +42,7 @@ return (
   ) : (
     <>
     <h1 className="auth-welcome">Forgot password?</h1>
-  <p className="auth-subtitle">Enter your email and we'll send you a reset link.</p>
+  <p className="auth-subtitle">Enter your email and we&apos;ll send you a reset link.</p>
     <form onSubmit={handleSubmit}>
     <div className="field full">
     <label>Email</label>

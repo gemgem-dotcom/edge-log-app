@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
+import { regimesForDate } from '@/lib/tradeRegimes'
+import { catalogEntryFor } from '@/lib/instrumentCatalog'
+import { invalidateTags } from '@/lib/tagsCache'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast, queueToastForReturn } from '@/lib/toast'
@@ -75,6 +78,24 @@ export default function EditTradePage({ params }) {
     const { data: { user } } = await supabase.auth.getUser()
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
+    // Only recomputed when trade_date actually changed - matching the
+    // excursionRelevantChanged gate below, an edit that only touches
+    // reasoning/tags/discipline review has no reason to pay for two more
+    // Supabase round trips whose answer can't have changed. When the date
+    // *did* change: a real result always overwrites whatever was there;
+    // null (this new date's session hasn't closed, or the daily job
+    // hasn't reached it yet) explicitly clears both columns instead of
+    // leaving them out of the update - the trade's OLD regime describes
+    // its OLD date and is simply wrong now, not just stale. An edit that
+    // leaves trade_date untouched skips this entirely, so a trade that's
+    // already correctly bucketed is never touched by an unrelated field
+    // edit. See log/new/page.js's comment and lib/tradeRegimes.js's header
+    // for the save-time-computation half of this.
+    const dateChanged = trade.trade_date !== values.trade_date
+    let regimes = {}
+    if (dateChanged && catalogEntryFor(symbol)?.data_symbol === 'NQ') {
+      regimes = (await regimesForDate(values.trade_date)) || { volatility_regime: null, volume_regime: null }
+    }
 
     const { data: updated, error } = await supabase.from('trades').update({
       ...values,
@@ -82,6 +103,7 @@ export default function EditTradePage({ params }) {
       screenshot_url: screenshot_urls[0] || null,
       session,
       continued_sessions: continuedSessions,
+      ...regimes,
     }).eq('id', tradeId).select().single()
 
     if (error) {
@@ -101,6 +123,7 @@ export default function EditTradePage({ params }) {
     if (excursionRelevantChanged) {
       requestTradeExcursionBackfill(symbol, tradeId)
     }
+    invalidateTags()
 
     // Same as Cancel/Discard changes (onCancel below) - returns to wherever
     // the trader opened this edit from (the trade detail page, the log, a
@@ -121,6 +144,7 @@ export default function EditTradePage({ params }) {
       setDeleteError(`Couldn't delete this trade — ${error.message}`)
       return
     }
+    invalidateTags()
     toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
   }

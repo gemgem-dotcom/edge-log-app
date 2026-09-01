@@ -480,11 +480,15 @@ create policy "Anyone signed in can read market session stats"
 
 -- Per-trade regime labels (lib/tradeRegimes.js) - high/normal/low, bucketed
 -- by comparing the trade's own session's total_range/total_volume against
--- the trailing 20 sessions in market_session_stats. Nullable and lazily
--- backfilled at read time (app/app/layout.js, on every app-shell mount) -
--- null means "not yet applicable" (a same-day trade whose session hasn't
--- closed, the daily job hasn't run yet, or the trade isn't on an NQ-family
--- instrument), never a guessed value, same principle as `session` above.
+-- the trailing 20 sessions in market_session_stats. Nullable - null means
+-- "not yet applicable" (a same-day trade whose session hasn't closed, the
+-- daily job hasn't run yet, or the trade isn't on an NQ-family instrument),
+-- never a guessed value, same principle as `session` above. Computed at
+-- save time when possible (app/app/[instrument]/log/new and .../edit's
+-- onSubmit), and backfilled in bulk - both for the day it just fetched and
+-- any earlier date whose own backfill was missed - by the daily job
+-- (scripts/fetch-daily-market-stats.js), not lazily rechecked on every
+-- app-shell mount the way it used to be.
 alter table trades add column if not exists volatility_regime text;
 alter table trades add column if not exists volume_regime text;
 
@@ -618,3 +622,32 @@ create policy "Users manage their own AI insights"
 -- Like every other schema change here, this isn't live until run by hand
 -- in Supabase's SQL editor.
 drop table if exists edge_beliefs;
+
+-- Scaling audit follow-up: every RLS policy in this file checks
+-- `auth.uid() = user_id`, which needs a supporting index on that column to
+-- avoid a full table scan once a table's row count gets large. `trades`
+-- already has one (trades_user_instrument_idx, above), and instruments/
+-- edge_insights get one for free from their own `unique(user_id, ...)`
+-- constraint - a unique index still serves a plain "where user_id = ..."
+-- filter as long as user_id is the constraint's first column, which both
+-- already are. strategies and login_events have no such constraint at all,
+-- so they had nothing backing their own user_id filter. trades_trade_date_idx
+-- is separate: nothing above indexes trade_date alone, which both this
+-- table's own date-range reads and scripts/fetch-daily-market-stats.js's
+-- regime backfill (filters every user's trades by trade_date) rely on.
+create index if not exists strategies_user_idx on strategies(user_id);
+create index if not exists login_events_user_idx on login_events(user_id);
+create index if not exists trades_trade_date_idx on trades(trade_date);
+
+-- Real server-side pagination for the trade log pages (lib/tradeQuery.js)
+-- needs the Day filter to be a plain indexed column, not something computed
+-- per-row in the browser after every matching trade has already been
+-- fetched - that defeats the point of paging server-side. `generated
+-- always as ... stored` keeps it automatically correct on insert/update,
+-- same convention Postgres's own docs recommend over a trigger for a
+-- value derived from another column on the same row. extract(dow from
+-- date) returns 0=Sunday..6=Saturday, matching both DAY_NAMES'
+-- (components/TradeLogTable.js) and JS's own Date.getDay() indexing, so
+-- the values line up without any translation at either end.
+alter table trades add column if not exists day_of_week smallint generated always as (extract(dow from trade_date)) stored;
+create index if not exists trades_day_of_week_idx on trades(day_of_week);

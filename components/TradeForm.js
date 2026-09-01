@@ -9,6 +9,7 @@ import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCur
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { invalidateStrategies } from '../lib/referenceDataCache'
+import { getTags } from '../lib/tagsCache'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
@@ -329,24 +330,23 @@ export default function TradeForm({
   // Tag suggestions for the dropdown below - every tag currently in use on
   // any of the trader's trades, across every instrument (tags like "FOMC"
   // aren't instrument-specific). There's still no separate tags table (see
-  // schema.sql): this list is derived fresh from trades.tags each time the
-  // form mounts, so a tag that's no longer on any trade just stops
-  // appearing here on its own, with nothing to clean up.
+  // schema.sql), so this is still derived from trades.tags, not a real
+  // lookup table - but this is the single most-opened screen in the app,
+  // so lib/tagsCache.js caches the result for the rest of the session
+  // instead of re-fetching a trader's entire trade history's tags column
+  // on every "log a trade"/"edit a trade" open. Every write path that
+  // could change what tags are in use calls invalidateTags() (log/new,
+  // log/edit, TradeLogTable's delete), so a tag that's no longer on any
+  // trade still stops appearing here on its own - just not until the next
+  // write, rather than on every single mount.
   useEffect(() => {
     let cancelled = false
     async function loadTagSuggestions() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase.from('trades').select('tags').eq('user_id', user.id)
+      const tags = await getTags(supabase, user.id)
       if (cancelled) return
-      const seen = new Map()
-      for (const row of data || []) {
-        for (const tag of row.tags || []) {
-          const key = tag.toLowerCase()
-          if (!seen.has(key)) seen.set(key, tag)
-        }
-      }
-      setExistingTags([...seen.values()].sort((a, b) => a.localeCompare(b)))
+      setExistingTags(tags)
     }
     loadTagSuggestions()
     return () => { cancelled = true }

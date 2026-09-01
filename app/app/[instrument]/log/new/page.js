@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
+import { regimesForDate } from '@/lib/tradeRegimes'
+import { catalogEntryFor } from '@/lib/instrumentCatalog'
+import { invalidateTags } from '@/lib/tagsCache'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast } from '@/lib/toast'
@@ -72,6 +75,12 @@ export default function NewTradePage({ params, searchParams }) {
 
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
+    // Only resolves to real values when this date's session has already
+    // closed and the daily job has picked it up - null otherwise, in which
+    // case the two columns are just left out below rather than written as
+    // null (scripts/fetch-daily-market-stats.js backfills them in bulk once
+    // the session does close - see lib/tradeRegimes.js's header comment).
+    const regimes = catalogEntryFor(symbol)?.data_symbol === 'NQ' ? await regimesForDate(values.trade_date) : null
 
     const { data: inserted, error } = await supabase.from('trades').insert([{
       ...values,
@@ -81,6 +90,7 @@ export default function NewTradePage({ params, searchParams }) {
       screenshot_url: screenshot_urls[0] || null,
       session,
       continued_sessions: continuedSessions,
+      ...regimes,
     }]).select().single()
 
     if (error) {
@@ -88,6 +98,7 @@ export default function NewTradePage({ params, searchParams }) {
     }
 
     requestTradeExcursionBackfill(symbol, inserted.id)
+    invalidateTags()
 
     toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)

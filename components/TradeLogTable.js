@@ -8,6 +8,7 @@ import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatD
 import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
 import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { useConfirm } from '../lib/useConfirm'
+import { invalidateTags } from '../lib/tagsCache'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
@@ -95,8 +96,14 @@ function fmtNum(value) {
   return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Numeric (0=Sunday..6=Saturday, matching Date.getDay()), not the display
+// name - has to match trades.day_of_week's own type (schema.sql's
+// generated column, extract(dow from trade_date), also 0-6) so remote
+// mode's filters.days can go straight into a .in('day_of_week', ...)
+// query without a text/number mismatch. Callers that want the name for
+// display go through DAY_NAMES[dayOf(trade)] themselves.
 function dayOf(trade) {
-  return DAY_NAMES[new Date(trade.trade_date + 'T00:00:00').getDay()]
+  return new Date(trade.trade_date + 'T00:00:00').getDay()
 }
 
 function resultOf(trade) {
@@ -150,6 +157,26 @@ export default function TradeLogTable({
   // (reverse chronological everywhere this table is used), so paging is a
   // plain slice with no re-sort here.
   pageSize = null,
+  // Hands filtering and pagination to the caller's own Supabase query
+  // (lib/tradeQuery.js) instead of doing it client-side over an
+  // already-fully-fetched `trades` array - `trades` becomes just the
+  // current page's rows in this mode. Shape:
+  //   { filters, onFilterChange(patch), page, totalCount, onPageChange,
+  //     tagOptions, onTradeDeleted }
+  // filters is { days, strategyKeys, direction, result, tags } (see
+  // lib/tradeQuery.js's EMPTY_FILTERS); onFilterChange takes a partial
+  // patch of that shape and merges it. tagOptions replaces this
+  // component's own rows-derived list, since a filtered page's `rows`
+  // no longer has every tag in play. onTradeDeleted replaces the
+  // optimistic local-array removal below with "tell the caller to
+  // refetch this page" - the caller owns the actual data now.
+  //
+  // Only app/app/[instrument]/log/page.js and app/app/log/page.js use
+  // this - every other caller (the dashboard's calendar-day table, the
+  // Overview page's Recent trades list, the per-strategy page) leaves it
+  // unset and keeps the original behavior below completely unchanged;
+  // their trade counts were never large enough to need it.
+  remote = null,
 }) {
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
@@ -173,29 +200,49 @@ export default function TradeLogTable({
   const { confirm, modal: confirmModal } = useConfirm()
 
   // Filters open from a chevron on each column heading. Day and Strategy
-  // take any combination of values; an empty array means unfiltered.
-  const [filterDays, setFilterDays] = useState([])
-  const [filterStrategies, setFilterStrategies] = useState([])
-  const [filterDirection, setFilterDirection] = useState('all')
-  const [filterResult, setFilterResult] = useState('all')
+  // take any combination of values; an empty array means unfiltered. Local
+  // state only actually drives anything when `remote` is unset - see the
+  // mode-resolved consts right below, which every filter read/write in the
+  // rest of this component goes through instead of these directly, so the
+  // render code further down never needs to know which mode it's in.
+  const [localFilterDays, setLocalFilterDays] = useState([])
+  const [localFilterStrategies, setLocalFilterStrategies] = useState([])
+  const [localFilterDirection, setLocalFilterDirection] = useState('all')
+  const [localFilterResult, setLocalFilterResult] = useState('all')
   // Tags aren't a column (they only show in the expand row), so this lives
   // in the toolbar above the table instead of a column-header chevron. A
   // trade matches if it has any one of the selected tags.
-  const [filterTags, setFilterTags] = useState([])
+  const [localFilterTags, setLocalFilterTags] = useState([])
   // Only needed for a still-'pending' trade's "Available in ~Xh" message
   // (lib/tradeExcursions.js's excursionStatusMessage) - same account
   // offset trade save/edit already convert wall-clock times with.
   const [timezoneOffset, setTimezoneOffset] = useState(null)
-  const [page, setPage] = useState(0)
+  const [localPage, setLocalPage] = useState(0)
+
+  const filterDays = remote ? remote.filters.days : localFilterDays
+  const setFilterDays = remote ? (v) => remote.onFilterChange({ days: v }) : setLocalFilterDays
+  const filterStrategies = remote ? remote.filters.strategyKeys : localFilterStrategies
+  const setFilterStrategies = remote ? (v) => remote.onFilterChange({ strategyKeys: v }) : setLocalFilterStrategies
+  const filterDirection = remote ? remote.filters.direction : localFilterDirection
+  const setFilterDirection = remote ? (v) => remote.onFilterChange({ direction: v }) : setLocalFilterDirection
+  const filterResult = remote ? remote.filters.result : localFilterResult
+  const setFilterResult = remote ? (v) => remote.onFilterChange({ result: v }) : setLocalFilterResult
+  const filterTags = remote ? remote.filters.tags : localFilterTags
+  const setFilterTags = remote ? (v) => remote.onFilterChange({ tags: v }) : setLocalFilterTags
+  const page = remote ? remote.page : localPage
+  const setPage = remote ? remote.onPageChange : setLocalPage
 
   useEffect(() => {
     setRows(trades)
-    setPage(0)
+    if (!remote) setPage(0)
   }, [trades])
 
   // A filter change can shrink the visible set out from under whatever
   // page was showing (e.g. viewing page 3 of 42 trades, then filtering
   // down to 5) - land back on page 1 rather than an empty or stale page.
+  // In remote mode this calls remote.onPageChange(0), which is a no-op
+  // re-render when the page's already 0 (including on this component's
+  // own first mount, before any real filter change has happened).
   useEffect(() => {
     setPage(0)
   }, [filterDays, filterStrategies, filterDirection, filterResult, filterTags])
@@ -256,7 +303,13 @@ export default function TradeLogTable({
     setDeleteError(null)
     const { error } = await supabase.from('trades').delete().eq('id', trade.id)
     if (!error) {
-      setRows((prev) => prev.filter((t) => t.id !== trade.id))
+      // Remote mode: the caller owns the actual page of data, so it needs
+      // to refetch (the deleted row's slot should now be backfilled from
+      // the next page, and the total count is now one lower) rather than
+      // this component optimistically trimming its own local array.
+      invalidateTags()
+      if (remote) remote.onTradeDeleted?.()
+      else setRows((prev) => prev.filter((t) => t.id !== trade.id))
       if (expandedId === trade.id) setExpandedId(null)
     } else {
       setDeleteError(`Couldn't delete that trade — ${error.message}`)
@@ -265,37 +318,58 @@ export default function TradeLogTable({
 
   const strategyKey = (t) => t.strategy_id || UNCLASSIFIED
 
-  const visible = showFilters
-    ? rows.filter((t) => {
-        if (filterDays.length > 0 && !filterDays.includes(dayOf(t))) return false
-        if (filterStrategies.length > 0 && !filterStrategies.includes(strategyKey(t))) return false
-        if (filterDirection !== 'all' && t.direction !== filterDirection) return false
-        if (filterResult !== 'all' && resultOf(t) !== filterResult) return false
-        if (filterTags.length > 0 && !(t.tags || []).some((tag) => filterTags.includes(tag.toLowerCase()))) return false
-        return true
-      })
-    : rows
+  // Remote mode: `rows` is already exactly one filtered page, fetched by
+  // the caller's own query (lib/tradeQuery.js) - nothing left to filter
+  // here.
+  const visible = remote
+    ? rows
+    : showFilters
+      ? rows.filter((t) => {
+          if (filterDays.length > 0 && !filterDays.includes(dayOf(t))) return false
+          if (filterStrategies.length > 0 && !filterStrategies.includes(strategyKey(t))) return false
+          if (filterDirection !== 'all' && t.direction !== filterDirection) return false
+          if (filterResult !== 'all' && resultOf(t) !== filterResult) return false
+          if (filterTags.length > 0 && !(t.tags || []).some((tag) => filterTags.includes(tag.toLowerCase()))) return false
+          return true
+        })
+      : rows
 
-  if (rows.length === 0) {
+  const anyFilterActive = filterDays.length > 0 || filterStrategies.length > 0 ||
+    filterDirection !== 'all' || filterResult !== 'all' || filterTags.length > 0
+
+  // In remote mode, zero matches with no filter active means the scope is
+  // genuinely empty (nothing to page through at all) - with a filter
+  // active, zero matches means "no trades match this filter", handled by
+  // the in-table message further down instead, same as the non-remote path.
+  if (remote ? (remote.totalCount === 0 && !anyFilterActive) : rows.length === 0) {
     return emptyState || <div className="empty">No trades match this view yet.</div>
   }
 
   // Clamped against the current `visible` length (not just reset via the
   // effects above) so a mid-page delete - which shrinks `rows` without
   // going through those effects - can't strand the view on a now-empty
-  // trailing page.
-  const totalPages = pageSize ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1
+  // trailing page. Remote mode instead clamps against the caller's own
+  // totalCount, since `visible` there is only ever one page long.
+  const totalPages = remote
+    ? Math.max(1, Math.ceil(remote.totalCount / pageSize))
+    : (pageSize ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1)
   const safePage = Math.min(page, totalPages - 1)
   const pageStart = pageSize ? safePage * pageSize : 0
-  const paged = pageSize ? visible.slice(pageStart, pageStart + pageSize) : visible
+  const paged = remote ? visible : (pageSize ? visible.slice(pageStart, pageStart + pageSize) : visible)
 
   // Each filter offers its full set of values rather than only the ones the
   // current trades happen to use, so the options stay put as trades come and
   // go. Picking a value with no matches simply yields an empty table.
   const present = (fn) => new Set(rows.map(fn))
-  const dayOptions = DAY_NAMES.map((d) => ({ value: d, label: d }))
+  const dayOptions = DAY_NAMES.map((d, i) => ({ value: i, label: d }))
   // Every strategy the user has created, plus any a trade still points at
   // (an archived one, say) and Unassigned when some trade has no strategy.
+  // In remote mode `rows` is only the current page, so a strategy that's
+  // been deleted (not just archived - still in `strategies` otherwise) and
+  // is referenced only by a trade sitting on a different page won't show
+  // up as an option until that page happens to be the one loaded - a rare
+  // edge case, and the same trade already renders that reference as "—"
+  // elsewhere regardless.
   const strategyKeys = [
     ...strategies.map((s) => s.id),
     ...[...present(strategyKey)].filter((key) => !strategies.some((s) => s.id === key)),
@@ -316,7 +390,11 @@ export default function TradeLogTable({
   ]
   // Case-insensitive, same dedup as the tag-suggestions dropdown on the
   // trade form (lib/tradeForm.js) - "FOMC" and "fomc" are one option, kept
-  // under whichever casing was seen first.
+  // under whichever casing was seen first. Only meaningful outside remote
+  // mode - `rows` there is one page, not every tag in use (see
+  // lib/tradeQuery.js's fetchDistinctTags, which remote.tagOptions comes
+  // from instead). Still computed either way as a harmless fallback source
+  // for chip labels below.
   const tagOptionMap = new Map()
   for (const t of rows) {
     for (const tag of t.tags || []) {
@@ -324,14 +402,22 @@ export default function TradeLogTable({
       if (!tagOptionMap.has(key)) tagOptionMap.set(key, tag)
     }
   }
-  const tagOptions = [...tagOptionMap.entries()]
-    .map(([value, label]) => ({ value, label }))
-    .sort((a, b) => a.label.localeCompare(b.label))
+  // remote.tagOptions holds canonical (as-first-seen) tag strings as both
+  // value and label - filtering in remote mode goes through Postgres's
+  // .overlaps(), a plain exact-match array comparison with no case
+  // folding, unlike the client-side .toLowerCase() compare below. A tag
+  // logged under two different casings on different trades (e.g. "FOMC"
+  // and "fomc") is therefore treated as two distinct filter values in
+  // remote mode, where the non-remote path would treat them as one -
+  // accepted as a rare, documented gap rather than solved here.
+  const tagOptions = remote
+    ? remote.tagOptions
+    : [...tagOptionMap.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
 
   // One chip per selected value, whichever column it came from.
   const chips = [
     ...filterDays.map((d) => ({
-      key: `day-${d}`, label: `Day: ${d}`,
+      key: `day-${d}`, label: `Day: ${DAY_NAMES[d]}`,
       clear: () => setFilterDays((prev) => prev.filter((v) => v !== d)),
     })),
     ...filterStrategies.map((s) => ({
@@ -392,7 +478,15 @@ export default function TradeLogTable({
         </div>
       )}
       {showFilters && (
-        <div className="table-count">{visible.length} of {rows.length} trades</div>
+        <div className="table-count">
+          {/* Remote mode only has the filtered total on hand (see
+              lib/tradeQuery.js) - the non-remote "X of Y" framing needs an
+              unfiltered total too, which would mean a second query just for
+              this line, so it's simplified to a plain count instead. */}
+          {remote
+            ? `${remote.totalCount} trade${remote.totalCount === 1 ? '' : 's'}`
+            : `${visible.length} of ${rows.length} trades`}
+        </div>
       )}
       <table>
         <thead>
@@ -462,7 +556,7 @@ export default function TradeLogTable({
               <Fragment key={t.id}>
                 <tr className="clickable-row" onClick={() => toggleExpand(t)}>
                   <td>{t.trade_date}{showTimeInDate && t.trade_time ? ` ${t.trade_time}` : ''}</td>
-                  {showDayColumn && <td>{dayOf(t).toUpperCase()}</td>}
+                  {showDayColumn && <td>{DAY_NAMES[dayOf(t)].toUpperCase()}</td>}
                   {showInstrumentColumn && (
                     <td>
                       <span className="strategy-dot" style={{ background: instrumentColorFor?.(t), marginRight: '8px', verticalAlign: 'middle' }} />
@@ -634,7 +728,7 @@ export default function TradeLogTable({
         </tbody>
       </table>
 
-      {pageSize && visible.length > pageSize && (
+      {pageSize && (remote ? remote.totalCount > pageSize : visible.length > pageSize) && (
         <div className="table-pagination">
           <span
             className={`table-pagination-btn ${safePage === 0 ? 'nav-btn-disabled' : ''}`}

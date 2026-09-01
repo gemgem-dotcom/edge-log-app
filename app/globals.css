@@ -24,27 +24,27 @@
    1411  Account fine print
    1414  Screenshot preview (log new trade)
    1456  Auth pages always dark
-   1485  Monthly P&L (calendar on Overview)
-   1564  Trade form: sections, validation, currency, screenshots
-   1792  Field tooltips
-   1854  Date/time picker (adds an optional popup to a typed input)
-   1963  In-header column filters (trade log table)
-   2011  Active filter chips
-   2074  Empty states, error banners, skeleton loaders
-   2153  Cross-instrument overview dashboard (/app)
-   2332  Not found / error boundary state pages
-   2345  Toast notifications
-   2373  Public policy pages (Privacy, Terms)
-   2392  Legal links (auth pages + account settings)
-   2431  Economic calendar card (mock - Overview pages)
-   2545  Calendar news badge (Monthly P&L day cells, mock)
-   2566  Streak badge (Overview + strategy detail pages)
-   2583  Market status pill (Overview + strategy detail pages)
-   2609  Key levels, today's brief (mock cards)
-   2635  Market context cards (all-instruments Overview)
-   2694  Edge Insights panel
-   2709  Unverified logged time badge
-   2726  Theme toggle (suppress transition flash)
+   1491  Monthly P&L (calendar on Overview)
+   1570  Trade form: sections, validation, currency, screenshots
+   1798  Field tooltips
+   1860  Date/time picker (adds an optional popup to a typed input)
+   1969  In-header column filters (trade log table)
+   2017  Active filter chips
+   2080  Empty states, error banners, skeleton loaders
+   2159  Cross-instrument overview dashboard (/app)
+   2338  Not found / error boundary state pages
+   2351  Toast notifications
+   2379  Public policy pages (Privacy, Terms)
+   2398  Legal links (auth pages + account settings)
+   2437  Economic calendar card (mock - Overview pages)
+   2551  Calendar news badge (Monthly P&L day cells, mock)
+   2572  Streak badge (Overview + strategy detail pages)
+   2589  Market status pill (Overview + strategy detail pages)
+   2615  Key levels, today's brief (mock cards)
+   2641  Market context cards (all-instruments Overview)
+   2700  Edge Insights panel
+   2715  Unverified logged time badge
+   2732  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -1465,8 +1465,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 }
 
 
-/* Theme toggle active state - blue, matches accent buttons (kept separate from the win/loss direction toggle) */
-.dir-btn.active-theme{background:rgba(59,167,255,.15); color:var(--accent);}
+/* Theme toggle active state - blue, matches accent buttons (kept separate
+   from the win/loss direction toggle). Alpha bumped from .15: at that
+   level, blended over the dark theme's panel background, this computes to
+   roughly #1a324f - close enough to --panel-hover (#1c2e54, the inactive
+   pill's own hover color) that hovering "Light" looked nearly identical
+   to "Dark"'s persistent active state, making it hard to tell selected
+   from merely-hovered. */
+.dir-btn.active-theme{background:rgba(59,167,255,.26); color:var(--accent);}
 
 /* Confirm modal (e.g. delete account) */
 .confirm-modal-overlay{

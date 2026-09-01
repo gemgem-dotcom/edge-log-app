@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
+import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
@@ -16,8 +18,9 @@ import ErrorBanner from '@/components/ErrorBanner'
 
 export default function EditTradePage({ params }) {
   usePageTitle('Edit Trade')
-  const symbol = params.instrument
-  const tradeId = params.tradeId
+  const resolvedParams = use(params)
+  const symbol = resolvedParams.instrument
+  const tradeId = resolvedParams.tradeId
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
@@ -73,16 +76,30 @@ export default function EditTradePage({ params }) {
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
 
-    const { error } = await supabase.from('trades').update({
+    const { data: updated, error } = await supabase.from('trades').update({
       ...values,
       screenshot_urls,
       screenshot_url: screenshot_urls[0] || null,
       session,
       continued_sessions: continuedSessions,
-    }).eq('id', tradeId)
+    }).eq('id', tradeId).select().single()
 
     if (error) {
       return 'Could not save trade: ' + error.message
+    }
+
+    // Only re-triggers the (Databento-backed) excursion computation when a
+    // field it actually depends on changed - an edit that only touches
+    // reasoning/tags/discipline review shouldn't cost another API call
+    // against a trade whose MFE/MAE/drawdown are already correct.
+    const excursionRelevantChanged =
+      trade.direction !== updated.direction ||
+      trade.entry !== updated.entry ||
+      trade.exit_time !== updated.exit_time ||
+      trade.exit_price !== updated.exit_price ||
+      JSON.stringify(trade.additional_exits || []) !== JSON.stringify(updated.additional_exits || [])
+    if (excursionRelevantChanged) {
+      requestTradeExcursionBackfill(symbol, tradeId)
     }
 
     // Same as Cancel/Discard changes (onCancel below) - returns to wherever
@@ -146,7 +163,7 @@ export default function EditTradePage({ params }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
+      <Link href={`/app/${symbol}/log`} className="back-link">Back to log</Link>
       <h1 className="page-title">Edit trade</h1>
 
       <ErrorBanner message={deleteError} />

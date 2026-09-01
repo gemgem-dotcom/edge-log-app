@@ -1,0 +1,28 @@
+# Scheduled dependency updates - systems-map audit finding #3: this repo
+# previously had no automated way to learn about a dependency security
+# advisory short of someone remembering to run "check-vulnerabilities" by
+# hand (.github/workflows/run-command.yml). Dependabot covers two separate
+# things once this file exists:
+#
+# 1. Version-update PRs on the schedule below (npm packages, and the
+#    GitHub Actions versions pinned in .github/workflows/*.yml, e.g.
+#    actions/checkout@v4) - opened automatically, gated by this repo's own
+#    Build check like any other PR, never auto-merged.
+# 2. Dependabot security alerts - GitHub's own vulnerability database
+#    matched against package-lock.json, surfaced under the repo's Security
+#    tab. This is a separate repository setting (Settings -> Code security
+#    -> Dependabot alerts) this file does not control - if it's off,
+#    turning it on there is what actually enables it; this file only
+#    covers the scheduled version-update PRs.
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'

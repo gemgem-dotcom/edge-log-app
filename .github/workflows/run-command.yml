@@ -12,8 +12,14 @@
 # text it was handed would become a security hole if this repository's
 # access ever changed.
 #
-# There is no lint option yet because the project has no ESLint config and
-# no lint script in package.json. Adding those is a separate job.
+# No lint option here - ESLint (eslint.config.mjs, `npm run lint`) already
+# runs automatically on every push/PR as ci.yml's `lint` job, so there's
+# nothing this manual dispatch would add.
+#
+# check-outdated/check-vulnerabilities below are still useful for an
+# on-demand look, but the scheduled side of this is now Dependabot's job
+# (.github/dependabot.yml) - weekly version-update PRs plus automatic
+# security advisories, not something to remember to click.
 #
 # YAML gotcha worth remembering: an unquoted value cannot contain a colon
 # followed by a space, so an echo of "Running: x" breaks the whole file.
@@ -50,10 +56,10 @@ jobs:
 
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
 

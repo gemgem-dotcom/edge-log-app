@@ -431,3 +431,190 @@ alter table trades add column if not exists additional_exits jsonb not null defa
 -- on the form. Nullable since trades logged before this existed only
 -- ever had exit_price.
 alter table trades add column if not exists exit_points numeric;
+
+-- in_plan was superseded by reviewed_no_issues/discipline_tags (the
+-- Discipline field above) - confirmed nothing in the codebase still reads
+-- or writes it, so unlike every other change in this file, this one is a
+-- genuine drop rather than an addition: dead weight, not historical data
+-- worth preserving.
+alter table trades drop column if exists in_plan;
+
+-- screenshot_url (singular) is legacy, going forward - TradeForm.js only
+-- ever writes screenshot_urls now (see the comment above that column
+-- further up), and screenshot_url is read in exactly one place
+-- (app/app/[instrument]/log/[tradeId]/edit/page.js's fallback for a trade
+-- whose screenshot_urls is still null). Left in place rather than
+-- dropped, since there's no way to be certain every existing row's
+-- one-time backfill into screenshot_urls above actually ran.
+
+-- Daily completed-session market data (lib/databento.js, scripts/
+-- fetch-daily-market-stats.js) - one row per trading day, shared by every
+-- trader rather than duplicated per user. The brief this shipped under
+-- specified `instrument_id uuid references instruments(id)` as this table's
+-- key, but instruments is a per-user table (unique(user_id, symbol)) with no
+-- single shared "NQ" row to reference, and CLAUDE.md's own domain rules say
+-- future market-data lookups should key off data_symbol, not a specific
+-- instruments row, since that's what groups mini/micro contracts (MNQ, NQ)
+-- onto the same underlying series. Flagged to the user, who confirmed
+-- data_symbol over the brief's literal instrument_id FK - see the PR
+-- description for the full reasoning.
+--
+-- No RLS ownership policy makes sense here (no user_id - this isn't anyone's
+-- data) - RLS is still enabled, but only a read policy exists. Writes come
+-- exclusively from scripts/fetch-daily-market-stats.js using
+-- SUPABASE_SERVICE_ROLE_KEY (bypasses RLS entirely), the same key already
+-- used by the two API routes in app/api/ - see README.md/NOTES.md.
+create table market_session_stats (
+  data_symbol text not null,
+  session_date date not null,
+  total_range numeric not null,
+  total_volume numeric not null,
+  created_at timestamptz default now(),
+  primary key (data_symbol, session_date)
+);
+
+alter table market_session_stats enable row level security;
+create policy "Anyone signed in can read market session stats"
+  on market_session_stats for select
+  using (auth.role() = 'authenticated');
+
+-- Per-trade regime labels (lib/tradeRegimes.js) - high/normal/low, bucketed
+-- by comparing the trade's own session's total_range/total_volume against
+-- the trailing 20 sessions in market_session_stats. Nullable and lazily
+-- backfilled at read time (app/app/layout.js, on every app-shell mount) -
+-- null means "not yet applicable" (a same-day trade whose session hasn't
+-- closed, the daily job hasn't run yet, or the trade isn't on an NQ-family
+-- instrument), never a guessed value, same principle as `session` above.
+alter table trades add column if not exists volatility_regime text;
+alter table trades add column if not exists volume_regime text;
+
+-- MFE/MAE/drawdown (lib/tradeExcursions.js, app/api/backfill-trade-
+-- excursion/route.js, scripts/retry-trade-excursions.js) - computed once
+-- from a fixed entry-to-final-exit window (trades are only ever logged
+-- after they've closed, so there's no "still updating" state), from real
+-- NQ trade prints (Databento's `trades` schema, tick-level - not ohlcv-1m
+-- bars; this account's plan has confirmed live access to both `ohlcv-1s`
+-- and `trades`). mfe_points/mae_points are raw, direction-aware points
+-- (long: mfe = high-entry, mae = entry-low; short: mirrored), the true
+-- highest/lowest price the market actually traded at between entry and
+-- exit - displayed as an R-multiple (divide by stop_distance) rather than
+-- stored twice, the same pattern realized R already follows. An earlier
+-- version of this capped MFE/MAE at the trade's own stop/target instead of
+-- using 1-minute-bar extremes directly, to correct for coarse-bar
+-- ambiguity - superseded by the move to tick-level data, which has no such
+-- ambiguity to correct for and doesn't depend on trusting `stop`/`target`
+-- values a trader could edit after the fact (see NOTES.md). drawdown_
+-- seconds is cumulative real elapsed time the position's unrealized P&L
+-- was underwater (walking consecutive trade prints, not a bar-count
+-- multiple), summed across every separate underwater period, not just
+-- time-to-first-recovery.
+--
+-- market_data_status drives display and the retry job, not just a cache
+-- flag: 'pending' means blocked on this account's confirmed ~8-hour
+-- GLBX.MDP3 access embargo (not a bug - see NOTES.md) *or* on a fetch
+-- attempt that failed for some other, not-reliably-classifiable reason
+-- (network hiccup, transient 5xx, rate limit) *or* on a successful fetch
+-- that returned zero trade prints - a real NQ session window this narrow
+-- essentially never genuinely lacks real prints, so an empty response is
+-- treated as transient too, not just a thrown error (a real trade proved
+-- this: 'unavailable' with zero ticks one moment, 20k+ ticks and a clean
+-- fill match on the exact same window minutes later). All three are left
+-- retryable by design, since a real trade was once silently and
+-- permanently lost to exactly this pattern (a transient failure treated
+-- as terminal) before this comment was corrected; see NOTES.md.
+-- 'unavailable' means a genuine, deterministic, non-retryable miss
+-- (wrong/unsupported instrument, no timezone or exit window) - set
+-- explicitly rather than left stuck in 'pending' forever. null (no
+-- default) means this trade has never been attempted yet, or isn't on an
+-- NQ-family instrument - same "not yet applicable" principle as
+-- volatility_regime/volume_regime above, not a fourth status to branch on.
+alter table trades add column if not exists mfe_points numeric;
+alter table trades add column if not exists mae_points numeric;
+alter table trades add column if not exists drawdown_seconds integer;
+alter table trades add column if not exists market_data_status text;
+
+-- trade_time/exit_time are only reliably accurate to the minute - the
+-- seconds field is frequently a TimePicker default, not a real observation
+-- (see lib/tradeExcursions.js's findFillTick/deriveFillTicks for the full
+-- mechanism). Rather than trust that logged second as the window boundary,
+-- the entry/exit instants actually fed into computeExcursion are derived
+-- from the first real trade print that touches the fill level (entry price
+-- / that leg's own exit price), searched within roughInstant ±
+-- FILL_SEARCH_PAD_MINUTES. excursion_fallback is true when that search
+-- failed for the entry or any exit leg and fell back to the raw logged
+-- timestamp instead - a trade marked true still carries the original
+-- second-level imprecision this mechanism exists to remove, so it needs to
+-- stay visible and queryable, not silently indistinguishable from a trade
+-- whose window was fully price-derived.
+alter table trades add column if not exists excursion_fallback boolean;
+
+-- Whether trade_time/exit_time's *own logged second* could be corrected to
+-- a real one. Unlike excursion_fallback above, this doesn't touch the
+-- ±FILL_SEARCH_PAD_MINUTES search used for MFE/MAE windowing - it's a
+-- separate, stricter search (lib/tradeExcursions.js's
+-- findVerifiedMinuteFill/deriveVerifiedTimes) bounded to exactly the
+-- trader's own logged minute, on the premise that the minute itself is
+-- trustworthy and only the second (usually just a TimePicker default, per
+-- the comment above) isn't. app/api/backfill-trade-excursion/route.js
+-- overwrites trade_time/exit_time (and each additional_exits leg) with the
+-- real second whenever that search succeeds, using the same trade-print
+-- fetch already made for excursion computation - no extra Databento call.
+-- trade_time_unverified is true when it *didn't* for the entry or some
+-- exit leg - that logged price never actually traded during its own
+-- logged minute, so that field was left exactly as logged and the trader
+-- should double-check it. Surfaced on the trade detail page and the trade
+-- log's expand row (unlike excursion_fallback, which stays developer-only)
+-- for exactly that reason - it's a claim about what the trader themselves
+-- logged, not an internal computation detail.
+alter table trades add column if not exists trade_time_unverified boolean;
+
+-- AI-generated insight narratives (app/api/generate-insights/route.js,
+-- lib/insightsClient.js) - the "read side" for the Overview/per-instrument/
+-- per-strategy dashboard panels replaced this feature with: instead of
+-- fixed statistical tables gated by a confidence-tier threshold, a Claude
+-- call is handed the trader's RAW, unsmoothed queryPerformance breakdowns
+-- (lib/insightData.js) and asked to write out its own explicit findings,
+-- stating sample sizes and confidence itself in prose rather than a fixed
+-- n<20/50 cutoff hiding a number outright.
+--
+-- One row per (user, scope) - scope is 'overall', 'instrument:<id>', or
+-- 'strategy:<id>', matching whichever of the three dashboard panels asked
+-- for it. Regenerated on a hybrid policy (lib/insightsClient.js's
+-- REGEN_THRESHOLD): a page reads this cached row instantly rather than
+-- paying an LLM round-trip on every view, and only triggers a fresh
+-- generation once a scope has picked up enough new closed trades since
+-- trade_count_at_generation to plausibly change what the narrative says
+-- (or via the panel's own manual "Regenerate" control). narrative is the
+-- literal text Claude returned - no structured fields, since the whole
+-- point of this feature is prose findings, not another table.
+create table edge_insights (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  scope text not null,
+  narrative text not null,
+  trade_count_at_generation integer not null default 0,
+  generated_at timestamptz not null default now(),
+  created_at timestamptz default now(),
+  unique(user_id, scope)
+);
+
+alter table edge_insights enable row level security;
+create policy "Users manage their own AI insights"
+  on edge_insights for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- edge_beliefs (the Bayesian belief-tracking table this file used to define
+-- here, with win_alpha/win_beta/expectancy_mean/avg_r_mean/mfe_r_mean/etc.
+-- columns and its own RLS policy) is retired. It was written to on every
+-- trade save/edit/delete (lib/edgeBeliefs.js's applyTrade/reverseTrade/
+-- applyExcursion/reverseExcursion, all now deleted) but had no reader
+-- anywhere in the app - a read side was briefly built and wired into three
+-- dashboard panels, then replaced in the same PR by the AI insights feature
+-- above, which deliberately reads raw, unsmoothed queryPerformance numbers
+-- instead (lib/insightData.js). Explicit `drop table`, not the usual
+-- additive `add column if not exists` pattern this file otherwise follows -
+-- a deliberate exception, since there's nothing left to add a column to.
+-- Like every other schema change here, this isn't live until run by hand
+-- in Supabase's SQL editor.
+drop table if exists edge_beliefs;

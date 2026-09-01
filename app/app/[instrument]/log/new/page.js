@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { browserOffsetGuess } from '@/lib/timezone'
+import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm, { EMPTY_TRADE_FORM } from '@/components/TradeForm'
@@ -13,13 +15,13 @@ import ErrorBanner from '@/components/ErrorBanner'
 
 export default function NewTradePage({ params, searchParams }) {
   usePageTitle('Log New Trade')
-  const symbol = params.instrument
+  const symbol = use(params).instrument
   const router = useRouter()
   // Arriving from a strategy's own page (its "Log new trade" button)
   // preselects that strategy instead of auto-selecting the first one -
   // the trader already told us which strategy this trade belongs to just
   // by where they clicked from.
-  const preselectedStrategyId = searchParams?.strategy || null
+  const preselectedStrategyId = use(searchParams)?.strategy || null
 
   const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
@@ -71,7 +73,7 @@ export default function NewTradePage({ params, searchParams }) {
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
 
-    const { error } = await supabase.from('trades').insert([{
+    const { data: inserted, error } = await supabase.from('trades').insert([{
       ...values,
       user_id: user.id,
       instrument_id: instrumentId,
@@ -79,11 +81,13 @@ export default function NewTradePage({ params, searchParams }) {
       screenshot_url: screenshot_urls[0] || null,
       session,
       continued_sessions: continuedSessions,
-    }])
+    }]).select().single()
 
     if (error) {
       return 'Could not save trade: ' + error.message
     }
+
+    requestTradeExcursionBackfill(symbol, inserted.id)
 
     toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)
@@ -91,12 +95,13 @@ export default function NewTradePage({ params, searchParams }) {
 
   return (
     <div className="page-container">
-      <a href={`/app/${symbol}/log`} className="back-link">Back to log</a>
+      <Link href={`/app/${symbol}/log`} className="back-link">Back to log</Link>
       <h1 className="page-title">Log new trade</h1>
 
       <ErrorBanner message={strategiesError} />
 
       <TradeForm
+        key={`${symbol}-${preselectedStrategyId ?? 'none'}`}
         symbol={symbol}
         instrumentId={instrumentId}
         strategies={strategies}

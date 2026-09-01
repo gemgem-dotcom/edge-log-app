@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogOut, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -12,7 +13,6 @@ import PreferencesSection from '@/components/account/PreferencesSection'
 import PasswordSection from '@/components/account/PasswordSection'
 import TwoFactorSection from '@/components/account/TwoFactorSection'
 import SignInHistorySection from '@/components/account/SignInHistorySection'
-import BillingSection from '@/components/account/BillingSection'
 import DataExportSection from '@/components/account/DataExportSection'
 import DangerZoneSection from '@/components/account/DangerZoneSection'
 import PageLoading from '@/components/PageLoading'
@@ -87,8 +87,8 @@ export default function AccountPage() {
     <div>
       <div ref={topbarRef} className={`account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
         <div className="account-topbar-left">
-          <a href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></a>
-          <a href="/app" className="back-btn">Back to dashboard</a>
+          <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
+          <Link href="/app" className="back-btn">Back to dashboard</Link>
         </div>
         <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
       </div>
@@ -108,25 +108,18 @@ export default function AccountPage() {
 
         <div className="section-heading">Security</div>
         <div className="panel">
-          <PasswordSection email={email} hasPassword={hasPassword} />
+          <PasswordSection email={email} hasPassword={hasPassword} onPasswordSet={() => setHasPassword(true)} />
           <div className="panel-divider" />
           <TwoFactorSection initialFactors={mfaFactors} />
           <div className="panel-divider" />
           <SignInHistorySection initialEvents={loginEvents} timezone={timezone} />
         </div>
 
-        <BillingSection />
-
         <DataExportSection />
 
         <DangerZoneSection email={email} hasPassword={hasPassword} />
 
         <div className="account-legal">
-          <div className="account-legal-links">
-            <a href="/privacy?from=account">Privacy Policy</a>
-            <span aria-hidden="true">·</span>
-            <a href="/terms?from=account">Terms of Service</a>
-          </div>
           <div className="copyright-line">© 2026 EdgeLog</div>
         </div>
       </div>

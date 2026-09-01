@@ -73,7 +73,7 @@ export default function AllTradesPage() {
     <AppShell instruments={instruments} strategies={strategies} active="trades">
       <div className="page-container">
         <h1 className="page-title">Trade log</h1>
-        <p className="page-subtitle">Every trade you've logged, across all instruments.</p>
+        <p className="page-subtitle">Every trade you&apos;ve logged, across all instruments.</p>
 
         <div className="panel">
           <TradeLogTable
@@ -85,6 +85,7 @@ export default function AllTradesPage() {
             showInstrumentColumn
             instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
             instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
+            pageSize={25}
             emptyState={
               <EmptyState
                 title="No trades yet"

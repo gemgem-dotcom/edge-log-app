@@ -8,12 +8,20 @@
 // (detectSessionInUrl: true there by default, needed elsewhere for
 // reset-password's recovery link) purely as an import side effect. That
 // client's own construction-time auto-detection would then race the
-// explicit exchange below for this page's one-time PKCE verifier in
-// localStorage - whichever consumes it first leaves the other with
+// explicit exchange below for this page's one-time PKCE verifier - now
+// stored in a cookie rather than localStorage (see lib/supabaseClient.js),
+// same race either way - whichever consumes it first leaves the other with
 // "PKCE code verifier not found in storage", even though this file never
-// calls a method on that shared client itself. The dedicated client built
-// here still shares its storage key, so the session it saves is picked up
-// by the rest of the app immediately.
+// calls a method on that shared client itself.
+//
+// isSingleton: false is now load-bearing for that same isolation:
+// @supabase/ssr's createBrowserClient caches and reuses ONE client per
+// browser tab by default (a module-level singleton keyed on nothing but
+// "are we in a browser") - without opting out here, this call would
+// silently return the exact same shared client this whole comment exists
+// to avoid touching, defeating the isolation below entirely. The dedicated
+// client built here still shares the same cookie names/storage key, so the
+// session it saves is picked up by the rest of the app immediately.
 //
 // The exchange itself is also guarded against running twice on the same
 // page load (e.g. React effects double-firing in development) - the PKCE
@@ -21,7 +29,7 @@
 // consumed the flow state, even though the first attempt succeeded.
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabaseConfig'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
@@ -43,8 +51,9 @@ export default function AuthCallbackPage() {
       if (hasRun.current) return
       hasRun.current = true
 
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
+      const client = createBrowserClient(supabaseUrl, supabaseAnonKey, {
         auth: { flowType: 'pkce', detectSessionInUrl: false },
+        isSingleton: false,
       })
 
       const params = new URLSearchParams(window.location.search)

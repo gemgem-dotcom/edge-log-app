@@ -5,43 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–427  Base: reset, typography, forms, tables, thumbnails,
+     1–544  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   428  Auth pages
-   485  Top nav
-   500  Instrument nav (topbar pill row)
-   564  Page layout
-   612  Tabs
-   622  Misc form helpers
-   628  Detail view
-   644  Holiday notice (site-wide, above the shell)
-   669  Shell layout (sidebar + topbar)
-   881  Expandable trade rows
-   929  Calendar
-   977  Account settings page
-   1178  Light theme
-   1210  2FA
-   1225  Account fine print
-   1228  Screenshot preview (log new trade)
-   1270  Auth pages always dark
-   1298  Monthly P&L (calendar on Overview)
-   1364  Trade form: sections, validation, currency, screenshots
-   1592  Field tooltips
-   1654  Date/time picker (adds an optional popup to a typed input)
-   1763  In-header column filters (trade log table)
-   1797  Active filter chips
-   1846  Empty states, error banners, skeleton loaders
-   1917  Cross-instrument overview dashboard (/app)
-   2137  Not found / error boundary state pages
-   2150  Toast notifications
-   2178  Public policy pages (Privacy, Terms)
-   2197  Legal links (auth pages + account settings)
-   2236  Economic calendar card (mock - Overview pages)
-   2343  Calendar news badge (Monthly P&L day cells, mock)
-   2364  Streak badge (Overview + strategy detail pages)
-   2381  Market status pill (Overview + strategy detail pages)
-   2407  Key levels, today's brief (mock cards)
-   2433  Market context cards (all-instruments Overview)
+   545  Auth pages
+   611  Top nav
+   626  Instrument nav (topbar pill row)
+   693  Page layout
+   745  Tabs
+   755  Misc form helpers
+   761  Detail view
+   784  Holiday notice (site-wide, above the shell)
+   809  Shell layout (sidebar + topbar)
+   1052  Expandable trade rows
+   1100  Calendar
+   1148  Account settings page
+   1359  Light theme
+   1396  2FA
+   1411  Account fine print
+   1414  Screenshot preview (log new trade)
+   1456  Auth pages always dark
+   1491  Monthly P&L (calendar on Overview)
+   1570  Trade form: sections, validation, currency, screenshots
+   1798  Field tooltips
+   1860  Date/time picker (adds an optional popup to a typed input)
+   1969  In-header column filters (trade log table)
+   2017  Active filter chips
+   2080  Empty states, error banners, skeleton loaders
+   2159  Cross-instrument overview dashboard (/app)
+   2338  Not found / error boundary state pages
+   2351  Toast notifications
+   2379  Public policy pages (Privacy, Terms)
+   2398  Legal links (auth pages + account settings)
+   2437  Economic calendar card (mock - Overview pages)
+   2551  Calendar news badge (Monthly P&L day cells, mock)
+   2572  Streak badge (Overview + strategy detail pages)
+   2589  Market status pill (Overview + strategy detail pages)
+   2615  Key levels, today's brief (mock cards)
+   2641  Market context cards (all-instruments Overview)
+   2700  Edge Insights panel
+   2715  Unverified logged time badge
+   2732  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -55,6 +58,29 @@
   --panel: #141d30;
   --panel-2: #0b1428;
   --line: #23272f;
+  /* Dark-theme hover for the dir-btn pills (Long/Short, and the account
+     settings theme toggle - see .dir-btn:hover's own comment) and
+     .col-filter-btn (see its own comment). The .calendar-strategy-filter/
+     .theme-toggle-btn dropdown/filter buttons this was originally written
+     for went back to their original dark-theme hover instead - the base
+     button:hover rule's barely-there filter:brightness(1.08) - by
+     explicit request, a more visible tonal shift there read as a redesign
+     nobody asked for. Those don't reference this token in dark theme.
+     Stays in the same saturated navy family as --bg/--panel/--panel-2
+     (all ~45-57% saturation) rather than reusing --line - which is only
+     ~15% saturated and reads as an unrelated flat grey dropped onto a
+     blue page, not "the same surface, slightly lighter." +11 lightness
+     points over --panel-2 - stronger than this token's first attempt
+     (+5, tuned for the larger filter/dropdown pills before they went back
+     to --line) - because a bare hover cue (no lift, no shadow, no border
+     change) needs more contrast to register at all than those subtler
+     controls, confirmed too subtle at +5 for both the dir-btn pills and
+     the small column-filter chevron.
+     Light theme doesn't need a separate value: its own --panel-2 (17%
+     sat) and --line (15% sat) are already close enough that --line reads
+     correctly as a same-family step there - see the light theme override
+     below, where this is just set equal to --line. */
+  --panel-hover: #1c2e54;
   --text: #e7e6e2;
   --muted: #7d8590;
   --muted-2: #5C6167;
@@ -69,6 +95,14 @@
      its own transparency live via --topbar-glass-alpha, rather than being
      stuck with --glass's fixed alpha. */
   --glass-rgb: 255,255,255;
+  /* --panel's own color, as bare channels - the pinned topbar's background
+     interpolates toward this (not --glass-rgb) as it scrolls further from
+     the top, so a heavily-scrolled reveal reads as "the same panel color,
+     just softened" rather than the mismatched white/near-black --glass
+     tint, which only reads as a subtle sheen at --glass's own very low
+     fixed alpha and turns into a jarring off-theme block at the higher
+     alpha a legible nav bar over arbitrary content actually needs. */
+  --panel-rgb: 20,29,48;
 
   /* Spacing scale for new work going forward. The file predates this and is
      full of one-off px values hand-tuned against specific type sizes and
@@ -103,6 +137,29 @@ body{
   color:var(--text);
   font-family:'Inter',sans-serif;
   min-height:100vh;
+  position:relative;
+}
+/* Two oversized accent blobs sitting behind the page - a fixed ambient
+   glow rather than a flat --bg alone. No filter:blur() - a radial-gradient
+   already fades smoothly to transparent on its own (browsers interpolate
+   gradients per-pixel), and blurring a element this large is expensive
+   enough that some GPUs downsample before blurring, which showed up as
+   visible blocky/low-res artifacts when this used to animate. z-index:-1
+   sinks them below body's own in-flow content (panels, sidebar, text)
+   while staying above the flat --bg/radial-gradient background above;
+   position:fixed keeps them viewport-anchored and off the scrollable
+   area despite hanging outside the viewport edges. */
+body::before, body::after{
+  content:''; position:fixed; z-index:-1; pointer-events:none;
+  width:900px; height:900px; border-radius:50%;
+}
+body::before{
+  top:-320px; left:-280px;
+  background:radial-gradient(circle, rgba(59,167,255,.09), transparent 70%);
+}
+body::after{
+  bottom:-360px; right:-260px;
+  background:radial-gradient(circle, rgba(124,208,255,.07), transparent 70%);
 }
 .wrap{max-width:960px; margin:0 auto; padding:32px 24px 80px;}
 
@@ -146,8 +203,13 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .glass-panel{
   background:var(--glass);
   border:1px solid var(--glass-border);
+  /* No explicit -webkit-backdrop-filter here on purpose - see the comment
+     on .shell-topbar.topbar-pinned below. Writing both properties
+     ourselves with identical values makes Lightning CSS's minifier drop
+     the unprefixed one, which this browser needs; the autoprefixer adds
+     -webkit- correctly on its own when only the standard property is
+     present. */
   backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
 }
 form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 /* Grid items default to min-width:auto, i.e. their content's intrinsic
@@ -188,8 +250,16 @@ input, select, textarea{background:var(--panel-2); border:1px solid var(--line);
    inputs have their own native chrome, so both are excluded. overflow:
    hidden belt-and-braces this - a single-line input should never show a
    scrollbar even if some more specific rule's padding/font-size ever
-   overflows this height again. */
-input:not([type="checkbox"]):not([type="file"]){height:36px; overflow:hidden;}
+   overflows this height again. scrollbar-width/-ms-overflow-style are a
+   second layer on top of that - some browser/OS combos (observed on
+   Windows) force their native scrollbar chrome onto an <input>'s
+   internal editing box independently of the host element's own
+   `overflow`, so overflow:hidden alone doesn't reliably suppress it
+   there. */
+input:not([type="checkbox"]):not([type="file"]){
+  height:36px; overflow:hidden; scrollbar-width:none; -ms-overflow-style:none;
+}
+input:not([type="checkbox"]):not([type="file"])::-webkit-scrollbar{display:none;}
 textarea{font-family:'Inter',sans-serif; resize:vertical; min-height:38px;}
 /* <select> has native-chrome problems on real mobile browsers (not
    reproducible in a desktop-engine screenshot) - its own background,
@@ -242,8 +312,20 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
 .dir-btn.active-short{background:rgba(225,92,92,.15); color:var(--loss);}
 /* Only the inactive state gets a hover treatment - an active pill (long/
    short/theme) keeps its own color under the cursor rather than flashing
-   the plain hover background. */
-.dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
+   the plain hover background. Covers both this toggle group and the
+   account settings theme toggle (.dir-toggle without the trade form's
+   .dir-toggle-square modifier) - both pills, same rest shape
+   (background:var(--panel-2)), so one rule now covers both rather than
+   the theme toggle needing its own override.
+   --panel-hover, not --line: --line reads as an unrelated flat grey in
+   dark theme (see --panel-hover's own comment in :root); --panel-hover
+   stays in the same navy family. It also resolves to a stronger, more
+   clearly-visible step than this toggle's first attempt at that fix
+   (plain filter:brightness(1.08), report - too subtle to notice) since
+   it's the same value the column-filter chevron uses. Light theme is a
+   no-op change: --panel-hover is defined equal to --line there, so both
+   toggles render exactly as before. */
+.dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--panel-hover); color:var(--text);}
 /* Direction specifically (not Hit target/Hit stop/Custom or the account-
    settings theme toggle, which still use the pill) - a square box instead,
    to read as one more field box among Entry price/Stop Loss/Take Profit
@@ -257,35 +339,70 @@ button{
   transition:filter .15s ease, background-color .15s ease, opacity .15s ease, transform .15s ease, box-shadow .15s ease;
   box-shadow:0 1px 2px rgba(0,0,0,.3);
 }
-/* Lift + accent-tinted glow for every plain solid-accent button (the
-   base look for a submit/primary action across the app). */
-button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3), 0 0 20px rgba(59,167,255,.3);}
+/* Lift + a plain neutral shadow for every plain solid-accent button (the
+   base look for a submit/primary action across the app) - no colored glow,
+   which used to be inconsistent with the flat/no-glow hover most other
+   buttons across the app already used. */
+button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 /* Every secondary/icon/nav button class overrides `background` away from
-   --accent (panel-2, transparent, a semantic color), so a blue glow on
-   hover would read as a mismatch rather than a variant - reset it here
-   rather than trying to select "still solid-accent" some other way. These
-   stay flat at rest too - the base button{} rule's box-shadow is meant for
+   --accent (panel-2, transparent, a semantic color), so this lifted shadow
+   would read as a mismatch rather than a variant - reset it here rather
+   than trying to select "still solid-accent" some other way. These stay
+   flat at rest too - the base button{} rule's box-shadow is meant for
    solid-accent primary buttons, not a bare icon/nav control, so it's
    reset unconditionally here, not just on :hover.
-   .btn-accent-outline/.btn-danger-outline get their own color-matched
-   glow below instead of a flat reset, since they're accent/semantic-
-   colored themselves and a glow still reads correctly on them, just not
-   this hardcoded blue one. A new secondary button class needs adding to
-   this list (or its own box-shadow override) to avoid inheriting the glow. */
+   .btn-accent-outline/.btn-danger-outline get their own lift + neutral
+   shadow below instead of a flat reset, since they're still full-sized
+   pill buttons where that hover feedback still reads correctly, just not
+   this button's solid-accent background. A new secondary button class
+   needs adding to this list (or its own box-shadow override) to avoid
+   inheriting the shadow. */
 .dir-btn, .discard-btn, .auth-oauth-btn, .icon-btn, .icon-btn-profile,
 .theme-toggle-btn, .calendar-nav-btn, .back-btn, .eye-btn, .strategy-menu-btn,
 .icon-edit-btn, .file-upload-btn, .screenshot-remove-btn, .field-tooltip-btn,
-.dt-picker-icon-btn, .dt-picker-nav-btn, .dt-picker-spin-btn, .col-filter-btn,
-.trade-tag-filter-btn, .econ-impact-filter-btn, .econ-today-btn, .row-action-btn{
+.dt-picker-icon-btn, .dt-picker-nav-btn, .dt-picker-spin-btn, .dt-picker-day, .col-filter-btn,
+.trade-tag-filter-btn, .econ-impact-filter-btn, .econ-date-range-trigger, .econ-today-btn, .row-action-btn{
   box-shadow:none;
 }
+/* .eye-btn excluded here on purpose - see its own :hover rule below,
+   which resets box-shadow the same way but has to re-assert its
+   translateY(-50%) centering instead of clearing transform outright. */
 .dir-btn:hover, .discard-btn:hover, .auth-oauth-btn:hover, .icon-btn:hover, .icon-btn-profile:hover,
-.theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .eye-btn:hover, .strategy-menu-btn:hover,
+.theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .strategy-menu-btn:hover,
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
-.dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .col-filter-btn:hover,
-.trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-today-btn:hover, .row-action-btn:hover{
+.dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .dt-picker-day:hover, .col-filter-btn:hover,
+.trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-date-range-trigger:hover, .econ-today-btn:hover, .row-action-btn:hover{
   transform:none; box-shadow:none;
 }
+/* filter:none, light theme only, scoped to just .trade-tag-filter-btn/
+   .econ-impact-filter-btn/.econ-date-range-trigger (not the whole list
+   above, and not .theme-toggle-btn or .col-filter-btn - see each one's
+   own comment). Without this, these three still inherit the base
+   button:hover rule's filter:brightness(1.08) (filter is a separate
+   property, untouched by resetting transform/box-shadow above) - which
+   in dark theme is the original, deliberately barely-there hover these
+   three have always had and should keep, but in light theme brightens an
+   already-pale --panel-2 pill enough to nearly vanish into --panel
+   behind it. Found via a light-theme hover screenshot of the trade log's
+   Filter button and the economic calendar's impact filter looking
+   washed-out/borderless compared to their own rest state - the other
+   button classes in the list above already have their own explicit
+   hover background (e.g. .strategy-menu-btn:hover{background:var(--panel-2);...})
+   and were never reported to have this problem, so they're left alone
+   here. */
+:root[data-theme="light"] .trade-tag-filter-btn:hover,
+:root[data-theme="light"] .econ-impact-filter-btn:hover,
+:root[data-theme="light"] .econ-date-range-trigger:hover{
+  filter:none;
+}
+/* .col-filter-btn is the one exception to "dark theme keeps the barely-
+   there filter" above: unlike the others, it rests fully transparent
+   (not on a --panel-2 fill), so filter:brightness(1.08) has nothing to
+   brighten but its own 13px icon glyph - functionally no hover feedback
+   at all in dark theme, reported as "doesn't do anything." Gets its own
+   explicit background in both themes instead - see the rule further
+   down for the color choice per theme. */
+.col-filter-btn:hover{filter:none;}
 button:disabled{opacity:.5; cursor:not-allowed;}
 /* Undoes the pill treatment above - plain grey text next to Save changes
    on the edit-trade form. Blue on hover as "Cancel", before there's
@@ -445,12 +562,21 @@ table{min-width:640px;}
 .auth-welcome{font-family:'Archivo',sans-serif; font-size:26px; font-weight:800; text-align:center; margin-bottom:6px;}
 .auth-subtitle{font-size:14px; color:var(--muted); text-align:center; margin-bottom:28px;}
 .auth-card form{display:flex; flex-direction:column; gap:18px;}
-/* height:auto overrides the global height:36px above - .auth-card's larger
-   padding (13px) and font-size (14px) don't fit in 36px, and without this
-   the overflowing content makes the browser render its native scroll
+/* Overrides the global height:36px above - .auth-card's larger padding
+   (13px) and font-size (14px) don't fit in 36px, and without this the
+   overflowing content makes the browser render its native scroll
    affordance (arrows) inside the field. Needs :not() to out-specificity
-   that rule rather than just adding a second height declaration here. */
-.auth-card input:not([type="checkbox"]):not([type="file"]){height:auto; padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;}
+   that rule rather than just adding a second height declaration here.
+   An explicit height + line-height (not height:auto) on purpose: auto
+   sizing this box relies on the browser's own line-height calculation
+   for the font matching what its internal text-editing box uses
+   internally, and on some browser/OS combos those two don't agree by a
+   pixel or two, which is enough to re-trigger the native scroll chrome
+   even though the box looks correctly sized. An explicit, generously
+   padded value removes that ambiguity entirely. */
+.auth-card input:not([type="checkbox"]):not([type="file"]){
+  height:48px; line-height:20px; padding:13px 14px; font-size:14px; font-family:'Inter',sans-serif;
+}
 .auth-card .password-field input{padding-right:42px;}
 .auth-forgot-row{display:flex; justify-content:flex-end; margin-top:-8px;}
 .auth-forgot-link{color:var(--accent); font-size:13px; text-decoration:none;}
@@ -517,14 +643,17 @@ table{min-width:640px;}
   color:var(--muted); text-decoration:none; white-space:nowrap;
   transition:background-color .15s ease, color .15s ease;
 }
-.instrument-nav-item:hover{color:var(--text); background:var(--line);}
+/* --panel-hover, not --line - keeps the whole navbar (this, .icon-btn,
+   .theme-toggle-btn) on one consistent hover treatment; see
+   --panel-hover's own comment in :root for why that's not just --line. */
+.instrument-nav-item:hover{color:var(--text); background:var(--panel-hover);}
 .instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
 .instrument-nav-add-wrap{position:relative; flex-shrink:0;}
 .instrument-nav-add{
   display:inline-block; padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
   font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color .15s ease;
 }
-.instrument-nav-add:hover{background:var(--line);}
+.instrument-nav-add:hover{background:var(--panel-hover);}
 /* Fixed rather than absolute, and positioned inline from a measured rect
    (see InstrumentNav.js) - the trigger sits outside .instrument-nav-scroll
    precisely so it's never a descendant of that overflow-x:auto strip, but
@@ -580,9 +709,13 @@ table{min-width:640px;}
    would silently fall back to the body font instead of the intended lighter
    Archivo weight. */
 .page-title{font-family:'Archivo',sans-serif; font-size:26px; font-weight:500; margin-bottom:20px; letter-spacing:-.01em;}
+/* No background of its own (previously a flat var(--bg) fill) - body's own
+   background is the same flat color plus the ambient radial-gradient glow
+   and drifting blobs, so an opaque fill here painted a hard-edged
+   rectangle over that ambient effect for as long as a page was loading. */
 .page-loading{
   min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:14px; background:var(--bg);
+  gap:14px;
 }
 .page-loading-bars{display:flex; align-items:center; gap:5px; height:28px;}
 .page-loading-bars span{
@@ -634,6 +767,13 @@ table{min-width:640px;}
   letter-spacing:.06em; margin-bottom:4px;
 }
 .detail-grid > div > div{font-family:'JetBrains Mono',monospace; font-size:14px;}
+/* MFE/MAE's field-label-row (label + FieldTooltip "?") needs the label's
+   own margin-bottom moved onto the row instead - left on the label, that
+   margin becomes part of its flex-item margin box, which align-items:center
+   measures against, so the label's text visibly sits lower than the "?"
+   circle centered in its own shorter, margin-free box. */
+.detail-grid .field-label-row{margin-bottom:4px;}
+.detail-grid .field-label-row label{margin-bottom:0;}
 .detail-subvalue{font-size:12px; margin-top:2px;}
 
 @media (max-width:640px){
@@ -703,10 +843,26 @@ table{min-width:640px;}
    fades toward MIN_GLASS_ALPHA as the user keeps scrolling up into it, so
    the bar visibly clears just before it docks solid at the true top. The
    fallback covers the instant the class first applies, before that
-   scroll event's write has landed. */
+   scroll event's write has landed.
+   The heavier blur (was 20px, then 32px) plus saturate() is what actually
+   reads as "frosted" rather than plain tinted glass - at the lower alpha
+   above, scrolled-under content needs enough diffusion to turn into soft
+   color fog instead of legible (if faint) ghosted shapes, and saturate()
+   gives that fog the slightly vivid, glassy sheen frosted panels have
+   instead of looking washed out.
+   No explicit -webkit-backdrop-filter here - this is the actual bug
+   behind the "used to be frosted, now it's just glass" report: writing
+   both properties by hand with identical values makes Lightning CSS's
+   minifier drop the unprefixed one from the built CSS, and modern
+   Chromium ignores -webkit-backdrop-filter on its own, so the blur
+   silently stopped rendering at all (confirmed: this predates this PR -
+   .glass-panel above had the exact same manually-duplicated pair and the
+   exact same bug, untouched by any of this PR's edits). Declaring only
+   the standard property lets the autoprefixer add -webkit- correctly, the
+   same pattern .modal-overlay already relies on further up this file. */
 .shell-topbar.topbar-pinned{
-  background:rgba(var(--glass-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
-  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.28)); border-color:var(--glass-border);
+  backdrop-filter:blur(40px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* No `gap` here on purpose - flex gap lands between every child,
@@ -729,8 +885,23 @@ a.shell-logo{color:inherit; text-decoration:none;}
   color:var(--muted); text-decoration:none; border:1px solid transparent;
   transition:background-color .15s ease, color .15s ease;
 }
-.icon-btn:hover{background:var(--panel-2); color:var(--text);}
+/* --panel-hover, not --panel-2 - --panel-2 is actually darker than
+   --panel in dark theme (see :root), so this hover was dimming rather
+   than lightening; keeps the whole navbar (this, .instrument-nav-item,
+   .theme-toggle-btn) on one consistent treatment either way. */
+.icon-btn:hover{background:var(--panel-hover); color:var(--text);}
 .icon-btn-profile{background:var(--panel-2); border:1px solid var(--line); border-radius:50%;}.theme-toggle-btn{background:none; border:none; cursor:pointer;} .theme-toggle-btn svg{width:19px; height:19px; flex-shrink:0;}
+/* Same --panel-hover treatment as .icon-btn/.instrument-nav-item right
+   above - the whole navbar on one consistent hover now, rather than this
+   one control alone keeping the near-invisible filter:brightness hover
+   the dropdown/filter buttons use (that was this button's own first
+   attempt at a fix, reverted for being too subtle - see --panel-hover's
+   own comment in :root). filter:none is still needed in both themes: as
+   an actual <button>, this would otherwise still pick up the base
+   button:hover rule's filter:brightness(1.08) on top of the background
+   below, the same double-brightening effect that made an earlier
+   iteration of this token's value read as too light. */
+.theme-toggle-btn:hover{background:var(--panel-hover); color:var(--text); filter:none;}
 
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
@@ -738,9 +909,9 @@ a.shell-logo{color:inherit; text-decoration:none;}
   white-space:nowrap; flex-shrink:0; transition:filter .15s ease, transform .15s ease, box-shadow .15s ease;
   box-shadow:0 1px 2px rgba(0,0,0,.3);
 }
-/* Not a <button>, so it doesn't inherit the base button:hover glow - given
+/* Not a <button>, so it doesn't inherit the base button:hover rule - given
    its own copy since it's the app's most-repeated primary CTA. */
-.new-trade-btn:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3), 0 0 20px rgba(59,167,255,.3);}
+.new-trade-btn:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 
 .shell-body{display:flex; flex:1; min-height:0;}
 
@@ -990,9 +1161,11 @@ a.shell-logo{color:inherit; text-decoration:none;}
   transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
+/* Same fix as .shell-topbar.topbar-pinned above - no explicit
+   -webkit-backdrop-filter, see its comment for why. */
 .account-topbar.topbar-pinned{
-  background:rgba(var(--glass-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
-  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.28)); border-color:var(--glass-border);
+  backdrop-filter:blur(40px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* min-height matches .icon-btn's fixed 36px (the tallest element in
@@ -1039,7 +1212,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   background:none; border:none; padding:4px; color:var(--muted); cursor:pointer;
   display:flex; align-items:center; justify-content:center; transition:color .15s ease;
 }
-.eye-btn:hover{color:var(--text);}
+/* transform re-asserts the base rule's translateY(-50%) rather than
+   resetting to none like the shared reset list above does for every
+   other secondary button - .eye-btn is the one button in that list that
+   uses transform for its own layout (vertical centering) rather than
+   just a decorative hover lift, so clearing it outright made the icon
+   visibly jump up by half its own height on hover. */
+.eye-btn:hover{color:var(--text); transform:translateY(-50%); box-shadow:none; filter:none;}
 .field-hint{font-size:11.5px; color:var(--muted); display:block; margin-top:-2px; margin-bottom:10px;}
 
 .danger-panel{border-color:rgba(225,92,92,.35);}
@@ -1051,10 +1230,12 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
   transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-/* box-shadow explicitly overridden here (not just left to inherit) - the
-   base button:hover rule below would otherwise still win the cascade for
-   that property and put a blue glow around a red destructive button. */
-.btn-danger-outline:hover{background:rgba(225,92,92,.1); box-shadow:0 0 16px rgba(225,92,92,.25);}
+/* box-shadow (and filter) explicitly overridden here (not just left to
+   inherit) - the base button:hover rule below would otherwise still win
+   the cascade for those properties and apply its own brightness(1.08) on
+   top of this rgba background, same bug the trade-tag-filter-btn/
+   econ-impact-filter-btn list above had. */
+.btn-danger-outline:hover{background:rgba(225,92,92,.1); filter:none; transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 /* Same shape as the danger button, in the accent colour — for the safe
    choice in a confirm modal, so red is reserved for the destructive one. */
 .btn-accent-outline{
@@ -1062,7 +1243,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   padding:10px 20px; border-radius:100px; font-weight:700; font-size:13px; cursor:pointer;
   transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-.btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none; box-shadow:0 0 16px rgba(59,167,255,.25);}
+.btn-accent-outline:hover{background:rgba(59,167,255,.1); filter:none; transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
 
 .account-msg{border-radius:7px; padding:9px 12px; font-size:12.5px; margin-top:12px;}
 .account-msg-error{background:rgba(225,92,92,.12); border:1px solid var(--loss); color:var(--loss);}
@@ -1182,6 +1363,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   --panel: #ffffff;
   --panel-2: #eef0f3;
   --line: #dde1e6;
+  /* Equal to --line here, unlike the dark theme above - see --panel-hover's
+     own comment in :root for why dark needs a distinct value and light
+     doesn't. */
+  --panel-hover: #dde1e6;
   --text: #14161a;
   --muted: #676d78;
   /* --glass/--glass-border are white-alpha, tuned for the dark backdrop
@@ -1190,6 +1375,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   --glass: rgba(20,22,26,0.04);
   --glass-border: rgba(20,22,26,0.08);
   --glass-rgb: 20,22,26;
+  --panel-rgb: 255,255,255;
   /* Lighter than the dark-theme --panel-shadow above - the same alpha
      values read as much harsher against a white panel than a near-black
      one, so this halves the opacity of both layers. */
@@ -1273,13 +1459,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
     --panel: #141d30;
     --panel-2: #0b1428;
     --line: #23272f;
+    --panel-hover: #1c2e54;
     --text: #e7e6e2;
     --muted: #7d8590;
 }
 
 
-/* Theme toggle active state - blue, matches accent buttons (kept separate from the win/loss direction toggle) */
-.dir-btn.active-theme{background:rgba(59,167,255,.15); color:var(--accent);}
+/* Theme toggle active state - blue, matches accent buttons (kept separate
+   from the win/loss direction toggle). Alpha bumped from .15: at that
+   level, blended over the dark theme's panel background, this computes to
+   roughly #1a324f - close enough to --panel-hover (#1c2e54, the inactive
+   pill's own hover color) that hovering "Light" looked nearly identical
+   to "Dark"'s persistent active state, making it hard to tell selected
+   from merely-hovered. */
+.dir-btn.active-theme{background:rgba(59,167,255,.26); color:var(--accent);}
 
 /* Confirm modal (e.g. delete account) */
 .confirm-modal-overlay{
@@ -1306,7 +1499,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
        sets, since this class is more specific and wins the cascade. */
     width:auto; background-color:var(--panel-2); border:1px solid var(--line); border-radius:7px;
     color:var(--text); padding:8px 34px 8px 12px; font-size:12.5px; font-family:'Inter',sans-serif;
+    transition:background-color .15s ease;
 }
+/* Light theme only. One rule covers every use of this class - the "All
+   strategies" native <select> dropdowns as well as .trade-tag-filter-btn/
+   .econ-impact-filter-btn/.econ-date-range-trigger (all combine this
+   class with their own for the chevron-padding override, see each's own
+   comment). Dark theme deliberately has no hover rule here at all: the
+   <select> case never had one to begin with, and the <button> cases fall
+   back to the base button:hover rule's barely-there filter:brightness -
+   see the filter:none override a few hundred lines up for why light
+   theme still needs an explicit reset+background here. Still
+   background-color, for the same chevron-image reason as the rest state
+   above. */
+:root[data-theme="light"] .calendar-strategy-filter:hover{background-color:var(--line);}
 .calendar-month-nav{display:flex; align-items:center; gap:12px;}
 
 .stats-5{grid-template-columns:repeat(5,1fr);}
@@ -1771,9 +1977,23 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   transition:background-color .15s ease, color .15s ease;
 }
-.col-filter-btn:hover{background:var(--panel-2); color:var(--text); filter:none;}
+/* Unlike the other filter/dropdown buttons touched in this file, this one
+   keeps an explicit background in BOTH themes, not just light - it rests
+   fully transparent (not on a --panel-2 fill), so the barely-there
+   filter:brightness(1.08) those others fall back to in dark theme has no
+   fill to brighten here, only its own 13px icon glyph - reported as no
+   visible hover feedback at all. --panel-2 would read as dimming rather
+   than lightening in dark theme (this sits on a --panel table header);
+   --panel-hover steps the right direction and stays in the same navy
+   family (see its own comment in :root). Light theme uses --line, same
+   as it always has - --panel-hover is just set equal to --line there. */
+.col-filter-btn:hover{background:var(--panel-hover);}
 .col-filter-btn-active{color:var(--accent);}
-.col-filter-btn svg{width:13px; height:13px; flex-shrink:0;}
+/* 14px, not the 13px lucide's own size prop passes - centered via flex in
+   a 16px box, an odd child size splits into a 1.5px margin per side that
+   rasterizes as an uneven 1px/2px split, visibly shifting the glyph off
+   center. 14px divides evenly (1px each side), which doesn't. */
+.col-filter-btn svg{width:14px; height:14px; flex-shrink:0;}
 
 /* Fixed rather than absolute, so the table's horizontal scroll container
    can't clip it. ColumnFilter closes the menu on scroll to keep it anchored. */
@@ -1830,6 +2050,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    its own SVG chevron child instead, same override as
    .econ-impact-filter-btn (EconomicCalendarCard.js) uses for the same
    reason. */
+/* No :hover of its own - .calendar-strategy-filter:hover (the other class
+   combined on this element) already covers it. */
 .trade-tag-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
 /* Absolute, not .col-filter-menu's own fixed - this toolbar sits above the
    table in normal flow, not inside #tableWrap's horizontally-scrolling
@@ -1837,6 +2059,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .trade-tag-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
 .table-count{font-size:12px; color:var(--muted); text-align:right; margin-bottom:10px;}
+
+/* Trade log pagination (TradeLogTable.js's pageSize prop) - a bare chevron,
+   not .calendar-nav-btn's circular icon-button look, by deliberate design
+   choice (unlike the calendar's month nav, which keeps the circle). Unlike
+   that always-cyclable month nav, this one has real boundaries (no page
+   before the first or after the last), so it needs its own disabled state. */
+.table-pagination{display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px;}
+.table-pagination-btn{display:flex; align-items:center; justify-content:center; width:28px; height:28px; color:var(--muted); cursor:pointer;}
+.table-pagination-btn:hover{color:var(--accent);}
+.table-pagination-btn svg{width:16px; height:16px; flex-shrink:0;}
+.table-pagination-page{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text); min-width:14px; text-align:center;}
+.nav-btn-disabled{opacity:.35; cursor:default; pointer-events:none;}
 
 /* nowrap guards against the browser treating the sign's hyphen as a soft
    line-break point and stranding it on its own line above the amount. */
@@ -1898,6 +2132,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    since both appear at several different sizes across the skeletons. */
 .skel-pill{height:28px; border-radius:99px;}
 .skel-circle{border-radius:50%;}
+
+/* Stands in for a screenshot thumbnail while its signed URL is still
+   resolving (trade detail page, trade log's expand row, the edit form's
+   existing-screenshot previews) - an <img> with no src yet renders as a
+   broken-image glyph for that brief window, which reads as broken rather
+   than loading. Width/height set inline per use, matching each page's own
+   thumbnail size. */
+.skel-thumb{border:1px solid var(--line);}
 
 /* Embedded loading treatment for the content below a skeleton's header -
    used where the eventual content shape is too unpredictable to mimic
@@ -1973,6 +2215,17 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   .performance-card-subgrid{grid-template-columns:1fr; gap:20px;}
 }
 
+/* Strategy page: the equity curve sits beside a 2x2 stat-card grid that
+   runs noticeably taller than the dashboard's weekday chart (what
+   .equity-chart-svg's fixed 130px height above was tuned to match), which
+   left a bare gap under the chart. Growing the chart itself to fill the
+   stretched column - rather than raising the shared 130px, which would
+   throw off the dashboard's own pairing - closes it; flex-direction:column
+   on the wrap plus flex:1 on the svg keeps equity-chart-labels pinned to
+   the bottom of the column instead of directly under a short chart. */
+.strategy-equity-col .equity-chart-wrap{flex:1; display:flex; flex-direction:column;}
+.strategy-equity-col .equity-chart-svg{height:100%; flex:1;}
+
 /* FlippingStatChips - sits inline with the toolbar's own filter select
    (.calendar-toolbar's flex row), left-aligned right after it rather than
    pushed to the row's far edge - see the :has() override on
@@ -2038,58 +2291,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .weekday-chart-bar-neg{background:var(--loss);}
 .weekday-chart-value{
   width:80px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px;
-}
-
-/* Strategy detail page's Performance card - the duration histogram sits
-   below the stats-5 row, inside the same panel (see .performance-card-
-   subgrid above for the equivalent two-column layout other pages use;
-   this one's a single chart rather than two side by side, so it doesn't
-   need a grid - width:50% instead keeps it from stretching bar labels/
-   tracks across the panel's full width, which read as too sparse for
-   what's usually a handful of buckets). Back to full width once 50%
-   would squeeze the 96px label column against a narrow track. */
-.performance-duration-chart{margin-top:28px; width:50%;}
-@media (max-width:900px){
-  .performance-duration-chart{width:100%;}
-}
-/* One bar per duration bucket - unlike .weekday-chart's diverging lanes
-   either side of a zero line, a trade count has no negative direction,
-   so this is a single bar growing from the label outward, split into
-   win/loss (and, if any, neutral - breakeven or still-unresolved)
-   segments. .duration-chart-track's own background is the "full width"
-   reference the fill sits inside, scaled against the shared axis below
-   (see .duration-chart-axis) rather than a per-row number - bars read
-   against that axis, exact counts are a hover away. */
-.duration-chart{display:flex; flex-direction:column; gap:9px;}
-.duration-chart-row{display:flex; align-items:center; gap:10px; cursor:default;}
-.duration-chart-label{
-  width:96px; flex-shrink:0; font-family:'JetBrains Mono',monospace;
-  font-size:10.5px; color:var(--muted); letter-spacing:.04em;
-  transition:color .15s ease;
-}
-/* Only buckets with at least one trade in them are wired up as a filter
-   (see the component - an empty bucket has nothing for onSelect to show),
-   so only these get the pointer cursor + accent-colored label hinting
-   that. */
-.duration-chart-row-clickable{cursor:pointer;}
-.duration-chart-row-clickable:hover .duration-chart-label{color:var(--accent);}
-.duration-chart-track{flex:1; height:10px; min-width:0; background:var(--line); border-radius:3px; overflow:hidden;}
-.duration-chart-fill{height:100%; display:flex;}
-.duration-chart-seg-win{background:var(--win);}
-.duration-chart-seg-loss{background:var(--loss);}
-.duration-chart-seg-neu{background:var(--muted-2);}
-/* Axis row - a spacer matching .duration-chart-label's own width keeps
-   its track aligned under the bars above, the same trick
-   .duration-chart-row's flex layout uses. Tick labels are positioned
-   absolutely by percentage (not a flex row) since they need to sit at
-   exact fractions of the track's width to line up with where each
-   bar's own percentage-width would reach, not spaced evenly by count. */
-.duration-chart-axis{display:flex; align-items:center; gap:10px; margin-top:4px;}
-.duration-chart-axis-spacer{width:96px; flex-shrink:0;}
-.duration-chart-axis-track{position:relative; flex:1; min-width:0; height:14px;}
-.duration-chart-axis-tick{
-  position:absolute; top:0; font-family:'JetBrains Mono',monospace;
-  font-size:10px; color:var(--muted);
 }
 
 .donut-wrap{display:flex; align-items:center; gap:28px; flex-wrap:wrap;}
@@ -2247,6 +2448,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* Overrides .calendar-strategy-filter's 34px right padding, sized for a
    native <select>'s chevron background-image - this is a flex button with
    its own SVG chevron child instead, so that reserved space just left a gap. */
+/* No :hover of its own - .calendar-strategy-filter:hover (the other class
+   combined on this element) already covers it. */
 .econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
 .econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
 
@@ -2255,6 +2458,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    top spacing matches every other filter+nav toolbar in the app instead of
    inventing its own margin. */
 .date-range-picker-wrap{position:relative;}
+/* No :hover of its own - .calendar-strategy-filter:hover (the other class
+   combined on this element) already covers it; the two shared reset lists
+   above strip the base button:hover's lift/shadow/brightness-filter, since
+   this one's a <button> (unlike the "All strategies" <select>s that also
+   use .calendar-strategy-filter) and would otherwise still inherit them. */
 .econ-date-range-trigger{display:flex; align-items:center; gap:8px; cursor:pointer;}
 /* Fixed-positioned popover (see CalendarNewsBadge/ColumnFilter for the same
    pattern) rather than absolute, since this toolbar can end up inside a
@@ -2405,7 +2613,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .market-status-pill-closed{background:var(--panel-2); color:var(--muted); border-color:var(--line);}
 
 /* ---------- Key levels, today's brief (mock cards) ---------- */
-.brief-card-text, .strategy-context-text{
+.brief-card-text{
   font-size:13px; line-height:1.55; color:var(--text);
 }
 
@@ -2488,3 +2696,45 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    actual rendered (uppercase, per the base th rule) glyphs - close enough
    normally, but visibly off once compared side-by-side across a header row. */
 .th-with-tooltip{display:inline-flex; align-items:center;}
+
+/* ---------- Edge Insights panel ---------- */
+/* The AI-generated insight (components/EdgeInsightsPanel.js): its tables
+   reuse the same table look the app already establishes elsewhere, and
+   its own prose (headings/lists/bold, now that Claude has full Markdown
+   freedom rather than a paragraphs+tables-only contract) needs a little
+   spacing so consecutive elements don't run together. */
+.session-breakdown-table{margin-top:8px;}
+.insight-narrative .table-scroll{margin-bottom:16px;}
+.insight-narrative :is(h1,h2,h3,h4){font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:16px 0 8px;}
+.insight-narrative :is(h1,h2,h3,h4):first-child{margin-top:0;}
+.insight-narrative p{margin:0 0 12px;}
+.insight-narrative ul, .insight-narrative ol{margin:0 0 12px; padding-left:20px;}
+.insight-narrative li{margin-bottom:4px;}
+.insight-narrative-generated-at{font-size:11.5px; color:var(--muted);}
+
+/* ---------- Unverified logged time badge ---------- */
+/* Sits next to a trade's entry time on the detail page and the log
+   table's expand row when trade_time_unverified is true - the logged
+   entry/exit price never traded during its own logged minute (see
+   schema.sql's comment above that column), so the trader should double
+   check what they logged. --loss red matches the app's existing
+   "flagged" convention (see .discipline-tag). Native title attribute
+   for the explanation rather than FieldTooltip, which is reserved for
+   static "what this field means" help text next to a label, not a
+   conditional warning on a value. */
+.time-unverified-badge{
+  display:inline-block; margin-left:8px; padding:2px 7px; border-radius:99px;
+  font-family:'Inter',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  background:rgba(225,92,92,.12); color:var(--loss); border:1px solid rgba(225,92,92,.3);
+  cursor:help; vertical-align:middle;
+}
+
+/* ---------- Theme toggle (suppress transition flash) ---------- */
+/* handleThemeToggle (AppShell.js, [instrument]/layout.js) adds this class
+   to <html> for one frame around flipping data-theme. Without it, the
+   toggle looks like a harsh flash rather than a clean switch: most
+   surfaces (body, .panel, .stat, inputs) have no transition on their own
+   and snap to the new theme instantly, while buttons/badges/sidebar rows
+   carry a transition:background-color meant for hover and visibly fade
+   over ~150ms instead - two different speeds fighting on screen at once. */
+.theme-switching, .theme-switching *{transition:none !important;}

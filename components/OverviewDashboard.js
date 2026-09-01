@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
+import { queryPerformance } from '@/lib/edgeEngine'
+import { totalTradeCount } from '@/lib/insightData'
+import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
 import { daysToRollover, nextRolloverDate } from '@/lib/contractRollover'
@@ -64,45 +68,37 @@ function toneClass(value, count) {
 // assignment - unlike the per-instrument dashboard, this view has no
 // strategy grouping to exclude unclassified trades from.
 function computeOverallStats(allTrades) {
+  // winRate/expectancy/profitFactor come from the Edge Engine (the one
+  // shared implementation - see lib/edgeEngine.js) rather than being
+  // computed here a fourth time; everything below is either dollar-
+  // denominated (out of the engine's scope, which is R-only) or a plain
+  // count the WinRateGauge/equity-curve math below still needs directly.
+  const perf = queryPerformance({ trades: allTrades, groupBy: null })
   const trades = allTrades.filter(hasResult)
-  const n = trades.length
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
-  if (n === 0) {
+  if (perf.n === 0) {
     return {
-      n, tradingDays, winRate: null, expectancy: null, expectancyD: null,
+      n: perf.n, tradingDays, winRate: null, expectancy: null, expectancyD: null,
       totalPnl: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0,
     }
   }
 
   const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  const wr = wins.length / n
-  // Breakeven trades don't count as a win or a loss, so they're excluded
-  // from the denominator here rather than diluting the rate - wr above
-  // (which feeds expectancy, not the displayed win rate) is unrelated and
-  // deliberately left as wins/n.
-  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
-  const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
-  const expectancy = wr * avgWin + (1 - wr) * avgLoss
 
-  const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
-
+  // expectancyD is the average $ P&L per trade with a recorded dollar
+  // value, breakevens included - same fix as lib/edgeEngine.js's
+  // expectancy (see its comment): a win-rate-weighted formula only
+  // matches this once a slice has zero breakevens.
   const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
-  const winsD = wins.filter(hasDollar)
-  const lossesD = losses.filter(hasDollar)
-  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
-  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
-  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+  const expectancyD = hasD ? totalD / withD.length : null
 
   return {
-    n, tradingDays, winRate, expectancy, expectancyD, totalPnl, totalD, hasD,
-    profitFactor, wins: wins.length, losses: losses.length,
+    n: perf.n, tradingDays, winRate: perf.winRate, expectancy: perf.expectancy, expectancyD,
+    totalPnl, totalD, hasD, profitFactor: perf.profitFactor, wins: wins.length, losses: losses.length,
   }
 }
 
@@ -561,6 +557,11 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
           </div>
 
+          <div className="section-heading">Edge Insights</div>
+          <div className="panel">
+            <EdgeInsightsPanel scope="overall" tradeCount={totalTradeCount(allTrades)} />
+          </div>
+
           <div className="section-heading">Monthly P&L</div>
           <div className="panel">
             <div className="calendar-toolbar">
@@ -685,7 +686,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               showTimeInDate
             />
             <div className="panel-link-row">
-              <a href="/app/log" className="panel-link">View all trades</a>
+              <Link href="/app/log" className="panel-link">View all trades</Link>
             </div>
           </div>
         </>

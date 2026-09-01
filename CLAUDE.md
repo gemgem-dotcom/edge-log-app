@@ -3,9 +3,12 @@
 A trading journal: log futures trades against named strategies, and see win rate,
 R-multiple and P&L statistics per instrument and per strategy.
 
-Next.js 14 App Router (JavaScript, no TypeScript) + Supabase (Postgres, auth,
+Next.js 16 App Router (JavaScript, no TypeScript) + Supabase (Postgres, auth,
 storage), deployed on Vercel. Imports use the `@/` alias for anything more than
-one directory away — see `jsconfig.json`.
+one directory away — see `jsconfig.json`. One deliberate exception:
+`lib/supabaseClient` is always imported via `@/lib/supabaseClient`, even from
+files one directory away, so `next.config.js`'s single mock-DB Turbopack alias
+(see its own comment) covers every import site with one entry.
 
 `NOTES.md` is the full working-notes file — read it for anything below that needs
 more detail. `README.md` is the first-time setup guide.
@@ -47,7 +50,6 @@ app/
     dashboard/page.js         Overview: stats, strategy performance, P&L calendar
     log/page.js               trade log
     log/new/page.js           log a trade
-    log/[tradeId]/page.js     trade detail, read only
     log/[tradeId]/edit/page.js edit a trade
     strategies/               strategy manager + per-strategy pages
     insights/                 placeholder
@@ -80,6 +82,12 @@ storage-setup.sql             screenshots storage bucket
 scripts/
   update-css-toc.js           regenerates globals.css's table of contents - see below
 next.config.js                only exists for the mock-DB dev alias - see below
+vitest.config.mjs             unit test runner - `lib/*.test.js` sit next to the module
+                               they cover; see NOTES.md's "Testing and error tracking"
+instrumentation.js            Sentry init entry points (optional, no-ops without a DSN)
+instrumentation-client.js     - see NOTES.md's "Testing and error tracking" for the
+sentry.server.config.js       full picture
+sentry.edge.config.js
 ```
 
 ## Domain rules that are easy to get wrong
@@ -131,15 +139,26 @@ next.config.js                only exists for the mock-DB dev alias - see below
 - Editing through the GitHub web editor has caused real breakages — see the last
   section of `NOTES.md` before doing that.
 
+## Testing and error tracking
+
+`npm test` (Vitest) runs `lib/*.test.js` - pure-function coverage for the trade
+math, fill-tick matching, and stats-engine logic most likely to silently break.
+CI runs it as a parallel `test` job alongside the build check. Sentry error
+tracking (`NEXT_PUBLIC_SENTRY_DSN`, optional) reports unexpected failures from
+the API routes and the two Databento scheduled scripts. See NOTES.md's "Testing
+and error tracking" for the full picture of both.
+
 ## Environment
 
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` are safe to expose.
 `SUPABASE_SERVICE_ROLE_KEY` is **server only** — full admin access, bypasses row
 level security, used solely by the two API routes. Never import it into a page or
-give it a `NEXT_PUBLIC_` prefix.
+give it a `NEXT_PUBLIC_` prefix. `NEXT_PUBLIC_SENTRY_DSN` (optional) is also safe
+to expose - a DSN can only send events in, never read anything back out.
 
-All three live in `.env.local` locally and in Vercel's project settings. The CI
-build uses placeholders, since nothing during a build talks to the database.
+All three (plus the optional Sentry DSN) live in `.env.local` locally and in
+Vercel's project settings. The CI build uses placeholders, since nothing during a
+build talks to the database.
 
 The Overview pages' "Economic calendar" card (`components/EconomicCalendarCard.js`)
 currently renders mock data from `lib/marketContextMock.js` — the earlier BLS/FRED/
@@ -165,3 +184,13 @@ yet wired up. Same story for the volatility and key-levels cards on those pages.
   file's actual `/* ---------- Section ---------- */` banners. Run it after any CSS
   edit that adds, removes, or moves a section — `npm run css:toc:check` reports
   (without writing) whether it's currently stale, for a sanity check before a commit.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

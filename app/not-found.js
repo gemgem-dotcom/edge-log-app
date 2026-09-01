@@ -25,7 +25,7 @@ export default function NotFound() {
         <div className="state-code">404</div>
         <div className="state-title">Page not found</div>
         <p className="state-message">
-          The page you're looking for doesn't exist, or may have moved.
+          The page you&apos;re looking for doesn&apos;t exist, or may have moved.
         </p>
         <div className="state-actions">
           <a href={href} className="new-trade-btn" style={{ display: 'inline-flex' }}>{label}</a>

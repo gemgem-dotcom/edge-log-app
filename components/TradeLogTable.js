@@ -1,14 +1,18 @@
 'use client'
 
 import { useState, useEffect, useCallback, Fragment } from 'react'
-import { Pencil, Trash2, X, Filter } from 'lucide-react'
-import { supabase } from '../lib/supabaseClient'
+import Link from 'next/link'
+import { Pencil, Trash2, X, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
+import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
+import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { useConfirm } from '../lib/useConfirm'
 import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
 import ScreenshotLightbox from './ScreenshotLightbox'
+import FieldTooltip from './FieldTooltip'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
@@ -102,6 +106,19 @@ function resultOf(trade) {
   return 'breakeven'
 }
 
+// Same fallback shape as the trade detail page's own excursionCell -
+// realValue is whatever the caller already computed for 'complete', null
+// otherwise; a 'complete' trade whose fill couldn't be verified
+// (excursion_fallback) is treated as not having a real value either (see
+// lib/tradeExcursions.js's excursionStatusMessage). A null
+// market_data_status (never attempted, or not an NQ-family trade) falls
+// through to the same plain "—" every other not-yet-applicable field in
+// this row already uses.
+function excursionCell(trade, timezoneOffset, realValue) {
+  if (trade.market_data_status === 'complete' && !trade.excursion_fallback && realValue !== null && realValue !== undefined) return realValue
+  return excursionStatusMessage(trade, timezoneOffset) || '—'
+}
+
 export default function TradeLogTable({
   trades,
   strategies = [],
@@ -127,6 +144,12 @@ export default function TradeLogTable({
   // a tailored EmptyState (with a page-appropriate call to action) instead
   // of this component hardcoding one copy for every context it's reused in.
   emptyState = null,
+  // Opt-in - callers that don't pass this keep showing every matching
+  // trade at once, unchanged. Only the per-strategy page's trade log asks
+  // for this today. Rows arrive already ordered by the caller's own query
+  // (reverse chronological everywhere this table is used), so paging is a
+  // plain slice with no re-sort here.
+  pageSize = null,
 }) {
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
@@ -136,6 +159,17 @@ export default function TradeLogTable({
   // to the right one, not just a bare URL.
   const [preview, setPreview] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  // Resolved thumbnail URLs, keyed by trade id - fetched lazily as each row
+  // expands (not eagerly for every trade in the table) since the bucket is
+  // private and a stored screenshot_urls entry is a storage path, never a
+  // directly usable URL (see lib/screenshots.js's getThumbnailUrls). The
+  // grid only ever shows a 70x70 tile, so it never needs the full-size
+  // image - resolvedFull below holds that instead, fetched only once a
+  // specific screenshot is actually opened in the lightbox, since eagerly
+  // resolving full-size URLs for every expanded row would defeat the point
+  // of thumbnails existing at all.
+  const [resolvedThumbnails, setResolvedThumbnails] = useState({})
+  const [resolvedFull, setResolvedFull] = useState({})
   const { confirm, modal: confirmModal } = useConfirm()
 
   // Filters open from a chevron on each column heading. Day and Strategy
@@ -148,10 +182,29 @@ export default function TradeLogTable({
   // in the toolbar above the table instead of a column-header chevron. A
   // trade matches if it has any one of the selected tags.
   const [filterTags, setFilterTags] = useState([])
+  // Only needed for a still-'pending' trade's "Available in ~Xh" message
+  // (lib/tradeExcursions.js's excursionStatusMessage) - same account
+  // offset trade save/edit already convert wall-clock times with.
+  const [timezoneOffset, setTimezoneOffset] = useState(null)
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
     setRows(trades)
+    setPage(0)
   }, [trades])
+
+  // A filter change can shrink the visible set out from under whatever
+  // page was showing (e.g. viewing page 3 of 42 trades, then filtering
+  // down to 5) - land back on page 1 rather than an empty or stale page.
+  useEffect(() => {
+    setPage(0)
+  }, [filterDays, filterStrategies, filterDirection, filterResult, filterTags])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setTimezoneOffset(parseFloat(user?.user_metadata?.timezone))
+    })
+  }, [])
 
   // Support deep links like /log?strategy=<id> from the dashboard table.
   useEffect(() => {
@@ -160,8 +213,40 @@ export default function TradeLogTable({
     if (initial) setFilterStrategies([initial])
   }, [showFilters, showStrategyColumn])
 
+  function shotsFor(trade) {
+    return trade.screenshot_urls?.length ? trade.screenshot_urls : (trade.screenshot_url ? [trade.screenshot_url] : [])
+  }
+
   function toggleExpand(trade) {
+    const expanding = expandedId !== trade.id
     setExpandedId((prev) => (prev === trade.id ? null : trade.id))
+    if (expanding && !resolvedThumbnails[trade.id]) {
+      const shots = shotsFor(trade)
+      if (shots.length === 0) return
+      getThumbnailUrls(shots).then((urls) => {
+        setResolvedThumbnails((prev) => ({ ...prev, [trade.id]: urls }))
+      })
+    }
+  }
+
+  // Opens the lightbox immediately using whatever thumbnail is already on
+  // screen (instant, since it's already loaded) while the full-size URL
+  // resolves in the background, then swaps it in once ready - better than
+  // either a blank modal for the brief gap or eagerly resolving full-size
+  // URLs for every row that merely expands. The tradeId check guards
+  // against a resolve from a since-closed trade overwriting whatever the
+  // trader has since opened instead.
+  function openPreview(trade, index) {
+    const cached = resolvedFull[trade.id]
+    if (cached) {
+      setPreview({ shots: cached, index, tradeId: trade.id })
+      return
+    }
+    setPreview({ shots: resolvedThumbnails[trade.id] || [], index, tradeId: trade.id })
+    getScreenshotUrls(shotsFor(trade)).then((urls) => {
+      setResolvedFull((prev) => ({ ...prev, [trade.id]: urls }))
+      setPreview((prev) => (prev?.tradeId === trade.id ? { ...prev, shots: urls } : prev))
+    })
   }
 
   async function handleDelete(e, trade) {
@@ -194,6 +279,15 @@ export default function TradeLogTable({
   if (rows.length === 0) {
     return emptyState || <div className="empty">No trades match this view yet.</div>
   }
+
+  // Clamped against the current `visible` length (not just reset via the
+  // effects above) so a mid-page delete - which shrinks `rows` without
+  // going through those effects - can't strand the view on a now-empty
+  // trailing page.
+  const totalPages = pageSize ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1
+  const safePage = Math.min(page, totalPages - 1)
+  const pageStart = pageSize ? safePage * pageSize : 0
+  const paged = pageSize ? visible.slice(pageStart, pageStart + pageSize) : visible
 
   // Each filter offers its full set of values rather than only the ones the
   // current trades happen to use, so the options stay put as trades come and
@@ -345,7 +439,7 @@ export default function TradeLogTable({
               </td>
             </tr>
           )}
-          {visible.map((t) => {
+          {paged.map((t) => {
             const closed = hasResult(t)
             const rClass = !closed ? 'r-zero' : t.r_multiple > 0 ? 'r-pos' : t.r_multiple < 0 ? 'r-neg' : 'r-zero'
             const riskReward = calcRiskReward(t.target_distance, t.stop_distance)
@@ -360,7 +454,8 @@ export default function TradeLogTable({
             const hasMultipleExits = exitLegs.length > 1
             const totalExitContracts = exitLegs.reduce((sum, leg) => sum + (leg.contracts == null ? 0 : Number(leg.contracts)), 0)
             const lastLeg = exitLegs[exitLegs.length - 1]
-            const shots = t.screenshot_urls?.length ? t.screenshot_urls : (t.screenshot_url ? [t.screenshot_url] : [])
+            const shots = shotsFor(t)
+            const thumbUrls = resolvedThumbnails[t.id] || []
             const isExpanded = expandedId === t.id
             const rowSymbol = showInstrumentColumn ? instrumentSymbolFor?.(t) : symbol
             return (
@@ -390,14 +485,14 @@ export default function TradeLogTable({
                   )}
                   <td className="row-actions">
                     <span className="row-actions-inner">
-                      <a
+                      <Link
                         href={`/app/${rowSymbol}/log/${t.id}/edit`}
                         className="row-action-btn"
                         onClick={(e) => e.stopPropagation()}
                         title="Edit trade"
                       >
                         <Pencil size={15} />
-                      </a>
+                      </Link>
                       <span
                         className="row-action-btn row-action-danger"
                         onClick={(e) => handleDelete(e, t)}
@@ -417,7 +512,10 @@ export default function TradeLogTable({
                             <label>Entry</label>
                             <div>
                               {fmtNum(t.entry)}
-                              <div className="detail-subvalue">{formatTime12h(t.trade_time)}</div>
+                              <div className="detail-subvalue">
+                                {formatTime12h(t.trade_time)}
+                                {t.trade_time_unverified && <span className="time-unverified-badge" title="The entry or exit price logged for this trade wasn't seen trading during its own logged minute - double-check the times/prices you entered.">Unverified</span>}
+                              </div>
                             </div>
                           </div>
                           <div>
@@ -469,9 +567,18 @@ export default function TradeLogTable({
                               {closed ? (t.r_multiple >= 0 ? '+' : '') + t.r_multiple.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R' : '—'}
                             </div>
                           </div>
-                          {/* No data source until Phase 2 captures excursions. */}
-                          <div><label>MFE</label><div>—</div></div>
-                          <div><label>MAE</label><div>—</div></div>
+                          <div>
+                            <div className="field-label-row"><label>MFE</label><FieldTooltip text={MFE_HINT} /></div>
+                            <div>{excursionCell(t, timezoneOffset, formatExcursionPoints(t.mfe_points))}</div>
+                          </div>
+                          <div>
+                            <div className="field-label-row"><label>MAE</label><FieldTooltip text={MAE_HINT} /></div>
+                            <div>{excursionCell(t, timezoneOffset, formatExcursionPoints(t.mae_points))}</div>
+                          </div>
+                          <div>
+                            <label>Time in drawdown</label>
+                            <div>{excursionCell(t, timezoneOffset, t.market_data_status === 'complete' ? formatDuration(Math.round(t.drawdown_seconds / 60)) : null)}</div>
+                          </div>
                         </div>
 
                         {t.discipline_tags?.length > 0 && (
@@ -501,15 +608,19 @@ export default function TradeLogTable({
 
                         {shots.length > 0 && (
                           <div className="screenshot-grid" style={{ marginTop: '20px' }}>
-                            {shots.map((url, i) => (
-                              <img
-                                key={url}
-                                src={url}
-                                alt={`Trade screenshot ${i + 1}`}
-                                className="thumb"
-                                style={{ width: '70px', height: '70px' }}
-                                onClick={(e) => { e.stopPropagation(); setPreview({ shots, index: i }) }}
-                              />
+                            {shots.map((path, i) => (
+                              thumbUrls[i] ? (
+                                <img
+                                  key={path}
+                                  src={thumbUrls[i]}
+                                  alt={`Trade screenshot ${i + 1}`}
+                                  className="thumb"
+                                  style={{ width: '70px', height: '70px' }}
+                                  onClick={(e) => { e.stopPropagation(); openPreview(t, i) }}
+                                />
+                              ) : (
+                                <div key={path} className="skel skel-thumb" style={{ width: '70px', height: '70px' }} />
+                              )
                             ))}
                           </div>
                         )}
@@ -522,6 +633,26 @@ export default function TradeLogTable({
           })}
         </tbody>
       </table>
+
+      {pageSize && visible.length > pageSize && (
+        <div className="table-pagination">
+          <span
+            className={`table-pagination-btn ${safePage === 0 ? 'nav-btn-disabled' : ''}`}
+            onClick={() => safePage > 0 && setPage(safePage - 1)}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={16} />
+          </span>
+          <span className="table-pagination-page">{safePage + 1}</span>
+          <span
+            className={`table-pagination-btn ${safePage >= totalPages - 1 ? 'nav-btn-disabled' : ''}`}
+            onClick={() => safePage < totalPages - 1 && setPage(safePage + 1)}
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
+          </span>
+        </div>
+      )}
 
       {preview && (
         <ScreenshotLightbox

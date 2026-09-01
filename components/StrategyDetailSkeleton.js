@@ -1,6 +1,6 @@
 // Shimmering placeholder for a single strategy's detail page, shown
 // instead of PageLoading while the strategy and its trades are still
-// loading - mimics the eventual header, stat cards, At a glance card and
+// loading - mimics the eventual header, stat cards + equity curve, and
 // trade table.
 export default function StrategyDetailSkeleton() {
   return (
@@ -19,31 +19,32 @@ export default function StrategyDetailSkeleton() {
 
       <div className="section-heading">Performance</div>
       <div className="panel">
-        <div className="stats stats-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className={`stat${i === 2 ? ' stat-gauge' : ''}`} key={i}>
-              <div className="skel skel-line" style={{ width: '60%' }} />
-              {i === 2 ? (
-                <div className="skel skel-circle" style={{ width: '100px', height: '52px', margin: '4px auto 0' }} />
-              ) : (
-                <div className="skel skel-value" />
-              )}
+        <div className="performance-card-subgrid" style={{ marginTop: 0 }}>
+          <div>
+            <div className="stats stats-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div className={`stat${i === 2 ? ' stat-gauge' : ''}`} key={i}>
+                  <div className="skel skel-line" style={{ width: '60%' }} />
+                  {i === 2 ? (
+                    <div className="skel skel-circle" style={{ width: '100px', height: '52px', margin: '4px auto 0' }} />
+                  ) : (
+                    <div className="skel skel-value" />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="performance-duration-chart">
-          <div className="skel skel-line" style={{ width: '120px', height: '12px', marginBottom: '16px' }} />
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div className="skel skel-line" key={i} style={{ marginBottom: '12px' }} />
-          ))}
+          </div>
+          <div>
+            <div className="skel skel-line" style={{ width: '120px', height: '11px', marginBottom: '16px' }} />
+            <div className="skel" style={{ flex: 1, minHeight: '130px' }} />
+          </div>
         </div>
       </div>
 
-      <div className="section-heading">At a glance</div>
+      <div className="section-heading">Edge Insights</div>
       <div className="panel">
-        <div className="skel skel-line" style={{ width: '200px', height: '12px', marginBottom: '16px' }} />
         <div className="skel skel-line" />
-        <div className="skel skel-line" style={{ width: '70%' }} />
+        <div className="skel skel-line" style={{ width: '80%' }} />
       </div>
 
       <div className="section-heading">Trade log</div>

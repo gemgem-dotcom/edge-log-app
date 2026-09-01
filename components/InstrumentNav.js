@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
@@ -106,17 +107,17 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
           globals.css for how it's styled to still read as part of the row
           despite the structural separation. */}
       <div className="instrument-nav-scroll">
-        <a href="/app" className={`instrument-nav-item ${!currentSymbol ? 'instrument-nav-item-active' : ''}`}>
+        <Link href="/app" className={`instrument-nav-item ${!currentSymbol ? 'instrument-nav-item-active' : ''}`}>
           All instruments
-        </a>
+        </Link>
         {instruments.map((inst) => (
-          <a
+          <Link
             key={inst.id}
             href={`/app/${inst.symbol}/dashboard`}
             className={`instrument-nav-item ${inst.symbol === currentSymbol ? 'instrument-nav-item-active' : ''}`}
           >
             {inst.symbol}
-          </a>
+          </Link>
         ))}
       </div>
       <div className="instrument-nav-add-wrap" ref={addRef}>

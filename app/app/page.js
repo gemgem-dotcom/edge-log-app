@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
 import { addOrRestoreInstrument } from '@/lib/instruments'
+import { invalidateStrategies } from '@/lib/referenceDataCache'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 import AppShell from '@/components/AppShell'
@@ -99,6 +100,7 @@ export default function AppHome() {
         setSaving(false)
         return
       }
+      invalidateStrategies(instrument.id)
     }
 
     router.replace(`/app/${symbol}/dashboard`)

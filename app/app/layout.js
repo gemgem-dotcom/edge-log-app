@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { clearReferenceDataCache } from '@/lib/referenceDataCache'
 import { UTC_OFFSETS } from '@/lib/timezone'
 import { backfillOwnTradeSessions } from '@/lib/tradeSessions'
+import { backfillTradeRegimes } from '@/lib/tradeRegimes'
 import PageLoading from '@/components/PageLoading'
 import HolidayNotice from '@/components/HolidayNotice'
 import TimezoneGate from '@/components/TimezoneGate'
@@ -36,11 +38,20 @@ export default function AppLayout({ children }) {
       } else {
         setNeedsTimezone(!hasValidTimezone(session.user))
         setChecked(true)
+        // Fire-and-forget, once per app-shell mount - unlike
+        // backfillOwnTradeSessions below (a one-time catch-up triggered by
+        // setting a timezone), new market_session_stats rows land every
+        // trading day, so this needs to run on a normal cadence rather than
+        // only once ever. Doesn't depend on timezone being set.
+        backfillTradeRegimes()
       }
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace('/login')
+      if (!session) {
+        clearReferenceDataCache()
+        router.replace('/login')
+      }
     })
 
     return () => {

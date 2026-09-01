@@ -1,10 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, use } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, Plus, X } from 'lucide-react'
+import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { hasResult, tradeDurationMinutes, formatDuration } from '@/lib/tradeMath'
+import { invalidateStrategies } from '@/lib/referenceDataCache'
+import { hasResult } from '@/lib/tradeMath'
+import { queryPerformance } from '@/lib/edgeEngine'
+import { totalTradeCount } from '@/lib/insightData'
+import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -13,7 +18,7 @@ import TradeLogTable from '@/components/TradeLogTable'
 import StreakBadge from '@/components/StreakBadge'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import WinRateGauge from '@/components/WinRateGauge'
-import TradeDurationChart from '@/components/TradeDurationChart'
+import EquityCurveChart from '@/components/EquityCurveChart'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
@@ -24,87 +29,63 @@ function hasDollar(t) {
 }
 
 async function computeStrategyStats(allTrades) {
+  // winRate/expectancy/profitFactor come from the Edge Engine (the one
+  // shared implementation - see lib/edgeEngine.js) rather than being
+  // computed here a second time; everything below is either dollar-
+  // denominated (out of the engine's scope, which is R-only) or a plain
+  // count WinRateGauge still needs directly.
+  const perf = queryPerformance({ trades: allTrades, groupBy: null })
   const trades = allTrades.filter(hasResult)
-  const n = trades.length
-  if (n === 0) {
+  if (perf.n === 0) {
     return {
-      n, winRate: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
+      n: perf.n, winRate: null, expectancy: null, expectancyD: null, totalPnl: null, totalD: null,
       hasD: false, profitFactor: null, wins: 0, losses: 0,
     }
   }
 
-const wins = trades.filter((t) => t.r_multiple > 0)
+  const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  // Breakeven trades don't count as a win or a loss, so they're excluded
-  // from the denominator here rather than diluting the rate - wr below
-  // (which feeds expectancy, not the displayed win rate) is unrelated and
-  // deliberately left as wins/n.
-  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
-  const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
-  const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
-  const wr = wins.length / n
-  const expectancy = wr * avgWin + (1 - wr) * avgLoss
 
-const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
-
-const withD = trades.filter(hasDollar)
+  // expectancyD is the average $ P&L per trade with a recorded dollar
+  // value, breakevens included - same fix as lib/edgeEngine.js's
+  // expectancy (see its comment): a win-rate-weighted formula only
+  // matches this once a slice has zero breakevens.
+  const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
-  const winsD = wins.filter(hasDollar)
-  const lossesD = losses.filter(hasDollar)
-  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
-  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
-  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+  const expectancyD = hasD ? totalD / withD.length : null
 
-return { n, winRate, expectancy, expectancyD, totalPnl, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
+  return {
+    n: perf.n, winRate: perf.winRate, expectancy: perf.expectancy, expectancyD, totalPnl, totalD,
+    hasD, profitFactor: perf.profitFactor, wins: wins.length, losses: losses.length,
+  }
 }
 
-// Adaptive-width duration histogram - bucket width scales to the trades'
-// own min/max duration (picked from NICE_STEPS_MIN, the same "round
-// number of minutes/hours" progression a chart-axis tick algorithm would
-// use) so a scalper's few-minute trades land in minute-wide buckets and a
-// swing trader's multi-hour trades land in hour-wide ones, rather than
-// one fixed scale being too coarse for one trader and too fine for the
-// other. Every trade with a recorded entry+exit time counts, regardless
-// of hasResult - duration is about time, not outcome, the same reasoning
-// the old computeAvgDuration used allTrades for.
-const NICE_STEPS_MIN = [1, 2, 5, 10, 15, 30, 60, 120, 240, 360, 480, 720, 1440, 2880]
-const TARGET_MAX_BUCKETS = 6
+// Cumulative $ P&L by day, ordered by trade_date - the same grouping
+// OverviewDashboard.js defaults its own equity curve to, minus that
+// page's day/week/month selector (not asked for here). Only trades with
+// a recorded $ amount contribute, matching EquityCurveChart's existing
+// dollar-only contract elsewhere in the app - an R-only strategy renders
+// the chart's own "not enough closed trades" empty state.
+function buildEquityCurve(trades) {
+  const withD = trades
+    .filter(hasResult)
+    .filter(hasDollar)
+    .slice()
+    .sort((a, b) => a.trade_date.localeCompare(b.trade_date) || (a.trade_time || '').localeCompare(b.trade_time || ''))
 
-function computeDurationBuckets(allTrades) {
-  const withDuration = allTrades
-    .map((t) => ({ t, duration: tradeDurationMinutes(t) }))
-    .filter((x) => x.duration !== null)
-  if (withDuration.length === 0) return []
-
-  const durations = withDuration.map((x) => x.duration)
-  const min = Math.min(...durations)
-  const max = Math.max(...durations)
-
-  const step = min === max
-    ? Math.max(1, min)
-    : (NICE_STEPS_MIN.find((s) => Math.ceil((max - min) / s) <= TARGET_MAX_BUCKETS) || NICE_STEPS_MIN[NICE_STEPS_MIN.length - 1])
-
-  const start = Math.floor(min / step) * step
-  const numBuckets = Math.max(1, Math.ceil((max - start + 1) / step))
-  const buckets = Array.from({ length: numBuckets }, (_, i) => {
-    const from = start + i * step
-    const to = from + step
-    return { from, to, label: `${formatDuration(from)}–${formatDuration(to)}`, wins: 0, losses: 0, neutral: 0 }
-  })
-
-  for (const { t, duration } of withDuration) {
-    const idx = Math.min(numBuckets - 1, Math.max(0, Math.floor((duration - start) / step)))
-    const bucket = buckets[idx]
-    if (!hasResult(t) || t.r_multiple === 0) bucket.neutral += 1
-    else if (t.r_multiple > 0) bucket.wins += 1
-    else bucket.losses += 1
+  const byDate = new Map()
+  for (const t of withD) {
+    byDate.set(t.trade_date, (byDate.get(t.trade_date) || 0) + t.pnl)
   }
 
-  return buckets
+  const dates = [...byDate.keys()].sort()
+  let running = 0
+  return dates.map((key) => {
+    running += byDate.get(key)
+    return { key, cumulative: running }
+  })
 }
 
 function fmtR(val) {
@@ -125,8 +106,9 @@ function colorClass(val) {
   return val > 0 ? 'pos' : val < 0 ? 'neg' : 'neu'
 }
 export default function StrategyDetailPage({ params }) {
-  const symbol = params.instrument
-  const strategyId = params.strategyId
+  const resolvedParams = use(params)
+  const symbol = resolvedParams.instrument
+  const strategyId = resolvedParams.strategyId
   const router = useRouter()
 
 const [loading, setLoading] = useState(true)
@@ -145,17 +127,6 @@ const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
-  // Set when a Trade duration bar is clicked - narrows the trade log below
-  // to just that bucket's trades and scrolls it into view, so the chart
-  // doubles as a filter rather than just a static breakdown.
-  const [durationFilter, setDurationFilter] = useState(null)
-  const tradeLogRef = useRef(null)
-
-  function handleSelectDuration(bucket) {
-    setDurationFilter({ from: bucket.from, to: bucket.to, label: bucket.label })
-    tradeLogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
 useEffect(() => {
   loadData()
 }, [strategyId])
@@ -163,6 +134,18 @@ useEffect(() => {
 async function loadData() {
   setLoading(true)
   setError(null)
+  // Menu/modal open-state and the duration-bucket filter are scoped to
+  // whichever strategy is on screen - left open across a soft nav to a
+  // different strategy (e.g. clicking straight from one strategy card to
+  // another), a still-open delete-confirmation modal would confirm against
+  // the *new* strategyId (read fresh from params on every render), not the
+  // one the trader actually meant to delete. Previously this page always
+  // remounted fresh on navigation, so these defaults doubled as the reset;
+  // a soft nav no longer remounts it.
+  setMenuOpen(false)
+  setRenaming(false)
+  setShowDeleteModal(false)
+  setFormError(null)
   try {
     // PGRST116 is PostgREST's "0 rows" error for .single() - expected when
     // this strategy was deleted (e.g. a stale sidebar link, or a bookmark/
@@ -205,6 +188,7 @@ async function handleRename(e) {
   setSavingRename(true)
   const { error } = await supabase.from('strategies').update({ name: renameValue.trim() }).eq('id', strategyId)
   if (!error) {
+    invalidateStrategies(strategy.instrument_id)
     setStrategy((prev) => ({ ...prev, name: renameValue.trim() }))
     setRenaming(false)
     toast.success('Strategy renamed.')
@@ -225,6 +209,7 @@ async function handleDeleteStrategy() {
     setShowDeleteModal(false)
     return
   }
+  invalidateStrategies(strategy.instrument_id)
   toast.success('Strategy deleted.')
   router.push(`/app/${symbol}/dashboard`)
 }
@@ -234,16 +219,7 @@ if (error) return <div className="page-container"><PageError message={`Couldn't 
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
 const streak = computeStreak(trades)
-  const durationBuckets = computeDurationBuckets(trades)
-  // Same [from, to) partition computeDurationBuckets itself assigns trades
-  // to, so a bucket's trade count and what shows up here when it's
-  // selected always agree.
-  const visibleTrades = durationFilter
-    ? trades.filter((t) => {
-        const d = tradeDurationMinutes(t)
-        return d !== null && d >= durationFilter.from && d < durationFilter.to
-      })
-    : trades
+const equityPoints = buildEquityCurve(trades)
 
 return (
   <div className="page-container">
@@ -263,7 +239,7 @@ Delete strategy
   </div>
 )}
 </div>
-<a href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+<Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
   </div>
 
 {renaming && (
@@ -284,76 +260,77 @@ Delete strategy
   <MarketStatusPill />
   <StreakBadge
     streak={streak}
-    winLabel={(n) => `${n} win${n === 1 ? '' : 's'} in a row on this strategy`}
+    winLabel={(n) => `${n}-trade win streak`}
     lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
   />
 </div>
 
 <div className="section-heading">Performance</div>
 <div className="panel">
-  <div className="stats stats-5">
-    <div className="stat">
-      <div className="stat-label">Total P&amp;L</div>
-      <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
-        {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+  <div className="performance-card-subgrid" style={{ marginTop: 0 }}>
+    {/* Wrapped in a plain div, rather than putting stats/stats-2 directly
+        under .performance-card-subgrid - that selector's own
+        ">div{display:flex; flex-direction:column}" rule (meant for
+        stacking a chart's title/graph/labels in the other column) has
+        higher specificity than .stats's display:grid and was silently
+        collapsing these 4 cards into a single column instead of 2x2. */}
+    <div>
+      <div className="stats stats-2">
+        <div className="stat">
+          <div className="stat-label">Total P&amp;L</div>
+          <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
+            {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+          </div>
+          {stats.hasD && (
+            <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+          )}
+        </div>
+        <div className="stat">
+          <div className="stat-label">Expectancy</div>
+          <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
+            {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+          </div>
+          {stats.expectancyD !== null && (
+            <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+          )}
+        </div>
+        <div className="stat stat-gauge">
+          <div className="stat-label">Win rate</div>
+          <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
+        </div>
+        <div className="stat">
+          <div className="stat-label">Profit factor</div>
+          <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+        </div>
       </div>
-      {stats.hasD && (
-        <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+    </div>
+
+    <div className="strategy-equity-col">
+      <div className="stat-label dashboard-card-title">Equity curve</div>
+      <EquityCurveChart points={equityPoints} />
+      {equityPoints.length > 0 && (
+        <div className="equity-chart-labels">
+          <span>{equityPoints[0].key}</span>
+          <span>{equityPoints[equityPoints.length - 1].key}</span>
+        </div>
       )}
     </div>
-    <div className="stat">
-      <div className="stat-label">Expectancy</div>
-      <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
-        {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
-      </div>
-      {stats.expectancyD !== null && (
-        <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
-      )}
-    </div>
-    <div className="stat stat-gauge">
-      <div className="stat-label">Win rate</div>
-      <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
-    </div>
-    <div className="stat">
-      <div className="stat-label">Profit factor</div>
-      <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
-    </div>
-    <div className="stat">
-      <div className="stat-label">Total trades</div>
-      <div className="stat-value neu">{stats.n.toLocaleString('en-US')}</div>
-    </div>
-  </div>
-  <div className="performance-duration-chart">
-    <div className="stat-label dashboard-card-title">Trade duration</div>
-    <TradeDurationChart buckets={durationBuckets} onSelect={handleSelectDuration} />
   </div>
 </div>
 
-<div className="section-heading">At a glance</div>
+<div className="section-heading">Edge Insights</div>
 <div className="panel">
-  <div className="stat-label dashboard-card-title">Trades around today&apos;s events?</div>
-  {/* Mock only - a real version should check this strategy's name/tags
-      against today's economic-calendar events instead of a fixed line. */}
-  <p className="strategy-context-text">This strategy often trades around scheduled Fed events — one lands today at 10:00.</p>
+  <EdgeInsightsPanel scope={`strategy:${strategyId}`} tradeCount={totalTradeCount(trades)} />
 </div>
 
-<div className="section-heading" ref={tradeLogRef}>Trade log — {strategy.name}</div>
+<div className="section-heading">Trade log — {strategy.name}</div>
 <div className="panel">
-  {durationFilter && (
-    <div className="active-filters">
-      <span className="filter-chip">
-        Duration: {durationFilter.label}
-        <button type="button" onClick={() => setDurationFilter(null)} aria-label="Remove duration filter">
-          <X size={12} />
-        </button>
-      </span>
-    </div>
-  )}
   <TradeLogTable
-    trades={visibleTrades}
+    trades={trades}
     showStrategyColumn={false}
     showFilters={true}
     symbol={symbol}
+    pageSize={15}
     emptyState={
       <EmptyState
         title="No trades yet"

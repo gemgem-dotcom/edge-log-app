@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, ChevronDown } from 'lucide-react'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple, ADHERENCE_EPSILON } from '../lib/tradeMath'
 import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
+import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
+import { invalidateStrategies } from '../lib/referenceDataCache'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
 import ErrorBanner from './ErrorBanner'
@@ -20,7 +22,12 @@ const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool
 // than an array since both the trigger (looking up the current value's
 // label) and the menu (listing every choice) need it, and an object gives
 // the trigger a direct lookup instead of a .find() over an array.
-const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom...' }
+const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', breakeven: 'Breakeven', custom: 'Custom...' }
+
+// A "breakeven" exit is meant to be at (or essentially at) entry - this
+// caps how far the trader can nudge the auto-filled price before it's
+// really just a small win/loss that belongs under Custom instead.
+const BREAKEVEN_TOLERANCE_POINTS = 5
 
 // Outcome itself is never stored - only the exit_price/additional_exits it
 // produces are - so re-opening a saved trade for edit has to infer which
@@ -29,7 +36,8 @@ const OUTCOME_LABELS = { target: 'Hit Target', stop: 'Hit Stop', custom: 'Custom
 // single exit whose price has reached or passed the planned target/stop
 // level (within lib/tradeMath.js's ADHERENCE_EPSILON tolerance) reads as
 // that outcome, so an exit that ran past the plan still counts as having
-// hit it. Anything short of either level falls back to Custom.
+// hit it. An exit at the entry price (same tolerance) reads as Breakeven.
+// Anything short of any of those falls back to Custom.
 function inferOutcome(initial) {
   if (isBlank(initial.execution.exit_price)) return ''
   if ((initial.additionalExits || []).length > 0) return 'custom'
@@ -41,6 +49,7 @@ function inferOutcome(initial) {
   const dir = direction === 'long' ? 1 : -1
   if (targetPrice !== null && dir * (exitPrice - targetPrice) >= -ADHERENCE_EPSILON) return 'target'
   if (stopPrice !== null && dir * (exitPrice - stopPrice) <= ADHERENCE_EPSILON) return 'stop'
+  if (Math.abs(exitPrice - entry) <= ADHERENCE_EPSILON) return 'breakeven'
   return 'custom'
 }
 
@@ -160,11 +169,37 @@ export default function TradeForm({
   const [showOutcomeMenu, setShowOutcomeMenu] = useState(false)
 
   const [existingScreenshots, setExistingScreenshots] = useState(initial.existingScreenshots)
+  // existingScreenshots itself stays storage paths (that's what gets
+  // submitted back on save). The preview grid only ever shows a small
+  // tile, so it resolves thumbnails (lib/screenshots.js's
+  // getThumbnailUrls), re-derived whenever the path list changes (initial
+  // load, or a screenshot removed) since the bucket is private and a
+  // stored path was never a directly-usable URL. The full-size signed URL
+  // each one needs for the lightbox is resolved lazily instead, only once
+  // the lightbox is actually opened (see openExistingLightbox below) -
+  // re-fetched fresh on every open rather than cached, since the list is
+  // always small enough that the cost is trivial and it avoids the list
+  // having changed (a screenshot removed) since the last time it was
+  // resolved.
+  const [resolvedExistingThumbs, setResolvedExistingThumbs] = useState([])
+  const [resolvedExistingUrls, setResolvedExistingUrls] = useState([])
+  useEffect(() => {
+    let cancelled = false
+    getThumbnailUrls(existingScreenshots).then((urls) => {
+      if (!cancelled) setResolvedExistingThumbs(urls)
+    })
+    return () => { cancelled = true }
+  }, [existingScreenshots])
+
+  function openExistingLightbox(index) {
+    setLightboxIndex(index)
+    getScreenshotUrls(existingScreenshots).then(setResolvedExistingUrls)
+  }
   const [screenshots, setScreenshots] = useState([])
   // Index into the combined existingScreenshots + screenshots list below
   // (in that same order) rather than a URL, so ScreenshotLightbox - shared
-  // with the read-only Trade Detail page and Trade Log's expand row - can
-  // step between them with its arrows/keyboard nav the same way there.
+  // with Trade Log's expand row - can step between them with its
+  // arrows/keyboard nav the same way there.
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const [tags, setTags] = useState(initial.tags || [])
@@ -203,11 +238,11 @@ export default function TradeForm({
     return calcRMultiple(direction, entryNum, stopPriceForR, parseFloat(exitPriceStr))
   }
 
-  // Anything other than an explicit Hit Target/Hit Stop counts as Custom -
-  // including the dropdown's unset starting value (see outcome's own
-  // comment above), so a trader who hasn't touched Outcome yet still gets
-  // Custom's fully-manual behavior rather than a third, no-op state.
-  const isCustomOutcome = outcome !== 'target' && outcome !== 'stop'
+  // Anything other than an explicit Hit Target/Hit Stop/Breakeven counts as
+  // Custom - including the dropdown's unset starting value (see outcome's
+  // own comment above), so a trader who hasn't touched Outcome yet still
+  // gets Custom's fully-manual behavior rather than a fourth, no-op state.
+  const isCustomOutcome = outcome !== 'target' && outcome !== 'stop' && outcome !== 'breakeven'
 
   // The exit row(s) and the Total contracts/$ P&L/Realized R summary row
   // both stay hidden until the trader has actually picked
@@ -240,15 +275,22 @@ export default function TradeForm({
   ), 0)
 
   // Realized R (blended): a contracts-weighted average of every leg's own
-  // R-multiple, reduces to just that one exit's R-multiple for a single
-  // exit. Never derived from $ Profit or Loss (see handlePnlChange) - purely
+  // R-multiple - genuinely needs every leg's Contracts filled in to weight
+  // the average, so only used once there's more than one exit in effect.
+  // A single exit's R doesn't depend on contracts at all (it's a plain
+  // reward/risk ratio), so that case goes through legRMultiple instead -
+  // Contracts isn't a required field, and a trader who hasn't gotten to it
+  // yet should still see their R the moment they type an exit price. Never
+  // derived from $ Profit or Loss (see handlePnlChange) either way - purely
   // a price/contracts calculation, so a manual P&L edit can't move it.
-  const realizedR = calcBlendedRMultiple(
-    direction,
-    entryNum,
-    stopPriceForR,
-    exitLegRows.map((row) => ({ exit_price: parseFloat(row.exit_price), contracts: parseFloat(row.contracts) })),
-  )
+  const realizedR = multipleExits
+    ? calcBlendedRMultiple(
+        direction,
+        entryNum,
+        stopPriceForR,
+        exitLegRows.map((row) => ({ exit_price: parseFloat(row.exit_price), contracts: parseFloat(row.contracts) })),
+      )
+    : legRMultiple(execution.exit_price)
 
   // The new-trade page renders before its strategies have loaded, so the
   // first one is selected once they arrive. Never on the edit page, where an
@@ -394,11 +436,12 @@ export default function TradeForm({
   }
 
   // Pre-fills the primary exit's price from Trade Setup's own planned
-  // target/stop price - a starting value, not a locked substitution, so the
-  // field stays exactly as editable afterward as a fully manual entry would
-  // be (an actual fill can slip from the theoretical price on slippage or a
-  // partial fill). Choosing Custom applies nothing at all, leaving whatever
-  // is already there.
+  // target/stop price (or, for Breakeven, the entry price itself) - a
+  // starting value, not a locked substitution, so the field stays exactly
+  // as editable afterward as a fully manual entry would be (an actual fill
+  // can slip from the theoretical price on slippage or a partial fill).
+  // Choosing Custom applies nothing at all, leaving whatever is already
+  // there.
   function handleOutcomeChange(value) {
     setDirty(true)
     setOutcome(value)
@@ -407,7 +450,9 @@ export default function TradeForm({
     const entry = parseFloat(setup.entry)
     const price = value === 'target'
       ? calcTargetPrice(direction, entry, parseFloat(setup.target_distance))
-      : calcStopPrice(direction, entry, parseFloat(setup.stop_distance))
+      : value === 'stop'
+      ? calcStopPrice(direction, entry, parseFloat(setup.stop_distance))
+      : (Number.isFinite(entry) ? entry : null)
     updateExecution('exit_price', price === null ? '' : String(price))
   }
 
@@ -445,6 +490,7 @@ export default function TradeForm({
       setFormError(error.message)
       return
     }
+    invalidateStrategies(instrumentId)
     setNewStrategyName('')
     setAddingStrategy(false)
     await onStrategyAdded?.()
@@ -578,13 +624,24 @@ export default function TradeForm({
   async function handleSubmit(e) {
     e.preventDefault()
 
+    const execErrors = validateExecution(execution)
+    // Only checked once the exit price has already passed the basic
+    // present/numeric check above - a range error would otherwise
+    // overwrite (and hide) that more fundamental one.
+    if (!execErrors.exit_price && outcome === 'breakeven') {
+      const entry = parseFloat(setup.entry)
+      const exitPrice = parseFloat(execution.exit_price)
+      if (Number.isFinite(entry) && Math.abs(exitPrice - entry) > BREAKEVEN_TOLERANCE_POINTS) {
+        execErrors.exit_price = `Breakeven price must be within ${BREAKEVEN_TOLERANCE_POINTS} points of entry.`
+      }
+    }
     const foundErrors = {
       ...validateSetup({ ...setup, direction, strategyId }),
       // Outcome gates whether the exit row(s) even render (see
       // outcomeChosen) - validateExecution's own exit_price check would
       // otherwise fire against a hidden field with no visible error.
       ...(outcomeChosen ? {} : { outcome: 'Choose an outcome.' }),
-      ...validateExecution(execution),
+      ...execErrors,
       ...validateDiscipline({ reviewedNoIssues, disciplineTags }),
     }
     if (Object.keys(foundErrors).length > 0) {
@@ -619,14 +676,14 @@ export default function TradeForm({
       exit_price: toDecimalString(exitPrice),
       exit_points: toDecimalString(calcPointsFromExitPrice(direction, entry, exitPrice)),
       exit_time: execution.exit_time || null,
-      // Blended across every exit leg (see realizedR above), not just the
-      // primary one, so a multi-exit trade's stored R matches what every
+      // Blended across every exit leg (see realizedR above) once there's
+      // more than one, so a multi-exit trade's stored R matches what every
       // trade log/stat that reads r_multiple actually shows the trader.
-      // realizedR needs contracts on every leg to weight the average, but
-      // Contracts isn't a required field - falls back to the plain
-      // primary-exit R-multiple so a trade with no contracts entered still
-      // gets an R rather than null (exit price is mandatory, so every trade
-      // must have one).
+      // Contracts isn't a required field, so a multi-exit trade with every
+      // leg's Contracts left blank can still leave realizedR null (blending
+      // needs weights) even though exit price is mandatory - falls back to
+      // the plain primary-exit R-multiple rather than storing null in that
+      // case.
       r_multiple: realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
@@ -675,8 +732,15 @@ export default function TradeForm({
 
   // Same order as the two .map() calls in the screenshot grid below, so a
   // thumbnail's lightboxIndex (set on click) always points at the matching
-  // image here.
-  const allScreenshotUrls = [...existingScreenshots, ...screenshots.map((s) => s.previewUrl)]
+  // image here. Existing screenshots use their resolved full-size signed
+  // URL once openExistingLightbox has fetched it, falling back to the
+  // already-loaded thumbnail for the brief gap before that resolves rather
+  // than a blank image; newly picked ones use their local blob preview
+  // URL, which needs no resolution either way.
+  const allScreenshotUrls = [
+    ...existingScreenshots.map((_, i) => resolvedExistingUrls[i] || resolvedExistingThumbs[i]),
+    ...screenshots.map((s) => s.previewUrl),
+  ]
 
   // The same three fields (Exit time / Exit price / Contracts) whether
   // this is the trade's only exit or one of several - idx 0 is always the
@@ -693,7 +757,7 @@ export default function TradeForm({
     return (
       <>
         <div className="field wide">
-          <label>Exit time (to the second)</label>
+          <label>Exit time</label>
           <TimePicker value={row.exit_time} onChange={(v) => update('exit_time', v)} />
         </div>
         <div className="field wide">
@@ -707,9 +771,10 @@ export default function TradeForm({
         <div className="field wide">
           <label>Contracts</label>
           <input
-            type="number" step="1"
+            type="number" step="1" min="1"
             value={row.contracts} onChange={(e) => update('contracts', e.target.value)}
           />
+          {isPrimary && errors.contracts && <span className="field-error">{errors.contracts}</span>}
         </div>
       </>
     )
@@ -789,7 +854,7 @@ export default function TradeForm({
           </div>
 
           <div className="field wide">
-            <label>Entry time (to the second)</label>
+            <label>Entry time</label>
             <TimePicker
               value={setup.trade_time} onChange={(v) => updateSetup('trade_time', v)}
             />
@@ -1068,14 +1133,18 @@ export default function TradeForm({
             </div>
             {(existingScreenshots.length > 0 || screenshots.length > 0) && (
               <div className="screenshot-grid">
-                {existingScreenshots.map((url, i) => (
-                  <div key={url} className="screenshot-preview-wrap">
-                    <img
-                      src={url}
-                      alt={`Screenshot ${i + 1}`}
-                      className="screenshot-preview-thumb"
-                      onClick={() => setLightboxIndex(i)}
-                    />
+                {existingScreenshots.map((path, i) => (
+                  <div key={path} className="screenshot-preview-wrap">
+                    {resolvedExistingThumbs[i] ? (
+                      <img
+                        src={resolvedExistingThumbs[i]}
+                        alt={`Screenshot ${i + 1}`}
+                        className="screenshot-preview-thumb"
+                        onClick={() => openExistingLightbox(i)}
+                      />
+                    ) : (
+                      <div className="skel skel-thumb" style={{ width: '64px', height: '64px' }} />
+                    )}
                     <button
                       type="button"
                       className="screenshot-remove-btn"

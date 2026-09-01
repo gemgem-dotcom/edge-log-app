@@ -158,7 +158,7 @@ required
  </div>
 
  <div className="auth-switch">
-    Don't have an account? <a href="/signup">Sign up</a>
+    Don&apos;t have an account? <a href="/signup">Sign up</a>
     </div>
 </>
   ) : (
@@ -183,10 +183,6 @@ required
 </div>
   <div className="auth-page-footer">
     <span>© 2026 EdgeLog</span>
-    <span aria-hidden="true">·</span>
-    <a href="/privacy?from=login">Privacy Policy</a>
-    <span aria-hidden="true">·</span>
-    <a href="/terms?from=login">Terms of Service</a>
   </div>
   </div>
 )

@@ -8,13 +8,25 @@
     "build": "next build",
     "start": "next start",
     "css:toc": "node scripts/update-css-toc.js",
-    "css:toc:check": "node scripts/update-css-toc.js --check"
+    "css:toc:check": "node scripts/update-css-toc.js --check",
+    "test": "vitest run",
+    "lint": "eslint ."
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "^18",
-    "react-dom": "^18",
+    "@sentry/nextjs": "^10.73.0",
+    "@sentry/node": "^10.73.0",
+    "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.45.0",
-    "lucide-react": "^0.383.0"
+    "lucide-react": "^1.37.0",
+    "next": "^16.3.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4",
+    "vitest": "^4.1.11"
   }
 }

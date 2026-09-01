@@ -1,13 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
+import { queryPerformance } from '@/lib/edgeEngine'
+import { totalTradeCount } from '@/lib/insightData'
+import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
+import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
 import { upcomingEconEvents } from '@/lib/marketContextMock'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
@@ -24,6 +29,7 @@ import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
+const NQ_DATA_SYMBOL = 'NQ'
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
 const EQUITY_GROUPS = [
@@ -33,40 +39,33 @@ const EQUITY_GROUPS = [
 ]
 
 function computeStats(allTrades) {
-  // Open trades (no exit price, so no R yet) can't be scored — leaving them
-  // in would count them as breakeven and drag every average down.
+  // winRate/expectancy/profitFactor come from the Edge Engine (the one
+  // shared implementation - see lib/edgeEngine.js) rather than being
+  // computed here a third time; everything below is either dollar-
+  // denominated (out of the engine's scope, which is R-only) or a plain
+  // count WinRateGauge/tradingDays still needs directly. Open trades (no
+  // exit price, so no R yet) can't be scored either way — the engine's
+  // own hasResult filtering already excludes them the same way this
+  // used to.
+  const perf = queryPerformance({ trades: allTrades, groupBy: null })
   const trades = allTrades.filter(hasResult)
-  const n = trades.length
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
-  if (n === 0) return { n, tradingDays, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null, wins: 0, losses: 0 }
+  if (perf.n === 0) return { n: perf.n, tradingDays, winRate: null, expectancy: null, totalPnl: null, profitFactor: null, totalD: null, hasD: false, expectancyD: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  // Breakeven trades don't count as a win or a loss, so they're excluded
-  // from the denominator here rather than diluting the rate - wr below
-  // (which feeds expectancy, not the displayed win rate) is unrelated and
-  // deliberately left as wins/n.
-  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
   const totalPnl = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgWin = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
-  const avgLoss = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
-  const wr = wins.length / n
-  const expectancy = wr * avgWin + (1 - wr) * avgLoss
 
-const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
-
+// expectancyD is the average $ P&L per trade with a recorded dollar value,
+// breakevens included - same fix as lib/edgeEngine.js's expectancy (see
+// its comment): a win-rate-weighted formula only matches this once a slice
+// has zero breakevens.
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
-  const winsD = wins.filter(hasDollar)
-  const lossesD = losses.filter(hasDollar)
-  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
-  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
-  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+  const expectancyD = hasD ? totalD / withD.length : null
 
-return { n, tradingDays, winRate, expectancy, totalPnl, profitFactor, totalD, hasD, expectancyD, wins: wins.length, losses: losses.length }
+return { n: perf.n, tradingDays, winRate: perf.winRate, expectancy: perf.expectancy, totalPnl, profitFactor: perf.profitFactor, totalD, hasD, expectancyD, wins: wins.length, losses: losses.length }
 }
 
 function hasDollar(t) {
@@ -135,39 +134,30 @@ function buildEquityCurve(trades, group) {
 }
 
 function computeMonthStats(allTrades) {
+  // Same migration as computeStats above (winRate/expectancy/profitFactor
+  // via the Edge Engine) - kept as a separate function rather than
+  // reusing computeStats since the field names differ (expectancyR/totalR
+  // here vs. expectancy/totalPnl there) and callers read both shapes.
+  const perf = queryPerformance({ trades: allTrades, groupBy: null })
   const trades = allTrades.filter(hasResult)
-  const n = trades.length
   const tradingDays = new Set(allTrades.filter((t) => t.trade_date).map((t) => t.trade_date)).size
-  if (n === 0) return { n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0 }
+  if (perf.n === 0) return { n: perf.n, tradingDays, winRate: null, expectancyR: null, expectancyD: null, totalR: null, totalD: null, hasD: false, profitFactor: null, wins: 0, losses: 0 }
 
 const wins = trades.filter((t) => t.r_multiple > 0)
   const losses = trades.filter((t) => t.r_multiple < 0)
-  const wr = wins.length / n
-  // Breakeven trades don't count as a win or a loss, so they're excluded
-  // from the denominator here rather than diluting the rate - wr above
-  // (which feeds expectancy, not the displayed win rate) is unrelated and
-  // deliberately left as wins/n.
-  const winRate = (wins.length + losses.length) > 0 ? (wins.length / (wins.length + losses.length)) * 100 : null
 
 const totalR = trades.reduce((s, t) => s + t.r_multiple, 0)
-  const avgWinR = wins.length ? wins.reduce((s, t) => s + t.r_multiple, 0) / wins.length : 0
-  const avgLossR = losses.length ? losses.reduce((s, t) => s + t.r_multiple, 0) / losses.length : 0
-  const expectancyR = wr * avgWinR + (1 - wr) * avgLossR
 
-  const grossWin = wins.reduce((s, t) => s + t.r_multiple, 0)
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.r_multiple, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : null)
-
+// expectancyD is the average $ P&L per trade with a recorded dollar value,
+// breakevens included - same fix as lib/edgeEngine.js's expectancy (see
+// its comment): a win-rate-weighted formula only matches this once a slice
+// has zero breakevens.
 const withD = trades.filter(hasDollar)
   const hasD = withD.length > 0
   const totalD = hasD ? withD.reduce((s, t) => s + t.pnl, 0) : null
-  const winsD = wins.filter(hasDollar)
-  const lossesD = losses.filter(hasDollar)
-  const avgWinD = winsD.length ? winsD.reduce((s, t) => s + t.pnl, 0) / winsD.length : 0
-  const avgLossD = lossesD.length ? lossesD.reduce((s, t) => s + t.pnl, 0) / lossesD.length : 0
-  const expectancyD = hasD ? wr * avgWinD + (1 - wr) * avgLossD : null
+  const expectancyD = hasD ? totalD / withD.length : null
 
-return { n, tradingDays, winRate, expectancyR, expectancyD, totalR, totalD, hasD, profitFactor, wins: wins.length, losses: losses.length }
+return { n: perf.n, tradingDays, winRate: perf.winRate, expectancyR: perf.expectancy, expectancyD, totalR, totalD, hasD, profitFactor: perf.profitFactor, wins: wins.length, losses: losses.length }
 }
 
 function fmtR(val) {
@@ -259,7 +249,7 @@ const weeks = []
 
 export default function DashboardPage({ params }) {
   usePageTitle('Overview')
-  const symbol = params.instrument
+  const symbol = use(params).instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -272,6 +262,7 @@ export default function DashboardPage({ params }) {
   const [perfStrategy, setPerfStrategy] = useState('all')
   const [equityGroup, setEquityGroup] = useState('day')
   const [selectedDate, setSelectedDate] = useState(null)
+  const [regime, setRegime] = useState(null)
 
 useEffect(() => {
   loadData()
@@ -280,6 +271,18 @@ useEffect(() => {
 async function loadData() {
   setLoading(true)
   setError(null)
+  // Strategy ids and regime data are scoped to one instrument - carrying a
+  // filter or regime reading over from whichever instrument was viewed
+  // before would silently misfilter (a strategy id that matches nothing in
+  // the new instrument) or mislabel (an NQ-family regime shown against a
+  // non-NQ instrument) rather than error, so these need to reset on every
+  // instrument switch, not just on first load. Previously this page always
+  // remounted fresh on navigation, so the state's default values doubled as
+  // this reset; a soft nav no longer remounts it.
+  setPerfStrategy('all')
+  setCalStrategy('all')
+  setSelectedDate(null)
+  setRegime(null)
   try {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: instrument } = await supabase
@@ -304,6 +307,13 @@ async function loadData() {
     setStrategies(stratData || [])
     setTradesByStrategy(grouped)
     setAllTrades(tradeData || [])
+
+    // NQ-family only, matching lib/tradeRegimes.js's own scope - every
+    // other instrument's trades never carry volatility_regime/volume_regime,
+    // so there's nothing this clause could match and no point in the query.
+    if (catalogEntryFor(symbol)?.data_symbol === NQ_DATA_SYMBOL) {
+      setRegime(await latestClosedSessionRegime(supabase))
+    }
   } catch (err) {
     setError(err.message || "Couldn't load your dashboard — something went wrong.")
   } finally {
@@ -383,6 +393,11 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
     },
   ]
   const streak = computeStreak(allTrades)
+  // null (no clause rendered) until there's a confident, matching
+  // strategy x regime signal for the most recently closed session - see
+  // lib/todaysBrief.js. The existing sentence just above stays exactly as
+  // it was either way.
+  const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime })
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const upcomingEvents = upcomingEconEvents(now)
@@ -418,7 +433,7 @@ return (
   <div className="strategy-header-row">
     <h1 className="page-title">{displayName} Futures</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
-    <a href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</a>
+    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
   </div>
   <p className="page-subtitle page-subtitle-tight">Your overview for {displayName} futures.</p>
   <div className="header-pills-row">
@@ -432,7 +447,7 @@ return (
 
   {unclassifiedCount > 0 && (
     <p className="unclassified-note">
-  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unassigned</span> — not counted below until reassigned. <a href={`/app/${symbol}/log?strategy=unclassified`}>View in Trade Log</a>
+  {unclassifiedCount} trade{unclassifiedCount > 1 ? 's' : ''} <span className="unclassified-tag">Unassigned</span> — not counted below until reassigned. <Link href={`/app/${symbol}/log?strategy=unclassified`}>View in Trade Log</Link>
     </p>
    )}
 
@@ -447,6 +462,67 @@ return (
   </div>
 ) : (
   <>
+<div className="instrument-glance-row">
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+    <p className="brief-card-text">
+      {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
+      {briefClause ? ` ${briefClause}` : ''}
+    </p>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Key levels</div>
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Session stats</div>
+    <div className="key-levels-list">
+      <div className="key-levels-row">
+        <span className="th-with-tooltip">
+          Overnight gap
+          <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
+        </span>
+        <span className="stat-placeholder">Needs Phase 2</span>
+      </div>
+      <div className="key-levels-row">
+        <span className="th-with-tooltip">
+          Range vs. typical
+          <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
+        </span>
+        <span className="stat-placeholder">Needs Phase 2</span>
+      </div>
+      <div className="key-levels-row">
+        <span className="th-with-tooltip">
+          Volume vs. typical
+          <TableHeaderTooltip text="How much volume has traded so far this session, compared to the average volume at this same point across the last 20 sessions." />
+        </span>
+        <span className="stat-placeholder">Needs Phase 2</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="market-context-row">
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Next calendar event</div>
+    {upcomingEvents.length > 0 ? (
+      <div className="key-levels-list">
+        {upcomingEvents.map((e, i) => (
+          <div className="key-levels-row" key={i}>
+            <span>{e.event}</span>
+            <span>{fmtCountdown(e.timestamp - now)}</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="brief-card-text">No events in the next 24 hours.</p>
+    )}
+  </div>
+  <div className="panel">
+    <div className="stat-label dashboard-card-title">Days to rollover</div>
+    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
+  </div>
+</div>
+
 <div className="section-heading">All-Time Performance</div>
   <div className="panel">
   <div className="calendar-toolbar">
@@ -526,65 +602,9 @@ return (
   </div>
   </div>
 
-<div className="section-heading">At a glance</div>
-<div className="instrument-glance-row">
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
-    <p className="brief-card-text">
-      {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
-    </p>
-  </div>
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Key levels</div>
-  </div>
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Session stats</div>
-    <div className="key-levels-list">
-      <div className="key-levels-row">
-        <span className="th-with-tooltip">
-          Overnight gap
-          <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
-        </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
-      </div>
-      <div className="key-levels-row">
-        <span className="th-with-tooltip">
-          Range vs. typical
-          <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
-        </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
-      </div>
-      <div className="key-levels-row">
-        <span className="th-with-tooltip">
-          Volume vs. typical
-          <TableHeaderTooltip text="How much volume has traded so far this session, compared to the average volume at this same point across the last 20 sessions." />
-        </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div className="market-context-row">
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Next calendar event</div>
-    {upcomingEvents.length > 0 ? (
-      <div className="key-levels-list">
-        {upcomingEvents.map((e, i) => (
-          <div className="key-levels-row" key={i}>
-            <span>{e.event}</span>
-            <span>{fmtCountdown(e.timestamp - now)}</span>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <p className="brief-card-text">No events in the next 24 hours.</p>
-    )}
-  </div>
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Days to rollover</div>
-    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
-  </div>
+<div className="section-heading">Edge Insights</div>
+<div className="panel">
+  <EdgeInsightsPanel scope={instrumentId ? `instrument:${instrumentId}` : null} tradeCount={totalTradeCount(allTrades)} />
 </div>
 
 <div className="section-heading">Monthly P&L</div>

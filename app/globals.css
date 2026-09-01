@@ -844,12 +844,12 @@ table{min-width:640px;}
    the bar visibly clears just before it docks solid at the true top. The
    fallback covers the instant the class first applies, before that
    scroll event's write has landed.
-   The heavier blur (was 20px) plus saturate() is what actually reads as
-   "frosted" rather than plain tinted glass - at the lower alpha above,
-   scrolled-under content needs enough diffusion to turn into soft color
-   fog instead of legible (if faint) ghosted shapes, and saturate() gives
-   that fog the slightly vivid, glassy sheen frosted panels have instead
-   of looking washed out.
+   The heavier blur (was 20px, then 32px) plus saturate() is what actually
+   reads as "frosted" rather than plain tinted glass - at the lower alpha
+   above, scrolled-under content needs enough diffusion to turn into soft
+   color fog instead of legible (if faint) ghosted shapes, and saturate()
+   gives that fog the slightly vivid, glassy sheen frosted panels have
+   instead of looking washed out.
    No explicit -webkit-backdrop-filter here - this is the actual bug
    behind the "used to be frosted, now it's just glass" report: writing
    both properties by hand with identical values makes Lightning CSS's
@@ -862,7 +862,7 @@ table{min-width:640px;}
    same pattern .modal-overlay already relies on further up this file. */
 .shell-topbar.topbar-pinned{
   background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.22)); border-color:var(--glass-border);
-  backdrop-filter:blur(32px) saturate(160%);
+  backdrop-filter:blur(64px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* No `gap` here on purpose - flex gap lands between every child,
@@ -1165,7 +1165,7 @@ a.shell-logo{color:inherit; text-decoration:none;}
    -webkit-backdrop-filter, see its comment for why. */
 .account-topbar.topbar-pinned{
   background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.22)); border-color:var(--glass-border);
-  backdrop-filter:blur(32px) saturate(160%);
+  backdrop-filter:blur(64px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* min-height matches .icon-btn's fixed 36px (the tallest element in

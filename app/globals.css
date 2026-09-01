@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–539  Base: reset, typography, forms, tables, thumbnails,
+     1–544  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   540  Auth pages
-   606  Top nav
-   621  Instrument nav (topbar pill row)
-   688  Page layout
-   740  Tabs
-   750  Misc form helpers
-   756  Detail view
-   779  Holiday notice (site-wide, above the shell)
-   804  Shell layout (sidebar + topbar)
-   1031  Expandable trade rows
-   1079  Calendar
-   1127  Account settings page
-   1336  Light theme
-   1373  2FA
-   1388  Account fine print
-   1391  Screenshot preview (log new trade)
-   1433  Auth pages always dark
-   1462  Monthly P&L (calendar on Overview)
-   1541  Trade form: sections, validation, currency, screenshots
-   1769  Field tooltips
-   1831  Date/time picker (adds an optional popup to a typed input)
-   1940  In-header column filters (trade log table)
-   1988  Active filter chips
-   2051  Empty states, error banners, skeleton loaders
-   2130  Cross-instrument overview dashboard (/app)
-   2309  Not found / error boundary state pages
-   2322  Toast notifications
-   2350  Public policy pages (Privacy, Terms)
-   2369  Legal links (auth pages + account settings)
-   2408  Economic calendar card (mock - Overview pages)
-   2522  Calendar news badge (Monthly P&L day cells, mock)
-   2543  Streak badge (Overview + strategy detail pages)
-   2560  Market status pill (Overview + strategy detail pages)
-   2586  Key levels, today's brief (mock cards)
-   2612  Market context cards (all-instruments Overview)
-   2671  Edge Insights panel
-   2686  Unverified logged time badge
-   2703  Theme toggle (suppress transition flash)
+   545  Auth pages
+   611  Top nav
+   626  Instrument nav (topbar pill row)
+   693  Page layout
+   745  Tabs
+   755  Misc form helpers
+   761  Detail view
+   784  Holiday notice (site-wide, above the shell)
+   809  Shell layout (sidebar + topbar)
+   1052  Expandable trade rows
+   1100  Calendar
+   1148  Account settings page
+   1359  Light theme
+   1396  2FA
+   1411  Account fine print
+   1414  Screenshot preview (log new trade)
+   1456  Auth pages always dark
+   1485  Monthly P&L (calendar on Overview)
+   1564  Trade form: sections, validation, currency, screenshots
+   1792  Field tooltips
+   1854  Date/time picker (adds an optional popup to a typed input)
+   1963  In-header column filters (trade log table)
+   2011  Active filter chips
+   2074  Empty states, error banners, skeleton loaders
+   2153  Cross-instrument overview dashboard (/app)
+   2332  Not found / error boundary state pages
+   2345  Toast notifications
+   2373  Public policy pages (Privacy, Terms)
+   2392  Legal links (auth pages + account settings)
+   2431  Economic calendar card (mock - Overview pages)
+   2545  Calendar news badge (Monthly P&L day cells, mock)
+   2566  Streak badge (Overview + strategy detail pages)
+   2583  Market status pill (Overview + strategy detail pages)
+   2609  Key levels, today's brief (mock cards)
+   2635  Market context cards (all-instruments Overview)
+   2694  Edge Insights panel
+   2709  Unverified logged time badge
+   2726  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -203,8 +203,13 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .glass-panel{
   background:var(--glass);
   border:1px solid var(--glass-border);
+  /* No explicit -webkit-backdrop-filter here on purpose - see the comment
+     on .shell-topbar.topbar-pinned below. Writing both properties
+     ourselves with identical values makes Lightning CSS's minifier drop
+     the unprefixed one, which this browser needs; the autoprefixer adds
+     -webkit- correctly on its own when only the standard property is
+     present. */
   backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
 }
 form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 /* Grid items default to min-width:auto, i.e. their content's intrinsic
@@ -838,10 +843,26 @@ table{min-width:640px;}
    fades toward MIN_GLASS_ALPHA as the user keeps scrolling up into it, so
    the bar visibly clears just before it docks solid at the true top. The
    fallback covers the instant the class first applies, before that
-   scroll event's write has landed. */
+   scroll event's write has landed.
+   The heavier blur (was 20px) plus saturate() is what actually reads as
+   "frosted" rather than plain tinted glass - at the lower alpha above,
+   scrolled-under content needs enough diffusion to turn into soft color
+   fog instead of legible (if faint) ghosted shapes, and saturate() gives
+   that fog the slightly vivid, glassy sheen frosted panels have instead
+   of looking washed out.
+   No explicit -webkit-backdrop-filter here - this is the actual bug
+   behind the "used to be frosted, now it's just glass" report: writing
+   both properties by hand with identical values makes Lightning CSS's
+   minifier drop the unprefixed one from the built CSS, and modern
+   Chromium ignores -webkit-backdrop-filter on its own, so the blur
+   silently stopped rendering at all (confirmed: this predates this PR -
+   .glass-panel above had the exact same manually-duplicated pair and the
+   exact same bug, untouched by any of this PR's edits). Declaring only
+   the standard property lets the autoprefixer add -webkit- correctly, the
+   same pattern .modal-overlay already relies on further up this file. */
 .shell-topbar.topbar-pinned{
-  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.55)); border-color:var(--glass-border);
-  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.4)); border-color:var(--glass-border);
+  backdrop-filter:blur(32px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* No `gap` here on purpose - flex gap lands between every child,
@@ -1140,9 +1161,11 @@ a.shell-logo{color:inherit; text-decoration:none;}
   transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
+/* Same fix as .shell-topbar.topbar-pinned above - no explicit
+   -webkit-backdrop-filter, see its comment for why. */
 .account-topbar.topbar-pinned{
-  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.55)); border-color:var(--glass-border);
-  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.4)); border-color:var(--glass-border);
+  backdrop-filter:blur(32px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 /* min-height matches .icon-btn's fixed 36px (the tallest element in

@@ -255,57 +255,105 @@ async function main() {
   log(`Stored ${sessionDate}: range=${totalRange.toFixed(2)} volume=${totalVolume}`)
 
   // Backfill regime on every trade dated this session, across every user,
-  // now that it's actually computable - see the file header comment. Kept
-  // in its own try/catch so a problem here (or simply too little trailing
-  // history yet - see the trailing.length check) never undoes or fails the
-  // stats write above, which is the primary, already-succeeded job.
+  // now that it's actually computable, then separately catch up any
+  // *earlier* date that's still missing regime despite already having its
+  // own market_session_stats row - e.g. a day this fetch itself failed for
+  // (see the catch block a few lines up) and so never got its own chance
+  // to backfill. Without this second pass, a skipped day's trades would
+  // stay unbucketed forever: nothing else in the app retries an old date,
+  // now that regime is computed at save time or on the day it happens
+  // (see log/new and log/edit's onSubmit) rather than lazily rechecked on
+  // every visit the way it used to be. Both wrapped in their own try/catch
+  // so a problem here never undoes or fails the stats write above, which
+  // is the primary, already-succeeded part of this job.
   try {
-    const { data: trailing } = await admin
-      .from('market_session_stats')
-      .select('total_range, total_volume')
-      .eq('data_symbol', DATA_SYMBOL)
-      .lt('session_date', sessionDate)
-      .order('session_date', { ascending: false })
-      .limit(TRAILING_WINDOW)
-
-    if (!trailing || trailing.length === 0) {
+    const regimes = await regimeForSessionDate(admin, sessionDate, { total_range: totalRange, total_volume: totalVolume })
+    if (!regimes) {
       log(`No trailing history yet for ${sessionDate} - skipping regime backfill.`)
     } else {
-      const avgRange = trailing.reduce((s, r) => s + r.total_range, 0) / trailing.length
-      const avgVolume = trailing.reduce((s, r) => s + r.total_volume, 0) / trailing.length
-      const volatility_regime = bucketFor(totalRange, avgRange)
-      const volume_regime = bucketFor(totalVolume, avgVolume)
-
-      // One query, a real server-side join (PostgREST's `!inner` embed) on
-      // trades.instrument_id -> instruments.id, filtered by the joined
-      // row's data_symbol - not "fetch every NQ instrument's id into a JS
-      // array, then .in() against it". That two-step version's array grows
-      // with the total number of NQ instruments ever created across every
-      // user; this version's cost is set by Postgres's own query planner
-      // (index-backed, same as any other join) regardless of how many
-      // users the app has.
-      const { data: tradesToBackfill } = await admin
-        .from('trades')
-        .select('id, instruments!inner(data_symbol)')
-        .eq('instruments.data_symbol', DATA_SYMBOL)
-        .eq('trade_date', sessionDate)
-        .or('volatility_regime.is.null,volume_regime.is.null')
-
-      if (!tradesToBackfill || tradesToBackfill.length === 0) {
-        log(`No trades to backfill regime for ${sessionDate}.`)
-      } else {
-        const { error: backfillError } = await admin
-          .from('trades')
-          .update({ volatility_regime, volume_regime })
-          .in('id', tradesToBackfill.map((t) => t.id))
-        if (backfillError) throw new Error(`Regime backfill update failed: ${backfillError.message}`)
-        log(`Backfilled regime (${volatility_regime}/${volume_regime}) on ${tradesToBackfill.length} trade(s) for ${sessionDate}.`)
-      }
+      const n = await backfillTradesForDate(admin, sessionDate, regimes)
+      log(n === 0 ? `No trades to backfill regime for ${sessionDate}.` : `Backfilled regime (${regimes.volatility_regime}/${regimes.volume_regime}) on ${n} trade(s) for ${sessionDate}.`)
     }
   } catch (err) {
     Sentry.captureMessage(`Regime backfill failed for ${sessionDate}: ${err.message}`, 'warning')
     log(`Regime backfill failed for ${sessionDate}: ${err.message}`)
   }
+
+  try {
+    const { data: gapTrades } = await admin
+      .from('trades')
+      .select('trade_date, instruments!inner(data_symbol)')
+      .eq('instruments.data_symbol', DATA_SYMBOL)
+      .neq('trade_date', sessionDate)
+      .or('volatility_regime.is.null,volume_regime.is.null')
+
+    const gapDates = [...new Set((gapTrades || []).map((t) => t.trade_date))]
+    for (const date of gapDates) {
+      const regimes = await regimeForSessionDate(admin, date)
+      if (!regimes) continue // still not computable (e.g. a very recent date) - leave it for a later run
+      const n = await backfillTradesForDate(admin, date, regimes)
+      if (n > 0) log(`Backfilled regime (${regimes.volatility_regime}/${regimes.volume_regime}) on ${n} trade(s) for ${date} (gap catch-up).`)
+    }
+  } catch (err) {
+    Sentry.captureMessage(`Regime gap catch-up failed: ${err.message}`, 'warning')
+    log(`Regime gap catch-up failed: ${err.message}`)
+  }
+}
+
+// { volatility_regime, volume_regime } for `date`, or null if not
+// computable yet (no trailing baseline, or - only relevant for the gap
+// catch-up path above, since main() already has today's own row in hand -
+// `date` itself has no market_session_stats row). `ownStats` lets main()'s
+// own call pass the just-fetched totals directly rather than immediately
+// re-reading the row it just wrote.
+async function regimeForSessionDate(admin, date, ownStats) {
+  let ownRow = ownStats
+  if (!ownRow) {
+    const { data } = await admin
+      .from('market_session_stats')
+      .select('total_range, total_volume')
+      .eq('data_symbol', DATA_SYMBOL)
+      .eq('session_date', date)
+      .maybeSingle()
+    if (!data) return null
+    ownRow = data
+  }
+
+  const { data: trailing } = await admin
+    .from('market_session_stats')
+    .select('total_range, total_volume')
+    .eq('data_symbol', DATA_SYMBOL)
+    .lt('session_date', date)
+    .order('session_date', { ascending: false })
+    .limit(TRAILING_WINDOW)
+  if (!trailing || trailing.length === 0) return null
+
+  const avgRange = trailing.reduce((s, r) => s + r.total_range, 0) / trailing.length
+  const avgVolume = trailing.reduce((s, r) => s + r.total_volume, 0) / trailing.length
+  return { volatility_regime: bucketFor(ownRow.total_range, avgRange), volume_regime: bucketFor(ownRow.total_volume, avgVolume) }
+}
+
+// Applies `regimes` to every still-unbucketed NQ trade dated `date`,
+// across every user - a real server-side join (PostgREST's `!inner`
+// embed) on trades.instrument_id -> instruments.id, filtered by the
+// joined row's data_symbol, not "fetch every NQ instrument's id into a JS
+// array, then .in() against it". That two-step version's array grows with
+// the total number of NQ instruments ever created across every user; this
+// version's cost is set by Postgres's own query planner (index-backed,
+// same as any other join) regardless of how many users the app has.
+// Returns how many rows it updated.
+async function backfillTradesForDate(admin, date, regimes) {
+  const { data: trades } = await admin
+    .from('trades')
+    .select('id, instruments!inner(data_symbol)')
+    .eq('instruments.data_symbol', DATA_SYMBOL)
+    .eq('trade_date', date)
+    .or('volatility_regime.is.null,volume_regime.is.null')
+  if (!trades || trades.length === 0) return 0
+
+  const { error } = await admin.from('trades').update(regimes).in('id', trades.map((t) => t.id))
+  if (error) throw new Error(`Regime backfill update failed for ${date}: ${error.message}`)
+  return trades.length
 }
 
 // A short-lived script's process can exit before Sentry's async transport

@@ -78,12 +78,24 @@ export default function EditTradePage({ params }) {
     const { data: { user } } = await supabase.auth.getUser()
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
     const { session, continuedSessions } = computeTradeSessions(values, timezoneOffset)
-    // null when this date's session hasn't closed (or the daily job hasn't
-    // reached it) yet - left out of the update below rather than writing
-    // null over it, so an edit that doesn't touch the trade date never
-    // clobbers a regime this trade already had correctly bucketed. See
-    // log/new/page.js's identical comment and lib/tradeRegimes.js's header.
-    const regimes = catalogEntryFor(symbol)?.data_symbol === 'NQ' ? await regimesForDate(values.trade_date) : null
+    // Only recomputed when trade_date actually changed - matching the
+    // excursionRelevantChanged gate below, an edit that only touches
+    // reasoning/tags/discipline review has no reason to pay for two more
+    // Supabase round trips whose answer can't have changed. When the date
+    // *did* change: a real result always overwrites whatever was there;
+    // null (this new date's session hasn't closed, or the daily job
+    // hasn't reached it yet) explicitly clears both columns instead of
+    // leaving them out of the update - the trade's OLD regime describes
+    // its OLD date and is simply wrong now, not just stale. An edit that
+    // leaves trade_date untouched skips this entirely, so a trade that's
+    // already correctly bucketed is never touched by an unrelated field
+    // edit. See log/new/page.js's comment and lib/tradeRegimes.js's header
+    // for the save-time-computation half of this.
+    const dateChanged = trade.trade_date !== values.trade_date
+    let regimes = {}
+    if (dateChanged && catalogEntryFor(symbol)?.data_symbol === 'NQ') {
+      regimes = (await regimesForDate(values.trade_date)) || { volatility_regime: null, volume_regime: null }
+    }
 
     const { data: updated, error } = await supabase.from('trades').update({
       ...values,

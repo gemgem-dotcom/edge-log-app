@@ -67,7 +67,7 @@ export default function ColumnFilter({ options, mode, value, onChange }) {
         aria-label="Filter this column"
         aria-expanded={open}
       >
-        <ChevronDown size={13} />
+        <ChevronDown size={14} />
       </button>
 
       {open && pos && (

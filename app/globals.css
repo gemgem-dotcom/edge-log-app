@@ -5,46 +5,46 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–552  Base: reset, typography, forms, tables, thumbnails,
+     1–539  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   553  Auth pages
-   619  Top nav
-   634  Instrument nav (topbar pill row)
-   698  Page layout
-   750  Tabs
-   760  Misc form helpers
-   766  Detail view
-   789  Holiday notice (site-wide, above the shell)
-   814  Shell layout (sidebar + topbar)
-   1034  Expandable trade rows
-   1082  Calendar
-   1130  Account settings page
-   1339  Light theme
-   1376  2FA
-   1391  Account fine print
-   1394  Screenshot preview (log new trade)
-   1436  Auth pages always dark
-   1465  Monthly P&L (calendar on Overview)
-   1544  Trade form: sections, validation, currency, screenshots
-   1772  Field tooltips
-   1834  Date/time picker (adds an optional popup to a typed input)
-   1943  In-header column filters (trade log table)
-   1987  Active filter chips
-   2050  Empty states, error banners, skeleton loaders
-   2129  Cross-instrument overview dashboard (/app)
-   2308  Not found / error boundary state pages
-   2321  Toast notifications
-   2349  Public policy pages (Privacy, Terms)
-   2368  Legal links (auth pages + account settings)
-   2407  Economic calendar card (mock - Overview pages)
-   2521  Calendar news badge (Monthly P&L day cells, mock)
-   2542  Streak badge (Overview + strategy detail pages)
-   2559  Market status pill (Overview + strategy detail pages)
-   2585  Key levels, today's brief (mock cards)
-   2611  Market context cards (all-instruments Overview)
-   2670  Edge Insights panel
-   2685  Unverified logged time badge
-   2702  Theme toggle (suppress transition flash)
+   540  Auth pages
+   606  Top nav
+   621  Instrument nav (topbar pill row)
+   688  Page layout
+   740  Tabs
+   750  Misc form helpers
+   756  Detail view
+   779  Holiday notice (site-wide, above the shell)
+   804  Shell layout (sidebar + topbar)
+   1031  Expandable trade rows
+   1079  Calendar
+   1127  Account settings page
+   1336  Light theme
+   1373  2FA
+   1388  Account fine print
+   1391  Screenshot preview (log new trade)
+   1433  Auth pages always dark
+   1462  Monthly P&L (calendar on Overview)
+   1541  Trade form: sections, validation, currency, screenshots
+   1769  Field tooltips
+   1831  Date/time picker (adds an optional popup to a typed input)
+   1940  In-header column filters (trade log table)
+   1988  Active filter chips
+   2051  Empty states, error banners, skeleton loaders
+   2130  Cross-instrument overview dashboard (/app)
+   2309  Not found / error boundary state pages
+   2322  Toast notifications
+   2350  Public policy pages (Privacy, Terms)
+   2369  Legal links (auth pages + account settings)
+   2408  Economic calendar card (mock - Overview pages)
+   2522  Calendar news badge (Monthly P&L day cells, mock)
+   2543  Streak badge (Overview + strategy detail pages)
+   2560  Market status pill (Overview + strategy detail pages)
+   2586  Key levels, today's brief (mock cards)
+   2612  Market context cards (all-instruments Overview)
+   2671  Edge Insights panel
+   2686  Unverified logged time badge
+   2703  Theme toggle (suppress transition flash)
    ============================================================ */
 
 :root{
@@ -58,28 +58,24 @@
   --panel: #141d30;
   --panel-2: #0b1428;
   --line: #23272f;
-  /* .col-filter-btn's dark-theme hover only now (see its own comment) -
-     every other dropdown/filter button this was originally written for
-     (.calendar-strategy-filter, .theme-toggle-btn, and the account
-     settings theme toggle) went back to their original dark-theme hover
-     instead - the base button:hover rule's barely-there
-     filter:brightness(1.08) for the actual <button> elements, or that
-     same filter applied explicitly for the account settings toggle
-     (a <div>, which never got it "for free") - by explicit request, a
-     more visible tonal shift there read as a redesign nobody asked for.
-     .col-filter-btn is the one exception: unlike those, it rests fully
-     transparent rather than on a --panel-2 fill, so the barely-there
-     filter has nothing to brighten and reads as no hover feedback at
-     all - it keeps this token.
+  /* Dark-theme hover for the dir-btn pills (Long/Short, and the account
+     settings theme toggle - see .dir-btn:hover's own comment) and
+     .col-filter-btn (see its own comment). The .calendar-strategy-filter/
+     .theme-toggle-btn dropdown/filter buttons this was originally written
+     for went back to their original dark-theme hover instead - the base
+     button:hover rule's barely-there filter:brightness(1.08) - by
+     explicit request, a more visible tonal shift there read as a redesign
+     nobody asked for. Those don't reference this token in dark theme.
      Stays in the same saturated navy family as --bg/--panel/--panel-2
      (all ~45-57% saturation) rather than reusing --line - which is only
      ~15% saturated and reads as an unrelated flat grey dropped onto a
      blue page, not "the same surface, slightly lighter." +11 lightness
-     points over --panel-2 - a stronger step than this token first shipped
-     with (+5, tuned for the larger filter/dropdown pills before they went
-     back to --line) - because a 16px icon-only circle needs more contrast
-     to register as a hover cue at all than a full pill does; +5 read as
-     not doing anything here.
+     points over --panel-2 - stronger than this token's first attempt
+     (+5, tuned for the larger filter/dropdown pills before they went back
+     to --line) - because a bare hover cue (no lift, no shadow, no border
+     change) needs more contrast to register at all than those subtler
+     controls, confirmed too subtle at +5 for both the dir-btn pills and
+     the small column-filter chevron.
      Light theme doesn't need a separate value: its own --panel-2 (17%
      sat) and --line (15% sat) are already close enough that --line reads
      correctly as a same-family step there - see the light theme override
@@ -311,28 +307,20 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
 .dir-btn.active-short{background:rgba(225,92,92,.15); color:var(--loss);}
 /* Only the inactive state gets a hover treatment - an active pill (long/
    short/theme) keeps its own color under the cursor rather than flashing
-   the plain hover background. */
-.dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--line); color:var(--text);}
-/* Account settings' theme toggle only (.dir-toggle without the trade
-   form's .dir-toggle-square modifier - see that class's own comment).
-   Scoped to just this toggle, not the rule above, since the trade form's
-   Long/Short toggle wasn't reported as having either issue below - left
-   on --line in both themes rather than assuming either fix should extend
-   there too.
-   Light theme: same visible background:var(--line) as the rule above -
-   restated explicitly (not just inherited) so it's clear this toggle was
-   deliberately checked, not just left alone by omission. */
-:root[data-theme="light"] .dir-toggle:not(.dir-toggle-square) .dir-btn:not(.active-theme):hover{background:var(--line); color:var(--text);}
-/* Dark theme: matches the near-invisible filter:brightness(1.08) hover
-   the filter/dropdown buttons (.calendar-strategy-filter, .theme-toggle-
-   btn) went back to - this is a <div>, not a <button>, so it never
-   inherited that from the base button:hover rule the way those did;
-   applied explicitly here instead. background/color are restated at
-   their own rest values (.dir-btn's own background:var(--panel-2);
-   color:var(--muted);) purely to cancel the rule above's --line/--text,
-   which would otherwise still win here too - filter is the only actual
-   change. */
-.dir-toggle:not(.dir-toggle-square) .dir-btn:not(.active-theme):hover{background:var(--panel-2); color:var(--muted); filter:brightness(1.08);}
+   the plain hover background. Covers both this toggle group and the
+   account settings theme toggle (.dir-toggle without the trade form's
+   .dir-toggle-square modifier) - both pills, same rest shape
+   (background:var(--panel-2)), so one rule now covers both rather than
+   the theme toggle needing its own override.
+   --panel-hover, not --line: --line reads as an unrelated flat grey in
+   dark theme (see --panel-hover's own comment in :root); --panel-hover
+   stays in the same navy family. It also resolves to a stronger, more
+   clearly-visible step than this toggle's first attempt at that fix
+   (plain filter:brightness(1.08), report - too subtle to notice) since
+   it's the same value the column-filter chevron uses. Light theme is a
+   no-op change: --panel-hover is defined equal to --line there, so both
+   toggles render exactly as before. */
+.dir-btn:not(.active-long):not(.active-short):not(.active-theme):hover{background:var(--panel-hover); color:var(--text);}
 /* Direction specifically (not Hit target/Hit stop/Custom or the account-
    settings theme toggle, which still use the pill) - a square box instead,
    to read as one more field box among Entry price/Stop Loss/Take Profit
@@ -381,23 +369,22 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-date-range-trigger:hover, .econ-today-btn:hover, .row-action-btn:hover{
   transform:none; box-shadow:none;
 }
-/* filter:none, light theme only, scoped to just .theme-toggle-btn/
-   .trade-tag-filter-btn/.econ-impact-filter-btn/.econ-date-range-trigger
-   (not the whole list above, and not .col-filter-btn - see its own
-   comment). Without this, these four still inherit the base
+/* filter:none, light theme only, scoped to just .trade-tag-filter-btn/
+   .econ-impact-filter-btn/.econ-date-range-trigger (not the whole list
+   above, and not .theme-toggle-btn or .col-filter-btn - see each one's
+   own comment). Without this, these three still inherit the base
    button:hover rule's filter:brightness(1.08) (filter is a separate
    property, untouched by resetting transform/box-shadow above) - which
    in dark theme is the original, deliberately barely-there hover these
-   four have always had and should keep, but in light theme brightens an
+   three have always had and should keep, but in light theme brightens an
    already-pale --panel-2 pill enough to nearly vanish into --panel
    behind it. Found via a light-theme hover screenshot of the trade log's
    Filter button and the economic calendar's impact filter looking
    washed-out/borderless compared to their own rest state - the other
    button classes in the list above already have their own explicit
-   hover background (e.g. .icon-btn:hover{background:var(--panel-2);...})
+   hover background (e.g. .strategy-menu-btn:hover{background:var(--panel-2);...})
    and were never reported to have this problem, so they're left alone
    here. */
-:root[data-theme="light"] .theme-toggle-btn:hover,
 :root[data-theme="light"] .trade-tag-filter-btn:hover,
 :root[data-theme="light"] .econ-impact-filter-btn:hover,
 :root[data-theme="light"] .econ-date-range-trigger:hover{
@@ -651,14 +638,17 @@ table{min-width:640px;}
   color:var(--muted); text-decoration:none; white-space:nowrap;
   transition:background-color .15s ease, color .15s ease;
 }
-.instrument-nav-item:hover{color:var(--text); background:var(--line);}
+/* --panel-hover, not --line - keeps the whole navbar (this, .icon-btn,
+   .theme-toggle-btn) on one consistent hover treatment; see
+   --panel-hover's own comment in :root for why that's not just --line. */
+.instrument-nav-item:hover{color:var(--text); background:var(--panel-hover);}
 .instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
 .instrument-nav-add-wrap{position:relative; flex-shrink:0;}
 .instrument-nav-add{
   display:inline-block; padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
   font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color .15s ease;
 }
-.instrument-nav-add:hover{background:var(--line);}
+.instrument-nav-add:hover{background:var(--panel-hover);}
 /* Fixed rather than absolute, and positioned inline from a measured rect
    (see InstrumentNav.js) - the trigger sits outside .instrument-nav-scroll
    precisely so it's never a descendant of that overflow-x:auto strip, but
@@ -874,16 +864,23 @@ a.shell-logo{color:inherit; text-decoration:none;}
   color:var(--muted); text-decoration:none; border:1px solid transparent;
   transition:background-color .15s ease, color .15s ease;
 }
-.icon-btn:hover{background:var(--panel-2); color:var(--text);}
+/* --panel-hover, not --panel-2 - --panel-2 is actually darker than
+   --panel in dark theme (see :root), so this hover was dimming rather
+   than lightening; keeps the whole navbar (this, .instrument-nav-item,
+   .theme-toggle-btn) on one consistent treatment either way. */
+.icon-btn:hover{background:var(--panel-hover); color:var(--text);}
 .icon-btn-profile{background:var(--panel-2); border:1px solid var(--line); border-radius:50%;}.theme-toggle-btn{background:none; border:none; cursor:pointer;} .theme-toggle-btn svg{width:19px; height:19px; flex-shrink:0;}
-/* Light theme only - dark theme deliberately has no explicit hover state
-   here at all, relying on the base button:hover rule's barely-there
-   filter:brightness(1.08) instead (kept for this button - see the
-   filter:none light-theme override a few hundred lines up for why light
-   theme still needs an explicit reset+background). --line reads as one
-   step darker than --panel-2 in light theme (see :root), so this alone is
-   enough there. */
-:root[data-theme="light"] .theme-toggle-btn:hover{background:var(--line);}
+/* Same --panel-hover treatment as .icon-btn/.instrument-nav-item right
+   above - the whole navbar on one consistent hover now, rather than this
+   one control alone keeping the near-invisible filter:brightness hover
+   the dropdown/filter buttons use (that was this button's own first
+   attempt at a fix, reverted for being too subtle - see --panel-hover's
+   own comment in :root). filter:none is still needed in both themes: as
+   an actual <button>, this would otherwise still pick up the base
+   button:hover rule's filter:brightness(1.08) on top of the background
+   below, the same double-brightening effect that made an earlier
+   iteration of this token's value read as too light. */
+.theme-toggle-btn:hover{background:var(--panel-hover); color:var(--text); filter:none;}
 
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
@@ -1963,7 +1960,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    as it always has - --panel-hover is just set equal to --line there. */
 .col-filter-btn:hover{background:var(--panel-hover);}
 .col-filter-btn-active{color:var(--accent);}
-.col-filter-btn svg{width:13px; height:13px; flex-shrink:0;}
+/* 14px, not the 13px lucide's own size prop passes - centered via flex in
+   a 16px box, an odd child size splits into a 1.5px margin per side that
+   rasterizes as an uneven 1px/2px split, visibly shifting the glyph off
+   center. 14px divides evenly (1px each side), which doesn't. */
+.col-filter-btn svg{width:14px; height:14px; flex-shrink:0;}
 
 /* Fixed rather than absolute, so the table's horizontal scroll container
    can't clip it. ColumnFilter closes the menu on scroll to keep it anchored. */

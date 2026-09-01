@@ -276,29 +276,30 @@ async function main() {
       const volatility_regime = bucketFor(totalRange, avgRange)
       const volume_regime = bucketFor(totalVolume, avgVolume)
 
-      const { data: nqInstruments } = await admin.from('instruments').select('id').eq('data_symbol', DATA_SYMBOL)
-      const instrumentIds = (nqInstruments || []).map((i) => i.id)
+      // One query, a real server-side join (PostgREST's `!inner` embed) on
+      // trades.instrument_id -> instruments.id, filtered by the joined
+      // row's data_symbol - not "fetch every NQ instrument's id into a JS
+      // array, then .in() against it". That two-step version's array grows
+      // with the total number of NQ instruments ever created across every
+      // user; this version's cost is set by Postgres's own query planner
+      // (index-backed, same as any other join) regardless of how many
+      // users the app has.
+      const { data: tradesToBackfill } = await admin
+        .from('trades')
+        .select('id, instruments!inner(data_symbol)')
+        .eq('instruments.data_symbol', DATA_SYMBOL)
+        .eq('trade_date', sessionDate)
+        .or('volatility_regime.is.null,volume_regime.is.null')
 
-      if (instrumentIds.length === 0) {
-        log(`No NQ instruments to backfill for ${sessionDate}.`)
+      if (!tradesToBackfill || tradesToBackfill.length === 0) {
+        log(`No trades to backfill regime for ${sessionDate}.`)
       } else {
-        const { data: tradesToBackfill } = await admin
+        const { error: backfillError } = await admin
           .from('trades')
-          .select('id')
-          .in('instrument_id', instrumentIds)
-          .eq('trade_date', sessionDate)
-          .or('volatility_regime.is.null,volume_regime.is.null')
-
-        if (!tradesToBackfill || tradesToBackfill.length === 0) {
-          log(`No trades to backfill regime for ${sessionDate}.`)
-        } else {
-          const { error: backfillError } = await admin
-            .from('trades')
-            .update({ volatility_regime, volume_regime })
-            .in('id', tradesToBackfill.map((t) => t.id))
-          if (backfillError) throw new Error(`Regime backfill update failed: ${backfillError.message}`)
-          log(`Backfilled regime (${volatility_regime}/${volume_regime}) on ${tradesToBackfill.length} trade(s) for ${sessionDate}.`)
-        }
+          .update({ volatility_regime, volume_regime })
+          .in('id', tradesToBackfill.map((t) => t.id))
+        if (backfillError) throw new Error(`Regime backfill update failed: ${backfillError.message}`)
+        log(`Backfilled regime (${volatility_regime}/${volume_regime}) on ${tradesToBackfill.length} trade(s) for ${sessionDate}.`)
       }
     }
   } catch (err) {

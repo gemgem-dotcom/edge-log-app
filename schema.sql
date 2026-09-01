@@ -618,3 +618,19 @@ create policy "Users manage their own AI insights"
 -- Like every other schema change here, this isn't live until run by hand
 -- in Supabase's SQL editor.
 drop table if exists edge_beliefs;
+
+-- Scaling audit follow-up: every RLS policy in this file checks
+-- `auth.uid() = user_id`, which needs a supporting index on that column to
+-- avoid a full table scan once a table's row count gets large. `trades`
+-- already has one (trades_user_instrument_idx, above), and instruments/
+-- edge_insights get one for free from their own `unique(user_id, ...)`
+-- constraint - a unique index still serves a plain "where user_id = ..."
+-- filter as long as user_id is the constraint's first column, which both
+-- already are. strategies and login_events have no such constraint at all,
+-- so they had nothing backing their own user_id filter. trades_trade_date_idx
+-- is separate: nothing above indexes trade_date alone, which both this
+-- table's own date-range reads and scripts/fetch-daily-market-stats.js's
+-- regime backfill (filters every user's trades by trade_date) rely on.
+create index if not exists strategies_user_idx on strategies(user_id);
+create index if not exists login_events_user_idx on login_events(user_id);
+create index if not exists trades_trade_date_idx on trades(trade_date);

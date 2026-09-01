@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import * as Sentry from '@sentry/nextjs'
 import { overallInsightData, instrumentInsightData, strategyInsightData, totalTradeCount } from '@/lib/insightData'
 
 const ANTHROPIC_MODEL = 'claude-sonnet-5'
@@ -212,6 +213,7 @@ export async function POST(req) {
 
     return new Response(JSON.stringify({ narrative, generatedAt, tradeCount: built.tradeCount }), { status: 200 })
   } catch (err) {
+    Sentry.captureException(err)
     return new Response(JSON.stringify({ error: err?.message || 'Could not generate insights.' }), { status: 500 })
   }
 }

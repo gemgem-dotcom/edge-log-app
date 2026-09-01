@@ -26,7 +26,19 @@
 // Env: DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
 const { createClient } = require('@supabase/supabase-js')
+const Sentry = require('@sentry/node')
 const CME_HOLIDAYS = require('../lib/cmeHolidays.json')
+
+// NEXT_PUBLIC_SENTRY_DSN, not a separate SENTRY_DSN - same "one env var, read
+// server-side too" convention this file already follows for
+// NEXT_PUBLIC_SUPABASE_URL below. No-ops (enabled: false) if the secret was
+// never added to this repo's GitHub Actions secrets - see .github/workflows
+// /refresh-market-session-stats.yml's own comment.
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0,
+  enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
+})
 
 const DATA_SYMBOL = 'NQ'
 const DATABENTO_SYMBOL = 'NQ.c.0'
@@ -183,7 +195,13 @@ async function main() {
   } catch (err) {
     // Fail gracefully: skip this day rather than crash the job, so a
     // Databento outage or an unresolved symbol on some future date doesn't
-    // take the whole scheduled workflow down.
+    // take the whole scheduled workflow down. Still reported to Sentry
+    // (not re-thrown) - a graceful skip is invisible in the GitHub Actions
+    // UI unless someone happens to open that run's log, which is exactly
+    // how a persistent, silent failure (an expired API key, a shifted
+    // embargo window) could go unnoticed for a long time - see the systems-
+    // map audit's finding #2.
+    Sentry.captureMessage(`Databento fetch failed, skipping ${sessionDate}: ${err.message}`, 'warning')
     log(`Databento fetch failed, skipping ${sessionDate}: ${err.message}`)
     return
   }
@@ -212,7 +230,15 @@ async function main() {
   log(`Stored ${sessionDate}: range=${totalRange.toFixed(2)} volume=${totalVolume}`)
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+// A short-lived script's process can exit before Sentry's async transport
+// finishes sending, dropping the event entirely - Sentry.flush() waits
+// (bounded at 2s) for anything already queued (the captureMessage above, or
+// the captureException below) before letting the process end either way.
+main()
+  .then(() => Sentry.flush(2000))
+  .catch(async (err) => {
+    Sentry.captureException(err)
+    await Sentry.flush(2000)
+    console.error(err)
+    process.exit(1)
+  })

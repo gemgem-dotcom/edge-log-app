@@ -30,15 +30,20 @@
 # crashing on a holiday, a weekend, an unreachable Databento API, or an
 # unresolved symbol - see the script's own comments.
 #
-# One-time setup required - three repo secrets this workflow needs that
-# don't otherwise exist for GitHub Actions (Vercel has them, Actions does
-# not): Settings -> Secrets and variables -> Actions -> New repository
-# secret:
+# One-time setup required - repo secrets this workflow needs that don't
+# otherwise exist for GitHub Actions (Vercel has them, Actions does not):
+# Settings -> Secrets and variables -> Actions -> New repository secret:
 #   DATABENTO_API_KEY           same value as .env.local's
 #   SUPABASE_SERVICE_ROLE_KEY   same value as .env.local's
 #   NEXT_PUBLIC_SUPABASE_URL    same value as .env.local's (not a secret by
 #                                nature, but stored as one here since this
 #                                workflow has no other config mechanism)
+#   NEXT_PUBLIC_SENTRY_DSN       optional - same value as Vercel's, if
+#                                Sentry error tracking is set up (see
+#                                sentry.server.config.js). scripts/fetch-
+#                                daily-market-stats.js's own Sentry.init
+#                                no-ops if this isn't set, so leaving it out
+#                                is safe, just silent on a graceful-skip day.
 
 name: Refresh NQ market session stats
 
@@ -78,4 +83,5 @@ jobs:
           DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
         run: node scripts/fetch-daily-market-stats.js

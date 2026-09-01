@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import * as Sentry from '@sentry/nextjs'
 
 // Every table that references auth.users. deleteUser fails if any row still
 // points at the user, and the failure surfaces as an unhelpful empty error,
@@ -70,6 +71,7 @@ export async function POST(req) {
     for (const table of USER_TABLES) {
       const { error } = await admin.from(table).delete().eq('user_id', userId)
       if (error) {
+        Sentry.captureException(error)
         return new Response(
           JSON.stringify({ error: `Could not remove your ${table.replace('_', ' ')}: ${error.message}` }),
           { status: 500 },
@@ -80,6 +82,7 @@ export async function POST(req) {
     const { error: deleteError } = await admin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
+      Sentry.captureException(deleteError)
       return new Response(
         JSON.stringify({ error: deleteError.message || 'Could not delete the account.' }),
         { status: 500 },
@@ -99,6 +102,7 @@ export async function POST(req) {
     // non-JSON body, which is indistinguishable from every other failure
     // once it gets to DangerZoneSection's generic fallback message. Surface
     // whatever actually happened instead.
+    Sentry.captureException(err)
     return new Response(
       JSON.stringify({ error: err?.message || 'Could not delete the account.' }),
       { status: 500 },

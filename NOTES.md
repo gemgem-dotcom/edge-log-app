@@ -9,12 +9,51 @@ Keep it up to date as things change.
 1. **Never commit straight to `main`.** `main` is what Vercel deploys to production,
    so a bad commit is instantly live.
 2. Create a branch and open a pull request.
-3. Two checks then run automatically:
+3. Three checks then run automatically:
    - **Build check** (GitHub Actions, `.github/workflows/ci.yml`) runs `npm run build`.
      A red X means the code does not compile — do not merge.
+   - **Test job** (same workflow, parallel `test` job) runs `npm test` (Vitest) - see
+     "Testing and error tracking" below.
    - **Vercel preview deployment** gives the branch its own temporary URL.
 4. Test the change on the preview URL, not on production.
-5. Merge to `main` only once the Build check is green and the preview looks right.
+5. Merge to `main` only once the Build check and test job are both green and the
+   preview looks right.
+
+## Testing and error tracking
+
+**Unit tests** (`npm test`, Vitest - `vitest.config.mjs`) cover the pure, no-database
+functions with the most room for a silent, expensive bug: `lib/tradeMath.js` (R-multiple/
+R:R math), `lib/tradeExcursions.js` (fill-tick matching - the exact scenarios from three
+real, previously-shipped bugs: earliest-vs-closest-in-time matching, the breakeven-trade
+collapse, and the `afterInstant` chaining fix - see this file's Databento section), and
+`lib/edgeEngine.js` (`queryPerformance`'s win-rate/expectancy/profit-factor math and its
+memoization cache). `vitest.setup.js` seeds placeholder Supabase env vars before any
+import runs, since some of these modules transitively import `lib/supabaseClient.js`
+(which constructs a client at module load time) even though nothing in the suite talks to
+a real database. Runs in CI (`.github/workflows/ci.yml`'s `test` job) alongside the build
+check. When touching any of these three files, add or update a test alongside the code
+change in the same PR rather than after - that's the point of having them.
+
+**Error tracking** (Sentry, optional - `NEXT_PUBLIC_SENTRY_DSN`) reports genuinely
+unexpected failures from the four `app/api/*` routes and the two Databento scheduled
+scripts (`scripts/fetch-daily-market-stats.js`, `scripts/retry-trade-excursions.js`) - the
+same class of silent, only-discovered-by-a-trader-noticing bug this file's Databento
+section documents three real instances of. `instrumentation.js`/`instrumentation-client.js`
+(Next.js's own reserved filenames, auto-loaded regardless of bundler) wire up
+`sentry.server.config.js`/`sentry.edge.config.js` for the server/edge runtimes and the
+browser respectively - deliberately not via `withSentryConfig` in `next.config.js`, since
+that mainly adds webpack-based build-time instrumentation and sourcemap upload, neither of
+which this app's Turbopack-only build can use anyway (confirmed against `@sentry/nextjs`'s
+own `SentryBuildWebpackOptions` type comment). Every capture is a manual
+`Sentry.captureException`/`captureMessage` call at an already-identified error path, not
+automatic route wrapping - see each route's own import of `@sentry/nextjs` and the two
+scripts' `@sentry/node` calls. `enabled` is gated on `NODE_ENV === 'production'` (the two
+scripts gate on the DSN alone, since they only ever run in CI) so no local-dev or CI-build
+noise ever reaches Sentry, and every `Sentry.init()` no-ops harmlessly if the DSN was never
+set - this is entirely optional infrastructure, not a hard dependency. The two scheduled
+scripts additionally need `NEXT_PUBLIC_SENTRY_DSN` added as a GitHub Actions repo secret
+(Vercel already has it if it's set there) - see `.github/workflows/refresh-market-session-
+stats.yml`'s own comment.
 
 ## Project map
 
@@ -71,8 +110,9 @@ storage-setup.sql                  screenshots storage bucket
 | `NEXT_PUBLIC_SUPABASE_URL` | browser + server | safe to expose |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser + server | safe to expose |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | full admin access to the database. Used by the two API routes. Never import it into a page or prefix it with `NEXT_PUBLIC_`. |
+| `NEXT_PUBLIC_SENTRY_DSN` | browser + server + edge (optional) | Sentry error tracking - see "Testing and error tracking" below. Safe to expose (a DSN can only send events in). Every `Sentry.init()` call in this app no-ops if unset, so leaving it out is safe. |
 
-All three must exist locally in `.env.local` and in Vercel (Project Settings →
+The first three must exist locally in `.env.local` and in Vercel (Project Settings →
 Environment Variables). The CI build uses harmless placeholder values, because
 nothing during a build talks to the database.
 

@@ -15,9 +15,9 @@
 # session-stats.yml's first deploy (see that workflow's own comment).
 # Fixed here from the start rather than repeating that discovery.
 #
-# Same three repo secrets as refresh-market-session-stats.yml
-# (DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL) -
-# already present, nothing new to add.
+# Same repo secrets as refresh-market-session-stats.yml (DATABENTO_API_KEY,
+# SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL, and the optional
+# NEXT_PUBLIC_SENTRY_DSN - see that workflow's own comment).
 
 name: Retry pending trade excursions
 
@@ -46,4 +46,5 @@ jobs:
           DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
         run: node scripts/retry-trade-excursions.js

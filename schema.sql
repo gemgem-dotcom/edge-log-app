@@ -634,3 +634,16 @@ drop table if exists edge_beliefs;
 create index if not exists strategies_user_idx on strategies(user_id);
 create index if not exists login_events_user_idx on login_events(user_id);
 create index if not exists trades_trade_date_idx on trades(trade_date);
+
+-- Real server-side pagination for the trade log pages (lib/tradeQuery.js)
+-- needs the Day filter to be a plain indexed column, not something computed
+-- per-row in the browser after every matching trade has already been
+-- fetched - that defeats the point of paging server-side. `generated
+-- always as ... stored` keeps it automatically correct on insert/update,
+-- same convention Postgres's own docs recommend over a trigger for a
+-- value derived from another column on the same row. extract(dow from
+-- date) returns 0=Sunday..6=Saturday, matching both DAY_NAMES'
+-- (components/TradeLogTable.js) and JS's own Date.getDay() indexing, so
+-- the values line up without any translation at either end.
+alter table trades add column if not exists day_of_week smallint generated always as (extract(dow from trade_date)) stored;
+create index if not exists trades_day_of_week_idx on trades(day_of_week);

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { clearReferenceDataCache } from '@/lib/referenceDataCache'
+import { invalidateTags } from '@/lib/tagsCache'
 import { UTC_OFFSETS } from '@/lib/timezone'
 import { backfillOwnTradeSessions } from '@/lib/tradeSessions'
 import PageLoading from '@/components/PageLoading'
@@ -43,6 +44,7 @@ export default function AppLayout({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         clearReferenceDataCache()
+        invalidateTags()
         router.replace('/login')
       }
     })

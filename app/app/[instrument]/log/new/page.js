@@ -8,6 +8,7 @@ import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
+import { invalidateTags } from '@/lib/tagsCache'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast } from '@/lib/toast'
@@ -97,6 +98,7 @@ export default function NewTradePage({ params, searchParams }) {
     }
 
     requestTradeExcursionBackfill(symbol, inserted.id)
+    invalidateTags()
 
     toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)

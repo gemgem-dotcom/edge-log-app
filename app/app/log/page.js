@@ -5,10 +5,17 @@ import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import AppShell from '@/components/AppShell'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { fetchTradePage, fetchDistinctTags, EMPTY_FILTERS } from '@/lib/tradeQuery'
 import TradeLogTable from '@/components/TradeLogTable'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
+
+// Real DB-side pagination and filtering (lib/tradeQuery.js) rather than
+// fetching every trade across every instrument and slicing it in the
+// browser - see app/app/[instrument]/log/page.js's identical comment; this
+// page is the same shape, just scoped to every instrument id instead of one.
+const PAGE_SIZE = 25
 
 export default function AllTradesPage() {
   usePageTitle('Trade Log')
@@ -17,12 +24,22 @@ export default function AllTradesPage() {
   const [instruments, setInstruments] = useState([])
   const [strategies, setStrategies] = useState([])
   const [trades, setTrades] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [tagOptions, setTagOptions] = useState([])
+  const [page, setPage] = useState(0)
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   useEffect(() => {
-    loadData()
+    loadStatic()
   }, [])
 
-  async function loadData() {
+  // See app/app/[instrument]/log/page.js's identical effect for why
+  // loadStatic never clears `loading` on its own success path.
+  useEffect(() => {
+    if (instruments.length > 0) loadPage()
+  }, [instruments, page, filters])
+
+  async function loadStatic() {
     setLoading(true)
     setError(null)
     try {
@@ -37,14 +54,31 @@ export default function AllTradesPage() {
         .order('created_at', { ascending: true })
       if (stratError) throw stratError
 
-      const { data: tradeData, error: tradeError } = await supabase
-        .from('trades').select('*').in('instrument_id', ids)
-        .order('trade_date', { ascending: false }).order('trade_time', { ascending: false })
-      if (tradeError) throw tradeError
-
       setInstruments(instrumentData || [])
       setStrategies(stratData || [])
-      setTrades(tradeData || [])
+      setPage(0)
+      setFilters(EMPTY_FILTERS)
+      if (ids.length > 0) {
+        fetchDistinctTags(ids).then((tags) => setTagOptions(tags.map((t) => ({ value: t, label: t }))))
+      } else {
+        setLoading(false)
+      }
+    } catch (err) {
+      setError(err.message || "Couldn't load your trades — something went wrong.")
+      setLoading(false)
+    }
+  }
+
+  async function loadPage() {
+    setLoading(true)
+    setError(null)
+    try {
+      const { trades: pageTrades, totalCount: count, error: tradeError } = await fetchTradePage({
+        instrumentIds: instruments.map((i) => i.id), page, pageSize: PAGE_SIZE, filters,
+      })
+      if (tradeError) throw tradeError
+      setTrades(pageTrades)
+      setTotalCount(count)
     } catch (err) {
       setError(err.message || "Couldn't load your trades — something went wrong.")
     } finally {
@@ -52,7 +86,7 @@ export default function AllTradesPage() {
     }
   }
 
-  if (loading) return (
+  if (loading && trades.length === 0 && !error) return (
     <AppShell instruments={instruments} strategies={strategies} active="trades">
       <TradeLogSkeleton showInstrumentColumn showHeaderButton={false} />
     </AppShell>
@@ -60,7 +94,7 @@ export default function AllTradesPage() {
   if (error) {
     return (
       <AppShell instruments={instruments} strategies={strategies} active="trades">
-        <div className="page-container"><PageError message={`Couldn't load your trades — ${error}`} onRetry={loadData} /></div>
+        <div className="page-container"><PageError message={`Couldn't load your trades — ${error}`} onRetry={instruments.length > 0 ? loadPage : loadStatic} /></div>
       </AppShell>
     )
   }
@@ -85,7 +119,16 @@ export default function AllTradesPage() {
             showInstrumentColumn
             instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
             instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
-            pageSize={25}
+            pageSize={PAGE_SIZE}
+            remote={{
+              filters,
+              onFilterChange: (patch) => setFilters((prev) => ({ ...prev, ...patch })),
+              page,
+              totalCount,
+              onPageChange: setPage,
+              tagOptions,
+              onTradeDeleted: loadPage,
+            }}
             emptyState={
               <EmptyState
                 title="No trades yet"

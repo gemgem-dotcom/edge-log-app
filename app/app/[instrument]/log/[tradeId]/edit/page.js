@@ -8,6 +8,7 @@ import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
+import { invalidateTags } from '@/lib/tagsCache'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast, queueToastForReturn } from '@/lib/toast'
@@ -110,6 +111,7 @@ export default function EditTradePage({ params }) {
     if (excursionRelevantChanged) {
       requestTradeExcursionBackfill(symbol, tradeId)
     }
+    invalidateTags()
 
     // Same as Cancel/Discard changes (onCancel below) - returns to wherever
     // the trader opened this edit from (the trade detail page, the log, a
@@ -130,6 +132,7 @@ export default function EditTradePage({ params }) {
       setDeleteError(`Couldn't delete this trade — ${error.message}`)
       return
     }
+    invalidateTags()
     toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
   }

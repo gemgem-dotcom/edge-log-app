@@ -861,7 +861,7 @@ table{min-width:640px;}
    the standard property lets the autoprefixer add -webkit- correctly, the
    same pattern .modal-overlay already relies on further up this file. */
 .shell-topbar.topbar-pinned{
-  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.22)); border-color:var(--glass-border);
   backdrop-filter:blur(32px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
@@ -1164,7 +1164,7 @@ a.shell-logo{color:inherit; text-decoration:none;}
 /* Same fix as .shell-topbar.topbar-pinned above - no explicit
    -webkit-backdrop-filter, see its comment for why. */
 .account-topbar.topbar-pinned{
-  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.3)); border-color:var(--glass-border);
+  background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.22)); border-color:var(--glass-border);
   backdrop-filter:blur(32px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }

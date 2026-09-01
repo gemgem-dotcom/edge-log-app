@@ -19,12 +19,22 @@
 // Env: DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
 const { createClient } = require('@supabase/supabase-js')
+const Sentry = require('@sentry/node')
 // JSON, not ESM - require() loads these directly regardless of the
 // "type": "module" gap that keeps this script from importing lib/*.js
 // files, so the actual roll-date data (not just the logic around it)
 // stays a single source of truth with lib/contractRollover.js.
 const ROLLOVER_DATES = require('../lib/contractRollover.json')
 const CME_HOLIDAYS = require('../lib/cmeHolidays.json')
+
+// See scripts/fetch-daily-market-stats.js's own copy of this comment for
+// why this reads NEXT_PUBLIC_SENTRY_DSN rather than a separate server-only
+// var name.
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0,
+  enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
+})
 
 const DATASET = 'GLBX.MDP3'
 const NQ_CONTINUOUS_SYMBOL = 'NQ.c.0'
@@ -563,6 +573,12 @@ async function main() {
         // The deterministic misses above (unsupported instrument, no
         // timezone/window, zero trade prints, zero window prints) are
         // genuinely permanent and still go straight to 'unavailable'.
+        // Reported to Sentry (not re-thrown - this trade genuinely will
+        // retry next hour) so a trade stuck failing for many hours in a
+        // row is actually visible somewhere, not just a line in a run log
+        // nobody's watching - the same silent-degradation lesson NOTES.md
+        // already documents two real trades having hit.
+        Sentry.captureMessage(`Trade ${trade.id} failed non-embargo, left pending for retry: ${err.message}`, 'warning')
         stillPending += 1
         log(`Trade ${trade.id} failed non-embargo, left pending for retry: ${err.message}`)
       }
@@ -572,7 +588,13 @@ async function main() {
   log(`Ready to retry: ${readyCount}. Completed: ${completed}. Still pending (embargo not cleared yet): ${stillPending}. Marked unavailable: ${unavailable}.`)
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+// See scripts/fetch-daily-market-stats.js's own copy of this comment for
+// why a short-lived script needs an explicit flush before exiting.
+main()
+  .then(() => Sentry.flush(2000))
+  .catch(async (err) => {
+    Sentry.captureException(err)
+    await Sentry.flush(2000)
+    console.error(err)
+    process.exit(1)
+  })

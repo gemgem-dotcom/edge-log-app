@@ -12,6 +12,7 @@
 // and why this reads real trade prints via fetchTrades rather than
 // ohlcv-1m bars).
 import { createClient } from '@supabase/supabase-js'
+import * as Sentry from '@sentry/nextjs'
 import { fetchTrades, NQ_CONTINUOUS_SYMBOL, isNearRollover, sessionBoundsFor, resolveFrontMonthByVolume } from '@/lib/databento'
 import { excursionWindow, computeExcursion, isEmbargoError, deriveFillTicks, sliceTicksForWindow, deriveVerifiedTimes, instantToWallClockTime, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
 
@@ -19,7 +20,23 @@ function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
+// Thin wrapper so an unexpected throw anywhere in handlePost - a Supabase
+// outage, a bug in the fill-matching math, anything not already one of the
+// deliberately-handled embargo/transient-fetch paths below - gets reported
+// rather than silently producing a bare 500 with nothing recorded anywhere.
+// The deliberately-handled paths (embargo, transient fetch failure, zero
+// ticks) are NOT routed through here - those are expected operating states
+// (see NOTES.md), not bugs, and would just be noise in Sentry.
 export async function POST(req) {
+  try {
+    return await handlePost(req)
+  } catch (err) {
+    Sentry.captureException(err)
+    return json({ error: err?.message || 'Could not backfill trade excursion.' }, 500)
+  }
+}
+
+async function handlePost(req) {
   const authHeader = req.headers.get('authorization') || ''
   const token = authHeader.replace('Bearer ', '').trim()
   if (!token) return json({ error: 'Not authenticated' }, 401)

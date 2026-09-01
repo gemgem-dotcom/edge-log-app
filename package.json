@@ -8,9 +8,12 @@
     "build": "next build",
     "start": "next start",
     "css:toc": "node scripts/update-css-toc.js",
-    "css:toc:check": "node scripts/update-css-toc.js --check"
+    "css:toc:check": "node scripts/update-css-toc.js --check",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.73.0",
+    "@sentry/node": "^10.73.0",
     "@supabase/supabase-js": "^2.45.0",
     "lucide-react": "^0.577.0",
     "next": "^16.3.3",
@@ -18,5 +21,8 @@
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
   }
 }

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import * as Sentry from '@sentry/nextjs'
 
 function parseDevice(ua) {
   const isIphone = /iPhone/.test(ua)
@@ -83,6 +84,7 @@ export async function POST(req) {
     )
 
   if (upsertError) {
+    Sentry.captureException(upsertError)
     return new Response(JSON.stringify({ error: upsertError.message }), { status: 500 })
     }
 

@@ -1,12 +1,16 @@
-# Build check
+# Build check + unit tests
 #
-# Runs a full production build of the app on every push and every pull
-# request. If the build fails, GitHub puts a red X on the commit, so a
-# broken change gets caught before it can reach the live site.
+# Runs a full production build of the app, and the Vitest unit suite
+# (lib/*.test.js - the pure trade-math/excursion-matching/stats-engine
+# functions), on every push and every pull request. Both jobs run in
+# parallel off the same trigger; either one going red puts a X on the
+# commit, so a broken change gets caught before it can reach the live site.
 #
 # The Supabase values below are throwaway placeholders. The build only
 # needs them to exist so the Supabase client can be constructed; nothing
-# during a build talks to the real database.
+# during a build talks to the real database. The test job sets its own
+# copies for the same reason (some lib modules under test transitively
+# import lib/supabaseClient.js) - see vitest.setup.js.
 
 name: Build check
 
@@ -38,3 +42,29 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # 22, not 20 (the build job's version) - @supabase/supabase-js's
+          # createClient always constructs an internal Realtime
+          # (WebSocket) sub-client, and that constructor throws under
+          # Node 20 for lacking native WebSocket support. Some test files
+          # transitively import lib/supabaseClient.js (see vitest.setup.js),
+          # so this suite hits the exact same issue the two Databento
+          # scheduled workflows already found and fixed the same way - see
+          # .github/workflows/refresh-market-session-stats.yml's comment.
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run unit tests
+        run: npm test

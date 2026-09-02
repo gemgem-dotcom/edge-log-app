@@ -27,19 +27,31 @@
 // page load (e.g. React effects double-firing in development) - the PKCE
 // code is one-time, so a second attempt fails once the first has already
 // consumed the flow state, even though the first attempt succeeded.
+//
+// Same reasoning applies to markTutorialPendingIfNewAccount below - it
+// lives in its own lib/tutorialNewAccount.js specifically because
+// lib/tutorial.js (which it's conceptually part of) has its own top-level
+// import of the shared supabase client, and this page shipped once already
+// with that exact regression: importing the function from lib/tutorial.js
+// transitively constructed the shared client and reintroduced this same
+// race, even though the function itself never touched it. Never import
+// anything from lib/tutorial.js here - only from lib/tutorialNewAccount.js.
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabaseConfig'
-import { markTutorialPendingIfNewAccount } from '@/lib/tutorial'
+import { markTutorialPendingIfNewAccount } from '@/lib/tutorialNewAccount'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 
-const GENERIC_OAUTH_ERROR = 'Something went wrong signing in with Google. Please try again.'
-
-function goToLoginWithError(router, message) {
-  const params = new URLSearchParams({ error: 'oauth', message: message || GENERIC_OAUTH_ERROR })
-  router.replace(`/login?${params.toString()}`)
+// Deliberately no message param here - app/login/page.js shows one fixed,
+// generic string for every ?error=oauth regardless of what actually failed
+// (a denied consent screen, a PKCE flow-state mismatch, whatever). The
+// real reason is still fully visible server-side in Supabase's own auth
+// logs; forwarding it into the URL only risks surfacing an internal error
+// string a trader has no way to act on - see login/page.js's own comment.
+function goToLoginWithError(router) {
+  router.replace('/login?error=oauth')
 }
 
 export default function AuthCallbackPage() {
@@ -64,14 +76,14 @@ export default function AuthCallbackPage() {
       // of a code - e.g. the user denied the Google consent screen.
       const providerError = params.get('error_description') || params.get('error')
       if (providerError && !code) {
-        goToLoginWithError(router, providerError)
+        goToLoginWithError(router)
         return
       }
 
       if (code) {
         const { data: exchangeData, error } = await client.auth.exchangeCodeForSession(code)
         if (error) {
-          goToLoginWithError(router, error.message)
+          goToLoginWithError(router)
         } else {
           await markTutorialPendingIfNewAccount(client, exchangeData?.user)
           router.replace('/app')

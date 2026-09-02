@@ -9,6 +9,7 @@ import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { invalidateTags } from '@/lib/tagsCache'
+import { readTutorialState, completeTutorial } from '@/lib/tutorial'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast } from '@/lib/toast'
@@ -99,6 +100,14 @@ export default function NewTradePage({ params, searchParams }) {
 
     requestTradeExcursionBackfill(symbol, inserted.id)
     invalidateTags()
+
+    // Tutorial step 2's target action - a no-op for every other user, since
+    // readTutorialState defaults to 'done' once tutorial_status is absent
+    // or already done.
+    const { status: tutorialStatus, step: tutorialStep } = readTutorialState(user)
+    if (tutorialStatus === 'active' && tutorialStep === 2) {
+      await completeTutorial()
+    }
 
     toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)

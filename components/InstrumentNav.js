@@ -121,7 +121,7 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
         ))}
       </div>
       <div className="instrument-nav-add-wrap" ref={addRef}>
-        <span ref={triggerRef} className="instrument-nav-add" onClick={handleTrigger}>+ Add instrument</span>
+        <span ref={triggerRef} className="instrument-nav-add" data-tutorial-target="add-instrument" onClick={handleTrigger}>+ Add instrument</span>
         {adding && pos && (
           <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
             <form onSubmit={handleAddInstrument} className="instrument-add-form">

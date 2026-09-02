@@ -17,7 +17,7 @@ import InstrumentNav from '@/components/InstrumentNav'
 // insights/page.js), so this links to the first instrument's copy, same
 // arbitrary-first-instrument fallback OverviewDashboard's own empty state
 // already uses for its Log New Trade link.
-export default function AppShell({ instruments, strategies = [], active, children }) {
+export default function AppShell({ instruments, strategies = [], active, hideSidebar = false, children }) {
   const [theme, setTheme] = useState('dark')
   const [strategiesExpanded, setStrategiesExpanded] = useState(true)
   const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
@@ -75,40 +75,42 @@ export default function AppShell({ instruments, strategies = [], active, childre
       <div className="topbar-spacer" style={spacerStyle} />
 
       <div className="shell-body">
-        <aside className="sidebar">
-          <Link href="/app" className={`sidebar-item ${active === 'overview' ? 'sidebar-item-active' : ''}`}>
-            Overview
-          </Link>
+        {!hideSidebar && (
+          <aside className="sidebar">
+            <Link href="/app" className={`sidebar-item ${active === 'overview' ? 'sidebar-item-active' : ''}`}>
+              Overview
+            </Link>
 
-          <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
-            <span>Strategies</span>
-            {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </div>
-          {strategiesExpanded && (
-            <div className="sidebar-substrategies">
-              {strategies.length === 0 && (
-                <div className="sidebar-substrategy-empty">No strategies yet</div>
-              )}
-              {sortedStrategies.map((s) => {
-                const inst = instrumentById[s.instrument_id]
-                return (
-                  <Link key={s.id} href={`/app/${inst?.symbol}/strategies/${s.id}`} className="sidebar-substrategy">
-                    <span className="strategy-dot" style={{ background: inst?.color }} />
-                    {s.name}
-                    {inst && <span className="sidebar-substrategy-tag">{inst.symbol}</span>}
-                  </Link>
-                )
-              })}
+            <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
+              <span>Strategies</span>
+              {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </div>
-          )}
+            {strategiesExpanded && (
+              <div className="sidebar-substrategies">
+                {strategies.length === 0 && (
+                  <div className="sidebar-substrategy-empty">No strategies yet</div>
+                )}
+                {sortedStrategies.map((s) => {
+                  const inst = instrumentById[s.instrument_id]
+                  return (
+                    <Link key={s.id} href={`/app/${inst?.symbol}/strategies/${s.id}`} className="sidebar-substrategy">
+                      <span className="strategy-dot" style={{ background: inst?.color }} />
+                      {s.name}
+                      {inst && <span className="sidebar-substrategy-tag">{inst.symbol}</span>}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
 
-          <Link href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
-            Trade Log
-          </Link>
-          <Link href={`/app/${instruments[0]?.symbol}/insights`} className="sidebar-item">
-            Insights
-          </Link>
-        </aside>
+            <Link href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
+              Trade Log
+            </Link>
+            <Link href={`/app/${instruments[0]?.symbol}/insights`} className="sidebar-item">
+              Insights
+            </Link>
+          </aside>
+        )}
 
         <main className="main-area">{children}</main>
       </div>

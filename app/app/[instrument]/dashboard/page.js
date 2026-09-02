@@ -433,7 +433,7 @@ return (
   <div className="strategy-header-row">
     <h1 className="page-title">{displayName} Futures</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
-    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
+    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn" data-tutorial-target="log-trade"><Plus size={16} /> Log new trade</Link>
   </div>
   <p className="page-subtitle page-subtitle-tight">Your overview for {displayName} futures.</p>
   <div className="header-pills-row">

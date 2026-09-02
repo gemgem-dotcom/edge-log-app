@@ -1,18 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
-import { addOrRestoreInstrument } from '@/lib/instruments'
-import { invalidateStrategies } from '@/lib/referenceDataCache'
+import { TUTORIAL_STEPS, readTutorialState, startTutorial, completeTutorial } from '@/lib/tutorial'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 import AppShell from '@/components/AppShell'
 import OverviewDashboard from '@/components/OverviewDashboard'
+import WelcomeTransition from '@/components/WelcomeTransition'
+import TutorialOverlay from '@/components/TutorialOverlay'
 
 export default function AppHome() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [instruments, setInstruments] = useState([])
   const [strategies, setStrategies] = useState([])
@@ -21,16 +19,22 @@ export default function AppHome() {
   // also happens if an existing user later deletes all of theirs, not just
   // on first signup. The name step is only for someone who has genuinely
   // never set one, so it's decided from user_metadata in loadInstruments()
-  // rather than always shown first.
+  // rather than always shown first. Once resolved, everything past it is
+  // just the Overview page (its own zero-instrument empty state, if there's
+  // nothing to show yet) - there's no separate "set up your journal" form
+  // anymore, see WelcomeTransition/TutorialOverlay below.
   const [step, setStep] = useState('setup')
   const [fullName, setFullName] = useState('')
   const [savingName, setSavingName] = useState(false)
+  const [userName, setUserName] = useState('')
 
-  // Onboarding form state
-  const [symbol, setSymbol] = useState('')
-  const [strategyName, setStrategyName] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  // tutorial_status defaults to 'done' (see lib/tutorial.js) - showWelcome
+  // only ever goes true for a genuinely zero-instrument, never-yet-shown
+  // account, computed once in loadInstruments() and never re-derived from
+  // tutorial.status afterward, so a mid-fade re-render can't flicker it
+  // back on.
+  const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
+  const [showWelcome, setShowWelcome] = useState(false)
 
   useEffect(() => {
     loadInstruments()
@@ -46,9 +50,20 @@ export default function AppHome() {
       .eq('archived', false)
       .order('created_at', { ascending: true })
 
-    setInstruments(data || [])
-    if (!error && data && data.length > 0) {
-      const ids = data.map((i) => i.id)
+    const loadedInstruments = data || []
+    setInstruments(loadedInstruments)
+    setUserName(user.user_metadata?.full_name || '')
+
+    // Read fresh on every load (not just mount) so a page refresh
+    // mid-tutorial (step 0 only happens here - steps 1/2 live on the
+    // per-instrument dashboard) resumes at the stored state instead of
+    // restarting from Welcome.
+    const t = readTutorialState(user)
+    setTutorial(t)
+    setShowWelcome(loadedInstruments.length === 0 && t.status === 'pending')
+
+    if (!error && loadedInstruments.length > 0) {
+      const ids = loadedInstruments.map((i) => i.id)
       const { data: stratData } = await supabase
         .from('strategies')
         .select('*')
@@ -68,119 +83,70 @@ export default function AppHome() {
     setSavingName(true)
     await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
     setSavingName(false)
+    setUserName(fullName.trim())
     setStep('setup')
   }
 
-  async function handleOnboard(e) {
-    e.preventDefault()
-    setError('')
-    setSaving(true)
-
-    const { data: { user } } = await supabase.auth.getUser()
-
-    const { data: instrument, error: instrError, restored } = await addOrRestoreInstrument(user.id, symbol)
-
-    if (instrError) {
-      setError(instrError.message)
-      setSaving(false)
-      return
-    }
-
-    // A restored instrument brings its old strategies back with it, so the
-    // "first strategy" field here is only meaningful for a genuinely new
-    // one - skip it on a restore rather than risk hitting strategies' own
-    // unique(instrument_id, name) with a name that's already there.
-    if (!restored) {
-      const { error: stratError } = await supabase
-        .from('strategies')
-        .insert([{ user_id: user.id, instrument_id: instrument.id, name: strategyName.trim() }])
-
-      if (stratError) {
-        setError(stratError.message)
-        setSaving(false)
-        return
-      }
-      invalidateStrategies(instrument.id)
-    }
-
-    router.replace(`/app/${symbol}/dashboard`)
+  async function handleWelcomeContinue() {
+    await startTutorial()
+    setTutorial({ status: 'active', step: 0 })
   }
 
-  usePageTitle(loading ? null : (instruments.length > 0 ? 'Overview' : (step === 'name' ? 'Welcome' : 'Set Up Your Journal')))
+  function handleWelcomeDone() {
+    setShowWelcome(false)
+  }
+
+  async function handleExitTutorial() {
+    await completeTutorial()
+    setTutorial({ status: 'done', step: 0 })
+  }
+
+  usePageTitle(loading ? null : (step === 'name' ? 'Welcome' : 'Overview'))
 
   if (loading) {
     return <PageLoading />
   }
 
-  if (instruments.length > 0) {
+  if (step === 'name') {
     return (
-      <AppShell instruments={instruments} strategies={strategies} active="overview">
-        <OverviewDashboard instruments={instruments} strategies={strategies} />
-      </AppShell>
+      <div className="auth-wrap">
+        <div className="auth-card">
+          <div className="title">Edge<span style={{ fontWeight: 400 }}>Log</span></div>
+          <h1>Welcome</h1>
+          <p className="onboard-note">
+            What should we call you? You can change this anytime in your account settings.
+          </p>
+          <form onSubmit={handleNameSubmit}>
+            <div className="field full">
+              <label>Your name</label>
+              <input
+                type="text"
+                placeholder="e.g. Alex"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" disabled={savingName} className="auth-submit">
+              {savingName ? 'Saving…' : 'Continue'}
+            </button>
+          </form>
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <div className="title">Edge<span style={{ fontWeight: 400 }}>Log</span></div>
-        {step === 'name' ? (
-          <>
-            <h1>Welcome</h1>
-            <p className="onboard-note">
-              What should we call you? You can change this anytime in your account settings.
-            </p>
-            <form onSubmit={handleNameSubmit}>
-              <div className="field full">
-                <label>Your name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Alex"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
-              <button type="submit" disabled={savingName} className="auth-submit">
-                {savingName ? 'Saving…' : 'Continue'}
-              </button>
-            </form>
-          </>
-        ) : (
-          <>
-            <h1>Set up your journal</h1>
-            <p className="onboard-note">
-              Add the first instrument you trade, and the first strategy you want to track under it.
-              You can add more of both later.
-            </p>
-            <form onSubmit={handleOnboard}>
-              <div className="field full">
-                <label>Instrument</label>
-                <select value={symbol} onChange={(e) => setSymbol(e.target.value)} required>
-                  <option value="">Select instrument…</option>
-                  {INSTRUMENT_CATALOG.map((i) => (
-                    <option key={i.symbol} value={i.symbol}>{i.symbol} — {i.display_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field full">
-                <label>Your first strategy name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Powell 10AM"
-                  value={strategyName}
-                  onChange={(e) => setStrategyName(e.target.value)}
-                  required
-                />
-              </div>
-              {error && <div className="auth-error">{error}</div>}
-              <button type="submit" disabled={saving} className="auth-submit">
-                {saving ? 'Setting up…' : 'Start journaling'}
-              </button>
-            </form>
-          </>
-        )}
-      </div>
-    </div>
+    <>
+      <AppShell instruments={instruments} strategies={strategies} active="overview" hideSidebar={instruments.length === 0}>
+        <OverviewDashboard instruments={instruments} strategies={strategies} />
+      </AppShell>
+      {showWelcome && (
+        <WelcomeTransition name={userName} onContinue={handleWelcomeContinue} onDone={handleWelcomeDone} />
+      )}
+      {!showWelcome && tutorial.status === 'active' && tutorial.step === 0 && instruments.length === 0 && (
+        <TutorialOverlay step={0} steps={TUTORIAL_STEPS} onExit={handleExitTutorial} />
+      )}
+    </>
   )
 }

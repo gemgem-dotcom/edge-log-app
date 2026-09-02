@@ -28,7 +28,14 @@ export default function SignupPage() {
       return
     }
     setLoading(true)
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // tutorial_status: 'pending' is set right here, at the one unambiguous
+    // "account created" moment this flow has - see lib/tutorial.js's own
+    // comment on why an absent tutorial_status must never be treated as
+    // 'pending' after the fact.
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { tutorial_status: 'pending' } },
+    })
     setLoading(false)
     if (error) {
       setError(error.message)

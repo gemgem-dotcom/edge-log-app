@@ -5,46 +5,49 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–544  Base: reset, typography, forms, tables, thumbnails,
+     1–547  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   545  Auth pages
-   611  Top nav
-   626  Instrument nav (topbar pill row)
-   693  Page layout
-   745  Tabs
-   755  Misc form helpers
-   761  Detail view
-   784  Holiday notice (site-wide, above the shell)
-   809  Shell layout (sidebar + topbar)
-   1052  Expandable trade rows
-   1100  Calendar
-   1148  Account settings page
-   1359  Light theme
-   1396  2FA
-   1411  Account fine print
-   1414  Screenshot preview (log new trade)
-   1456  Auth pages always dark
-   1491  Monthly P&L (calendar on Overview)
-   1570  Trade form: sections, validation, currency, screenshots
-   1798  Field tooltips
-   1860  Date/time picker (adds an optional popup to a typed input)
-   1969  In-header column filters (trade log table)
-   2017  Active filter chips
-   2080  Empty states, error banners, skeleton loaders
-   2159  Cross-instrument overview dashboard (/app)
-   2338  Not found / error boundary state pages
-   2351  Toast notifications
-   2379  Public policy pages (Privacy, Terms)
-   2398  Legal links (auth pages + account settings)
-   2437  Economic calendar card (mock - Overview pages)
-   2551  Calendar news badge (Monthly P&L day cells, mock)
-   2572  Streak badge (Overview + strategy detail pages)
-   2589  Market status pill (Overview + strategy detail pages)
-   2615  Key levels, today's brief (mock cards)
-   2641  Market context cards (all-instruments Overview)
-   2700  Edge Insights panel
-   2715  Unverified logged time badge
-   2732  Theme toggle (suppress transition flash)
+   548  Auth pages
+   614  Top nav
+   629  Instrument nav (topbar pill row)
+   696  Page layout
+   748  Tabs
+   758  Misc form helpers
+   764  Detail view
+   787  Holiday notice (site-wide, above the shell)
+   812  Shell layout (sidebar + topbar)
+   1055  Expandable trade rows
+   1103  Calendar
+   1151  Account settings page
+   1362  Light theme
+   1399  2FA
+   1414  Account fine print
+   1417  Screenshot preview (log new trade)
+   1459  Auth pages always dark
+   1494  Monthly P&L (calendar on Overview)
+   1573  Trade form: sections, validation, currency, screenshots
+   1801  Field tooltips
+   1863  Date/time picker (adds an optional popup to a typed input)
+   1972  In-header column filters (trade log table)
+   2020  Active filter chips
+   2083  Empty states, error banners, skeleton loaders
+   2162  Cross-instrument overview dashboard (/app)
+   2341  Not found / error boundary state pages
+   2354  Toast notifications
+   2382  Public policy pages (Privacy, Terms)
+   2401  Legal links (auth pages + account settings)
+   2440  Economic calendar card (mock - Overview pages)
+   2554  Calendar news badge (Monthly P&L day cells, mock)
+   2575  Streak badge (Overview + strategy detail pages)
+   2592  Market status pill (Overview + strategy detail pages)
+   2618  Key levels, today's brief (mock cards)
+   2644  Market context cards (all-instruments Overview)
+   2703  Edge Insights panel
+   2718  Unverified logged time badge
+   2735  Theme toggle (suppress transition flash)
+   2745  Welcome transition (first-run)
+   2774  Zero-instrument empty state
+   2784  Tutorial overlay (first-run guided tour)
    ============================================================ */
 
 :root{
@@ -2738,3 +2741,83 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    carry a transition:background-color meant for hover and visibly fade
    over ~150ms instead - two different speeds fighting on screen at once. */
 .theme-switching, .theme-switching *{transition:none !important;}
+
+/* ---------- Welcome transition (first-run) ---------- */
+/* Full-viewport, no card/panel chrome - the "always there, being revealed"
+   effect (see WelcomeTransition.js's own comment) needs this to sit above
+   the already-mounted dashboard and fade to transparent, not swap it out.
+   Same radial gradient as .auth-wrap, so the run from signup through this
+   screen reads as one continuous visual world rather than a hand-off. */
+.welcome-transition{
+  position:fixed; inset:0; z-index:500;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  background:radial-gradient(ellipse 1200px 900px at 50% 0%, #1b3f70 0%, #102850 20%, #0a1830 42%, #060a13 68%, #030407 100%);
+  opacity:1; transition-property:opacity; transition-timing-function:ease;
+}
+.welcome-transition-leaving{opacity:0; pointer-events:none;}
+.welcome-transition-content{max-width:480px; text-align:center;}
+.welcome-transition-title{
+  font-family:'Archivo',sans-serif; font-size:44px; font-weight:800; letter-spacing:-.01em;
+  color:var(--text); margin-bottom:14px;
+}
+.welcome-transition-subtitle{font-size:16px; color:var(--muted); margin-bottom:40px;}
+.welcome-transition-btn{
+  background:var(--accent); color:#04121f; border:none; border-radius:100px;
+  padding:14px 32px; font-size:15px; font-weight:700; cursor:pointer;
+  transition:filter .15s ease, transform .15s ease;
+}
+.welcome-transition-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+@media (max-width:640px){
+  .welcome-transition-title{font-size:32px;}
+}
+
+/* ---------- Zero-instrument empty state ---------- */
+/* Overview's own render when instruments.length===0 (OverviewDashboard.js)
+   - genuinely nothing else on the page, not even the greeting or header
+   pills. Shared by a brand-new account (the Welcome/tutorial flow sits on
+   top of this) and a returning trader who's archived every instrument. */
+.zero-instruments-empty{
+  min-height:60vh; display:flex; align-items:center; justify-content:center; text-align:center;
+}
+.zero-instruments-message{color:var(--muted); font-size:15px; max-width:360px;}
+
+/* ---------- Tutorial overlay (first-run guided tour) ---------- */
+/* Four bands tile the viewport minus the current step's target rect, each
+   dim + pointer-events:auto - see TutorialOverlay.js's own comment for why
+   this (not a single overlay with a punched-out target) is what actually
+   blocks interaction everywhere except the spotlighted control. */
+.tutorial-scrim-band{
+  position:fixed; background:rgba(6,7,9,.78); z-index:900;
+}
+.tutorial-scrim-full{top:0; left:0; right:0; bottom:0;}
+.tutorial-spotlight-ring{
+  position:fixed; z-index:901; pointer-events:none; border-radius:12px;
+  border:2px solid var(--accent-bright);
+  animation:tutorial-pulse 1.8s ease-in-out infinite;
+}
+@keyframes tutorial-pulse{
+  0%, 100%{box-shadow:0 0 0 0 rgba(124,208,255,.55), 0 0 16px 2px rgba(59,167,255,.45);}
+  50%{box-shadow:0 0 0 6px rgba(124,208,255,0), 0 0 22px 6px rgba(59,167,255,.65);}
+}
+@media (prefers-reduced-motion:reduce){
+  .tutorial-spotlight-ring{animation:none; box-shadow:0 0 16px 2px rgba(59,167,255,.5);}
+}
+.tutorial-callout{
+  position:fixed; z-index:902; background:var(--panel); border:1px solid var(--line);
+  border-radius:14px; padding:18px 20px; box-shadow:0 12px 32px rgba(0,0,0,.45);
+}
+.tutorial-callout-step{
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--accent); margin-bottom:6px;
+}
+.tutorial-callout-title{font-family:'Archivo',sans-serif; font-size:16px; font-weight:800; margin-bottom:8px;}
+.tutorial-callout-message{font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:16px;}
+.tutorial-exit-btn{
+  background:none; border:1px solid var(--line); color:var(--muted); border-radius:100px;
+  padding:8px 16px; font-size:12.5px; font-weight:600; cursor:pointer; transition:border-color .15s ease, color .15s ease;
+}
+.tutorial-exit-btn:hover{border-color:var(--accent); color:var(--accent); filter:none;}
+/* Standalone case: the target hasn't been found yet (still loading), so
+   there's no callout to anchor Exit tutorial to - pinned to a corner
+   instead, above the full-screen scrim, so it's still always reachable. */
+.tutorial-exit-btn-standalone{position:fixed; z-index:902; top:20px; right:20px;}

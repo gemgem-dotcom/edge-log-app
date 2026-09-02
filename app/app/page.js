@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { TUTORIAL_STEPS, readTutorialState, startTutorial, completeTutorial, takeQueuedClosingScreen } from '@/lib/tutorial'
+import { TUTORIAL_STEPS, readTutorialState, startTutorial, completeTutorial, takeQueuedClosingScreen, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 import AppShell from '@/components/AppShell'
@@ -41,7 +41,13 @@ export default function AppHome() {
   // account, computed once in loadInstruments() and never re-derived from
   // tutorial.status afterward, so a mid-fade re-render can't flicker it
   // back on.
-  const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
+  //
+  // Seeded from the sessionStorage cache rather than the hardcoded default,
+  // so a step-0 overlay that's actually still active renders on the very
+  // first paint instead of popping in only once loadInstruments()'s own
+  // supabase.auth.getUser() call resolves - see cacheTutorialState's own
+  // comment in lib/tutorial.js.
+  const [tutorial, setTutorial] = useState(readCachedTutorialState)
   const [showWelcome, setShowWelcome] = useState(false)
   const [showClosing, setShowClosing] = useState(false)
 
@@ -81,6 +87,7 @@ export default function AppHome() {
     // restarting from Welcome.
     const t = readTutorialState(user)
     setTutorial(t)
+    cacheTutorialState(t)
     setShowWelcome(loadedInstruments.length === 0 && t.status === 'pending')
 
     if (!error && loadedInstruments.length > 0) {

@@ -16,39 +16,39 @@
    765  Detail view
    788  Holiday notice (site-wide, above the shell)
    813  Shell layout (sidebar + topbar)
-   1056  Expandable trade rows
-   1104  Calendar
-   1152  Account settings page
-   1363  Light theme
-   1400  2FA
-   1415  Account fine print
-   1418  Screenshot preview (log new trade)
-   1460  Auth pages always dark
-   1495  Monthly P&L (calendar on Overview)
-   1574  Trade form: sections, validation, currency, screenshots
-   1802  Field tooltips
-   1864  Date/time picker (adds an optional popup to a typed input)
-   1973  In-header column filters (trade log table)
-   2021  Active filter chips
-   2084  Empty states, error banners, skeleton loaders
-   2163  Cross-instrument overview dashboard (/app)
-   2342  Not found / error boundary state pages
-   2355  Toast notifications
-   2383  Public policy pages (Privacy, Terms)
-   2402  Legal links (auth pages + account settings)
-   2441  Economic calendar card (mock - Overview pages)
-   2555  Calendar news badge (Monthly P&L day cells, mock)
-   2576  Streak badge (Overview + strategy detail pages)
-   2593  Market status pill (Overview + strategy detail pages)
-   2619  Key levels, today's brief (mock cards)
-   2645  Market context cards (all-instruments Overview)
-   2704  Edge Insights panel
-   2719  Unverified logged time badge
-   2736  Theme toggle (suppress transition flash)
-   2746  Welcome transition (first-run)
-   2775  Zero-instrument empty state
-   2785  Tutorial overlay (first-run guided tour)
-   2842  Tutorial step 3 (guided form scroll)
+   1062  Expandable trade rows
+   1110  Calendar
+   1158  Account settings page
+   1369  Light theme
+   1406  2FA
+   1421  Account fine print
+   1424  Screenshot preview (log new trade)
+   1466  Auth pages always dark
+   1501  Monthly P&L (calendar on Overview)
+   1580  Trade form: sections, validation, currency, screenshots
+   1808  Field tooltips
+   1870  Date/time picker (adds an optional popup to a typed input)
+   1979  In-header column filters (trade log table)
+   2027  Active filter chips
+   2090  Empty states, error banners, skeleton loaders
+   2169  Cross-instrument overview dashboard (/app)
+   2348  Not found / error boundary state pages
+   2361  Toast notifications
+   2389  Public policy pages (Privacy, Terms)
+   2408  Legal links (auth pages + account settings)
+   2447  Economic calendar card (mock - Overview pages)
+   2561  Calendar news badge (Monthly P&L day cells, mock)
+   2582  Streak badge (Overview + strategy detail pages)
+   2599  Market status pill (Overview + strategy detail pages)
+   2625  Key levels, today's brief (mock cards)
+   2651  Market context cards (all-instruments Overview)
+   2710  Edge Insights panel
+   2725  Unverified logged time badge
+   2742  Theme toggle (suppress transition flash)
+   2752  Welcome transition (first-run)
+   2781  Zero-instrument empty state
+   2791  Tutorial overlay (first-run guided tour)
+   2848  Tutorial step 3 (guided form scroll)
    ============================================================ */
 
 :root{
@@ -841,6 +841,12 @@ table{min-width:640px;}
   transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .shell-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
+/* First-run tutorial only (see useStickyTopbar.js's `anchored` option) -
+   drops the fixed positioning entirely so the topbar behaves like ordinary
+   in-flow content: still sits at the top of the page, but scrolls away
+   with everything else instead of staying pinned on screen while the user
+   scrolls through a long tutorial step. */
+.shell-topbar.topbar-anchored{position:static; top:auto;}
 /* --topbar-glass-alpha is written directly by useStickyTopbar on every
    scroll event (a plain number, no unit) - it climbs toward
    MAX_GLASS_ALPHA the further from the top the pinned reveal happened, and

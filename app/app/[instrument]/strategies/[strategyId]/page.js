@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateStrategies } from '@/lib/referenceDataCache'
+import { friendlyStrategyError } from '@/lib/supabaseErrors'
 import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
 import { totalTradeCount } from '@/lib/insightData'
@@ -193,7 +194,7 @@ export default function StrategyDetailPage({ params }) {
       setRenaming(false)
       toast.success('Strategy renamed.')
     } else {
-      setFormError(error.message)
+      setFormError(friendlyStrategyError(error))
     }
     setSavingRename(false)
   }

@@ -2824,35 +2824,50 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .tutorial-exit-btn-standalone{position:fixed; z-index:902; top:20px; right:20px;}
 
 /* ---------- Tutorial step 3 (guided form scroll) ---------- */
-/* Same 4-band tiling as .tutorial-scrim-band above, minus the dim
-   background - step 3's target is the whole form, so nothing gets
-   obscured, only the topbar/sidebar stay click-blocked around it. */
+/* Blocking (the 4 bands, made transparent below) and dimming are split
+   across two different shapes here, unlike TutorialOverlay.js's steps 1/2:
+   the bands still need hard rectangular edges to tile the viewport for
+   real click-blocking, but the target here is a large rounded panel rather
+   than a small mostly-square control, so a rectangular band's own corner
+   would otherwise poke a visible sharp notch into the dimming right where
+   the panel's rounded corner curves away - see TutorialScrollGuide.js's
+   comment above where these are rendered. */
 .tutorial-scrim-band-transparent{background:transparent;}
+/* The actual dimming: a single box-shadow spread far past any viewport,
+   which - unlike a rectangular band - automatically follows this element's
+   own border-radius, so the dimmed area's inner edge is genuinely rounded
+   with no seam anywhere around the panel. */
+.tutorial-panel-dim{
+  position:fixed; z-index:899; pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(6,7,9,.78);
+}
 .tutorial-scroll-chevrons{
   position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
   z-index:901; display:flex; flex-direction:column; align-items:center;
   pointer-events:none;
 }
+/* scaleX widens the glyph itself into a broad downward sweep rather than
+   lucide's default near-square chevron - baked into the keyframes below
+   too, since animating `transform` replaces the static value here while
+   it's running rather than composing with it. */
 .tutorial-scroll-chevrons svg{
-  color:var(--accent-bright); opacity:0; margin-top:-10px;
+  color:var(--accent-bright); opacity:0; margin-top:-10px; transform:scaleX(3.5);
   animation:tutorial-chevron-ripple 1.6s ease-in-out infinite;
 }
 .tutorial-scroll-chevrons svg:nth-child(1){animation-delay:0s;}
 .tutorial-scroll-chevrons svg:nth-child(2){animation-delay:.18s;}
 .tutorial-scroll-chevrons svg:nth-child(3){animation-delay:.36s;}
 @keyframes tutorial-chevron-ripple{
-  0%{opacity:0; transform:translateY(-6px);}
-  40%{opacity:1;}
-  100%{opacity:0; transform:translateY(10px);}
+  0%{opacity:0; transform:scaleX(3.5) translateY(-6px);}
+  40%{opacity:1; transform:scaleX(3.5) translateY(0);}
+  100%{opacity:0; transform:scaleX(3.5) translateY(10px);}
 }
 @media (prefers-reduced-motion:reduce){
-  .tutorial-scroll-chevrons svg{animation:none; opacity:.7; margin-top:0;}
+  .tutorial-scroll-chevrons svg{animation:none; opacity:.7; margin-top:0; transform:scaleX(3.5);}
 }
 .tutorial-scroll-continue{
   position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
-  z-index:901; color:var(--text); font-size:14px; font-weight:600;
-  background:var(--panel); border:1px solid var(--line); border-radius:100px;
-  padding:10px 20px; box-shadow:0 12px 32px rgba(0,0,0,.45);
+  z-index:901; color:var(--text); font-size:15px; font-weight:700;
   opacity:0; animation:tutorial-fade-in .3s ease forwards; pointer-events:none;
 }
 @keyframes tutorial-fade-in{from{opacity:0;} to{opacity:1;}}

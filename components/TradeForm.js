@@ -798,7 +798,7 @@ export default function TradeForm({
 
   return (
     <>
-      <div className="panel">
+      <div className="panel" data-tutorial-target="trade-form-panel">
         <form className="trade-form" onSubmit={handleSubmit} onPaste={handlePaste} noValidate>
 
           {formError && (

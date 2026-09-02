@@ -21,11 +21,15 @@ export default function AppLayout({ children }) {
   const pathname = usePathname()
   const [checked, setChecked] = useState(false)
   // Every /app/* route goes through this one layout, so gating here (rather
-  // than in app/app/page.js's own onboarding steps) catches both a brand
-  // new signup and an existing account that predates this requirement -
-  // trade_date/trade_time need a real saved offset to convert to ET
+  // than in app/app/page.js's own onboarding steps) catches an existing
+  // account that predates this requirement, on whichever page they land on
+  // - trade_date/trade_time need a real saved offset to convert to ET
   // accurately (see lib/tradeSessions.js), and there's no page under here
-  // that's meaningful to use before that's set.
+  // that's meaningful to use before that's set. A brand-new signup (no
+  // full_name yet either) is deliberately left to fall through to
+  // app/app/page.js instead, which runs its own name -> timezone -> Welcome
+  // sequence in that order - gating here unconditionally would show this
+  // before the name step every time, the wrong order for a fresh account.
   const [needsTimezone, setNeedsTimezone] = useState(false)
 
   useEffect(() => {
@@ -36,7 +40,7 @@ export default function AppLayout({ children }) {
       if (!session) {
         router.replace('/login')
       } else {
-        setNeedsTimezone(!hasValidTimezone(session.user))
+        setNeedsTimezone(!!session.user.user_metadata?.full_name && !hasValidTimezone(session.user))
         setChecked(true)
       }
     })

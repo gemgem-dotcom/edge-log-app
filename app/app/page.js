@@ -9,6 +9,7 @@ import AppShell from '@/components/AppShell'
 import OverviewDashboard from '@/components/OverviewDashboard'
 import WelcomeTransition from '@/components/WelcomeTransition'
 import TutorialOverlay from '@/components/TutorialOverlay'
+import TimezoneGate from '@/components/TimezoneGate'
 
 export default function AppHome() {
   const [loading, setLoading] = useState(true)
@@ -17,12 +18,19 @@ export default function AppHome() {
 
   // Onboarding step - a user with zero instruments always lands here, which
   // also happens if an existing user later deletes all of theirs, not just
-  // on first signup. The name step is only for someone who has genuinely
-  // never set one, so it's decided from user_metadata in loadInstruments()
-  // rather than always shown first. Once resolved, everything past it is
-  // just the Overview page (its own zero-instrument empty state, if there's
-  // nothing to show yet) - there's no separate "set up your journal" form
-  // anymore, see WelcomeTransition/TutorialOverlay below.
+  // on first signup. The name and timezone steps are each only shown to
+  // someone who's genuinely never set that field, so both are decided from
+  // user_metadata in loadInstruments() rather than always shown first. Once
+  // resolved, everything past it is just the Overview page (its own
+  // zero-instrument empty state, if there's nothing to show yet) - there's
+  // no separate "set up your journal" form anymore, see
+  // WelcomeTransition/TutorialOverlay below.
+  //
+  // Timezone reuses the same TimezoneGate app/app/layout.js falls back to
+  // for an existing account that predates this requirement (a route other
+  // than this one, with a full_name already set) - see that file's own
+  // gating condition for why it defers to this sequence instead for a
+  // brand-new signup still on the name step.
   const [step, setStep] = useState('setup')
   const [fullName, setFullName] = useState('')
   const [savingName, setSavingName] = useState(false)
@@ -74,16 +82,30 @@ export default function AppHome() {
       setLoading(false)
       return
     }
-    setStep(user.user_metadata?.full_name ? 'setup' : 'name')
+    if (!user.user_metadata?.full_name) {
+      setStep('name')
+    } else if (!user.user_metadata?.timezone) {
+      setStep('timezone')
+    } else {
+      setStep('setup')
+    }
     setLoading(false)
   }
 
   async function handleNameSubmit(e) {
     e.preventDefault()
     setSavingName(true)
-    await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
+    const { data: { user } } = await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
     setSavingName(false)
     setUserName(fullName.trim())
+    // Straight from name into timezone (the same order loadInstruments()
+    // computes on a fresh load) rather than assuming it's unset - a user
+    // who somehow already has one (set once through Account Settings, full
+    // name cleared some other way) shouldn't be asked again.
+    setStep(user.user_metadata?.timezone ? 'setup' : 'timezone')
+  }
+
+  function handleTimezoneSet() {
     setStep('setup')
   }
 
@@ -101,7 +123,7 @@ export default function AppHome() {
     setTutorial({ status: 'done', step: 0 })
   }
 
-  usePageTitle(loading ? null : (step === 'name' ? 'Welcome' : 'Overview'))
+  usePageTitle(loading ? null : (step === 'name' ? 'Welcome' : step === 'timezone' ? 'Set Your Timezone' : 'Overview'))
 
   if (loading) {
     return <PageLoading />
@@ -134,6 +156,10 @@ export default function AppHome() {
         </div>
       </div>
     )
+  }
+
+  if (step === 'timezone') {
+    return <TimezoneGate onSet={handleTimezoneSet} />
   }
 
   return (

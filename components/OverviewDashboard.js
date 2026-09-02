@@ -229,6 +229,10 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const instrumentIds = instruments.map((i) => i.id).join(',')
 
   useEffect(() => {
+    // Zero instruments (a brand-new account, or an existing one that's
+    // archived every instrument it had) has nothing to fetch - the render
+    // below returns before any of this data would be used anyway.
+    if (instruments.length === 0) { setLoading(false); return }
     loadData()
   }, [instrumentIds])
 
@@ -251,6 +255,20 @@ export default function OverviewDashboard({ instruments, strategies }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Genuinely nothing to show yet - no greeting, no pills, no panels, just
+  // the prompt to add one. Checked before the loading/error gates below
+  // (which only ever matter once there's data worth fetching), so this
+  // never flashes a skeleton first. Also what makes firstInstrument below
+  // safe to use unconditionally: instruments.length > 0 is guaranteed by
+  // the time any code past this point runs.
+  if (instruments.length === 0) {
+    return (
+      <div className="page-container zero-instruments-empty">
+        <p className="zero-instruments-message">To get started, add your first instrument.</p>
+      </div>
+    )
   }
 
   if (loading) return <OverviewSkeleton />

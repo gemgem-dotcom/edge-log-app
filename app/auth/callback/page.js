@@ -31,6 +31,7 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabaseConfig'
+import { markTutorialPendingIfNewAccount } from '@/lib/tutorial'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 
@@ -68,10 +69,11 @@ export default function AuthCallbackPage() {
       }
 
       if (code) {
-        const { error } = await client.auth.exchangeCodeForSession(code)
+        const { data: exchangeData, error } = await client.auth.exchangeCodeForSession(code)
         if (error) {
           goToLoginWithError(router, error.message)
         } else {
+          await markTutorialPendingIfNewAccount(client, exchangeData?.user)
           router.replace('/app')
         }
         return

@@ -11,7 +11,9 @@ Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 import { getInstruments, getStrategies, invalidateStrategies } from '@/lib/referenceDataCache'
 import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
+import { TUTORIAL_STEPS, readTutorialState, setTutorialStep, completeTutorial } from '@/lib/tutorial'
 import InstrumentNav from '@/components/InstrumentNav'
+import TutorialOverlay from '@/components/TutorialOverlay'
 
 export default function InstrumentLayout({ children, params }) {
     const router = useRouter()
@@ -25,6 +27,7 @@ export default function InstrumentLayout({ children, params }) {
     const [newStrategyName, setNewStrategyName] = useState('')
     const [strategyAddError, setStrategyAddError] = useState(null)
         const [theme, setTheme] = useState('dark')
+    const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
     const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
 
         useEffect(() => {
@@ -66,6 +69,38 @@ export default function InstrumentLayout({ children, params }) {
         return () => window.removeEventListener('scroll', dismiss, true)
   }, [strategiesExpanded])
 
+  // Step 0's target ("+ Add instrument") lives in the topbar on
+  // app/app/page.js's own zero-instrument screen, not here - reaching this
+  // layout at all means an instrument now exists, so step 0 is done by
+  // definition the moment this mounts mid-tutorial. addOrRestoreInstrument
+  // (InstrumentNav.js) already redirects here on success, which is what
+  // actually advances the tutorial in practice; this also covers the
+  // two-tab race where an instrument shows up here before that redirect's
+  // own page ever notices.
+  useEffect(() => {
+    if (tutorial.status === 'active' && tutorial.step === 0) {
+      setTutorialStep(1)
+      setTutorial((t) => ({ ...t, step: 1 }))
+    }
+  }, [tutorial.status, tutorial.step])
+
+  // Tutorial step 1 spotlights "+ Add new" below - it has to actually be in
+  // the DOM for that to find anything, so this overrides whatever the
+  // mobile-collapse effect above set while that step is live.
+  useEffect(() => {
+    if (tutorial.status === 'active' && tutorial.step === 1) setStrategiesExpanded(true)
+  }, [tutorial.status, tutorial.step])
+
+  // Safety net for a brand-new user who already has a strategy by the time
+  // step 1 loads (e.g. two tabs open, one raced ahead) - skips straight to
+  // step 2 instead of spotlighting a control whose job is already done.
+  useEffect(() => {
+    if (tutorial.status === 'active' && tutorial.step === 1 && strategies.length > 0) {
+      setTutorialStep(2)
+      setTutorial((t) => ({ ...t, step: 2 }))
+    }
+  }, [tutorial.status, tutorial.step, strategies.length])
+
   // Also re-runs on every in-app navigation (pathname), not just an
   // instrument switch - deleting a strategy from its own detail page
   // redirects here via router.push, a client-side transition that leaves
@@ -77,6 +112,9 @@ export default function InstrumentLayout({ children, params }) {
 
   async function loadData() {
         const { data: { user } } = await supabase.auth.getUser()
+        // Read fresh on every load (not just mount) so a page refresh
+        // mid-tutorial resumes at the stored step instead of restarting.
+        setTutorial(readTutorialState(user))
 
       // Security: automatically sign out after 30 days since last sign-in
                   if (user?.last_sign_in_at) {
@@ -110,6 +148,9 @@ export default function InstrumentLayout({ children, params }) {
                 invalidateStrategies(currentInstrumentId)
                 setNewStrategyName('')
                 setAddingStrategy(false)
+                if (tutorial.status === 'active' && tutorial.step === 1) {
+                  await setTutorialStep(2)
+                }
                 loadData()
         } else {
                 setStrategyAddError(error.message)
@@ -120,6 +161,11 @@ export default function InstrumentLayout({ children, params }) {
         setAddingStrategy(false)
         setNewStrategyName('')
         setStrategyAddError(null)
+  }
+
+  async function handleExitTutorial() {
+        await completeTutorial()
+        setTutorial({ status: 'done', step: 0 })
   }
 
   const isActive = (href) => pathname === href
@@ -134,6 +180,7 @@ export default function InstrumentLayout({ children, params }) {
   const sortedStrategies = strategies.slice().sort((a, b) => a.name.localeCompare(b.name))
 
   return (
+      <>
         <div className="shell">
           <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
             <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
@@ -191,7 +238,7 @@ export default function InstrumentLayout({ children, params }) {
                   )}
                   </>
                ) : (
-                                 <div className="sidebar-substrategy sidebar-strategy-add" onClick={() => setAddingStrategy(true)}>
+                                 <div className="sidebar-substrategy sidebar-strategy-add" data-tutorial-target="add-strategy" onClick={() => setAddingStrategy(true)}>
                                    <Plus size={14} /> Add new
                  </div>
                )}
@@ -209,5 +256,20 @@ export default function InstrumentLayout({ children, params }) {
         <main className="main-area">{children}</main>
             </div>
             </div>
+        {/* Step 1's target (the sidebar's own "+ Add new") is on every
+            page under this layout, so it can render regardless of route.
+            Step 2's target only exists on the dashboard page itself - once
+            the tutorial has sent the user there via that button, this
+            layout is still mounted on the log/new route underneath it, and
+            without the pathname check below it would find nothing, fall
+            back to its "target not found" full-screen block, and leave the
+            trade form the tutorial just pointed at completely unusable. */}
+        {tutorial.status === 'active' && tutorial.step === 1 && (
+          <TutorialOverlay step={1} steps={TUTORIAL_STEPS} onExit={handleExitTutorial} />
+        )}
+        {tutorial.status === 'active' && tutorial.step === 2 && pathname === `/app/${currentSymbol}/dashboard` && (
+          <TutorialOverlay step={2} steps={TUTORIAL_STEPS} onExit={handleExitTutorial} />
+        )}
+      </>
   )
 }

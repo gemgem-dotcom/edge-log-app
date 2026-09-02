@@ -9,7 +9,7 @@ import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { invalidateTags } from '@/lib/tagsCache'
-import { readTutorialState, completeTutorial } from '@/lib/tutorial'
+import { readTutorialState, completeTutorial, queueClosingScreen } from '@/lib/tutorial'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast } from '@/lib/toast'
@@ -125,7 +125,8 @@ export default function NewTradePage({ params, searchParams }) {
   // which shows the closing screen for ?onboarded=1 (see app/app/page.js).
   async function handleTutorialStep3Complete() {
     await completeTutorial()
-    router.push('/app?onboarded=1')
+    queueClosingScreen()
+    router.push('/app')
   }
 
   return (

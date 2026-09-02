@@ -28,7 +28,7 @@ export default function InstrumentLayout({ children, params }) {
     const [strategyAddError, setStrategyAddError] = useState(null)
         const [theme, setTheme] = useState('dark')
     const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
-    const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
+    const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ anchored: tutorial.status === 'active' })
 
         useEffect(() => {
                     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null

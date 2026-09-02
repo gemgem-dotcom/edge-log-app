@@ -17,10 +17,10 @@ import InstrumentNav from '@/components/InstrumentNav'
 // insights/page.js), so this links to the first instrument's copy, same
 // arbitrary-first-instrument fallback OverviewDashboard's own empty state
 // already uses for its Log New Trade link.
-export default function AppShell({ instruments, strategies = [], active, hideSidebar = false, children }) {
+export default function AppShell({ instruments, strategies = [], active, hideSidebar = false, anchorTopbar = false, children }) {
   const [theme, setTheme] = useState('dark')
   const [strategiesExpanded, setStrategiesExpanded] = useState(true)
-  const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
+  const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ anchored: anchorTopbar })
 
   useEffect(() => {
     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null

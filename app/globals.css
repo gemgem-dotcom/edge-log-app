@@ -48,7 +48,7 @@
    2746  Welcome transition (first-run)
    2775  Zero-instrument empty state
    2785  Tutorial overlay (first-run guided tour)
-   2826  Tutorial step 3 (guided form scroll)
+   2842  Tutorial step 3 (guided form scroll)
    ============================================================ */
 
 :root{
@@ -2783,14 +2783,30 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .zero-instruments-message{color:var(--muted); font-size:15px; max-width:360px;}
 
 /* ---------- Tutorial overlay (first-run guided tour) ---------- */
-/* Four bands tile the viewport minus the current step's target rect, each
-   dim + pointer-events:auto - see TutorialOverlay.js's own comment for why
-   this (not a single overlay with a punched-out target) is what actually
-   blocks interaction everywhere except the spotlighted control. */
+/* Four bands tile the viewport minus the current step's target rect, with
+   pointer-events:auto - see TutorialOverlay.js's own comment for why this
+   (not a single overlay with a punched-out target) is what actually blocks
+   interaction everywhere except the spotlighted control. Dim by default
+   (the "target not found yet" full-screen fallback needs an actual dim
+   background, having no rounded target to align dimming to), but every
+   real spotlighted step overrides that to transparent via the modifier
+   below and gets its dimming from .tutorial-panel-dim instead. */
 .tutorial-scrim-band{
   position:fixed; background:rgba(6,7,9,.78); z-index:900;
 }
 .tutorial-scrim-full{top:0; left:0; right:0; bottom:0;}
+/* A rectangular band's own hard corner would poke a visible sharp notch
+   into a rounded target's corner (most obvious around .new-trade-btn's
+   fully pill-shaped border-radius:100px, and around
+   TutorialScrollGuide.js's whole-panel target) - so the bands stay
+   click-blocking only here, and .tutorial-panel-dim supplies the actual
+   dimming as a single box-shadow, which unlike a rectangular band
+   automatically follows its own border-radius with no seam. */
+.tutorial-scrim-band-transparent{background:transparent;}
+.tutorial-panel-dim{
+  position:fixed; z-index:899; pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(6,7,9,.78);
+}
 .tutorial-spotlight-ring{
   position:fixed; z-index:901; pointer-events:none; border-radius:12px;
   border:2px solid var(--accent-bright);
@@ -2824,27 +2840,17 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .tutorial-exit-btn-standalone{position:fixed; z-index:902; top:20px; right:20px;}
 
 /* ---------- Tutorial step 3 (guided form scroll) ---------- */
-/* Blocking (the 4 bands, made transparent below) and dimming are split
-   across two different shapes here, unlike TutorialOverlay.js's steps 1/2:
-   the bands still need hard rectangular edges to tile the viewport for
-   real click-blocking, but the target here is a large rounded panel rather
-   than a small mostly-square control, so a rectangular band's own corner
-   would otherwise poke a visible sharp notch into the dimming right where
-   the panel's rounded corner curves away - see TutorialScrollGuide.js's
-   comment above where these are rendered. */
-.tutorial-scrim-band-transparent{background:transparent;}
-/* The actual dimming: a single box-shadow spread far past any viewport,
-   which - unlike a rectangular band - automatically follows this element's
-   own border-radius, so the dimmed area's inner edge is genuinely rounded
-   with no seam anywhere around the panel. */
-.tutorial-panel-dim{
-  position:fixed; z-index:899; pointer-events:none;
-  box-shadow:0 0 0 9999px rgba(6,7,9,.78);
-}
+/* Blocking/dimming reuse .tutorial-scrim-band-transparent + .tutorial-
+   panel-dim above (originally added for this step, now shared with
+   TutorialOverlay.js's steps 0/1/2 too). What's actually new here is the
+   scroll-down affordance and its tap-to-continue handoff. */
+/* Clickable (unlike the other tutorial-step-3 indicators, which are purely
+   decorative) - tapping it jumps straight to the bottom instead of making
+   the user scroll there by hand. */
 .tutorial-scroll-chevrons{
   position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
   z-index:901; display:flex; flex-direction:column; align-items:center;
-  pointer-events:none;
+  cursor:pointer; padding:6px 14px;
 }
 /* scaleX widens the glyph itself into a broad downward sweep rather than
    lucide's default near-square chevron - baked into the keyframes below

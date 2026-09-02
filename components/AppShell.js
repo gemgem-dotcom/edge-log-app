@@ -62,7 +62,7 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
 
   return (
     <div className="shell">
-      <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
+      <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${anchorTopbar ? ' topbar-anchored' : ''}`}>
         <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
         <InstrumentNav instruments={instruments} />
         <div className="shell-topbar-right">

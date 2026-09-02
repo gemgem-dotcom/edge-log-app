@@ -9,7 +9,7 @@ import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { invalidateTags } from '@/lib/tagsCache'
-import { readTutorialState, completeTutorial, queueClosingScreen } from '@/lib/tutorial'
+import { readTutorialState, completeTutorial, queueClosingScreen, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
 import { toast } from '@/lib/toast'
@@ -35,7 +35,14 @@ export default function NewTradePage({ params, searchParams }) {
   // strategy - read fresh on every mount alongside the rest of this page's
   // own data load, same as app/app/[instrument]/layout.js does for its own
   // copy of this state, rather than shared via props/context.
-  const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
+  //
+  // Seeded from the sessionStorage cache rather than the hardcoded default:
+  // this page fully remounts on the dashboard -> log/new navigation that
+  // enters step 3, and without this the spotlight only appeared once this
+  // component's own supabase.auth.getUser() call resolved - a beat of the
+  // full, unblocked, undimmed form on every single transition into this
+  // step. See cacheTutorialState's own comment in lib/tutorial.js.
+  const [tutorial, setTutorial] = useState(readCachedTutorialState)
 
   useEffect(() => {
     loadStrategies()
@@ -45,7 +52,9 @@ export default function NewTradePage({ params, searchParams }) {
     setStrategiesError(null)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      setTutorial(readTutorialState(user))
+      const freshTutorial = readTutorialState(user)
+      setTutorial(freshTutorial)
+      cacheTutorialState(freshTutorial)
       const { data: instrument } = await supabase
         .from('instruments')
         .select('*')

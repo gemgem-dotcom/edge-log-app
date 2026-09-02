@@ -11,7 +11,7 @@ Settings, User, ChevronDown, ChevronUp, Plus, Moon, Sun,
 import { getInstruments, getStrategies, invalidateStrategies } from '@/lib/referenceDataCache'
 import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
-import { TUTORIAL_STEPS, readTutorialState, setTutorialStep, completeTutorial } from '@/lib/tutorial'
+import { TUTORIAL_STEPS, readTutorialState, setTutorialStep, completeTutorial, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import InstrumentNav from '@/components/InstrumentNav'
 import TutorialOverlay from '@/components/TutorialOverlay'
 
@@ -27,7 +27,11 @@ export default function InstrumentLayout({ children, params }) {
     const [newStrategyName, setNewStrategyName] = useState('')
     const [strategyAddError, setStrategyAddError] = useState(null)
         const [theme, setTheme] = useState('dark')
-    const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
+    // Seeded from the sessionStorage cache, not the hardcoded default - see
+    // cacheTutorialState's own comment in lib/tutorial.js for why (renders
+    // the correct overlay on this layout's very first paint instead of
+    // waiting on loadData()'s own supabase.auth.getUser() call to resolve).
+    const [tutorial, setTutorial] = useState(readCachedTutorialState)
     const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ anchored: tutorial.status === 'active' })
 
         useEffect(() => {
@@ -114,7 +118,9 @@ export default function InstrumentLayout({ children, params }) {
         const { data: { user } } = await supabase.auth.getUser()
         // Read fresh on every load (not just mount) so a page refresh
         // mid-tutorial resumes at the stored step instead of restarting.
-        setTutorial(readTutorialState(user))
+        const freshTutorial = readTutorialState(user)
+        setTutorial(freshTutorial)
+        cacheTutorialState(freshTutorial)
 
       // Security: automatically sign out after 30 days since last sign-in
                   if (user?.last_sign_in_at) {
@@ -182,7 +188,7 @@ export default function InstrumentLayout({ children, params }) {
   return (
       <>
         <div className="shell">
-          <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
+          <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${tutorial.status === 'active' ? ' topbar-anchored' : ''}`}>
             <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
 
             <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />

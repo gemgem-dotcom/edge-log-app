@@ -37,7 +37,7 @@ export default function TwoFactorSection({ initialFactors }) {
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
     setMfaBusy(false)
     if (error) {
-      setMfaError(error.message)
+      setMfaError("Couldn't start two-factor setup. Please try again.")
       return
     }
     setEnrollFactorId(data.id)
@@ -55,7 +55,7 @@ export default function TwoFactorSection({ initialFactors }) {
     setMfaBusy(true)
     const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: enrollFactorId })
     if (challengeError) {
-      setMfaError(challengeError.message)
+      setMfaError("Couldn't verify that code. Please try again.")
       setMfaBusy(false)
       return
     }
@@ -99,7 +99,7 @@ export default function TwoFactorSection({ initialFactors }) {
     const { error } = await supabase.auth.mfa.unenroll({ factorId })
     setMfaBusy(false)
     if (error) {
-      setMfaError(error.message)
+      setMfaError("Couldn't turn off two-factor authentication. Please try again.")
       return
     }
     await refreshFactors()

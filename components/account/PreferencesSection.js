@@ -46,7 +46,7 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
       const { error: shiftError } = await supabase.rpc('shift_trade_times', { delta_hours: deltaHours })
       if (shiftError) {
         setShiftingTz(false)
-        toast.error(`Couldn't update your trade times — ${shiftError.message}`)
+        toast.error("Couldn't update your trade times. Please try again, or contact support if this keeps happening.")
         return
       }
     }
@@ -55,7 +55,7 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
     const { error } = await supabase.auth.updateUser({ data: { timezone: newTz } })
     setShiftingTz(false)
     if (!error) toast.success('Timezone updated — trade times shifted to match.')
-    else toast.error(`Trade times were updated, but saving the new timezone failed — ${error.message}`)
+    else toast.error('Trade times were updated, but saving your new timezone failed. Please try changing it again.')
   }
 
   return (

@@ -35,7 +35,7 @@ export default function InstrumentMenu({ instrumentId, symbol }) {
 
     const { error } = await supabase.from('instruments').update({ archived: true }).eq('id', instrumentId)
     if (error) {
-      toast.error(`Couldn't remove ${symbol} — ${error.message}`)
+      toast.error(`Couldn't remove ${symbol}. Please try again.`)
       return
     }
     invalidateInstruments()

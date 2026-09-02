@@ -74,7 +74,7 @@ export default function NewTradePage({ params, searchParams }) {
       if (error) throw error
       setStrategies(data || [])
     } catch (err) {
-      setStrategiesError(`Couldn't load your strategies — ${err.message || 'something went wrong'}. You can still log the trade and assign a strategy later.`)
+      setStrategiesError("Couldn't load your strategies — something went wrong. You can still log the trade and assign a strategy later.")
     }
   }
 
@@ -95,7 +95,7 @@ export default function NewTradePage({ params, searchParams }) {
     } catch (uploadError) {
       return uploadError.message?.includes('Bucket not found')
         ? 'Screenshot upload failed: the "screenshots" storage bucket doesn\'t exist yet in Supabase. Run the storage setup SQL (storage-setup.sql) or create it manually under Storage, New bucket, name it "screenshots", and make it Public.'
-        : 'Screenshot upload failed: ' + uploadError.message
+        : 'Screenshot upload failed. Please try again.'
     }
 
     const timezoneOffset = parseFloat(user.user_metadata?.timezone ?? browserOffsetGuess())
@@ -119,7 +119,7 @@ export default function NewTradePage({ params, searchParams }) {
     }]).select().single()
 
     if (error) {
-      return 'Could not save trade: ' + error.message
+      return 'Could not save trade. Please try again.'
     }
 
     requestTradeExcursionBackfill(symbol, inserted.id)

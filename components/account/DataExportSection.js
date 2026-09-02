@@ -27,7 +27,7 @@ export default function DataExportSection() {
 
     setExporting(false)
     if (error) {
-      setExportError(error.message)
+      setExportError('Couldn\'t prepare your export. Please try again or contact support if this keeps happening.')
       return
     }
     if (!trades || trades.length === 0) {

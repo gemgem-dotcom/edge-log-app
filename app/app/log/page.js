@@ -63,8 +63,8 @@ export default function AllTradesPage() {
       } else {
         setLoading(false)
       }
-    } catch (err) {
-      setError(err.message || "Couldn't load your trades — something went wrong.")
+    } catch {
+      setError('something went wrong.')
       setLoading(false)
     }
   }
@@ -79,8 +79,8 @@ export default function AllTradesPage() {
       if (tradeError) throw tradeError
       setTrades(pageTrades)
       setTotalCount(count)
-    } catch (err) {
-      setError(err.message || "Couldn't load your trades — something went wrong.")
+    } catch {
+      setError('something went wrong.')
     } finally {
       setLoading(false)
     }

@@ -312,7 +312,7 @@ export default function TradeLogTable({
       else setRows((prev) => prev.filter((t) => t.id !== trade.id))
       if (expandedId === trade.id) setExpandedId(null)
     } else {
-      setDeleteError(`Couldn't delete that trade — ${error.message}`)
+      setDeleteError("Couldn't delete that trade. Please try again.")
     }
   }
 

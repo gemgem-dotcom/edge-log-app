@@ -48,8 +48,8 @@ export default function EditTradePage({ params }) {
       setTrade(t)
       setInstrumentId(t.instrument_id)
       await loadStrategies(t.instrument_id)
-    } catch (err) {
-      setError(err.message || "Couldn't load this trade — something went wrong.")
+    } catch {
+      setError('something went wrong.')
     } finally {
       setLoading(false)
     }
@@ -71,7 +71,9 @@ export default function EditTradePage({ params }) {
     try {
       uploaded = await uploadScreenshots(screenshots)
     } catch (uploadError) {
-      return 'Screenshot upload failed: ' + uploadError.message
+      return uploadError.message?.includes('Bucket not found')
+        ? 'Screenshot upload failed: the "screenshots" storage bucket doesn\'t exist yet in Supabase. Run the storage setup SQL (storage-setup.sql) or create it manually under Storage, New bucket, name it "screenshots", and make it Public.'
+        : 'Screenshot upload failed. Please try again.'
     }
     const screenshot_urls = [...existingScreenshots, ...uploaded]
 
@@ -107,7 +109,7 @@ export default function EditTradePage({ params }) {
     }).eq('id', tradeId).select().single()
 
     if (error) {
-      return 'Could not save trade: ' + error.message
+      return 'Could not save trade. Please try again.'
     }
 
     // Only re-triggers the (Databento-backed) excursion computation when a
@@ -141,7 +143,7 @@ export default function EditTradePage({ params }) {
     setDeleteError(null)
     const { error } = await supabase.from('trades').delete().eq('id', tradeId)
     if (error) {
-      setDeleteError(`Couldn't delete this trade — ${error.message}`)
+      setDeleteError("Couldn't delete this trade. Please try again.")
       return
     }
     invalidateTags()

@@ -86,7 +86,7 @@ export default function EdgeInsightsPanel({ scope, tradeCount }) {
         <Narrative narrative={state.narrative} />
       ) : (
         <p className="stat-placeholder">
-          {state.error ? `Couldn't generate insights — ${state.error}` : 'No insight generated yet.'}
+          {state.error || 'No insight generated yet.'}
         </p>
       )}
       <div className="panel-link-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

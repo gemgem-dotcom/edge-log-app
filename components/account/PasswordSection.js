@@ -63,7 +63,7 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
     setPasswordSaving(false)
 
     if (updateError) {
-      setPasswordError(updateError.message)
+      setPasswordError("Couldn't update your password. Please try again.")
       return
     }
 

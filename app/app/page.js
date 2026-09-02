@@ -194,7 +194,7 @@ export default function AppHome() {
         <WelcomeTransition
           title={`Welcome${userName ? `, ${userName}` : ''}`}
           subtitle="Let's get your trading journal set up."
-          actionLabel="Let's get started."
+          actionLabel="Let's get started"
           onContinue={handleWelcomeContinue}
           onDone={handleWelcomeDone}
         />
@@ -204,9 +204,9 @@ export default function AppHome() {
       )}
       {showClosing && (
         <WelcomeTransition
-          title="You're set up."
-          subtitle="You added an instrument, created a strategy, and saw how the trade-logging form works. Nothing's been logged yet, so your dashboard will be empty — that's expected for a brand-new account."
-          actionLabel="Take me to my dashboard."
+          title="You're all set."
+          subtitle="Your first instrument and strategy are ready. Start logging trades and let EdgeLog handle the rest."
+          actionLabel="Take me to my dashboard"
           onContinue={handleClosingContinue}
           onDone={handleClosingDone}
         />

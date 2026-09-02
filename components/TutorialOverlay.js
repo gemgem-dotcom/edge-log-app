@@ -45,26 +45,30 @@ export default function TutorialOverlay({ step, steps, onExit }) {
   // expandSelector is left to find). Either one missing is fine as long as
   // the other resolves.
   //
-  // borderRadius is read straight off the trigger's own computed style
+  // borderRadius is read straight off a real element's computed style
   // rather than hardcoded - a fixed radius happened to look fine against
   // .sidebar-strategy-add's sharp corners but drew an obviously squared-off
   // box around .new-trade-btn's fully pill-shaped border-radius:100px.
-  // Reading it directly keeps the ring's corners honest for whatever shape
-  // a given step's target actually has, current and future.
+  // Prefer the expandSelector's own radius over the trigger's when both are
+  // present: once expanded, the dropdown/form panel (a real bordered card,
+  // e.g. .instrument-dropdown's 9px) is the dominant visual shape being
+  // spotlighted, not the small pill-shaped trigger it's anchored to (e.g.
+  // .instrument-nav-add's 100px) - using the trigger's radius there drew a
+  // ring whose curve didn't match the panel's own corner underneath it,
+  // which the panel's much sharper actual corner then visibly poked past.
   const measure = useCallback(() => {
     if (!current) { setRect(null); return }
     const trigger = document.querySelector(current.targetSelector)
-    const els = [
-      trigger,
-      current.expandSelector ? document.querySelector(current.expandSelector) : null,
-    ].filter(Boolean)
+    const expandEl = current.expandSelector ? document.querySelector(current.expandSelector) : null
+    const els = [trigger, expandEl].filter(Boolean)
     if (els.length === 0) { setRect(null); return }
     const rects = els.map((el) => el.getBoundingClientRect())
     const top = Math.min(...rects.map((r) => r.top))
     const left = Math.min(...rects.map((r) => r.left))
     const right = Math.max(...rects.map((r) => r.right))
     const bottom = Math.max(...rects.map((r) => r.bottom))
-    const borderRadius = trigger ? getComputedStyle(trigger).borderRadius : '12px'
+    const radiusSource = expandEl || trigger
+    const borderRadius = radiusSource ? getComputedStyle(radiusSource).borderRadius : '12px'
     setRect({ top, left, width: right - left, height: bottom - top, borderRadius })
   }, [current])
 

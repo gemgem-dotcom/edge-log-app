@@ -111,7 +111,7 @@ export default function StrategyDetailPage({ params }) {
   const strategyId = resolvedParams.strategyId
   const router = useRouter()
 
-const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [formError, setFormError] = useState(null)
   const [strategy, setStrategy] = useState(null)
@@ -119,7 +119,7 @@ const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState(null)
   usePageTitle(strategy ? strategy.name : 'Strategy')
 
-const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useClickOutside(menuOpen, useCallback(() => setMenuOpen(false), []))
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
@@ -127,235 +127,235 @@ const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
-useEffect(() => {
-  loadData()
-}, [strategyId])
+  useEffect(() => {
+    loadData()
+  }, [strategyId])
 
-async function loadData() {
-  setLoading(true)
-  setError(null)
-  // Menu/modal open-state and the duration-bucket filter are scoped to
-  // whichever strategy is on screen - left open across a soft nav to a
-  // different strategy (e.g. clicking straight from one strategy card to
-  // another), a still-open delete-confirmation modal would confirm against
-  // the *new* strategyId (read fresh from params on every render), not the
-  // one the trader actually meant to delete. Previously this page always
-  // remounted fresh on navigation, so these defaults doubled as the reset;
-  // a soft nav no longer remounts it.
-  setMenuOpen(false)
-  setRenaming(false)
-  setShowDeleteModal(false)
-  setFormError(null)
-  try {
-    // PGRST116 is PostgREST's "0 rows" error for .single() - expected when
-    // this strategy was deleted (e.g. a stale sidebar link, or a bookmark/
-    // back-button hit before the sidebar catches up - see the layout's own
-    // pathname-triggered refetch). That's the empty-strategy state below,
-    // not a real failure worth surfacing as an error banner.
-    const { data: s, error: stratError } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
-    if (stratError && stratError.code !== 'PGRST116') throw stratError
-    setStrategy(stratError ? null : s)
-    if (stratError) return
-
-    const { data: tradeData, error: tradeError } = await supabase
-    .from('trades')
-    .select('*')
-    .eq('strategy_id', strategyId)
-    .order('trade_date', { ascending: false })
-    .order('trade_time', { ascending: false })
-    if (tradeError) throw tradeError
-
-    setTrades(tradeData || [])
-    const computed = await computeStrategyStats(tradeData || [])
-    setStats(computed)
-  } catch (err) {
-    setError(err.message || "Couldn't load this strategy — something went wrong.")
-  } finally {
-    setLoading(false)
-  }
-}
-
-function openRename() {
-  setRenameValue(strategy.name)
-  setRenaming(true)
-  setMenuOpen(false)
-}
-
-async function handleRename(e) {
-  e.preventDefault()
-  if (!renameValue.trim()) return
-  setFormError(null)
-  setSavingRename(true)
-  const { error } = await supabase.from('strategies').update({ name: renameValue.trim() }).eq('id', strategyId)
-  if (!error) {
-    invalidateStrategies(strategy.instrument_id)
-    setStrategy((prev) => ({ ...prev, name: renameValue.trim() }))
+  async function loadData() {
+    setLoading(true)
+    setError(null)
+    // Menu/modal open-state and the duration-bucket filter are scoped to
+    // whichever strategy is on screen - left open across a soft nav to a
+    // different strategy (e.g. clicking straight from one strategy card to
+    // another), a still-open delete-confirmation modal would confirm against
+    // the *new* strategyId (read fresh from params on every render), not the
+    // one the trader actually meant to delete. Previously this page always
+    // remounted fresh on navigation, so these defaults doubled as the reset;
+    // a soft nav no longer remounts it.
+    setMenuOpen(false)
     setRenaming(false)
-    toast.success('Strategy renamed.')
-  } else {
-    setFormError(error.message)
-  }
-  setSavingRename(false)
-}
-
-async function handleDeleteStrategy() {
-  setFormError(null)
-  setDeleting(true)
-  await supabase.from('trades').update({ strategy_id: null }).eq('strategy_id', strategyId)
-  const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
-  if (error) {
-    setFormError(error.message)
-    setDeleting(false)
     setShowDeleteModal(false)
-    return
-  }
-  invalidateStrategies(strategy.instrument_id)
-  toast.success('Strategy deleted.')
-  router.push(`/app/${symbol}/dashboard`)
-}
+    setFormError(null)
+    try {
+      // PGRST116 is PostgREST's "0 rows" error for .single() - expected when
+      // this strategy was deleted (e.g. a stale sidebar link, or a bookmark/
+      // back-button hit before the sidebar catches up - see the layout's own
+      // pathname-triggered refetch). That's the empty-strategy state below,
+      // not a real failure worth surfacing as an error banner.
+      const { data: s, error: stratError } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
+      if (stratError && stratError.code !== 'PGRST116') throw stratError
+      setStrategy(stratError ? null : s)
+      if (stratError) return
 
-if (loading) return <StrategyDetailSkeleton />
-if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={loadData} /></div>
+      const { data: tradeData, error: tradeError } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('strategy_id', strategyId)
+        .order('trade_date', { ascending: false })
+        .order('trade_time', { ascending: false })
+      if (tradeError) throw tradeError
+
+      setTrades(tradeData || [])
+      const computed = await computeStrategyStats(tradeData || [])
+      setStats(computed)
+    } catch (err) {
+      setError(err.message || "Couldn't load this strategy — something went wrong.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function openRename() {
+    setRenameValue(strategy.name)
+    setRenaming(true)
+    setMenuOpen(false)
+  }
+
+  async function handleRename(e) {
+    e.preventDefault()
+    if (!renameValue.trim()) return
+    setFormError(null)
+    setSavingRename(true)
+    const { error } = await supabase.from('strategies').update({ name: renameValue.trim() }).eq('id', strategyId)
+    if (!error) {
+      invalidateStrategies(strategy.instrument_id)
+      setStrategy((prev) => ({ ...prev, name: renameValue.trim() }))
+      setRenaming(false)
+      toast.success('Strategy renamed.')
+    } else {
+      setFormError(error.message)
+    }
+    setSavingRename(false)
+  }
+
+  async function handleDeleteStrategy() {
+    setFormError(null)
+    setDeleting(true)
+    await supabase.from('trades').update({ strategy_id: null }).eq('strategy_id', strategyId)
+    const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
+    if (error) {
+      setFormError(error.message)
+      setDeleting(false)
+      setShowDeleteModal(false)
+      return
+    }
+    invalidateStrategies(strategy.instrument_id)
+    toast.success('Strategy deleted.')
+    router.push(`/app/${symbol}/dashboard`)
+  }
+
+  if (loading) return <StrategyDetailSkeleton />
+  if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={loadData} /></div>
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
-const streak = computeStreak(trades)
-const equityPoints = buildEquityCurve(trades)
+  const streak = computeStreak(trades)
+  const equityPoints = buildEquityCurve(trades)
 
-return (
-  <div className="page-container">
-  <ErrorBanner message={formError} />
-  <div className="strategy-header-row">
-  <h1 className="page-title">{strategy.name}</h1>
-<div className="strategy-menu-wrap" ref={menuRef}>
-  <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
-<MoreVertical size={17} />
-  </div>
-{menuOpen && (
-  <div className="strategy-menu-dropdown">
-  <div className="strategy-menu-item" onClick={openRename}>Rename strategy</div>
- <div className="strategy-menu-item strategy-menu-item-danger" onClick={() => { setMenuOpen(false); setShowDeleteModal(true) }}>
-Delete strategy
-</div>
-  </div>
-)}
-</div>
-<Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
-  </div>
-
-{renaming && (
-  <form onSubmit={handleRename} className="strategy-rename-form">
-  <input
- type="text"
- value={renameValue}
- autoFocus
- onChange={(e) => setRenameValue(e.target.value)}
- />
-   <button type="submit" disabled={savingRename}>{savingRename ? 'Saving…' : 'Save'}</button>
-<span className="del" onClick={() => setRenaming(false)}>Cancel</span>
-  </form>
-)}
-
-<p className="page-subtitle page-subtitle-tight">See how your strategy has performed.</p>
-<div className="header-pills-row">
-  <MarketStatusPill />
-  <StreakBadge
-    streak={streak}
-    winLabel={(n) => `${n}-trade win streak`}
-    lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
-  />
-</div>
-
-<div className="section-heading">Performance</div>
-<div className="panel">
-  <div className="performance-card-subgrid" style={{ marginTop: 0 }}>
-    {/* Wrapped in a plain div, rather than putting stats/stats-2 directly
-        under .performance-card-subgrid - that selector's own
-        ">div{display:flex; flex-direction:column}" rule (meant for
-        stacking a chart's title/graph/labels in the other column) has
-        higher specificity than .stats's display:grid and was silently
-        collapsing these 4 cards into a single column instead of 2x2. */}
-    <div>
-      <div className="stats stats-2">
-        <div className="stat">
-          <div className="stat-label">Total P&amp;L</div>
-          <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
-            {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+  return (
+    <div className="page-container">
+      <ErrorBanner message={formError} />
+      <div className="strategy-header-row">
+        <h1 className="page-title">{strategy.name}</h1>
+        <div className="strategy-menu-wrap" ref={menuRef}>
+          <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
+            <MoreVertical size={17} />
           </div>
-          {stats.hasD && (
-            <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+          {menuOpen && (
+            <div className="strategy-menu-dropdown">
+              <div className="strategy-menu-item" onClick={openRename}>Rename strategy</div>
+              <div className="strategy-menu-item strategy-menu-item-danger" onClick={() => { setMenuOpen(false); setShowDeleteModal(true) }}>
+                Delete strategy
+              </div>
+            </div>
           )}
         </div>
-        <div className="stat">
-          <div className="stat-label">Expectancy</div>
-          <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
-            {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+        <Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
+      </div>
+
+      {renaming && (
+        <form onSubmit={handleRename} className="strategy-rename-form">
+          <input
+            type="text"
+            value={renameValue}
+            autoFocus
+            onChange={(e) => setRenameValue(e.target.value)}
+          />
+          <button type="submit" disabled={savingRename}>{savingRename ? 'Saving…' : 'Save'}</button>
+          <span className="del" onClick={() => setRenaming(false)}>Cancel</span>
+        </form>
+      )}
+
+      <p className="page-subtitle page-subtitle-tight">See how your strategy has performed.</p>
+      <div className="header-pills-row">
+        <MarketStatusPill />
+        <StreakBadge
+          streak={streak}
+          winLabel={(n) => `${n}-trade win streak`}
+          lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
+        />
+      </div>
+
+      <div className="section-heading">Performance</div>
+      <div className="panel">
+        <div className="performance-card-subgrid" style={{ marginTop: 0 }}>
+          {/* Wrapped in a plain div, rather than putting stats/stats-2 directly
+              under .performance-card-subgrid - that selector's own
+              ">div{display:flex; flex-direction:column}" rule (meant for
+              stacking a chart's title/graph/labels in the other column) has
+              higher specificity than .stats's display:grid and was silently
+              collapsing these 4 cards into a single column instead of 2x2. */}
+          <div>
+            <div className="stats stats-2">
+              <div className="stat">
+                <div className="stat-label">Total P&amp;L</div>
+                <div className={`stat-value ${colorClass(stats.hasD ? stats.totalD : stats.totalPnl)}`}>
+                  {stats.hasD ? fmtD(stats.totalD) : fmtR(stats.totalPnl)}
+                </div>
+                {stats.hasD && (
+                  <div className={`stat-subvalue ${colorClass(stats.totalPnl)}`}>{fmtR(stats.totalPnl)}</div>
+                )}
+              </div>
+              <div className="stat">
+                <div className="stat-label">Expectancy</div>
+                <div className={`stat-value ${colorClass(stats.expectancyD !== null ? stats.expectancyD : stats.expectancy)}`}>
+                  {stats.expectancyD !== null ? fmtD(stats.expectancyD) : fmtR(stats.expectancy)}
+                </div>
+                {stats.expectancyD !== null && (
+                  <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
+                )}
+              </div>
+              <div className="stat stat-gauge">
+                <div className="stat-label">Win rate</div>
+                <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
+              </div>
+              <div className="stat">
+                <div className="stat-label">Profit factor</div>
+                <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+              </div>
+            </div>
           </div>
-          {stats.expectancyD !== null && (
-            <div className={`stat-subvalue ${colorClass(stats.expectancy)}`}>{fmtR(stats.expectancy)}</div>
-          )}
-        </div>
-        <div className="stat stat-gauge">
-          <div className="stat-label">Win rate</div>
-          <WinRateGauge wins={stats.wins} losses={stats.losses} winRate={stats.winRate} />
-        </div>
-        <div className="stat">
-          <div className="stat-label">Profit factor</div>
-          <div className="stat-value neu">{fmtPF(stats.profitFactor)}</div>
+
+          <div className="strategy-equity-col">
+            <div className="stat-label dashboard-card-title">Equity curve</div>
+            <EquityCurveChart points={equityPoints} />
+            {equityPoints.length > 0 && (
+              <div className="equity-chart-labels">
+                <span>{equityPoints[0].key}</span>
+                <span>{equityPoints[equityPoints.length - 1].key}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
 
-    <div className="strategy-equity-col">
-      <div className="stat-label dashboard-card-title">Equity curve</div>
-      <EquityCurveChart points={equityPoints} />
-      {equityPoints.length > 0 && (
-        <div className="equity-chart-labels">
-          <span>{equityPoints[0].key}</span>
-          <span>{equityPoints[equityPoints.length - 1].key}</span>
+      <div className="section-heading">Edge Insights</div>
+      <div className="panel">
+        <EdgeInsightsPanel scope={`strategy:${strategyId}`} tradeCount={totalTradeCount(trades)} />
+      </div>
+
+      <div className="section-heading">Trade log — {strategy.name}</div>
+      <div className="panel">
+        <TradeLogTable
+          trades={trades}
+          showStrategyColumn={false}
+          showFilters={true}
+          symbol={symbol}
+          pageSize={15}
+          emptyState={
+            <EmptyState
+              title="No trades yet"
+              message={`No trades have been logged against "${strategy.name}" yet.`}
+              actionHref={`/app/${symbol}/log/new?strategy=${strategyId}`}
+              actionLabel="Log new trade"
+            />
+          }
+        />
+      </div>
+
+      {showDeleteModal && (
+        <div className="confirm-modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete &quot;{strategy.name}&quot;?</h2>
+            <p>This will remove the strategy only. Any trades assigned to it will be reclassified as Unassigned and won&apos;t contribute to your statistics until reassigned to a strategy.</p>
+            <div className="submit-row">
+              <button type="button" className="btn-accent-outline" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              <button type="button" className="btn-danger-outline" onClick={handleDeleteStrategy} disabled={deleting}>
+                {deleting ? 'Deleting…' : 'Delete strategy'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
-  </div>
-</div>
-
-<div className="section-heading">Edge Insights</div>
-<div className="panel">
-  <EdgeInsightsPanel scope={`strategy:${strategyId}`} tradeCount={totalTradeCount(trades)} />
-</div>
-
-<div className="section-heading">Trade log — {strategy.name}</div>
-<div className="panel">
-  <TradeLogTable
-    trades={trades}
-    showStrategyColumn={false}
-    showFilters={true}
-    symbol={symbol}
-    pageSize={15}
-    emptyState={
-      <EmptyState
-        title="No trades yet"
-        message={`No trades have been logged against "${strategy.name}" yet.`}
-        actionHref={`/app/${symbol}/log/new?strategy=${strategyId}`}
-        actionLabel="Log new trade"
-      />
-    }
-  />
-  </div>
-
-{showDeleteModal && (
-  <div className="confirm-modal-overlay" onClick={() => setShowDeleteModal(false)}>
-  <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-  <h2>Delete &quot;{strategy.name}&quot;?</h2>
-  <p>This will remove the strategy only. Any trades assigned to it will be reclassified as Unassigned and won&apos;t contribute to your statistics until reassigned to a strategy.</p>
-  <div className="submit-row">
-  <button type="button" className="btn-accent-outline" onClick={() => setShowDeleteModal(false)}>Cancel</button>
-  <button type="button" className="btn-danger-outline" onClick={handleDeleteStrategy} disabled={deleting}>
-{deleting ? 'Deleting…' : 'Delete strategy'}
-</button>
-  </div>
-  </div>
-  </div>
-)}
-  </div>
-)
+  )
 }

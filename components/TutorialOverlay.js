@@ -14,11 +14,19 @@ import { useState, useEffect, useCallback } from 'react'
 //
 // Blocking is real, not just visual: four bands tile the entire viewport
 // minus the target's own rect (plus a little padding for the glow ring),
-// each with the dim background and pointer-events:auto, so nothing under
-// them is clickable. The target itself is never covered by a band, so it
-// stays genuinely interactive - no pointer-events override needed on it.
-// The callout (instruction copy + step count + Exit control) renders above
-// all four bands, so it's always clickable regardless of where it lands.
+// with pointer-events:auto, so nothing under them is clickable. The target
+// itself is never covered by a band, so it stays genuinely interactive -
+// no pointer-events override needed on it. The callout (instruction copy +
+// step count + Exit control) renders above all four bands, so it's always
+// clickable regardless of where it lands.
+//
+// The bands themselves are transparent, not dim - a rectangular band's own
+// hard corner would otherwise poke a visible sharp notch into a rounded
+// target's corner (most obvious around .new-trade-btn's fully pill-shaped
+// border-radius:100px). All the actual dimming instead comes from
+// .tutorial-panel-dim, a single rounded-rect box-shadow with no seams to
+// begin with - same technique TutorialScrollGuide.js uses for its own
+// panel-sized target, reused here via the same shared CSS class.
 const TARGET_PAD = 8
 const CALLOUT_WIDTH = 300
 const CALLOUT_EST_HEIGHT = 190
@@ -36,10 +44,18 @@ export default function TutorialOverlay({ step, steps, onExit }) {
   // strategy form (which replaces its trigger in place, so only the
   // expandSelector is left to find). Either one missing is fine as long as
   // the other resolves.
+  //
+  // borderRadius is read straight off the trigger's own computed style
+  // rather than hardcoded - a fixed radius happened to look fine against
+  // .sidebar-strategy-add's sharp corners but drew an obviously squared-off
+  // box around .new-trade-btn's fully pill-shaped border-radius:100px.
+  // Reading it directly keeps the ring's corners honest for whatever shape
+  // a given step's target actually has, current and future.
   const measure = useCallback(() => {
     if (!current) { setRect(null); return }
+    const trigger = document.querySelector(current.targetSelector)
     const els = [
-      document.querySelector(current.targetSelector),
+      trigger,
       current.expandSelector ? document.querySelector(current.expandSelector) : null,
     ].filter(Boolean)
     if (els.length === 0) { setRect(null); return }
@@ -48,7 +64,8 @@ export default function TutorialOverlay({ step, steps, onExit }) {
     const left = Math.min(...rects.map((r) => r.left))
     const right = Math.max(...rects.map((r) => r.right))
     const bottom = Math.max(...rects.map((r) => r.bottom))
-    setRect({ top, left, width: right - left, height: bottom - top })
+    const borderRadius = trigger ? getComputedStyle(trigger).borderRadius : '12px'
+    setRect({ top, left, width: right - left, height: bottom - top, borderRadius })
   }, [current])
 
   // Polled rather than event-driven: the step's target can still be
@@ -96,6 +113,11 @@ export default function TutorialOverlay({ step, steps, onExit }) {
     width: rect.width + TARGET_PAD * 2,
     height: rect.height + TARGET_PAD * 2,
   }
+  // The ring is drawn on the padded spot rect, not the target's own rect,
+  // so its radius needs to grow by the same padding to stay concentric
+  // with the target's real rounded corners instead of cutting across them
+  // (same reasoning as TutorialScrollGuide.js's PANEL_BORDER_RADIUS+PAD).
+  const spotBorderRadius = `${parseFloat(rect.borderRadius || '12') + TARGET_PAD}px`
 
   let calloutTop = spot.top + spot.height + 14
   if (calloutTop + CALLOUT_EST_HEIGHT > window.innerHeight - VIEWPORT_MARGIN) {
@@ -108,14 +130,25 @@ export default function TutorialOverlay({ step, steps, onExit }) {
 
   return (
     <div className="tutorial-overlay">
-      <div className="tutorial-scrim-band" style={{ top: 0, left: 0, right: 0, height: `${Math.max(spot.top, 0)}px` }} />
-      <div className="tutorial-scrim-band" style={{ top: `${spot.top + spot.height}px`, left: 0, right: 0, bottom: 0 }} />
-      <div className="tutorial-scrim-band" style={{ top: `${spot.top}px`, left: 0, width: `${Math.max(spot.left, 0)}px`, height: `${spot.height}px` }} />
-      <div className="tutorial-scrim-band" style={{ top: `${spot.top}px`, left: `${spot.left + spot.width}px`, right: 0, height: `${spot.height}px` }} />
+      <div className="tutorial-scrim-band tutorial-scrim-band-transparent" style={{ top: 0, left: 0, right: 0, height: `${Math.max(spot.top, 0)}px` }} />
+      <div className="tutorial-scrim-band tutorial-scrim-band-transparent" style={{ top: `${spot.top + spot.height}px`, left: 0, right: 0, bottom: 0 }} />
+      <div className="tutorial-scrim-band tutorial-scrim-band-transparent" style={{ top: `${spot.top}px`, left: 0, width: `${Math.max(spot.left, 0)}px`, height: `${spot.height}px` }} />
+      <div className="tutorial-scrim-band tutorial-scrim-band-transparent" style={{ top: `${spot.top}px`, left: `${spot.left + spot.width}px`, right: 0, height: `${spot.height}px` }} />
+
+      <div
+        className="tutorial-panel-dim"
+        style={{
+          top: `${spot.top}px`, left: `${spot.left}px`, width: `${spot.width}px`, height: `${spot.height}px`,
+          borderRadius: spotBorderRadius,
+        }}
+      />
 
       <div
         className="tutorial-spotlight-ring"
-        style={{ top: `${spot.top}px`, left: `${spot.left}px`, width: `${spot.width}px`, height: `${spot.height}px` }}
+        style={{
+          top: `${spot.top}px`, left: `${spot.left}px`, width: `${spot.width}px`, height: `${spot.height}px`,
+          borderRadius: spotBorderRadius,
+        }}
       />
 
       <div className="tutorial-callout" style={{ top: `${calloutTop}px`, left: `${calloutLeft}px`, width: `${CALLOUT_WIDTH}px` }}>

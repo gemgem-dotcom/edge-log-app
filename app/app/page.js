@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { TUTORIAL_STEPS, readTutorialState, startTutorial, completeTutorial } from '@/lib/tutorial'
+import { TUTORIAL_STEPS, readTutorialState, startTutorial, completeTutorial, takeQueuedClosingScreen } from '@/lib/tutorial'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
 import AppShell from '@/components/AppShell'
@@ -12,15 +11,7 @@ import WelcomeTransition from '@/components/WelcomeTransition'
 import TutorialOverlay from '@/components/TutorialOverlay'
 import TimezoneGate from '@/components/TimezoneGate'
 
-export default function AppHome({ searchParams }) {
-  const router = useRouter()
-  // Set by log/new/page.js's tutorial step-3 tap handler right before it
-  // navigates here (router.push('/app?onboarded=1')) - the signal to show
-  // the closing screen below instead of dropping the user straight onto a
-  // silent Overview page. Read once into state rather than re-derived every
-  // render, since the effect below strips it from the URL almost
-  // immediately (a refresh shouldn't re-show it).
-  const onboarded = use(searchParams)?.onboarded === '1'
+export default function AppHome() {
   const [loading, setLoading] = useState(true)
   const [instruments, setInstruments] = useState([])
   const [strategies, setStrategies] = useState([])
@@ -52,18 +43,23 @@ export default function AppHome({ searchParams }) {
   // back on.
   const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
   const [showWelcome, setShowWelcome] = useState(false)
-  const [showClosing, setShowClosing] = useState(onboarded)
+  const [showClosing, setShowClosing] = useState(false)
 
   useEffect(() => {
     loadInstruments()
   }, [])
 
-  // Strip ?onboarded=1 right away so a refresh (or sharing/bookmarking the
-  // URL) doesn't re-show the closing screen - showClosing above already
-  // captured it into state before this fires.
+  // Set by log/new/page.js's tutorial step-3 tap handler (queueClosingScreen)
+  // right before it navigates here - the signal to show the closing screen
+  // below instead of dropping the user straight onto a silent Overview
+  // page. Read (and cleared) once on mount so a later refresh doesn't
+  // re-show it. This used to read a ?onboarded=1 query param instead, but
+  // that didn't reliably survive a real production soft-navigation to this
+  // route (which is fully static) - sessionStorage sidesteps the whole
+  // question of whether a fresh searchParams prop actually arrives.
   useEffect(() => {
-    if (onboarded) router.replace('/app', { scroll: false })
-  }, [onboarded, router])
+    if (takeQueuedClosingScreen()) setShowClosing(true)
+  }, [])
 
   async function loadInstruments() {
     setLoading(true)
@@ -191,7 +187,7 @@ export default function AppHome({ searchParams }) {
 
   return (
     <>
-      <AppShell instruments={instruments} strategies={strategies} active="overview" hideSidebar={instruments.length === 0}>
+      <AppShell instruments={instruments} strategies={strategies} active="overview" hideSidebar={instruments.length === 0} anchorTopbar={tutorial.status === 'active'}>
         <OverviewDashboard instruments={instruments} strategies={strategies} />
       </AppShell>
       {showWelcome && (

@@ -17,12 +17,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
 // If app/auth/callback/page.js sent us back here after a failed Google
-// sign-in, it's on the URL as ?error=oauth&message=... - show it the same
-// way a failed password attempt would be shown.
+// sign-in, it's on the URL as ?error=oauth - shown the same way a failed
+// password attempt would be, but always this one generic message rather
+// than whatever the callback page's own failure actually was. That failure
+// is logged/visible server-side (Supabase's own auth logs) - surfacing its
+// raw text here has shown a real internal error string ("invalid flow
+// state, no valid flow state found") to a trader with no way to act on it,
+// which reads as far more alarming than "try again."
 useEffect(() => {
   const params = new URLSearchParams(window.location.search)
   if (params.get('error')) {
-    setError(params.get('message') || 'Something went wrong signing in with Google. Please try again.')
+    setError('There was a problem signing in with Google. Please try again, or contact support if this keeps happening.')
   }
 }, [])
 

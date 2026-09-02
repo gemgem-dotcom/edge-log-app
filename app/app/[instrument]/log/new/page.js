@@ -16,6 +16,7 @@ import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm, { EMPTY_TRADE_FORM } from '@/components/TradeForm'
 import ErrorBanner from '@/components/ErrorBanner'
+import TutorialScrollGuide from '@/components/TutorialScrollGuide'
 
 export default function NewTradePage({ params, searchParams }) {
   usePageTitle('Log New Trade')
@@ -30,6 +31,11 @@ export default function NewTradePage({ params, searchParams }) {
   const [instrumentId, setInstrumentId] = useState(null)
   const [strategies, setStrategies] = useState([])
   const [strategiesError, setStrategiesError] = useState(null)
+  // Tutorial step 3 (tutorial_step === 2) lands here after adding a
+  // strategy - read fresh on every mount alongside the rest of this page's
+  // own data load, same as app/app/[instrument]/layout.js does for its own
+  // copy of this state, rather than shared via props/context.
+  const [tutorial, setTutorial] = useState({ status: 'done', step: 0 })
 
   useEffect(() => {
     loadStrategies()
@@ -39,6 +45,7 @@ export default function NewTradePage({ params, searchParams }) {
     setStrategiesError(null)
     try {
       const { data: { user } } = await supabase.auth.getUser()
+      setTutorial(readTutorialState(user))
       const { data: instrument } = await supabase
         .from('instruments')
         .select('*')
@@ -63,6 +70,14 @@ export default function NewTradePage({ params, searchParams }) {
   }
 
   async function handleSubmit({ values, screenshots }) {
+    // Genuinely impossible to log a trade during tutorial step 3, not just
+    // impractical - TutorialScrollGuide's tap-catcher only stops pointer
+    // events, so this is the guard that also stops a native Enter-key
+    // submit from a form field, regardless of scroll position.
+    if (tutorial.status === 'active' && tutorial.step === 2) {
+      return "You're previewing the form as part of setup - real trades can be logged once the tutorial finishes."
+    }
+
     const { data: { user } } = await supabase.auth.getUser()
 
     let screenshot_urls = []
@@ -101,16 +116,16 @@ export default function NewTradePage({ params, searchParams }) {
     requestTradeExcursionBackfill(symbol, inserted.id)
     invalidateTags()
 
-    // Tutorial step 2's target action - a no-op for every other user, since
-    // readTutorialState defaults to 'done' once tutorial_status is absent
-    // or already done.
-    const { status: tutorialStatus, step: tutorialStep } = readTutorialState(user)
-    if (tutorialStatus === 'active' && tutorialStep === 2) {
-      await completeTutorial()
-    }
-
     toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)
+  }
+
+  // TutorialScrollGuide's tap-to-continue handler - marks the tutorial done
+  // (same mechanism steps 1/2 use) and sends the user to the Overview page,
+  // which shows the closing screen for ?onboarded=1 (see app/app/page.js).
+  async function handleTutorialStep3Complete() {
+    await completeTutorial()
+    router.push('/app?onboarded=1')
   }
 
   return (
@@ -132,6 +147,10 @@ export default function NewTradePage({ params, searchParams }) {
         submitLabel="Log trade"
         onSubmit={handleSubmit}
       />
+
+      {tutorial.status === 'active' && tutorial.step === 2 && (
+        <TutorialScrollGuide onComplete={handleTutorialStep3Complete} />
+      )}
     </div>
   )
 }

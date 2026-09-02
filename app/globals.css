@@ -5,49 +5,50 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–547  Base: reset, typography, forms, tables, thumbnails,
+     1–548  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   548  Auth pages
-   614  Top nav
-   629  Instrument nav (topbar pill row)
-   696  Page layout
-   748  Tabs
-   758  Misc form helpers
-   764  Detail view
-   787  Holiday notice (site-wide, above the shell)
-   812  Shell layout (sidebar + topbar)
-   1055  Expandable trade rows
-   1103  Calendar
-   1151  Account settings page
-   1362  Light theme
-   1399  2FA
-   1414  Account fine print
-   1417  Screenshot preview (log new trade)
-   1459  Auth pages always dark
-   1494  Monthly P&L (calendar on Overview)
-   1573  Trade form: sections, validation, currency, screenshots
-   1801  Field tooltips
-   1863  Date/time picker (adds an optional popup to a typed input)
-   1972  In-header column filters (trade log table)
-   2020  Active filter chips
-   2083  Empty states, error banners, skeleton loaders
-   2162  Cross-instrument overview dashboard (/app)
-   2341  Not found / error boundary state pages
-   2354  Toast notifications
-   2382  Public policy pages (Privacy, Terms)
-   2401  Legal links (auth pages + account settings)
-   2440  Economic calendar card (mock - Overview pages)
-   2554  Calendar news badge (Monthly P&L day cells, mock)
-   2575  Streak badge (Overview + strategy detail pages)
-   2592  Market status pill (Overview + strategy detail pages)
-   2618  Key levels, today's brief (mock cards)
-   2644  Market context cards (all-instruments Overview)
-   2703  Edge Insights panel
-   2718  Unverified logged time badge
-   2735  Theme toggle (suppress transition flash)
-   2745  Welcome transition (first-run)
-   2774  Zero-instrument empty state
-   2784  Tutorial overlay (first-run guided tour)
+   549  Auth pages
+   615  Top nav
+   630  Instrument nav (topbar pill row)
+   697  Page layout
+   749  Tabs
+   759  Misc form helpers
+   765  Detail view
+   788  Holiday notice (site-wide, above the shell)
+   813  Shell layout (sidebar + topbar)
+   1056  Expandable trade rows
+   1104  Calendar
+   1152  Account settings page
+   1363  Light theme
+   1400  2FA
+   1415  Account fine print
+   1418  Screenshot preview (log new trade)
+   1460  Auth pages always dark
+   1495  Monthly P&L (calendar on Overview)
+   1574  Trade form: sections, validation, currency, screenshots
+   1802  Field tooltips
+   1864  Date/time picker (adds an optional popup to a typed input)
+   1973  In-header column filters (trade log table)
+   2021  Active filter chips
+   2084  Empty states, error banners, skeleton loaders
+   2163  Cross-instrument overview dashboard (/app)
+   2342  Not found / error boundary state pages
+   2355  Toast notifications
+   2383  Public policy pages (Privacy, Terms)
+   2402  Legal links (auth pages + account settings)
+   2441  Economic calendar card (mock - Overview pages)
+   2555  Calendar news badge (Monthly P&L day cells, mock)
+   2576  Streak badge (Overview + strategy detail pages)
+   2593  Market status pill (Overview + strategy detail pages)
+   2619  Key levels, today's brief (mock cards)
+   2645  Market context cards (all-instruments Overview)
+   2704  Edge Insights panel
+   2719  Unverified logged time badge
+   2736  Theme toggle (suppress transition flash)
+   2746  Welcome transition (first-run)
+   2775  Zero-instrument empty state
+   2785  Tutorial overlay (first-run guided tour)
+   2826  Tutorial step 3 (guided form scroll)
    ============================================================ */
 
 :root{
@@ -2821,3 +2822,45 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    there's no callout to anchor Exit tutorial to - pinned to a corner
    instead, above the full-screen scrim, so it's still always reachable. */
 .tutorial-exit-btn-standalone{position:fixed; z-index:902; top:20px; right:20px;}
+
+/* ---------- Tutorial step 3 (guided form scroll) ---------- */
+/* Same 4-band tiling as .tutorial-scrim-band above, minus the dim
+   background - step 3's target is the whole form, so nothing gets
+   obscured, only the topbar/sidebar stay click-blocked around it. */
+.tutorial-scrim-band-transparent{background:transparent;}
+.tutorial-scroll-chevrons{
+  position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+  z-index:901; display:flex; flex-direction:column; align-items:center;
+  pointer-events:none;
+}
+.tutorial-scroll-chevrons svg{
+  color:var(--accent-bright); opacity:0; margin-top:-10px;
+  animation:tutorial-chevron-ripple 1.6s ease-in-out infinite;
+}
+.tutorial-scroll-chevrons svg:nth-child(1){animation-delay:0s;}
+.tutorial-scroll-chevrons svg:nth-child(2){animation-delay:.18s;}
+.tutorial-scroll-chevrons svg:nth-child(3){animation-delay:.36s;}
+@keyframes tutorial-chevron-ripple{
+  0%{opacity:0; transform:translateY(-6px);}
+  40%{opacity:1;}
+  100%{opacity:0; transform:translateY(10px);}
+}
+@media (prefers-reduced-motion:reduce){
+  .tutorial-scroll-chevrons svg{animation:none; opacity:.7; margin-top:0;}
+}
+.tutorial-scroll-continue{
+  position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+  z-index:901; color:var(--text); font-size:14px; font-weight:600;
+  background:var(--panel); border:1px solid var(--line); border-radius:100px;
+  padding:10px 20px; box-shadow:0 12px 32px rgba(0,0,0,.45);
+  opacity:0; animation:tutorial-fade-in .3s ease forwards; pointer-events:none;
+}
+@keyframes tutorial-fade-in{from{opacity:0;} to{opacity:1;}}
+@media (prefers-reduced-motion:reduce){
+  .tutorial-scroll-continue{animation:none; opacity:1;}
+}
+/* Above every other tutorial layer (900-902) so it wins over the real
+   Submit button underneath once the form's been scrolled through - see
+   TutorialScrollGuide.js's own comment on why this can't rely on the
+   chevrons/continue text merely sitting near that button by coincidence. */
+.tutorial-tap-catcher{position:fixed; inset:0; z-index:903; cursor:pointer; background:transparent;}

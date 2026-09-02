@@ -73,7 +73,7 @@ export async function POST(req) {
       if (error) {
         Sentry.captureException(error)
         return new Response(
-          JSON.stringify({ error: `Could not remove your ${table.replace('_', ' ')}: ${error.message}` }),
+          JSON.stringify({ error: 'Could not delete the account. Please try again or contact support.' }),
           { status: 500 },
         )
       }
@@ -84,7 +84,7 @@ export async function POST(req) {
     if (deleteError) {
       Sentry.captureException(deleteError)
       return new Response(
-        JSON.stringify({ error: deleteError.message || 'Could not delete the account.' }),
+        JSON.stringify({ error: 'Could not delete the account. Please try again or contact support.' }),
         { status: 500 },
       )
     }
@@ -99,12 +99,11 @@ export async function POST(req) {
   } catch (err) {
     // Anything unexpected (a thrown exception rather than a returned
     // {error}) would otherwise crash the route and hand the client a
-    // non-JSON body, which is indistinguishable from every other failure
-    // once it gets to DangerZoneSection's generic fallback message. Surface
-    // whatever actually happened instead.
+    // non-JSON body. Logged to Sentry for diagnosis; the client only ever
+    // sees a fixed, friendly message - never the raw exception text.
     Sentry.captureException(err)
     return new Response(
-      JSON.stringify({ error: err?.message || 'Could not delete the account.' }),
+      JSON.stringify({ error: 'Could not delete the account. Please try again or contact support.' }),
       { status: 500 },
     )
   }

@@ -250,8 +250,8 @@ export default function OverviewDashboard({ instruments, strategies }) {
 
       const { data: { user } } = await supabase.auth.getUser()
       setGreeting(pickGreeting(user?.user_metadata?.full_name))
-    } catch (err) {
-      setError(err.message || "Couldn't load your dashboard — something went wrong.")
+    } catch {
+      setError('something went wrong.')
     } finally {
       setLoading(false)
     }

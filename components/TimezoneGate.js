@@ -32,9 +32,8 @@ export default function TimezoneGate({ onSet }) {
         <div className="title">Edge<span style={{ fontWeight: 400 }}>Log</span></div>
         <h1>Set your timezone</h1>
         <p className="onboard-note">
-          Trade times are logged in your own local clock - EdgeLog needs to know which UTC
-          offset that is so it can line trades up with real market sessions and events
-          correctly. You can change this anytime in Account Settings.
+          Choose the timezone you’ll use to log your trades. EdgeLog uses this information
+          to record trade data correctly. You can change this anytime in Account Settings.
         </p>
         <form onSubmit={handleSubmit}>
           <div className="field full">

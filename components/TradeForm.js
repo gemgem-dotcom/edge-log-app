@@ -9,6 +9,7 @@ import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCur
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { invalidateStrategies } from '../lib/referenceDataCache'
+import { friendlyStrategyError } from '../lib/supabaseErrors'
 import { getTags } from '../lib/tagsCache'
 import { useClickOutside } from '../lib/useClickOutside'
 import FieldTooltip from './FieldTooltip'
@@ -487,7 +488,7 @@ export default function TradeForm({
       .select()
       .single()
     if (error) {
-      setFormError(error.message)
+      setFormError(friendlyStrategyError(error))
       return
     }
     invalidateStrategies(instrumentId)

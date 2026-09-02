@@ -314,8 +314,8 @@ async function loadData() {
     if (catalogEntryFor(symbol)?.data_symbol === NQ_DATA_SYMBOL) {
       setRegime(await latestClosedSessionRegime(supabase))
     }
-  } catch (err) {
-    setError(err.message || "Couldn't load your dashboard — something went wrong.")
+  } catch {
+    setError('something went wrong.')
   } finally {
     setLoading(false)
   }

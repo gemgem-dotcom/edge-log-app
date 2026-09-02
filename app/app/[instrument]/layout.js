@@ -12,6 +12,7 @@ import { getInstruments, getStrategies, invalidateStrategies } from '@/lib/refer
 import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import { TUTORIAL_STEPS, readTutorialState, setTutorialStep, completeTutorial, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
+import { friendlyStrategyError } from '@/lib/supabaseErrors'
 import InstrumentNav from '@/components/InstrumentNav'
 import TutorialOverlay from '@/components/TutorialOverlay'
 
@@ -159,7 +160,7 @@ export default function InstrumentLayout({ children, params }) {
       }
       loadData()
     } else {
-      setStrategyAddError(error.message)
+      setStrategyAddError(friendlyStrategyError(error))
     }
   }
 

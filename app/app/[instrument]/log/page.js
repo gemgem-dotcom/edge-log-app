@@ -64,8 +64,8 @@ export default function LogPage({ params }) {
       setFilters(EMPTY_FILTERS)
       fetchDistinctTags([instrument.id]).then((tags) => setTagOptions(tags.map((t) => ({ value: t, label: t }))))
       setInstrumentId(instrument.id)
-    } catch (err) {
-      setError(err.message || "Couldn't load your trades — something went wrong.")
+    } catch {
+      setError('something went wrong.')
       setLoading(false)
     }
   }
@@ -80,8 +80,8 @@ export default function LogPage({ params }) {
       if (tradeError) throw tradeError
       setTrades(pageTrades)
       setTotalCount(count)
-    } catch (err) {
-      setError(err.message || "Couldn't load your trades — something went wrong.")
+    } catch {
+      setError('something went wrong.')
     } finally {
       setLoading(false)
     }

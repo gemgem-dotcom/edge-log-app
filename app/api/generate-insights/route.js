@@ -214,6 +214,6 @@ export async function POST(req) {
     return new Response(JSON.stringify({ narrative, generatedAt, tradeCount: built.tradeCount }), { status: 200 })
   } catch (err) {
     Sentry.captureException(err)
-    return new Response(JSON.stringify({ error: err?.message || 'Could not generate insights.' }), { status: 500 })
+    return new Response(JSON.stringify({ error: 'Could not generate insights right now. Please try again in a moment.' }), { status: 500 })
   }
 }

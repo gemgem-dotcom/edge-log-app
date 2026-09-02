@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateStrategies } from '@/lib/referenceDataCache'
+import { friendlyStrategyError } from '@/lib/supabaseErrors'
 import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
 import { totalTradeCount } from '@/lib/insightData'
@@ -168,8 +169,8 @@ export default function StrategyDetailPage({ params }) {
       setTrades(tradeData || [])
       const computed = await computeStrategyStats(tradeData || [])
       setStats(computed)
-    } catch (err) {
-      setError(err.message || "Couldn't load this strategy — something went wrong.")
+    } catch {
+      setError('something went wrong.')
     } finally {
       setLoading(false)
     }
@@ -193,7 +194,7 @@ export default function StrategyDetailPage({ params }) {
       setRenaming(false)
       toast.success('Strategy renamed.')
     } else {
-      setFormError(error.message)
+      setFormError(friendlyStrategyError(error))
     }
     setSavingRename(false)
   }
@@ -204,7 +205,7 @@ export default function StrategyDetailPage({ params }) {
     await supabase.from('trades').update({ strategy_id: null }).eq('strategy_id', strategyId)
     const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
     if (error) {
-      setFormError(error.message)
+      setFormError('Could not delete this strategy. Please try again.')
       setDeleting(false)
       setShowDeleteModal(false)
       return

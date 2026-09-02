@@ -25,7 +25,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
     setSessionBusy(true)
     const { error } = await supabase.auth.signOut({ scope: 'others' })
     setSessionBusy(false)
-    setSessionMessage(error ? error.message : 'Signed out of all other devices.')
+    setSessionMessage(error ? "Couldn't sign out other devices. Please try again." : 'Signed out of all other devices.')
   }
 
   async function handleSignOutEverywhere() {

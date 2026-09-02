@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
 import { addOrRestoreInstrument } from '@/lib/instruments'
+import { friendlyInstrumentError } from '@/lib/supabaseErrors'
 import { useClickOutside } from '@/lib/useClickOutside'
 
 const DROPDOWN_WIDTH = 220
@@ -85,7 +86,7 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
       setAdding(false)
       router.push(`/app/${addedSymbol}/dashboard`)
     } else {
-      setAddError(error.message)
+      setAddError(friendlyInstrumentError(error))
     }
   }
 

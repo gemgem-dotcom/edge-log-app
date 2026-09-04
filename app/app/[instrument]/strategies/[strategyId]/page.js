@@ -18,7 +18,6 @@ import { computeStreak } from '@/lib/streak'
 import TradeLogTable from '@/components/TradeLogTable'
 import StreakBadge from '@/components/StreakBadge'
 import MarketStatusPill from '@/components/MarketStatusPill'
-import HeaderClock from '@/components/HeaderClock'
 import WinRateGauge from '@/components/WinRateGauge'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
@@ -241,7 +240,6 @@ export default function StrategyDetailPage({ params }) {
             </div>
           )}
         </div>
-        <HeaderClock />
       </div>
 
       {renaming && (

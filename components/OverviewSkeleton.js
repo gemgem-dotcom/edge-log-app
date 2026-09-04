@@ -17,10 +17,6 @@ export default function OverviewSkeleton() {
     <div className="page-container">
       <div className="page-header-row">
         <div className="skel skel-title" style={{ marginBottom: 0 }} />
-        <div className="skel-clock">
-          <div className="skel skel-line" style={{ width: '92px', marginBottom: '6px' }} />
-          <div className="skel skel-line" style={{ width: '128px', marginBottom: 0 }} />
-        </div>
       </div>
       <div className="skel skel-subtitle" />
       <div className="header-pills-row">

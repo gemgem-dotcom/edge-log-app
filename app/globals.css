@@ -11,44 +11,44 @@
    741  Top nav
    756  Instrument nav (topbar pill row)
    823  Page layout
-   929  Tabs
-   939  Misc form helpers
-   945  Detail view
-   968  Holiday notice (site-wide, above the shell)
-   993  Shell layout (sidebar + topbar)
-   1297  Expandable trade rows
-   1363  Calendar
-   1411  Account settings page
-   1628  Light theme
-   1669  2FA
-   1684  Account fine print
-   1687  Screenshot preview (log new trade)
-   1729  Auth pages always dark
-   1764  Monthly P&L (calendar on Overview)
-   1851  Trade form: sections, validation, currency, screenshots
-   2089  Field tooltips
-   2151  Date/time picker (adds an optional popup to a typed input)
-   2260  In-header column filters (trade log table)
-   2308  Active filter chips
-   2371  Empty states, error banners, skeleton loaders
-   2456  Cross-instrument overview dashboard (/app)
-   2635  Not found / error boundary state pages
-   2648  Toast notifications
-   2676  Public policy pages (Privacy, Terms)
-   2695  Legal links (auth pages + account settings)
-   2734  Economic calendar card (mock - Overview pages)
-   2848  Calendar news badge (Monthly P&L day cells, mock)
-   2869  Streak badge (Overview + strategy detail pages)
-   2886  Market status pill (Overview + strategy detail pages)
-   2912  Today's brief & session stats
-   2947  Market context cards (all-instruments Overview)
-   2980  Edge Insights panel
-   2995  Unverified logged time badge
-   3012  Welcome transition (first-run)
-   3041  Zero-instrument empty state
-   3051  Tutorial overlay (first-run guided tour)
-   3131  Tutorial step 3 (guided form scroll)
-   3178  Press states, value changes, content fade-in
+   877  Tabs
+   887  Misc form helpers
+   893  Detail view
+   916  Holiday notice (site-wide, above the shell)
+   941  Shell layout (sidebar + topbar)
+   1277  Expandable trade rows
+   1343  Calendar
+   1391  Account settings page
+   1607  Light theme
+   1648  2FA
+   1663  Account fine print
+   1666  Screenshot preview (log new trade)
+   1708  Auth pages always dark
+   1743  Monthly P&L (calendar on Overview)
+   1830  Trade form: sections, validation, currency, screenshots
+   2068  Field tooltips
+   2130  Date/time picker (adds an optional popup to a typed input)
+   2239  In-header column filters (trade log table)
+   2287  Active filter chips
+   2350  Empty states, error banners, skeleton loaders
+   2429  Cross-instrument overview dashboard (/app)
+   2608  Not found / error boundary state pages
+   2621  Toast notifications
+   2649  Public policy pages (Privacy, Terms)
+   2668  Legal links (auth pages + account settings)
+   2707  Economic calendar card (mock - Overview pages)
+   2821  Calendar news badge (Monthly P&L day cells, mock)
+   2842  Streak badge (Overview + strategy detail pages)
+   2859  Market status pill (Overview + strategy detail pages)
+   2885  Today's brief & session stats
+   2920  Market context cards (all-instruments Overview)
+   2953  Edge Insights panel
+   2968  Unverified logged time badge
+   2985  Welcome transition (first-run)
+   3014  Zero-instrument empty state
+   3024  Tutorial overlay (first-run guided tour)
+   3104  Tutorial step 3 (guided form scroll)
+   3151  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -822,77 +822,25 @@ table{min-width:640px;}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
-/* Wraps a page's title (only - the subtitle, if any, is a sibling below
-   this row) and .header-clock on one row, vertically centered so the
-   clock's center lines up with the title's center rather than its top.
-   "Log new trade" used to sit here too (as the row's action button) - it
-   moved down into .header-pills-row instead, see that rule's own
-   comment, freeing this spot for the clock. */
+/* Wraps a page's title on its own row, separate from the subtitle (a
+   sibling below it, not a row member). Only ever has the one child on the
+   all-instruments Overview page (its own header-level content - "Log new
+   trade" and the live clock - both live in .header-pills-row and
+   .shell-topbar-right respectively, not here); justify-content:space-
+   between/align-items:center are left in place as a harmless no-op for
+   that single child rather than trimmed down, in case a second header
+   item ever belongs here again. */
 .page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;}
 /* .page-title's own margin-bottom is part of its flex-item margin box, so
-   left alone it inflates the row's height beyond its real content, pushing
-   .header-clock's flex-start-aligned top down into that dead space instead
-   of sitting flush with the title's own top. Moving the same 20px onto the
-   row itself keeps the row exactly as tall as its real content - while the
-   gap before whatever follows (a subtitle, or a panel on pages with no
-   subtitle) stays unchanged. margin-top is zeroed too, for the same
-   flush-top reason - h1's own global margin-top:4px would otherwise still
-   offset the title 4px below the clock's own zero-margin top edge, the
-   same fix already applied for this reason in .strategy-header-row h1
-   below. */
-.page-header-row .page-title{margin-bottom:0; margin-top:0;}
+   left alone it inflates the row's height beyond its real content -
+   moving the same 20px onto the row itself keeps the row exactly as tall
+   as the title alone, while the gap before whatever follows (a subtitle,
+   or a panel on pages with no subtitle) stays unchanged. */
+.page-header-row .page-title{margin-bottom:0;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
    Archivo weight. */
 .page-title{font-family:'Archivo',sans-serif; font-size:26px; font-weight:500; margin-bottom:20px; letter-spacing:-.01em;}
-/* HeaderClock.js - the live local time in the same top-right spot the
-   header's action button used to occupy on the per-instrument Overview,
-   all-instruments Overview and Strategy detail pages (see .page-title/
-   .strategy-header-row's own comments on what moved where and why).
-   flex-shrink:0 so a long instrument/strategy name never squeezes this
-   down onto multiple lines - the title itself is what wraps first. */
-/* align-self:flex-start, not the row's own align-items:center - both
-   .page-header-row and .strategy-header-row center their children by
-   default so a small item (the kebab menu button, on the two pages that
-   have one) lines up against the middle of the much taller title text
-   rather than its top. The clock is the one child that shouldn't follow
-   that: at two short lines it's nowhere near as tall as the title, so
-   centering it left its own top edge floating noticeably above the
-   title's - this pins it to the row's top edge instead, flush with the
-   title, and leaves the kebab button's own centering untouched.
-   position:relative + top (not margin-top) nudges it down a further few
-   px past that flush position - .page-title/h1's line box carries its
-   own internal leading above the actual glyph ink (font metrics, not
-   something a margin/align rule controls), so "top of box" and "top of
-   visible text" aren't quite the same thing, and reports of the clock
-   still reading as sitting too high after the flex-start change point at
-   exactly that gap. margin-top was tried first and reverted: it inflates
-   the clock's own flex-item box, which is what the row's height is
-   measured from, so the row grew by the same amount and pushed the
-   subtitle below it down too - a visible regression the margin version
-   shipped with. top offsets the rendered box only, after layout, so
-   nothing else on the page moves. Small and deliberately a little
-   generous rather than tuned to a single pixel - erring toward "clearly
-   level or a touch low" over "technically flush but still reads as high"
-   was the point. */
-.header-clock{text-align:right; flex-shrink:0; align-self:flex-start; position:relative; top:6px;}
-/* JetBrains Mono, matching every other live/logged time value in the app
-   (trade log cells, r-pills, TimePicker's own display) rather than a
-   second time-display style. font-variant-numeric:tabular-nums keeps
-   each digit the same width as the seconds tick over, so the whole block
-   doesn't visibly shift by a pixel or two every second the way
-   proportional digits (0 and 1 render at different widths in most fonts)
-   would. */
-.header-clock-time{
-  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
-  font-size:14px; font-weight:600; color:var(--text); line-height:1.3;
-}
-/* Inter/uppercase/muted - same treatment .stat-label uses for a value's
-   own caption elsewhere in the app. */
-.header-clock-date{
-  font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--muted);
-  text-transform:uppercase; letter-spacing:.04em; margin-top:2px;
-}
 /* No background of its own (previously a flat var(--bg) fill) - body's own
    background is the same flat color plus the ambient radial-gradient glow
    and drifting blobs, so an opaque fill here painted a hard-edged
@@ -1070,6 +1018,38 @@ table{min-width:640px;}
 a.shell-logo{color:inherit; text-decoration:none;}
 .shell-logo svg{width:18px; height:18px; flex-shrink:0; color:var(--accent); margin-right:6px;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
+/* HeaderClock.js - the live local time, in the persistent topbar rather
+   than any one page's own header, so it's visible everywhere the shell
+   renders instead of only on the three pages it originally shipped on.
+   Plain text, no background/border of its own - just another item sitting
+   directly in the topbar the same way the logo and nav links do, not a
+   boxed control like the icon buttons beside it. .shell-topbar's own
+   align-items:center vertically centers it against the 36px icon buttons
+   with no extra alignment rule needed, unlike its previous per-page-header
+   placement. margin-right adds extra breathing room before the theme
+   toggle specifically, on top of .shell-topbar-right's own 10px gap - a
+   plain text block reads as too close to the icon buttons at that same
+   gap the icons use between each other, so this widens just this one
+   side without touching that shared gap value. */
+.header-clock{display:flex; flex-direction:column; align-items:flex-end; text-align:right; flex-shrink:0; margin-right:10px;}
+/* JetBrains Mono, matching every other live/logged time value in the app
+   (trade log cells, r-pills, TimePicker's own display) rather than a
+   second time-display style. font-variant-numeric:tabular-nums keeps
+   each digit the same width as the seconds tick over, so the whole block
+   doesn't visibly shift by a pixel or two every second the way
+   proportional digits (0 and 1 render at different widths in most fonts)
+   would. Sized down from the earlier per-page-header version to fit the
+   topbar's own compact 36px row instead of sitting beside a 26px title. */
+.header-clock-time{
+  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+  font-size:12px; font-weight:600; color:var(--text); line-height:1.2;
+}
+/* Inter/uppercase/muted - same treatment .stat-label uses for a value's
+   own caption elsewhere in the app. */
+.header-clock-date{
+  font-family:'Inter',sans-serif; font-size:9px; font-weight:600; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.03em; margin-top:1px;
+}
 .icon-btn{
   width:36px; height:36px; border-radius:100px; display:flex; align-items:center; justify-content:center;
   color:var(--muted); text-decoration:none; border:1px solid transparent;
@@ -1189,10 +1169,10 @@ a.shell-logo{color:inherit; text-decoration:none;}
    normal 24px before whatever comes next. */
 .page-subtitle-tight{margin-bottom:10px;}
 .header-pills-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px;}
-/* "Log new trade" moved down here from the title row (see .header-clock
-   below, which took its old spot) on the per-instrument Overview,
-   all-instruments Overview and Strategy detail pages - not the Trade Log
-   page, which keeps it up in .strategy-header-row. Sized to match
+/* "Log new trade" moved down here from the title row on the
+   per-instrument Overview, all-instruments Overview and Strategy detail
+   pages - not the Trade Log page, which keeps it up in
+   .strategy-header-row. Sized to match
    .streak-badge/.market-status-pill's own padding/font-size exactly
    (their comments explain why those two match each other) so the three
    read as one aligned set rather than a differently-sized button
@@ -1592,9 +1572,8 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    Still true on the Trade Log page, the one place left where the button
    stays directly inside this row - the per-instrument Overview and
    Strategy detail pages moved theirs down into .header-pills-row instead
-   (see that rule's own comment), replacing it up here with .header-clock. */
+   (see that rule's own comment). */
 .strategy-header-row .new-trade-btn{margin-left:auto;}
-.strategy-header-row .header-clock{margin-left:auto;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
             background:none; border:1px solid transparent; border-radius:100px;
@@ -2423,12 +2402,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    since both appear at several different sizes across the skeletons. */
 .skel-pill{height:28px; border-radius:99px;}
 .skel-circle{border-radius:50%;}
-/* Stands in for HeaderClock.js's two-line time/date block - same
-   right-aligned column shape as the real .header-clock, with the bars'
-   own widths set inline per skeleton (see .skel-line, reused here rather
-   than a third placeholder shape) roughly matching "09:06:47 AM"/
-   "FRIDAY | 04/09/2026". */
-.skel-clock{display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0;}
 
 /* Stands in for a screenshot thumbnail while its signed URL is still
    resolving (trade detail page, trade log's expand row, the edit form's

@@ -17,7 +17,6 @@ import { upcomingEconEvents } from '@/lib/marketContextMock'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
 import InstrumentMenu from '@/components/InstrumentMenu'
-import HeaderClock from '@/components/HeaderClock'
 import WinRateGauge from '@/components/WinRateGauge'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import EquityCurveChart from '@/components/EquityCurveChart'
@@ -434,7 +433,6 @@ return (
   <div className="strategy-header-row">
     <h1 className="page-title">{displayName} Futures</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
-    <HeaderClock />
   </div>
   <p className="page-subtitle page-subtitle-tight">Your overview for {displayName} futures.</p>
   <div className="header-pills-row">

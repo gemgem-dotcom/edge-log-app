@@ -23,7 +23,6 @@ import TableHeaderTooltip from '@/components/TableHeaderTooltip'
 import TradeLogTable from '@/components/TradeLogTable'
 import LogTradeMenu from '@/components/LogTradeMenu'
 import MarketStatusPill from '@/components/MarketStatusPill'
-import HeaderClock from '@/components/HeaderClock'
 import OverviewSkeleton from '@/components/OverviewSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -394,7 +393,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
     <div className="page-container content-fade-in">
       <div className="page-header-row">
         <h1 className="page-title">{greeting}</h1>
-        <HeaderClock />
       </div>
       <p className="page-subtitle page-subtitle-tight">Here&apos;s what you need to know.</p>
       <div className="header-pills-row">

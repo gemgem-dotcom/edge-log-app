@@ -471,31 +471,28 @@ return (
     </p>
   </div>
   <div className="panel">
-    <div className="stat-label dashboard-card-title">Key levels</div>
-  </div>
-  <div className="panel">
     <div className="stat-label dashboard-card-title">Session stats</div>
     <div className="key-levels-list">
       <div className="key-levels-row">
         <span className="th-with-tooltip">
-          Overnight gap
-          <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
+          Days to rollover
+          <TableHeaderTooltip text="Front-month rollover/expiration date for this contract - liquidity shifts to the next expiry once trading in this one ends." />
         </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
+        <span>{rolloverDays === null ? '—' : `${rolloverDays}d`}</span>
       </div>
       <div className="key-levels-row">
         <span className="th-with-tooltip">
           Range vs. typical
           <TableHeaderTooltip text="How far price has ranged this session so far, compared to the average range at this same point across the last 20 sessions." />
         </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
+        <span className="stat-placeholder">Not available yet</span>
       </div>
       <div className="key-levels-row">
         <span className="th-with-tooltip">
           Volume vs. typical
           <TableHeaderTooltip text="How much volume has traded so far this session, compared to the average volume at this same point across the last 20 sessions." />
         </span>
-        <span className="stat-placeholder">Needs Phase 2</span>
+        <span className="stat-placeholder">Not available yet</span>
       </div>
     </div>
   </div>
@@ -516,10 +513,6 @@ return (
     ) : (
       <p className="brief-card-text">No events in the next 24 hours.</p>
     )}
-  </div>
-  <div className="panel">
-    <div className="stat-label dashboard-card-title">Days to rollover</div>
-    <div className="stat-value neu">{rolloverDays === null ? '—' : `${rolloverDays}d`}</div>
   </div>
 </div>
 

@@ -12,11 +12,8 @@ import InstrumentNav from '@/components/InstrumentNav'
 // [instrument]/layout.js's shell (topbar + sidebar) but the sidebar
 // aggregates strategies across every instrument instead of one, and has no
 // "Add new" strategy option (that only makes sense scoped to one
-// instrument). Insights has no instrument-agnostic route of its own (it's
-// still just a placeholder page either way - see app/app/[instrument]/
-// insights/page.js), so this links to the first instrument's copy, same
-// arbitrary-first-instrument fallback OverviewDashboard's own empty state
-// already uses for its Log New Trade link.
+// instrument). No Insights link either - its real feature is still
+// unbuilt, see app/app/[instrument]/insights/page.js.
 export default function AppShell({ instruments, strategies = [], active, hideSidebar = false, anchorTopbar = false, children }) {
   const [theme, setTheme] = useState('dark')
   const [strategiesExpanded, setStrategiesExpanded] = useState(true)
@@ -105,9 +102,6 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
 
             <Link href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
               Trade Log
-            </Link>
-            <Link href={`/app/${instruments[0]?.symbol}/insights`} className="sidebar-item">
-              Insights
             </Link>
           </aside>
         )}

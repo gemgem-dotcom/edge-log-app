@@ -93,7 +93,7 @@ export default function DangerZoneSection({ email, hasPassword }) {
         <div className="confirm-modal-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Delete Account</h2>
-            <p>This action is permanent and cannot be undone. All of your trading journal, strategies, performance data, and account information will be permanently deleted.</p>
+            <p>This action is permanent and cannot be undone. Your trading journal, strategies, performance data, and account information will be permanently deleted.</p>
             {hasPassword ? (
               <>
                 <p style={{ marginBottom: '6px' }}>Enter your password to confirm.</p>

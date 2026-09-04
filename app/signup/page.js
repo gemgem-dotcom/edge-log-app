@@ -39,12 +39,33 @@ export default function SignupPage() {
     setLoading(false)
     if (error) {
       setError(error.message)
-    } else if (data.session) {
-      // Email confirmation is off — user is logged in immediately.
-      router.push('/app')
     } else {
-      // Email confirmation is on — they need to check their inbox first.
-      setMessage('Check your email to confirm your account, then log in.')
+      // Cleared unconditionally here rather than gated behind any "is this
+      // really new" heuristic (see lib/tutorialNewAccount.js's
+      // resetThemeForNewAccount, used by the Google OAuth path instead) -
+      // signUp() succeeding is itself the one unambiguous "account
+      // created" moment, same reason tutorial_status is set directly
+      // above rather than inferred. Runs regardless of which branch below
+      // fires: a previous account signed out on this same browser would
+      // otherwise leave its theme sitting in localStorage (see components/
+      // AppShell.js) for this brand new account to inherit on its very
+      // first render, whether that's immediately below or after the
+      // trader confirms their email and logs in separately later.
+      //
+      // The attribute is set directly too, not just the storage key -
+      // app/layout.js's inline script is the only other thing that applies
+      // data-theme, and only on a hard navigation, so router.push below
+      // (a client-side transition) would otherwise carry forward whatever
+      // was already sitting on <html> from before this account existed.
+      localStorage.removeItem('edgelog-theme')
+      document.documentElement.setAttribute('data-theme', 'dark')
+      if (data.session) {
+        // Email confirmation is off — user is logged in immediately.
+        router.push('/app')
+      } else {
+        // Email confirmation is on — they need to check their inbox first.
+        setMessage('Check your email to confirm your account, then log in.')
+      }
     }
   }
 

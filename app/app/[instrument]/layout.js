@@ -40,21 +40,18 @@ export default function InstrumentLayout({ children, params }) {
     setTheme(storedTheme || 'dark')
   }, [])
 
+  // Just flips the theme - no transition-suppression dance around it any
+  // more. This used to add a .theme-switching class to <html> for one
+  // frame (double rAF) to force transition:none everywhere, because the
+  // surfaces that carried a hover transition faded while the ones that
+  // didn't snapped. body/.panel/.stat/inputs now all transition
+  // background-color at the same --transition-fast speed, so the switch
+  // cross-fades on its own and there's nothing left to suppress.
   function handleThemeToggle() {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
-    const root = document.documentElement
-    // Suppresses every element's own transition (mostly meant for hover,
-    // not this) for exactly one theme switch - see the .theme-switching
-    // comment in globals.css for why that's needed. Double rAF so the
-    // no-transition switch has actually painted before transitions come
-    // back, rather than racing the removal against the switch itself.
-    root.classList.add('theme-switching')
     setTheme(newTheme)
     localStorage.setItem('edgelog-theme', newTheme)
-    root.setAttribute('data-theme', newTheme)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => root.classList.remove('theme-switching'))
-    })
+    document.documentElement.setAttribute('data-theme', newTheme)
   }
   useEffect(() => {
     if (window.innerWidth <= 900) setStrategiesExpanded(false)
@@ -213,44 +210,46 @@ export default function InstrumentLayout({ children, params }) {
               <span>Strategies</span>
               {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </div>
-            {strategiesExpanded && (
-              <div className="sidebar-substrategies">
-                {sortedStrategies.map((s) => (
-                  <Link
-                    key={s.id}
-                    href={`/app/${currentSymbol}/strategies/${s.id}`}
-                    className={`sidebar-substrategy ${isActive(`/app/${currentSymbol}/strategies/${s.id}`) ? 'sidebar-substrategy-active' : ''}`}
-                  >
-                    <span className="strategy-dot" style={{ background: strategyColor(colorIndexById[s.id]) }} />
-                    {s.name}
-                  </Link>
-                ))}
-                {addingStrategy ? (
-                  <>
-                    <form onSubmit={handleAddStrategy} className="sidebar-strategy-add-form">
-                      <input
-                        autoFocus
-                        type="text"
-                        placeholder="Strategy name"
-                        value={newStrategyName}
-                        onChange={(e) => setNewStrategyName(e.target.value)}
-                      />
-                      <div className="sidebar-strategy-add-actions">
-                        <span className="del" onClick={cancelAddStrategy}>Cancel</span>
-                        <button type="submit">Add</button>
-                      </div>
-                    </form>
-                    {strategyAddError && (
-                      <span className="field-error" style={{ display: 'block', padding: '0 12px 6px 30px' }}>{strategyAddError}</span>
-                    )}
-                  </>
-                ) : (
-                  <div className="sidebar-substrategy sidebar-strategy-add" data-tutorial-target="add-strategy" onClick={() => setAddingStrategy(true)}>
-                    <Plus size={14} /> Add new
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Always rendered, toggled by class rather than mounted/
+                unmounted - an element that unmounts has nothing left to
+                animate on collapse. See .sidebar-substrategies in
+                globals.css. */}
+            <div className={`sidebar-substrategies ${strategiesExpanded ? 'sidebar-substrategies-open' : ''}`}>
+              {sortedStrategies.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/app/${currentSymbol}/strategies/${s.id}`}
+                  className={`sidebar-substrategy ${isActive(`/app/${currentSymbol}/strategies/${s.id}`) ? 'sidebar-substrategy-active' : ''}`}
+                >
+                  <span className="strategy-dot" style={{ background: strategyColor(colorIndexById[s.id]) }} />
+                  {s.name}
+                </Link>
+              ))}
+              {addingStrategy ? (
+                <>
+                  <form onSubmit={handleAddStrategy} className="sidebar-strategy-add-form">
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Strategy name"
+                      value={newStrategyName}
+                      onChange={(e) => setNewStrategyName(e.target.value)}
+                    />
+                    <div className="sidebar-strategy-add-actions">
+                      <span className="del" onClick={cancelAddStrategy}>Cancel</span>
+                      <button type="submit">Add</button>
+                    </div>
+                  </form>
+                  {strategyAddError && (
+                    <span className="field-error" style={{ display: 'block', padding: '0 12px 6px 30px' }}>{strategyAddError}</span>
+                  )}
+                </>
+              ) : (
+                <div className="sidebar-substrategy sidebar-strategy-add" data-tutorial-target="add-strategy" onClick={() => setAddingStrategy(true)}>
+                  <Plus size={14} /> Add new
+                </div>
+              )}
+            </div>
 
             <Link href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
               Trade Log

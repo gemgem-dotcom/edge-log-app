@@ -390,7 +390,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const firstInstrument = instruments[0]
 
   return (
-    <div className="page-container">
+    <div className="page-container content-fade-in">
       <div className="page-header-row">
         <h1 className="page-title">{greeting}</h1>
         <LogTradeMenu instruments={instruments} />
@@ -492,7 +492,10 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <FlippingStatChips views={flipViews} />
             </div>
 
-            <div className="stats stats-5">
+            {/* key + .stats-refreshable replay the stat-value fade whenever
+                the instrument filter changes these numbers in place - see
+                .stats-refreshable in globals.css. */}
+            <div className="stats stats-5 stats-refreshable" key={perfInstrument}>
               <div className="stat">
                 <div className="stat-label">Total P&amp;L</div>
                 <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -580,7 +583,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </div>
             </div>
 
-            <div className="stats stats-5">
+            <div className="stats stats-5 stats-refreshable" key={`${calInstrument}-${year}-${month}`}>
               <div className="stat">
                 <div className="stat-label">Monthly P&L</div>
                 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalPnl)}`}>

@@ -223,7 +223,7 @@ export default function StrategyDetailPage({ params }) {
   const equityPoints = buildEquityCurve(trades)
 
   return (
-    <div className="page-container">
+    <div className="page-container content-fade-in">
       <ErrorBanner message={formError} />
       <div className="strategy-header-row">
         <h1 className="page-title">{strategy.name}</h1>

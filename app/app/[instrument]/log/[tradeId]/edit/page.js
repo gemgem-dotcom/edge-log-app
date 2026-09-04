@@ -188,7 +188,7 @@ export default function EditTradePage({ params }) {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container content-fade-in">
       <Link href={`/app/${symbol}/log`} className="back-link">Back to log</Link>
       <h1 className="page-title">Edit trade</h1>
 

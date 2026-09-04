@@ -84,7 +84,7 @@ export default function AccountPage() {
   if (loading) return <PageLoading />
 
   return (
-    <div>
+    <div className="content-fade-in">
       <div ref={topbarRef} className={`account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
         <div className="account-topbar-left">
           <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>

@@ -429,7 +429,7 @@ const year = calCursor.year
   }
 
 return (
-  <div className="page-container">
+  <div className="page-container content-fade-in">
   <div className="strategy-header-row">
     <h1 className="page-title">{displayName} Futures</h1>
     {instrumentId && <InstrumentMenu instrumentId={instrumentId} symbol={symbol} />}
@@ -532,7 +532,10 @@ return (
   <FlippingStatChips views={flipViews} />
   </div>
 
-  <div className="stats stats-5">
+  {/* key + .stats-refreshable replay the stat-value fade whenever the
+      strategy filter changes these numbers in place - see
+      .stats-refreshable in globals.css. */}
+  <div className="stats stats-5 stats-refreshable" key={perfStrategy}>
   <div className="stat">
   <div className="stat-label">Total P&amp;L</div>
   <div className={`stat-value ${colorClass(overall.hasD ? overall.totalD : overall.totalPnl)}`}>
@@ -620,7 +623,7 @@ onChange={(e) => { setCalStrategy(e.target.value); setSelectedDate(null) }}
   </div>
   </div>
 
-<div className="stats stats-5">
+<div className="stats stats-5 stats-refreshable" key={`${calStrategy}-${year}-${month}`}>
   <div className="stat">
   <div className="stat-label">Monthly P&L</div>
 <div className={`stat-value ${colorClass(monthStats.hasD ? monthStats.totalD : monthStats.totalR)}`}>

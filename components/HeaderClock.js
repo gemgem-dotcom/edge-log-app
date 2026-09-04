@@ -117,7 +117,6 @@ export default function HeaderClock() {
     <div
       className="header-clock"
       onClick={handleClick}
-      title={offset === null ? undefined : (showOffset ? 'Click to show your local time' : 'Click to show your set timezone')}
     >
       {/* transitionDuration set from the same FADE_MS the click handler's
           setTimeout above uses, so the CSS transition and the moment the

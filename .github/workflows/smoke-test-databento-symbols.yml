@@ -1,0 +1,34 @@
+# TEMPORARY, one-off check - delete this file once its single run has been
+# read. Not workflow_dispatch (GitHub only lets you manually run a workflow
+# that already exists on the default branch, which this repo's non-
+# negotiables don't let this session touch) - triggered by `push`, scoped
+# via `paths` to firing only when this exact file itself is added/changed,
+# so pushing it once is what runs it, and no later unrelated commit to this
+# branch re-triggers it. Uses the same DATABENTO_API_KEY secret already
+# stored in this repo's Actions secrets for refresh-market-session-stats.yml
+# - see scripts/smoke-test-databento-symbols.js's own header for what this
+# actually checks and why.
+
+name: Smoke test Databento symbols (temporary)
+
+on:
+  push:
+    paths:
+      - '.github/workflows/smoke-test-databento-symbols.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Run the smoke test
+        env:
+          DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
+        run: node scripts/smoke-test-databento-symbols.js

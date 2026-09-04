@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { getInstruments, getStrategies } from '@/lib/referenceDataCache'
 import { TUTORIAL_STEPS, readTutorialState, startTutorial, completeTutorial, takeQueuedClosingScreen, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
@@ -70,14 +71,16 @@ export default function AppHome() {
   async function loadInstruments() {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase
-      .from('instruments')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('archived', false)
-      .order('created_at', { ascending: true })
-
-    const loadedInstruments = data || []
+    // Routed through the shared instruments/strategies cache
+    // (referenceDataCache.js) rather than a fresh query every time - the
+    // same rows [instrument]/layout.js's sidebar just fetched (or will
+    // fetch) landing here right after, and re-querying from scratch was
+    // the one thing standing between "any page -> All instruments" and an
+    // instant transition, since this cache hit skips the network
+    // round-trip entirely on a warm cache. Every write path that touches
+    // either table already invalidates it (see that file's own comment),
+    // so this can't go stale.
+    const loadedInstruments = await getInstruments(supabase, user.id)
     setInstruments(loadedInstruments)
     setUserName(user.user_metadata?.full_name || '')
 
@@ -90,15 +93,14 @@ export default function AppHome() {
     cacheTutorialState(t)
     setShowWelcome(loadedInstruments.length === 0 && t.status === 'pending')
 
-    if (!error && loadedInstruments.length > 0) {
-      const ids = loadedInstruments.map((i) => i.id)
-      const { data: stratData } = await supabase
-        .from('strategies')
-        .select('*')
-        .in('instrument_id', ids)
-        .eq('archived', false)
-        .order('created_at', { ascending: true })
-      setStrategies(stratData || [])
+    if (loadedInstruments.length > 0) {
+      // Per-instrument, not one combined query - matches how the cache is
+      // actually keyed (strategiesCache is a Map by instrument_id), so an
+      // instrument whose strategies are already warm from a visit to its
+      // own dashboard costs nothing here even when a sibling instrument
+      // still needs a real fetch.
+      const strategyLists = await Promise.all(loadedInstruments.map((i) => getStrategies(supabase, i.id)))
+      setStrategies(strategyLists.flat())
       setLoading(false)
       return
     }

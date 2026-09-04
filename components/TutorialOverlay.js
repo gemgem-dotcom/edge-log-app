@@ -60,15 +60,26 @@ export default function TutorialOverlay({ step, steps, onExit }) {
     if (!current) { setRect(null); return }
     const trigger = document.querySelector(current.targetSelector)
     const expandEl = current.expandSelector ? document.querySelector(current.expandSelector) : null
-    const els = [trigger, expandEl].filter(Boolean)
+    // "Present in the DOM" isn't the same as "the user can see it", and
+    // only the second one is worth spotlighting. The sidebar's strategy
+    // list is the case that makes the difference: it's now always rendered
+    // and collapsed via visibility:hidden (so it can animate shut - see
+    // .sidebar-substrategies in globals.css) rather than unmounted, and on
+    // a narrow viewport it collapses itself on scroll. Without this filter
+    // step 1's "+ Add new" target would still measure to a full-size rect
+    // while invisible, drawing a ring around nothing. Falling through to
+    // the null-rect branch below instead gives the honest full-screen
+    // fallback, exactly as it did when the element genuinely unmounted.
+    const isVisible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
+    const els = [trigger, expandEl].filter(isVisible)
     if (els.length === 0) { setRect(null); return }
     const rects = els.map((el) => el.getBoundingClientRect())
     const top = Math.min(...rects.map((r) => r.top))
     const left = Math.min(...rects.map((r) => r.left))
     const right = Math.max(...rects.map((r) => r.right))
     const bottom = Math.max(...rects.map((r) => r.bottom))
-    const radiusSource = expandEl || trigger
-    const borderRadius = radiusSource ? getComputedStyle(radiusSource).borderRadius : '12px'
+    const radiusSource = els[els.length - 1]
+    const borderRadius = getComputedStyle(radiusSource).borderRadius
     setRect({ top, left, width: right - left, height: bottom - top, borderRadius })
   }, [current])
 

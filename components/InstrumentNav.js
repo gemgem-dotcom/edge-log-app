@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
 import { addOrRestoreInstrument } from '@/lib/instruments'
@@ -122,7 +123,7 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
         ))}
       </div>
       <div className="instrument-nav-add-wrap" ref={addRef}>
-        <span ref={triggerRef} className="instrument-nav-add" data-tutorial-target="add-instrument" onClick={handleTrigger}>+ Add instrument</span>
+        <span ref={triggerRef} className="instrument-nav-add" data-tutorial-target="add-instrument" onClick={handleTrigger}><Plus size={13} /> Add instrument</span>
         {adding && pos && (
           <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
             <form onSubmit={handleAddInstrument} className="instrument-add-form">

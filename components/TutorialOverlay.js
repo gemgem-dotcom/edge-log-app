@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // Reusable spotlight tour, driven by `steps` (see lib/tutorial.js's
 // TUTORIAL_STEPS) rather than three hand-built one-off overlays. Renders
@@ -36,6 +36,16 @@ const POLL_MS = 300
 export default function TutorialOverlay({ step, steps, onExit }) {
   const [rect, setRect] = useState(null)
   const current = steps[step]
+  // Tracks whichever real DOM node currently wears the spotlight, so its
+  // own hover lift (button:hover's translateY(-1px) - see .new-trade-btn,
+  // the one trigger that actually has one) can be suppressed while the
+  // ring is drawn around it: hovering it mid-tutorial otherwise made the
+  // button visibly detach from a glow that's supposed to be hugging it.
+  // Not every target needs this ("+ Add instrument"/"+ Add new" are plain
+  // hover-background links with no lift to begin with) - the class is a
+  // no-op on those, so this applies it unconditionally rather than special-
+  // casing which step's trigger happens to be a lifting button.
+  const glowingElRef = useRef(null)
 
   // Unions the trigger's own rect with its expandSelector's, when that
   // second element exists - covers both shapes a step's target takes:
@@ -56,8 +66,24 @@ export default function TutorialOverlay({ step, steps, onExit }) {
   // .instrument-nav-add's 100px) - using the trigger's radius there drew a
   // ring whose curve didn't match the panel's own corner underneath it,
   // which the panel's much sharper actual corner then visibly poked past.
+  // Swaps the class onto whichever element is spotlighted right now,
+  // removing it from wherever it was before - called from every exit
+  // point of measure() below (target gone, step changed, tutorial
+  // exited), not just the success path, so a stale glowing button never
+  // outlives its own step. Diffs against the ref first so hovering the
+  // still-current target doesn't retrigger a class add/remove on every
+  // 300ms poll tick.
+  const setGlowingEl = useCallback((el) => {
+    if (glowingElRef.current === el) return
+    glowingElRef.current?.classList.remove('tutorial-target-glow')
+    el?.classList.add('tutorial-target-glow')
+    glowingElRef.current = el
+  }, [])
+
+  useEffect(() => () => setGlowingEl(null), [setGlowingEl])
+
   const measure = useCallback(() => {
-    if (!current) { setRect(null); return }
+    if (!current) { setRect(null); setGlowingEl(null); return }
     const trigger = document.querySelector(current.targetSelector)
     const expandEl = current.expandSelector ? document.querySelector(current.expandSelector) : null
     // "Present in the DOM" isn't the same as "the user can see it", and
@@ -72,7 +98,12 @@ export default function TutorialOverlay({ step, steps, onExit }) {
     // fallback, exactly as it did when the element genuinely unmounted.
     const isVisible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
     const els = [trigger, expandEl].filter(isVisible)
-    if (els.length === 0) { setRect(null); return }
+    if (els.length === 0) { setRect(null); setGlowingEl(null); return }
+    // Only the trigger itself, not expandEl - the ring visually covers
+    // both once a dropdown/form opens, but the thing that needs its hover
+    // lift suppressed is specifically the interactive control the ring
+    // originated on, not a container it grew to include.
+    setGlowingEl(isVisible(trigger) ? trigger : null)
     const rects = els.map((el) => el.getBoundingClientRect())
     const top = Math.min(...rects.map((r) => r.top))
     const left = Math.min(...rects.map((r) => r.left))
@@ -81,7 +112,7 @@ export default function TutorialOverlay({ step, steps, onExit }) {
     const radiusSource = els[els.length - 1]
     const borderRadius = getComputedStyle(radiusSource).borderRadius
     setRect({ top, left, width: right - left, height: bottom - top, borderRadius })
-  }, [current])
+  }, [current, setGlowingEl])
 
   // Polled rather than event-driven: the step's target can still be
   // mounting right after a route change, and - more importantly - a step's

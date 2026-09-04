@@ -11,44 +11,44 @@
    741  Top nav
    756  Instrument nav (topbar pill row)
    823  Page layout
-   901  Tabs
-   911  Misc form helpers
-   917  Detail view
-   940  Holiday notice (site-wide, above the shell)
-   965  Shell layout (sidebar + topbar)
-   1269  Expandable trade rows
-   1335  Calendar
-   1383  Account settings page
-   1600  Light theme
-   1641  2FA
-   1656  Account fine print
-   1659  Screenshot preview (log new trade)
-   1701  Auth pages always dark
-   1736  Monthly P&L (calendar on Overview)
-   1823  Trade form: sections, validation, currency, screenshots
-   2061  Field tooltips
-   2123  Date/time picker (adds an optional popup to a typed input)
-   2232  In-header column filters (trade log table)
-   2280  Active filter chips
-   2343  Empty states, error banners, skeleton loaders
-   2428  Cross-instrument overview dashboard (/app)
-   2607  Not found / error boundary state pages
-   2620  Toast notifications
-   2648  Public policy pages (Privacy, Terms)
-   2667  Legal links (auth pages + account settings)
-   2706  Economic calendar card (mock - Overview pages)
-   2820  Calendar news badge (Monthly P&L day cells, mock)
-   2841  Streak badge (Overview + strategy detail pages)
-   2858  Market status pill (Overview + strategy detail pages)
-   2884  Today's brief & session stats
-   2919  Market context cards (all-instruments Overview)
-   2952  Edge Insights panel
-   2967  Unverified logged time badge
-   2984  Welcome transition (first-run)
-   3013  Zero-instrument empty state
-   3023  Tutorial overlay (first-run guided tour)
-   3103  Tutorial step 3 (guided form scroll)
-   3150  Press states, value changes, content fade-in
+   914  Tabs
+   924  Misc form helpers
+   930  Detail view
+   953  Holiday notice (site-wide, above the shell)
+   978  Shell layout (sidebar + topbar)
+   1282  Expandable trade rows
+   1348  Calendar
+   1396  Account settings page
+   1613  Light theme
+   1654  2FA
+   1669  Account fine print
+   1672  Screenshot preview (log new trade)
+   1714  Auth pages always dark
+   1749  Monthly P&L (calendar on Overview)
+   1836  Trade form: sections, validation, currency, screenshots
+   2074  Field tooltips
+   2136  Date/time picker (adds an optional popup to a typed input)
+   2245  In-header column filters (trade log table)
+   2293  Active filter chips
+   2356  Empty states, error banners, skeleton loaders
+   2441  Cross-instrument overview dashboard (/app)
+   2620  Not found / error boundary state pages
+   2633  Toast notifications
+   2661  Public policy pages (Privacy, Terms)
+   2680  Legal links (auth pages + account settings)
+   2719  Economic calendar card (mock - Overview pages)
+   2833  Calendar news badge (Monthly P&L day cells, mock)
+   2854  Streak badge (Overview + strategy detail pages)
+   2871  Market status pill (Overview + strategy detail pages)
+   2897  Today's brief & session stats
+   2932  Market context cards (all-instruments Overview)
+   2965  Edge Insights panel
+   2980  Unverified logged time badge
+   2997  Welcome transition (first-run)
+   3026  Zero-instrument empty state
+   3036  Tutorial overlay (first-run guided tour)
+   3116  Tutorial step 3 (guided form scroll)
+   3163  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -830,13 +830,17 @@ table{min-width:640px;}
    comment, freeing this spot for the clock. */
 .page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;}
 /* .page-title's own margin-bottom is part of its flex-item margin box, so
-   left alone it inflates the row's height and the vertically-centered
-   clock drifts down toward that dead space instead of the title text
-   (closer to where the subtitle below ends up). Moving the same 20px onto
-   the row itself keeps the row exactly as tall as its real content -
-   clock centers on the title - while the gap before whatever follows
-   (a subtitle, or a panel on pages with no subtitle) stays unchanged. */
-.page-header-row .page-title{margin-bottom:0;}
+   left alone it inflates the row's height beyond its real content, pushing
+   .header-clock's flex-start-aligned top down into that dead space instead
+   of sitting flush with the title's own top. Moving the same 20px onto the
+   row itself keeps the row exactly as tall as its real content - while the
+   gap before whatever follows (a subtitle, or a panel on pages with no
+   subtitle) stays unchanged. margin-top is zeroed too, for the same
+   flush-top reason - h1's own global margin-top:4px would otherwise still
+   offset the title 4px below the clock's own zero-margin top edge, the
+   same fix already applied for this reason in .strategy-header-row h1
+   below. */
+.page-header-row .page-title{margin-bottom:0; margin-top:0;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
    Archivo weight. */
@@ -847,7 +851,16 @@ table{min-width:640px;}
    .strategy-header-row's own comments on what moved where and why).
    flex-shrink:0 so a long instrument/strategy name never squeezes this
    down onto multiple lines - the title itself is what wraps first. */
-.header-clock{text-align:right; flex-shrink:0;}
+/* align-self:flex-start, not the row's own align-items:center - both
+   .page-header-row and .strategy-header-row center their children by
+   default so a small item (the kebab menu button, on the two pages that
+   have one) lines up against the middle of the much taller title text
+   rather than its top. The clock is the one child that shouldn't follow
+   that: at two short lines it's nowhere near as tall as the title, so
+   centering it left its own top edge floating noticeably above the
+   title's - this pins it to the row's top edge instead, flush with the
+   title, and leaves the kebab button's own centering untouched. */
+.header-clock{text-align:right; flex-shrink:0; align-self:flex-start;}
 /* JetBrains Mono, matching every other live/logged time value in the app
    (trade log cells, r-pills, TimePicker's own display) rather than a
    second time-display style. font-variant-numeric:tabular-nums keeps

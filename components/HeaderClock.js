@@ -30,7 +30,7 @@ export default function HeaderClock() {
   // trade time already shown elsewhere in the app - built as the same
   // "HH:MM:SS" shape that function already expects.
   const hhmmss = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
-  const dateStr = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`
+  const dateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`
 
   return (
     <div className="header-clock">

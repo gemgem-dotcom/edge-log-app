@@ -5,50 +5,50 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–642  Base: reset, typography, forms, tables, thumbnails,
+     1–659  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   643  Auth pages
-   709  Top nav
-   724  Instrument nav (topbar pill row)
-   791  Page layout
-   843  Tabs
-   853  Misc form helpers
-   859  Detail view
-   882  Holiday notice (site-wide, above the shell)
-   907  Shell layout (sidebar + topbar)
-   1184  Expandable trade rows
-   1232  Calendar
-   1280  Account settings page
-   1491  Light theme
-   1532  2FA
-   1547  Account fine print
-   1550  Screenshot preview (log new trade)
-   1592  Auth pages always dark
-   1627  Monthly P&L (calendar on Overview)
-   1714  Trade form: sections, validation, currency, screenshots
-   1952  Field tooltips
-   2014  Date/time picker (adds an optional popup to a typed input)
-   2123  In-header column filters (trade log table)
-   2171  Active filter chips
-   2234  Empty states, error banners, skeleton loaders
-   2313  Cross-instrument overview dashboard (/app)
-   2492  Not found / error boundary state pages
-   2505  Toast notifications
-   2533  Public policy pages (Privacy, Terms)
-   2552  Legal links (auth pages + account settings)
-   2591  Economic calendar card (mock - Overview pages)
-   2705  Calendar news badge (Monthly P&L day cells, mock)
-   2726  Streak badge (Overview + strategy detail pages)
-   2743  Market status pill (Overview + strategy detail pages)
-   2769  Today's brief & session stats
-   2804  Market context cards (all-instruments Overview)
-   2837  Edge Insights panel
-   2852  Unverified logged time badge
-   2869  Welcome transition (first-run)
-   2898  Zero-instrument empty state
-   2908  Tutorial overlay (first-run guided tour)
-   2988  Tutorial step 3 (guided form scroll)
-   3035  Press states, value changes, content fade-in
+   660  Auth pages
+   726  Top nav
+   741  Instrument nav (topbar pill row)
+   808  Page layout
+   860  Tabs
+   870  Misc form helpers
+   876  Detail view
+   899  Holiday notice (site-wide, above the shell)
+   924  Shell layout (sidebar + topbar)
+   1201  Expandable trade rows
+   1249  Calendar
+   1297  Account settings page
+   1508  Light theme
+   1549  2FA
+   1564  Account fine print
+   1567  Screenshot preview (log new trade)
+   1609  Auth pages always dark
+   1644  Monthly P&L (calendar on Overview)
+   1731  Trade form: sections, validation, currency, screenshots
+   1969  Field tooltips
+   2031  Date/time picker (adds an optional popup to a typed input)
+   2140  In-header column filters (trade log table)
+   2188  Active filter chips
+   2251  Empty states, error banners, skeleton loaders
+   2330  Cross-instrument overview dashboard (/app)
+   2509  Not found / error boundary state pages
+   2522  Toast notifications
+   2550  Public policy pages (Privacy, Terms)
+   2569  Legal links (auth pages + account settings)
+   2608  Economic calendar card (mock - Overview pages)
+   2722  Calendar news badge (Monthly P&L day cells, mock)
+   2743  Streak badge (Overview + strategy detail pages)
+   2760  Market status pill (Overview + strategy detail pages)
+   2786  Today's brief & session stats
+   2821  Market context cards (all-instruments Overview)
+   2854  Edge Insights panel
+   2869  Unverified logged time badge
+   2886  Welcome transition (first-run)
+   2915  Zero-instrument empty state
+   2925  Tutorial overlay (first-run guided tour)
+   3005  Tutorial step 3 (guided form scroll)
+   3052  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -173,6 +173,23 @@
    that affects layout, so this can't introduce jank on properties that
    have nothing to do with theming. */
 *{transition:background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);}
+/* Reserves the vertical scrollbar's gutter whether or not the page is
+   currently tall enough to need one. Nothing in this app's shell caps its
+   own height (.shell below uses min-height:100vh, not height:100vh), so
+   the page's actual scrolling happens on the document itself, not inside
+   any inner wrapper - and on a real (non-overlay) scrollbar, the instant
+   content grows past the viewport, the browser starts reserving ~15-17px
+   for that scrollbar, which is width the page's own content no longer
+   has. Every fixed-width layout on the page (most visibly the trade log
+   table, whose column borders make a few pixels of shift obvious) shrinks
+   by that amount and reads as jumping left. This happens constantly on an
+   otherwise-ordinary interaction: expanding a trade log row is exactly
+   the kind of small height change that tips a page from "fits" to
+   "needs to scroll." `stable` reserves the gutter unconditionally, so
+   that threshold stops being visible at all. Overlay-scrollbar platforms
+   (most of macOS by default) already reserve no width for a scrollbar
+   either way, so this is a no-op there rather than adding a visible gap. */
+html{scrollbar-gutter:stable;}
 body{
   /* A faint accent-tinted glow anchored near the top of the page, under
      the flat --bg - subtle enough not to compete with any panel sitting

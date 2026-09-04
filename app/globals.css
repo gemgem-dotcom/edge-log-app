@@ -17,38 +17,38 @@
    899  Holiday notice (site-wide, above the shell)
    924  Shell layout (sidebar + topbar)
    1201  Expandable trade rows
-   1249  Calendar
-   1297  Account settings page
-   1508  Light theme
-   1549  2FA
-   1564  Account fine print
-   1567  Screenshot preview (log new trade)
-   1609  Auth pages always dark
-   1644  Monthly P&L (calendar on Overview)
-   1731  Trade form: sections, validation, currency, screenshots
-   1969  Field tooltips
-   2031  Date/time picker (adds an optional popup to a typed input)
-   2140  In-header column filters (trade log table)
-   2188  Active filter chips
-   2251  Empty states, error banners, skeleton loaders
-   2330  Cross-instrument overview dashboard (/app)
-   2509  Not found / error boundary state pages
-   2522  Toast notifications
-   2550  Public policy pages (Privacy, Terms)
-   2569  Legal links (auth pages + account settings)
-   2608  Economic calendar card (mock - Overview pages)
-   2722  Calendar news badge (Monthly P&L day cells, mock)
-   2743  Streak badge (Overview + strategy detail pages)
-   2760  Market status pill (Overview + strategy detail pages)
-   2786  Today's brief & session stats
-   2821  Market context cards (all-instruments Overview)
-   2854  Edge Insights panel
-   2869  Unverified logged time badge
-   2886  Welcome transition (first-run)
-   2915  Zero-instrument empty state
-   2925  Tutorial overlay (first-run guided tour)
-   3005  Tutorial step 3 (guided form scroll)
-   3052  Press states, value changes, content fade-in
+   1267  Calendar
+   1315  Account settings page
+   1526  Light theme
+   1567  2FA
+   1582  Account fine print
+   1585  Screenshot preview (log new trade)
+   1627  Auth pages always dark
+   1662  Monthly P&L (calendar on Overview)
+   1749  Trade form: sections, validation, currency, screenshots
+   1987  Field tooltips
+   2049  Date/time picker (adds an optional popup to a typed input)
+   2158  In-header column filters (trade log table)
+   2206  Active filter chips
+   2269  Empty states, error banners, skeleton loaders
+   2348  Cross-instrument overview dashboard (/app)
+   2527  Not found / error boundary state pages
+   2540  Toast notifications
+   2568  Public policy pages (Privacy, Terms)
+   2587  Legal links (auth pages + account settings)
+   2626  Economic calendar card (mock - Overview pages)
+   2740  Calendar news badge (Monthly P&L day cells, mock)
+   2761  Streak badge (Overview + strategy detail pages)
+   2778  Market status pill (Overview + strategy detail pages)
+   2804  Today's brief & session stats
+   2839  Market context cards (all-instruments Overview)
+   2872  Edge Insights panel
+   2887  Unverified logged time badge
+   2904  Welcome transition (first-run)
+   2933  Zero-instrument empty state
+   2943  Tutorial overlay (first-run guided tour)
+   3023  Tutorial step 3 (guided form scroll)
+   3070  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -1205,7 +1205,25 @@ a.shell-logo{color:inherit; text-decoration:none;}
    on a <td> would break column alignment - see the gotcha above), so the
    "expand" plays as a quick fade + settle on the cell's content instead of
    an actual height/collapse transition. */
-.expand-row td > *{animation:expand-row-in .18s ease;}
+/* width:0 + min-width:100% keeps this cell's content from widening the
+   table's columns. The table is table-layout:auto, so every cell's content
+   feeds the column-width calculation - including this one, which spans all
+   of them. A trade with a long note is the case that bites: the note wraps
+   when rendered, but its *max-content* width (the whole paragraph on one
+   line) is what the algorithm weighs, and that's far wider than any real
+   column. Expanding such a row redistributed the width across all eight
+   columns - the table's total width stayed put while individual columns
+   moved by up to ~20px, so the header visibly jumped sideways the moment a
+   row opened, then jumped back on collapse. Measured before this fix:
+   Day -10.4, Instrument -1.7, Strategy +7.7, Direction -19.2, Result
+   -20.0, P&L -14.9 - most columns left, one right, exactly the
+   redistribution signature rather than a uniform slide.
+   A definite width:0 makes this element contribute nothing to that
+   calculation; the percentage min-width doesn't feed back into it (it has
+   no definite containing block to resolve against during intrinsic
+   sizing), but does resolve to the cell's real width at layout time, so it
+   still fills the row exactly as before. */
+.expand-row td > *{animation:expand-row-in .18s ease; width:0; min-width:100%;}
 @keyframes expand-row-in{
   from{opacity:0; transform:translateY(-4px);}
   to{opacity:1; transform:translateY(0);}

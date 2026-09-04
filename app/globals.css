@@ -41,14 +41,14 @@
    2582  Streak badge (Overview + strategy detail pages)
    2599  Market status pill (Overview + strategy detail pages)
    2625  Today's brief & session stats
-   2651  Market context cards (all-instruments Overview)
-   2684  Edge Insights panel
-   2699  Unverified logged time badge
-   2716  Theme toggle (suppress transition flash)
-   2726  Welcome transition (first-run)
-   2755  Zero-instrument empty state
-   2765  Tutorial overlay (first-run guided tour)
-   2822  Tutorial step 3 (guided form scroll)
+   2660  Market context cards (all-instruments Overview)
+   2693  Edge Insights panel
+   2708  Unverified logged time badge
+   2725  Theme toggle (suppress transition flash)
+   2735  Welcome transition (first-run)
+   2764  Zero-instrument empty state
+   2774  Tutorial overlay (first-run guided tour)
+   2831  Tutorial step 3 (guided form scroll)
    ============================================================ */
 
 :root{
@@ -2633,8 +2633,17 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
 }
 .key-levels-row:last-child{border-bottom:none; padding-bottom:0;}
-.key-levels-row span:first-child{color:var(--text);}
-.key-levels-row span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
+/* Direct-child combinator, not a bare descendant selector - a plain
+   "span:last-child" also matches the TableHeaderTooltip bubble nested
+   several levels inside the label span (it's the last child of its own
+   wrapper), which then out-specifies .field-tooltip-bubble's own Inter/
+   400 font-family and renders the tooltip's body text in this row's
+   monospace/600 instead - confirmed live on the Days to rollover/Range/
+   Volume rows before this fix. Restricting to ">" keeps this rule to the
+   row's own two spans (label, value), which is all it was ever meant to
+   style. */
+.key-levels-row > span:first-child{color:var(--text);}
+.key-levels-row > span:last-child{font-family:'JetBrains Mono',monospace; font-weight:600;}
 
 /* Per-instrument Overview's Today's brief/Session stats row. 15px, not
    --space-4 (16px) - see the comment on .stats above. margin-bottom

@@ -5,7 +5,7 @@ import { X, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { queueToastForReturn } from '../lib/toast'
 import { calcStopPrice, calcTargetPrice, calcRMultiple, calcRiskReward, calcMultiExitProfitLoss, calcPointsFromExitPrice, calcBlendedRMultiple, ADHERENCE_EPSILON } from '../lib/tradeMath'
-import { isBlank, validateSetup, validateExecution, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
+import { isBlank, validateSetup, validateExecution, validateAdditionalExit, validateDiscipline, parseCurrency, formatCurrency, toDecimalString, todayDateString, MIN_TRADE_DATE } from '../lib/tradeForm'
 import { pointValueFor } from '../lib/instrumentCatalog'
 import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { invalidateStrategies } from '../lib/referenceDataCache'
@@ -469,12 +469,25 @@ export default function TradeForm({
     setDirty(true)
     setAdditionalExits((prev) => prev.filter((_, i) => i !== index))
     setPnlManual(false)
+    // Keeps any remaining rows' errors aligned with their (now shifted)
+    // index - without this, removing row 0 would leave row 1's errors
+    // sitting under what's now row 0.
+    setErrors((prev) => (prev.additionalExits ? { ...prev, additionalExits: prev.additionalExits.filter((_, i) => i !== index) } : prev))
   }
 
   function updateAdditionalExit(index, field, value) {
     setDirty(true)
     setAdditionalExits((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
     if (field === 'contracts' || field === 'exit_price') setPnlManual(false)
+    // Mirrors updateExecution's own per-field error clear, just addressed
+    // by row index too since additionalExits' errors are keyed one level
+    // deeper (see handleSubmit's additionalExits error array).
+    setErrors((prev) => {
+      if (!prev.additionalExits?.[index]?.[field]) return prev
+      const next = [...prev.additionalExits]
+      next[index] = { ...next[index], [field]: undefined }
+      return { ...prev, additionalExits: next }
+    })
   }
 
   async function handleAddStrategy(e) {
@@ -636,6 +649,11 @@ export default function TradeForm({
         execErrors.exit_price = `Breakeven price must be within ${BREAKEVEN_TOLERANCE_POINTS} points of entry.`
       }
     }
+    // Only the legs a Custom-outcome trade actually saves (see
+    // additional_exits below) need validating - additionalExits itself
+    // can still hold rows left over from a Custom selection the trader
+    // has since changed away from (see multipleExits's own comment).
+    const additionalExitErrors = isCustomOutcome ? additionalExits.map((row) => validateAdditionalExit(row)) : []
     const foundErrors = {
       ...validateSetup({ ...setup, direction, strategyId }),
       // Outcome gates whether the exit row(s) even render (see
@@ -643,6 +661,7 @@ export default function TradeForm({
       // otherwise fire against a hidden field with no visible error.
       ...(outcomeChosen ? {} : { outcome: 'Choose an outcome.' }),
       ...execErrors,
+      ...(additionalExitErrors.some((e) => Object.keys(e).length > 0) ? { additionalExits: additionalExitErrors } : {}),
       ...validateDiscipline({ reviewedNoIssues, disciplineTags }),
     }
     if (Object.keys(foundErrors).length > 0) {
@@ -752,6 +771,13 @@ export default function TradeForm({
   function renderExitFields(idx) {
     const isPrimary = idx === 0
     const row = isPrimary ? execution : additionalExits[idx - 1]
+    // The primary row's errors sit directly on `errors` (exit_time,
+    // exit_price, contracts, alongside every other top-level field); each
+    // additional row's own errors sit one level deeper, at
+    // errors.additionalExits[idx - 1] (see handleSubmit) - this just picks
+    // the right object once so the JSX below doesn't need an isPrimary
+    // branch per field.
+    const rowErrors = isPrimary ? errors : (errors.additionalExits?.[idx - 1] || {})
     const update = isPrimary
       ? (field, value) => updateExecution(field, value)
       : (field, value) => updateAdditionalExit(idx - 1, field, value)
@@ -760,6 +786,7 @@ export default function TradeForm({
         <div className="field wide">
           <label>Exit time</label>
           <TimePicker value={row.exit_time} onChange={(v) => update('exit_time', v)} />
+          {rowErrors.exit_time && <span className="field-error">{rowErrors.exit_time}</span>}
         </div>
         <div className="field wide">
           <label>Exit price</label>
@@ -767,7 +794,7 @@ export default function TradeForm({
             type="number" step="0.01"
             value={row.exit_price} onChange={(e) => update('exit_price', e.target.value)}
           />
-          {isPrimary && errors.exit_price && <span className="field-error">{errors.exit_price}</span>}
+          {rowErrors.exit_price && <span className="field-error">{rowErrors.exit_price}</span>}
         </div>
         <div className="field wide">
           <label>Contracts</label>

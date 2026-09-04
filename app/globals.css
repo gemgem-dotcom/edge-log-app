@@ -16,39 +16,39 @@
    903  Detail view
    926  Holiday notice (site-wide, above the shell)
    951  Shell layout (sidebar + topbar)
-   1301  Expandable trade rows
-   1367  Calendar
-   1415  Account settings page
-   1631  Light theme
-   1672  2FA
-   1687  Account fine print
-   1690  Screenshot preview (log new trade)
-   1732  Auth pages always dark
-   1767  Monthly P&L (calendar on Overview)
-   1854  Trade form: sections, validation, currency, screenshots
-   2092  Field tooltips
-   2154  Date/time picker (adds an optional popup to a typed input)
-   2263  In-header column filters (trade log table)
-   2311  Active filter chips
-   2374  Empty states, error banners, skeleton loaders
-   2453  Cross-instrument overview dashboard (/app)
-   2632  Not found / error boundary state pages
-   2645  Toast notifications
-   2673  Public policy pages (Privacy, Terms)
-   2692  Legal links (auth pages + account settings)
-   2731  Economic calendar card (mock - Overview pages)
-   2845  Calendar news badge (Monthly P&L day cells, mock)
-   2866  Streak badge (Overview + strategy detail pages)
-   2889  Market status pill (Overview + strategy detail pages)
-   2915  Today's brief & session stats
-   2950  Market context cards (all-instruments Overview)
-   2983  Edge Insights panel
-   2998  Unverified logged time badge
-   3015  Welcome transition (first-run)
-   3044  Zero-instrument empty state
-   3054  Tutorial overlay (first-run guided tour)
-   3146  Tutorial step 3 (guided form scroll)
-   3193  Press states, value changes, content fade-in
+   1315  Expandable trade rows
+   1381  Calendar
+   1429  Account settings page
+   1645  Light theme
+   1686  2FA
+   1701  Account fine print
+   1704  Screenshot preview (log new trade)
+   1746  Auth pages always dark
+   1781  Monthly P&L (calendar on Overview)
+   1868  Trade form: sections, validation, currency, screenshots
+   2106  Field tooltips
+   2168  Date/time picker (adds an optional popup to a typed input)
+   2277  In-header column filters (trade log table)
+   2325  Active filter chips
+   2388  Empty states, error banners, skeleton loaders
+   2467  Cross-instrument overview dashboard (/app)
+   2646  Not found / error boundary state pages
+   2659  Toast notifications
+   2687  Public policy pages (Privacy, Terms)
+   2706  Legal links (auth pages + account settings)
+   2745  Economic calendar card (mock - Overview pages)
+   2859  Calendar news badge (Monthly P&L day cells, mock)
+   2880  Streak badge (Overview + strategy detail pages)
+   2903  Market status pill (Overview + strategy detail pages)
+   2929  Today's brief & session stats
+   2964  Market context cards (all-instruments Overview)
+   2997  Edge Insights panel
+   3012  Unverified logged time badge
+   3029  Welcome transition (first-run)
+   3058  Zero-instrument empty state
+   3068  Tutorial overlay (first-run guided tour)
+   3160  Tutorial step 3 (guided form scroll)
+   3207  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -1041,7 +1041,21 @@ a.shell-logo{color:inherit; text-decoration:none;}
    plain text block reads as too close to the icon buttons at that same
    gap the icons use between each other, so this widens just this one
    side without touching that shared gap value. */
-.header-clock{display:flex; flex-direction:column; align-items:flex-end; text-align:right; flex-shrink:0; margin-right:10px;}
+/* cursor:pointer - clicking toggles local time and the trader's own
+   configured UTC offset (HeaderClock.js), so this needs to read as
+   interactive despite carrying none of .icon-btn's usual boxed-control
+   chrome. opacity on :hover is the only feedback for the same reason a
+   background/border would look out of place on plain topbar text. */
+.header-clock{display:flex; flex-direction:column; align-items:flex-end; text-align:right; flex-shrink:0; margin-right:10px; cursor:pointer; transition:opacity var(--transition-fast);}
+.header-clock:hover{opacity:.75;}
+/* Replays stat-value-in (see "Press states, value changes, content
+   fade-in") whenever HeaderClock.js's key={mode} swaps this out for a
+   fresh element - reusing that rule's keyframe rather than a second copy
+   of it for what's the same "a value just changed" fade. */
+.header-clock-fade{animation:stat-value-in .18s ease;}
+@media (prefers-reduced-motion:reduce){
+  .header-clock-fade{animation:none;}
+}
 /* JetBrains Mono, matching every other live/logged time value in the app
    (trade log cells, r-pills, TimePicker's own display) rather than a
    second time-display style. font-variant-numeric:tabular-nums keeps

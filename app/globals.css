@@ -16,39 +16,39 @@
    903  Detail view
    926  Holiday notice (site-wide, above the shell)
    951  Shell layout (sidebar + topbar)
-   1287  Expandable trade rows
-   1353  Calendar
-   1401  Account settings page
-   1617  Light theme
-   1658  2FA
-   1673  Account fine print
-   1676  Screenshot preview (log new trade)
-   1718  Auth pages always dark
-   1753  Monthly P&L (calendar on Overview)
-   1840  Trade form: sections, validation, currency, screenshots
-   2078  Field tooltips
-   2140  Date/time picker (adds an optional popup to a typed input)
-   2249  In-header column filters (trade log table)
-   2297  Active filter chips
-   2360  Empty states, error banners, skeleton loaders
-   2439  Cross-instrument overview dashboard (/app)
-   2618  Not found / error boundary state pages
-   2631  Toast notifications
-   2659  Public policy pages (Privacy, Terms)
-   2678  Legal links (auth pages + account settings)
-   2717  Economic calendar card (mock - Overview pages)
-   2831  Calendar news badge (Monthly P&L day cells, mock)
-   2852  Streak badge (Overview + strategy detail pages)
-   2869  Market status pill (Overview + strategy detail pages)
-   2895  Today's brief & session stats
-   2930  Market context cards (all-instruments Overview)
-   2963  Edge Insights panel
-   2978  Unverified logged time badge
-   2995  Welcome transition (first-run)
-   3024  Zero-instrument empty state
-   3034  Tutorial overlay (first-run guided tour)
-   3126  Tutorial step 3 (guided form scroll)
-   3173  Press states, value changes, content fade-in
+   1295  Expandable trade rows
+   1361  Calendar
+   1409  Account settings page
+   1625  Light theme
+   1666  2FA
+   1681  Account fine print
+   1684  Screenshot preview (log new trade)
+   1726  Auth pages always dark
+   1761  Monthly P&L (calendar on Overview)
+   1848  Trade form: sections, validation, currency, screenshots
+   2086  Field tooltips
+   2148  Date/time picker (adds an optional popup to a typed input)
+   2257  In-header column filters (trade log table)
+   2305  Active filter chips
+   2368  Empty states, error banners, skeleton loaders
+   2447  Cross-instrument overview dashboard (/app)
+   2626  Not found / error boundary state pages
+   2639  Toast notifications
+   2667  Public policy pages (Privacy, Terms)
+   2686  Legal links (auth pages + account settings)
+   2725  Economic calendar card (mock - Overview pages)
+   2839  Calendar news badge (Monthly P&L day cells, mock)
+   2860  Streak badge (Overview + strategy detail pages)
+   2877  Market status pill (Overview + strategy detail pages)
+   2903  Today's brief & session stats
+   2938  Market context cards (all-instruments Overview)
+   2971  Edge Insights panel
+   2986  Unverified logged time badge
+   3003  Welcome transition (first-run)
+   3032  Zero-instrument empty state
+   3042  Tutorial overlay (first-run guided tour)
+   3134  Tutorial step 3 (guided form scroll)
+   3181  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -1196,6 +1196,14 @@ a.shell-logo{color:inherit; text-decoration:none;}
    child, so it still reaches that nested copy too). */
 .header-pills-row > .new-trade-btn, .header-pills-row > .log-trade-menu-wrap{margin-left:auto;}
 .header-pills-row .new-trade-btn{padding:6px 14px; font-size:12.5px; gap:7px;}
+/* The icon itself doesn't inherit the shrink above (it's a fixed 16px
+   size prop, not an em-relative unit) - left alone it stayed at its
+   original full-size-button proportions while the text and padding
+   around it shrank to pill size, reading as oversized next to the
+   smaller label. Scaled down to the same ~14px the sidebar's own
+   "+ Add new" uses at a comparable font-size, rather than literally
+   matching the 16/13 ratio of the original full-size button. */
+.header-pills-row .new-trade-btn svg{width:14px; height:14px;}
 @media (max-width:640px){
   /* Same "a content-sized pill button wrapped onto its own line reads as
      an arbitrary floating shape" reasoning as .page-header-row/

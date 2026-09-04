@@ -16,39 +16,39 @@
    903  Detail view
    926  Holiday notice (site-wide, above the shell)
    951  Shell layout (sidebar + topbar)
-   1295  Expandable trade rows
-   1361  Calendar
-   1409  Account settings page
-   1625  Light theme
-   1666  2FA
-   1681  Account fine print
-   1684  Screenshot preview (log new trade)
-   1726  Auth pages always dark
-   1761  Monthly P&L (calendar on Overview)
-   1848  Trade form: sections, validation, currency, screenshots
-   2086  Field tooltips
-   2148  Date/time picker (adds an optional popup to a typed input)
-   2257  In-header column filters (trade log table)
-   2305  Active filter chips
-   2368  Empty states, error banners, skeleton loaders
-   2447  Cross-instrument overview dashboard (/app)
-   2626  Not found / error boundary state pages
-   2639  Toast notifications
-   2667  Public policy pages (Privacy, Terms)
-   2686  Legal links (auth pages + account settings)
-   2725  Economic calendar card (mock - Overview pages)
-   2839  Calendar news badge (Monthly P&L day cells, mock)
-   2860  Streak badge (Overview + strategy detail pages)
-   2877  Market status pill (Overview + strategy detail pages)
-   2903  Today's brief & session stats
-   2938  Market context cards (all-instruments Overview)
-   2971  Edge Insights panel
-   2986  Unverified logged time badge
-   3003  Welcome transition (first-run)
-   3032  Zero-instrument empty state
-   3042  Tutorial overlay (first-run guided tour)
-   3134  Tutorial step 3 (guided form scroll)
-   3181  Press states, value changes, content fade-in
+   1301  Expandable trade rows
+   1367  Calendar
+   1415  Account settings page
+   1631  Light theme
+   1672  2FA
+   1687  Account fine print
+   1690  Screenshot preview (log new trade)
+   1732  Auth pages always dark
+   1767  Monthly P&L (calendar on Overview)
+   1854  Trade form: sections, validation, currency, screenshots
+   2092  Field tooltips
+   2154  Date/time picker (adds an optional popup to a typed input)
+   2263  In-header column filters (trade log table)
+   2311  Active filter chips
+   2374  Empty states, error banners, skeleton loaders
+   2453  Cross-instrument overview dashboard (/app)
+   2632  Not found / error boundary state pages
+   2645  Toast notifications
+   2673  Public policy pages (Privacy, Terms)
+   2692  Legal links (auth pages + account settings)
+   2731  Economic calendar card (mock - Overview pages)
+   2845  Calendar news badge (Monthly P&L day cells, mock)
+   2866  Streak badge (Overview + strategy detail pages)
+   2889  Market status pill (Overview + strategy detail pages)
+   2915  Today's brief & session stats
+   2950  Market context cards (all-instruments Overview)
+   2983  Edge Insights panel
+   2998  Unverified logged time badge
+   3015  Welcome transition (first-run)
+   3044  Zero-instrument empty state
+   3054  Tutorial overlay (first-run guided tour)
+   3146  Tutorial step 3 (guided form scroll)
+   3193  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -1085,10 +1085,16 @@ a.shell-logo{color:inherit; text-decoration:none;}
 
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
-  font-weight:700; font-size:13px; padding:9px 16px; border-radius:100px; text-decoration:none;
+  font-weight:700; font-size:13px; padding:9px 16px 9px 13px; border-radius:100px; text-decoration:none;
   white-space:nowrap; flex-shrink:0; transition:filter .15s ease, transform .15s ease, box-shadow .15s ease;
   box-shadow:0 1px 2px rgba(0,0,0,.3);
 }
+/* Left padding trimmed 3px below the right: measured with equal left/
+   right gaps either side reads as too much empty space before the "+" -
+   the Plus icon's own stroke sits inset within its square SVG box (a
+   centered cross, not a shape that fills its corners the way a letter's
+   ink does), so identical padding on both sides looks asymmetric even
+   though the boxes themselves are even. */
 /* Not a <button>, so it doesn't inherit the base button:hover rule - given
    its own copy since it's the app's most-repeated primary CTA. */
 .new-trade-btn:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
@@ -1195,7 +1201,7 @@ a.shell-logo{color:inherit; text-decoration:none;}
    .new-trade-btn below is a descendant selector, not scoped to a direct
    child, so it still reaches that nested copy too). */
 .header-pills-row > .new-trade-btn, .header-pills-row > .log-trade-menu-wrap{margin-left:auto;}
-.header-pills-row .new-trade-btn{padding:6px 14px; font-size:12.5px; gap:7px;}
+.header-pills-row .new-trade-btn{padding:6px 14px 6px 11px; font-size:12.5px; gap:7px;}
 /* The icon itself doesn't inherit the shrink above (it's a fixed 16px
    size prop, not an em-relative unit) - left alone it stayed at its
    original full-size-button proportions while the text and padding
@@ -2867,7 +2873,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap;
   border:1px solid transparent;
 }
-.streak-badge-win{background:rgba(51,193,122,.14); color:var(--win);}
+/* padding-left trimmed 3px, same reasoning as .new-trade-btn's own
+   left-padding trim above: the fire emoji only renders on the win
+   variant, and like the Plus icon it sits inset within its own glyph
+   box rather than filling it, so the symmetric padding every other pill
+   here uses reads as too much empty space before it specifically. The
+   loss variant has no leading glyph, so it keeps the base padding. */
+.streak-badge-win{background:rgba(51,193,122,.14); color:var(--win); padding-left:11px;}
 .streak-badge-loss{background:rgba(225,92,92,.14); color:var(--loss);}
 /* line-height:1 keeps the emoji glyph's own taller leading from inflating
    the flex item (and so the whole pill) a pixel taller than its sibling

@@ -11,44 +11,44 @@
    741  Top nav
    756  Instrument nav (topbar pill row)
    823  Page layout
-   875  Tabs
-   885  Misc form helpers
-   891  Detail view
-   914  Holiday notice (site-wide, above the shell)
-   939  Shell layout (sidebar + topbar)
-   1216  Expandable trade rows
-   1282  Calendar
-   1330  Account settings page
-   1541  Light theme
-   1582  2FA
-   1597  Account fine print
-   1600  Screenshot preview (log new trade)
-   1642  Auth pages always dark
-   1677  Monthly P&L (calendar on Overview)
-   1764  Trade form: sections, validation, currency, screenshots
-   2002  Field tooltips
-   2064  Date/time picker (adds an optional popup to a typed input)
-   2173  In-header column filters (trade log table)
-   2221  Active filter chips
-   2284  Empty states, error banners, skeleton loaders
-   2363  Cross-instrument overview dashboard (/app)
-   2542  Not found / error boundary state pages
-   2555  Toast notifications
-   2583  Public policy pages (Privacy, Terms)
-   2602  Legal links (auth pages + account settings)
-   2641  Economic calendar card (mock - Overview pages)
-   2755  Calendar news badge (Monthly P&L day cells, mock)
-   2776  Streak badge (Overview + strategy detail pages)
-   2793  Market status pill (Overview + strategy detail pages)
-   2819  Today's brief & session stats
-   2854  Market context cards (all-instruments Overview)
-   2887  Edge Insights panel
-   2902  Unverified logged time badge
-   2919  Welcome transition (first-run)
-   2948  Zero-instrument empty state
-   2958  Tutorial overlay (first-run guided tour)
-   3038  Tutorial step 3 (guided form scroll)
-   3085  Press states, value changes, content fade-in
+   877  Tabs
+   887  Misc form helpers
+   893  Detail view
+   916  Holiday notice (site-wide, above the shell)
+   941  Shell layout (sidebar + topbar)
+   1277  Expandable trade rows
+   1343  Calendar
+   1391  Account settings page
+   1607  Light theme
+   1648  2FA
+   1663  Account fine print
+   1666  Screenshot preview (log new trade)
+   1708  Auth pages always dark
+   1743  Monthly P&L (calendar on Overview)
+   1830  Trade form: sections, validation, currency, screenshots
+   2068  Field tooltips
+   2130  Date/time picker (adds an optional popup to a typed input)
+   2239  In-header column filters (trade log table)
+   2287  Active filter chips
+   2350  Empty states, error banners, skeleton loaders
+   2429  Cross-instrument overview dashboard (/app)
+   2608  Not found / error boundary state pages
+   2621  Toast notifications
+   2649  Public policy pages (Privacy, Terms)
+   2668  Legal links (auth pages + account settings)
+   2707  Economic calendar card (mock - Overview pages)
+   2821  Calendar news badge (Monthly P&L day cells, mock)
+   2842  Streak badge (Overview + strategy detail pages)
+   2859  Market status pill (Overview + strategy detail pages)
+   2885  Today's brief & session stats
+   2920  Market context cards (all-instruments Overview)
+   2953  Edge Insights panel
+   2968  Unverified logged time badge
+   2985  Welcome transition (first-run)
+   3014  Zero-instrument empty state
+   3024  Tutorial overlay (first-run guided tour)
+   3104  Tutorial step 3 (guided form scroll)
+   3151  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -822,18 +822,20 @@ table{min-width:640px;}
 
 /* ---------- Page layout ---------- */
 .page-container{padding-top:4px;}
-/* Wraps a page's title (only - the subtitle, if any, is a sibling below
-   this row) and its header-level action button (e.g. "Log new trade") on
-   one row, vertically centered so the button's center lines up with the
-   title's center rather than its top. */
+/* Wraps a page's title on its own row, separate from the subtitle (a
+   sibling below it, not a row member). Only ever has the one child on the
+   all-instruments Overview page (its own header-level content - "Log new
+   trade" and the live clock - both live in .header-pills-row and
+   .shell-topbar-right respectively, not here); justify-content:space-
+   between/align-items:center are left in place as a harmless no-op for
+   that single child rather than trimmed down, in case a second header
+   item ever belongs here again. */
 .page-header-row{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;}
 /* .page-title's own margin-bottom is part of its flex-item margin box, so
-   left alone it inflates the row's height and the vertically-centered
-   button drifts down toward that dead space instead of the title text
-   (closer to where the subtitle below ends up). Moving the same 20px onto
-   the row itself keeps the row exactly as tall as its real content -
-   button centers on the title - while the gap before whatever follows
-   (a subtitle, or a panel on pages with no subtitle) stays unchanged. */
+   left alone it inflates the row's height beyond its real content -
+   moving the same 20px onto the row itself keeps the row exactly as tall
+   as the title alone, while the gap before whatever follows (a subtitle,
+   or a panel on pages with no subtitle) stays unchanged. */
 .page-header-row .page-title{margin-bottom:0;}
 /* 500 (not 400) - only 500/700/800/900 are imported for Archivo, so 400
    would silently fall back to the body font instead of the intended lighter
@@ -1016,6 +1018,38 @@ table{min-width:640px;}
 a.shell-logo{color:inherit; text-decoration:none;}
 .shell-logo svg{width:18px; height:18px; flex-shrink:0; color:var(--accent); margin-right:6px;}
 .shell-topbar-right{margin-left:auto; display:flex; align-items:center; gap:10px;}
+/* HeaderClock.js - the live local time, in the persistent topbar rather
+   than any one page's own header, so it's visible everywhere the shell
+   renders instead of only on the three pages it originally shipped on.
+   Plain text, no background/border of its own - just another item sitting
+   directly in the topbar the same way the logo and nav links do, not a
+   boxed control like the icon buttons beside it. .shell-topbar's own
+   align-items:center vertically centers it against the 36px icon buttons
+   with no extra alignment rule needed, unlike its previous per-page-header
+   placement. margin-right adds extra breathing room before the theme
+   toggle specifically, on top of .shell-topbar-right's own 10px gap - a
+   plain text block reads as too close to the icon buttons at that same
+   gap the icons use between each other, so this widens just this one
+   side without touching that shared gap value. */
+.header-clock{display:flex; flex-direction:column; align-items:flex-end; text-align:right; flex-shrink:0; margin-right:10px;}
+/* JetBrains Mono, matching every other live/logged time value in the app
+   (trade log cells, r-pills, TimePicker's own display) rather than a
+   second time-display style. font-variant-numeric:tabular-nums keeps
+   each digit the same width as the seconds tick over, so the whole block
+   doesn't visibly shift by a pixel or two every second the way
+   proportional digits (0 and 1 render at different widths in most fonts)
+   would. Sized down from the earlier per-page-header version to fit the
+   topbar's own compact 36px row instead of sitting beside a 26px title. */
+.header-clock-time{
+  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+  font-size:12px; font-weight:600; color:var(--text); line-height:1.2;
+}
+/* Inter/uppercase/muted - same treatment .stat-label uses for a value's
+   own caption elsewhere in the app. */
+.header-clock-date{
+  font-family:'Inter',sans-serif; font-size:9px; font-weight:600; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.03em; margin-top:1px;
+}
 .icon-btn{
   width:36px; height:36px; border-radius:100px; display:flex; align-items:center; justify-content:center;
   color:var(--muted); text-decoration:none; border:1px solid transparent;
@@ -1135,6 +1169,33 @@ a.shell-logo{color:inherit; text-decoration:none;}
    normal 24px before whatever comes next. */
 .page-subtitle-tight{margin-bottom:10px;}
 .header-pills-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px;}
+/* "Log new trade" moved down here from the title row on the
+   per-instrument Overview, all-instruments Overview and Strategy detail
+   pages - not the Trade Log page, which keeps it up in
+   .strategy-header-row. Sized to match
+   .streak-badge/.market-status-pill's own padding/font-size exactly
+   (their comments explain why those two match each other) so the three
+   read as one aligned set rather than a differently-sized button
+   dropped among pills; margin-left:auto pushes it to the row's right
+   edge past however many pills happen to be rendered (MarketStatusPill
+   or StreakBadge can each independently render nothing).
+   .log-trade-menu-wrap is the flex item that needs the margin on the
+   all-instruments page (LogTradeMenu.js wraps its own copy of
+   .new-trade-btn one level deep, same reasoning .header-pills-row
+   .new-trade-btn below is a descendant selector, not scoped to a direct
+   child, so it still reaches that nested copy too). */
+.header-pills-row > .new-trade-btn, .header-pills-row > .log-trade-menu-wrap{margin-left:auto;}
+.header-pills-row .new-trade-btn{padding:6px 14px; font-size:12.5px; gap:7px;}
+@media (max-width:640px){
+  /* Same "a content-sized pill button wrapped onto its own line reads as
+     an arbitrary floating shape" reasoning as .page-header-row/
+     .strategy-header-row's own mobile .new-trade-btn rules below - full
+     width give it a clear identity as the row's primary action instead.
+     width:100% is what actually forces the wrap in a flex-wrap row: it
+     can no longer fit beside whatever pills came before it. */
+  .header-pills-row .new-trade-btn{margin-left:0; width:100%; justify-content:center;}
+  .header-pills-row .log-trade-menu-wrap{margin-left:0; width:100%;}
+}
 @media (max-width:640px){
   /* On desktop the header row (title + action button) is a single line and
      .page-subtitle rides up under the title on a negative margin. Once the
@@ -1507,7 +1568,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    a plain h1 (the strategy detail page) has both. */
 .strategy-header-row h1{margin-top:0; margin-bottom:0;}
 /* strategy-header-row has no justify-content:space-between (unlike
-   page-header-row), so the action button pushes itself right on its own. */
+   page-header-row), so the action button pushes itself right on its own.
+   Still true on the Trade Log page, the one place left where the button
+   stays directly inside this row - the per-instrument Overview and
+   Strategy detail pages moved theirs down into .header-pills-row instead
+   (see that rule's own comment). */
 .strategy-header-row .new-trade-btn{margin-left:auto;}
 .strategy-menu-wrap{position:relative;}
 .strategy-menu-btn{
@@ -1527,8 +1592,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* LogTradeMenu.js's instrument-picker dropdown, on the all-instruments
    Overview page - same shape as strategy-menu-dropdown, but right-
    aligned under its trigger (which sits at the row's right edge via
-   .page-header-row's space-between) instead of left:0, so it opens
-   toward the page rather than off the right edge of the viewport. */
+   .header-pills-row's own margin-left:auto rule below) instead of
+   left:0, so it opens toward the page rather than off the right edge of
+   the viewport. */
 .log-trade-menu-wrap{position:relative; flex-shrink:0;}
 .log-trade-dropdown{left:auto; right:0; min-width:120px;}
 .log-trade-dropdown .strategy-menu-item{text-decoration:none; display:block; font-family:'JetBrains Mono',monospace; font-weight:600;}

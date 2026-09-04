@@ -393,7 +393,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
     <div className="page-container content-fade-in">
       <div className="page-header-row">
         <h1 className="page-title">{greeting}</h1>
-        <LogTradeMenu instruments={instruments} />
       </div>
       <p className="page-subtitle page-subtitle-tight">Here&apos;s what you need to know.</p>
       <div className="header-pills-row">
@@ -403,6 +402,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
           winLabel={(n) => `${n}-trade win streak`}
           lossLabel={(n) => `${n}-trade losing streak`}
         />
+        <LogTradeMenu instruments={instruments} />
       </div>
 
       {allTrades.length === 0 ? (

@@ -14,6 +14,7 @@ import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import { TUTORIAL_STEPS, readTutorialState, setTutorialStep, completeTutorial, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import { friendlyStrategyError } from '@/lib/supabaseErrors'
 import InstrumentNav from '@/components/InstrumentNav'
+import HeaderClock from '@/components/HeaderClock'
 import TutorialOverlay from '@/components/TutorialOverlay'
 
 export default function InstrumentLayout({ children, params }) {
@@ -192,6 +193,7 @@ export default function InstrumentLayout({ children, params }) {
           <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
           <div className="shell-topbar-right">
+            <HeaderClock />
             <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
             </button>

@@ -240,7 +240,6 @@ export default function StrategyDetailPage({ params }) {
             </div>
           )}
         </div>
-        <Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
       </div>
 
       {renaming && (
@@ -264,6 +263,7 @@ export default function StrategyDetailPage({ params }) {
           winLabel={(n) => `${n}-trade win streak`}
           lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
         />
+        <Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
       </div>
 
       <div className="section-heading">Performance</div>

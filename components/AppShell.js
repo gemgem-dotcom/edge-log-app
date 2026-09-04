@@ -6,6 +6,7 @@ import { TrendingUp, Settings, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-
 import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import InstrumentNav from '@/components/InstrumentNav'
+import HeaderClock from '@/components/HeaderClock'
 
 // Shell for the two pages with no single instrument in view - the
 // cross-instrument Dashboard and the all-instruments Trades page. Mirrors
@@ -60,6 +61,7 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
         <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
         <InstrumentNav instruments={instruments} />
         <div className="shell-topbar-right">
+          <HeaderClock />
           <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
           </button>

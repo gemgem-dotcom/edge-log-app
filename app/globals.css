@@ -5,50 +5,50 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–548  Base: reset, typography, forms, tables, thumbnails,
+     1–610  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   549  Auth pages
-   615  Top nav
-   630  Instrument nav (topbar pill row)
-   697  Page layout
-   749  Tabs
-   759  Misc form helpers
-   765  Detail view
-   788  Holiday notice (site-wide, above the shell)
-   813  Shell layout (sidebar + topbar)
-   1062  Expandable trade rows
-   1110  Calendar
-   1158  Account settings page
-   1369  Light theme
-   1406  2FA
-   1421  Account fine print
-   1424  Screenshot preview (log new trade)
-   1466  Auth pages always dark
-   1501  Monthly P&L (calendar on Overview)
-   1580  Trade form: sections, validation, currency, screenshots
-   1808  Field tooltips
-   1870  Date/time picker (adds an optional popup to a typed input)
-   1979  In-header column filters (trade log table)
-   2027  Active filter chips
-   2090  Empty states, error banners, skeleton loaders
-   2169  Cross-instrument overview dashboard (/app)
-   2348  Not found / error boundary state pages
-   2361  Toast notifications
-   2389  Public policy pages (Privacy, Terms)
-   2408  Legal links (auth pages + account settings)
-   2447  Economic calendar card (mock - Overview pages)
-   2561  Calendar news badge (Monthly P&L day cells, mock)
-   2582  Streak badge (Overview + strategy detail pages)
-   2599  Market status pill (Overview + strategy detail pages)
-   2625  Today's brief & session stats
-   2660  Market context cards (all-instruments Overview)
-   2693  Edge Insights panel
-   2708  Unverified logged time badge
-   2725  Theme toggle (suppress transition flash)
-   2735  Welcome transition (first-run)
-   2764  Zero-instrument empty state
-   2774  Tutorial overlay (first-run guided tour)
-   2831  Tutorial step 3 (guided form scroll)
+   611  Auth pages
+   677  Top nav
+   692  Instrument nav (topbar pill row)
+   759  Page layout
+   811  Tabs
+   821  Misc form helpers
+   827  Detail view
+   850  Holiday notice (site-wide, above the shell)
+   875  Shell layout (sidebar + topbar)
+   1152  Expandable trade rows
+   1200  Calendar
+   1248  Account settings page
+   1459  Light theme
+   1500  2FA
+   1515  Account fine print
+   1518  Screenshot preview (log new trade)
+   1560  Auth pages always dark
+   1595  Monthly P&L (calendar on Overview)
+   1682  Trade form: sections, validation, currency, screenshots
+   1920  Field tooltips
+   1982  Date/time picker (adds an optional popup to a typed input)
+   2091  In-header column filters (trade log table)
+   2139  Active filter chips
+   2202  Empty states, error banners, skeleton loaders
+   2281  Cross-instrument overview dashboard (/app)
+   2460  Not found / error boundary state pages
+   2473  Toast notifications
+   2501  Public policy pages (Privacy, Terms)
+   2520  Legal links (auth pages + account settings)
+   2559  Economic calendar card (mock - Overview pages)
+   2673  Calendar news badge (Monthly P&L day cells, mock)
+   2694  Streak badge (Overview + strategy detail pages)
+   2711  Market status pill (Overview + strategy detail pages)
+   2737  Today's brief & session stats
+   2772  Market context cards (all-instruments Overview)
+   2805  Edge Insights panel
+   2820  Unverified logged time badge
+   2837  Welcome transition (first-run)
+   2866  Zero-instrument empty state
+   2876  Tutorial overlay (first-run guided tour)
+   2956  Tutorial step 3 (guided form scroll)
+   3003  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -128,6 +128,24 @@
      definition right at the edge and a softer, wider one that fades out,
      which reads as more natural depth than a single flat shadow does. */
   --panel-shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px -16px rgba(0,0,0,.6);
+
+  /* One duration+easing pair for every transition added from here on, so
+     new work lands on a single speed instead of another hand-picked value.
+     .15s ease is deliberately the value the ~70 existing hover transitions
+     scattered through this file already use - this names that value rather
+     than introducing a new one, so nothing already on screen changed speed
+     when it landed. Those existing declarations are left as literals on
+     purpose: rewriting them all mechanically would be a large diff with no
+     visual change and a real chance of typo'ing one of them. */
+  --transition-fast: .15s ease;
+  /* One step up from --line, for the quiet border shift .panel/.stat get on
+     hover. Same reasoning as --panel-hover above (see its own comment): a
+     card-sized surface needs its hover cue to stay inside the same color
+     family as its rest state, so this is --line lightened rather than a
+     jump to --muted-2, which reads as a deliberate "selected" outline
+     rather than a passive affordance. Light theme gets its own value below
+     for the same reason - lightening is the wrong direction there. */
+  --line-hover: #333a47;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 body{
@@ -142,6 +160,15 @@ body{
   font-family:'Inter',sans-serif;
   min-height:100vh;
   position:relative;
+  /* Part of the theme cross-fade (see the .panel/.stat/input transitions
+     below). The `background` shorthand above sets background-color to
+     var(--bg) underneath the gradient layer, so transitioning
+     background-color fades the page's actual ground; the gradient layer
+     itself is a fixed rgba in both themes and has nothing to fade.
+     `color` matters more than it looks: it's an inherited property, so
+     every descendant that doesn't set its own color picks up the
+     interpolated value frame by frame rather than snapping. */
+  transition:background-color var(--transition-fast), color var(--transition-fast);
 }
 /* Two oversized accent blobs sitting behind the page - a fixed ambient
    glow rather than a flat --bg alone. No filter:blur() - a radial-gradient
@@ -194,12 +221,36 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
    where a .section-heading follows instead: its own 24px margin-top
    still wins that collapse regardless of this value. */
 .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:15px;}
-.stat{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px; box-shadow:var(--panel-shadow);}
+/* background-color/border-color transitions here (and on .panel and the
+   form inputs below) are what make the theme toggle read as one clean
+   cross-fade. Before them these surfaces had no transition at all and
+   snapped instantly while buttons/badges/sidebar rows faded over ~150ms on
+   their existing hover transitions - two speeds fighting on screen, which
+   is what the old .theme-switching{transition:none!important} class
+   existed to paper over. Matching the speeds removes the mismatch itself,
+   so that class (and the requestAnimationFrame dance in both
+   handleThemeToggle functions that applied it) is gone. */
+.stat{
+  background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px;
+  box-shadow:var(--panel-shadow);
+  transition:background-color var(--transition-fast), border-color var(--transition-fast);
+}
+/* Quiet affordance only - a border step within the same color family (see
+   --line-hover), deliberately not a lift/scale/shadow. A card is a surface
+   you read, not a control you click, so this is meant to acknowledge the
+   cursor without asking for attention. A .stat inside a .panel shifts both
+   borders at once by design: they're concentric, so they read as one
+   surface responding rather than two competing highlights. */
+.stat:hover, .panel:hover{border-color:var(--line-hover);}
 .stat-label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
 .stat-value{font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:600;}
 .pos{color:var(--win);} .neg{color:var(--loss);} .neu{color:var(--text);}
 
-.panel{background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:24px; box-shadow:var(--panel-shadow);}
+.panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:24px;
+  box-shadow:var(--panel-shadow);
+  transition:background-color var(--transition-fast), border-color var(--transition-fast);
+}
 .panel-title{font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; margin-bottom:16px;}
 /* Reusable translucent surface for the glass-panel aesthetic - not applied
    to any element yet, opt in with class="panel glass-panel" (or on its
@@ -243,7 +294,18 @@ form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 .trade-form{gap:18px;}
 .trade-form .section-label{font-size:12px; margin-top:8px; padding-top:14px;}
 label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
-input, select, textarea{background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none; width:100%; min-width:0;}
+input, select, textarea{
+  background:var(--panel-2); border:1px solid var(--line); border-radius:7px; color:var(--text);
+  padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:13.5px; outline:none;
+  width:100%; min-width:0;
+  /* Third surface in the theme cross-fade - see .stat's comment above.
+     `color` is included here (unlike on .panel/.stat, which don't set one)
+     because a field's background and its text have to cross over together;
+     fading the box while the text snapped would flash near-invisible text
+     mid-transition. It also picks up the :focus border-color rule below as
+     a bonus, which now eases in instead of snapping. */
+  transition:background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
 /* Explicit height rather than trusting padding + line-height to add up to
    the same number as select/.dt-picker-trigger's own explicit height:36px
    below - browsers don't all compute a plain text input's "normal"
@@ -945,7 +1007,35 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .sidebar-section-header span{display:flex; align-items:center; gap:10px;}
 .sidebar-section-header:hover{color:var(--text);}
 
-.sidebar-substrategies{display:flex; flex-direction:column; gap:1px; margin-bottom:4px;}
+/* Collapsed by default; .sidebar-substrategies-open is what expands it.
+   The container is always rendered now (it used to be behind a plain
+   {strategiesExpanded && ...} conditional in both AppShell.js and
+   [instrument]/layout.js) - an element that unmounts can't animate on the
+   way out, and this needs to ease in *and* out, not just in the way the
+   trade log's expand-row-in does.
+   .18s ease is expand-row-in's own timing, reused deliberately: this is
+   conceptually the same interaction (a disclosure revealing rows), so it
+   should not have picked its own easing.
+   max-height is a fixed ceiling rather than the real content height, which
+   CSS can't animate to. It's generous enough for a long strategy list;
+   the cost of overshooting is that the height finishes early and the last
+   stretch of the .18s is carried by opacity alone, which at this duration
+   isn't perceptible.
+   visibility is in the transition list on purpose - it flips discretely
+   (visible immediately on open, held until the very end on close), and
+   without it the collapsed container still paints on mobile, where the
+   media query below turns it into an absolutely-positioned dropdown card
+   with its own border and 6px padding: max-height:0 alone would leave a
+   ~14px sliver of empty card hanging under the nav. */
+.sidebar-substrategies{
+  display:flex; flex-direction:column; gap:1px;
+  max-height:0; opacity:0; visibility:hidden; margin-bottom:0; overflow:hidden;
+  transition:max-height .18s ease, opacity .18s ease, margin-bottom .18s ease, visibility .18s ease;
+}
+.sidebar-substrategies-open{max-height:520px; opacity:1; visibility:visible; margin-bottom:4px;}
+@media (prefers-reduced-motion:reduce){
+  .sidebar-substrategies{transition:none;}
+}
 .sidebar-substrategy{
   display:flex; align-items:center; gap:10px; padding:8px 12px 8px 30px;
   color:var(--muted); text-decoration:none; font-size:13px;
@@ -1377,6 +1467,10 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
      own comment in :root for why dark needs a distinct value and light
      doesn't. */
   --panel-hover: #dde1e6;
+  /* Darker than --line, not lighter - see --line-hover's comment in :root.
+     A light theme's borders get more visible by going down in lightness,
+     the opposite of the dark theme's step. */
+  --line-hover: #c4cbd4;
   --text: #14161a;
   --muted: #676d78;
   /* --glass/--glass-border are white-alpha, tuned for the dark backdrop
@@ -1509,7 +1603,15 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
        sets, since this class is more specific and wins the cascade. */
     width:auto; background-color:var(--panel-2); border:1px solid var(--line); border-radius:7px;
     color:var(--text); padding:8px 34px 8px 12px; font-size:12.5px; font-family:'Inter',sans-serif;
-    transition:background-color .15s ease;
+    /* color/border-color joined background-color here so this control
+       cross-fades with every other field on a theme switch. On its own,
+       background-color was enough for the hover this was originally
+       written for, but it also *replaced* the base input/select rule's
+       wider transition list - which left this pill fading its background
+       while its text and border snapped, i.e. briefly near-invisible text
+       mid-switch. Same three properties, same --transition-fast speed as
+       the base rule. */
+    transition:background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 /* Light theme only. One rule covers every use of this class - the "All
    strategies" native <select> dropdowns as well as .trade-tag-filter-btn/
@@ -1638,8 +1740,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    tabIndex={-1} that made it match that selector) and visibly change size
    on click. disabled can never receive focus at all, so there's nothing
    left to override on click/focus. */
+/* The `transition` here is narrower than the base input rule's on purpose -
+   it drops `color`, keeping background/border. This field is the trade
+   form's Realised R readout: a disabled input whose colour IS the live
+   calculation's output, flipping pos/neg/neutral as the trader types an
+   exit price. That has to stay instant - a 150ms colour fade on a value
+   that recomputes per keystroke reads as the tool lagging behind the
+   keyboard, which is the whole reason motion stays off the live-
+   calculation path. Background and border still ease, so it still
+   cross-fades with every other field on a theme switch. */
 .readonly-field{
   background:rgba(255,255,255,.04); color:var(--muted); cursor:default;
+  transition:background-color var(--transition-fast), border-color var(--transition-fast);
 }
 /* Realized R (blended) colors like the per-leg R badges above and the R
    pills elsewhere in the app - !important since .readonly-field's own
@@ -2722,16 +2834,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   cursor:help; vertical-align:middle;
 }
 
-/* ---------- Theme toggle (suppress transition flash) ---------- */
-/* handleThemeToggle (AppShell.js, [instrument]/layout.js) adds this class
-   to <html> for one frame around flipping data-theme. Without it, the
-   toggle looks like a harsh flash rather than a clean switch: most
-   surfaces (body, .panel, .stat, inputs) have no transition on their own
-   and snap to the new theme instantly, while buttons/badges/sidebar rows
-   carry a transition:background-color meant for hover and visibly fade
-   over ~150ms instead - two different speeds fighting on screen at once. */
-.theme-switching, .theme-switching *{transition:none !important;}
-
 /* ---------- Welcome transition (first-run) ---------- */
 /* Full-viewport, no card/panel chrome - the "always there, being revealed"
    effect (see WelcomeTransition.js's own comment) needs this to sit above
@@ -2795,18 +2897,41 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .tutorial-panel-dim{
   position:fixed; z-index:899; pointer-events:none;
   box-shadow:0 0 0 9999px rgba(6,7,9,.78);
+  transition:top .3s ease, left .3s ease, width .3s ease, height .3s ease;
 }
+/* Static glow, not the looping tutorial-pulse this used to run - what was
+   the reduced-motion fallback is now simply what everyone gets. An
+   infinite pulse on the one element the step is asking you to look at
+   competes with the callout copy beside it rather than supporting it.
+   The transition (shared with .tutorial-panel-dim above) is what carries
+   the eye between steps instead: TutorialOverlay.js sets top/left/width/
+   height as inline pixels from getBoundingClientRect, and those used to
+   snap when the step changed. No first-mount artifact to guard against -
+   while `rect` is still null a different branch renders entirely (the
+   full-screen scrim, no ring at all), so the ring only ever mounts once a
+   real target position is already known. */
 .tutorial-spotlight-ring{
   position:fixed; z-index:901; pointer-events:none; border-radius:12px;
   border:2px solid var(--accent-bright);
-  animation:tutorial-pulse 1.8s ease-in-out infinite;
+  box-shadow:0 0 16px 2px rgba(59,167,255,.5);
+  transition:top .3s ease, left .3s ease, width .3s ease, height .3s ease;
 }
-@keyframes tutorial-pulse{
-  0%, 100%{box-shadow:0 0 0 0 rgba(124,208,255,.55), 0 0 16px 2px rgba(59,167,255,.45);}
-  50%{box-shadow:0 0 0 6px rgba(124,208,255,0), 0 0 22px 6px rgba(59,167,255,.65);}
-}
+/* Opts one caller out of the transition above: TutorialScrollGuide.js
+   writes these same four properties straight to the DOM on every scroll
+   event (not via React state) precisely so its ring and dim track the
+   scroll position frame-for-frame - see its own comment on why setState
+   there made the glow visibly lag and jiggle. A 300ms position transition
+   reintroduces exactly that lag, so step 3's scroll-tracked pair keeps
+   snapping. Step-to-step movement, which is what the transition is for,
+   doesn't happen in that component at all - it spotlights one fixed
+   target for the whole step. */
+.tutorial-follow-scroll{transition:none;}
 @media (prefers-reduced-motion:reduce){
-  .tutorial-spotlight-ring{animation:none; box-shadow:0 0 16px 2px rgba(59,167,255,.5);}
+  /* Nothing to say about the pulse any more - it's gone for everyone. What
+     this still suppresses is the step-to-step glide: a reduced-motion user
+     wants a position change to be instant, not eased, even when the
+     movement is functional rather than decorative. */
+  .tutorial-spotlight-ring, .tutorial-panel-dim{transition:none;}
 }
 .tutorial-callout{
   position:fixed; z-index:902; background:var(--panel); border:1px solid var(--line);
@@ -2874,3 +2999,100 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    TutorialScrollGuide.js's own comment on why this can't rely on the
    chevrons/continue text merely sitting near that button by coincidence. */
 .tutorial-tap-catcher{position:fixed; inset:0; z-index:903; cursor:pointer; background:transparent;}
+
+/* ---------- Press states, value changes, content fade-in ---------- */
+/* Press feedback for the app's primary buttons. There was no :active rule
+   anywhere in this file before - hover states existed, press states did
+   not, so a click registered visually only as the pointer-down frame of
+   the hover state.
+   "Primary button class" turned out to be the bare `button` element rule
+   near the top of this file: .auth-submit, .new-trade-btn and the rest are
+   all plain <button>s that take their solid-accent pill look from it and
+   only override colour/size. So this is one rule, not one per button,
+   matching how button:hover is already written.
+   transform (not translateY) replaces the hover lift outright, so pressing
+   a lifted button settles it back down and in - which is what a press
+   should look like. box-shadow drops back to the rest-state value for the
+   same reason: a raised shadow under a pressed button reads as still
+   floating. */
+button:active{
+  transform:scale(.97);
+  filter:brightness(.95);
+  box-shadow:0 1px 2px rgba(0,0,0,.3);
+  transition:transform var(--transition-fast), filter var(--transition-fast), box-shadow var(--transition-fast);
+}
+/* Same opt-out list as the :hover reset above, for the same reason: these
+   classes override `background` away from --accent and reset the lift, so
+   they're not the solid-accent primary the rule above is written for.
+   Scaling a 28px icon button reads as a wobble rather than a press. */
+.dir-btn:active, .discard-btn:active, .auth-oauth-btn:active, .icon-btn:active, .icon-btn-profile:active,
+.theme-toggle-btn:active, .calendar-nav-btn:active, .back-btn:active, .strategy-menu-btn:active,
+.icon-edit-btn:active, .file-upload-btn:active, .screenshot-remove-btn:active, .field-tooltip-btn:active,
+.dt-picker-icon-btn:active, .dt-picker-nav-btn:active, .dt-picker-spin-btn:active, .dt-picker-day:active, .col-filter-btn:active,
+.trade-tag-filter-btn:active, .econ-impact-filter-btn:active, .econ-date-range-trigger:active, .econ-today-btn:active, .row-action-btn:active{
+  transform:none; box-shadow:none;
+}
+/* These four are full-sized primary/secondary pill buttons that do want the
+   press, but each carries its own :hover rule setting transform at class
+   specificity - which outranks button:active's (0,1,1) and would leave the
+   button stuck in its hover lift while held down, i.e. no press state at
+   all on a pointer device. Restated here at matching specificity so they
+   actually dip. .new-trade-btn matters most of the four: it's the app's
+   main call to action on every page. */
+.new-trade-btn:active, .btn-accent-outline:active, .btn-danger-outline:active, .welcome-transition-btn:active{
+  transform:scale(.97);
+  box-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+/* .eye-btn is excluded from that list (same as it is from the :hover one)
+   because its transform is load-bearing - translateY(-50%) is what centres
+   it in the password field - so it has to re-assert that rather than clear
+   it. */
+.eye-btn:active{transform:translateY(-50%); box-shadow:none;}
+@media (prefers-reduced-motion:reduce){
+  button:active,
+  .new-trade-btn:active, .btn-accent-outline:active, .btn-danger-outline:active, .welcome-transition-btn:active{
+    transform:none;
+  }
+  .eye-btn:active{transform:translateY(-50%);}
+}
+
+/* The filter-driven stat grids (strategy/instrument selector, calendar
+   month nav) recompute their numbers in place. Without this the values
+   just swap between two unrelated figures with nothing marking that
+   anything happened. Triggered by a key on the .stats container in
+   dashboard/page.js and OverviewDashboard.js, so React remounts the grid
+   and the animation replays - the animation can't key off text content on
+   its own.
+   Only the numbers fade, not the labels or the card chrome, so the cards
+   stay put and it reads as the values updating rather than the whole
+   panel reloading. .18s matches expand-row-in. */
+.stats-refreshable .stat-value,
+.stats-refreshable .stat-subvalue,
+.stats-refreshable .gauge-center-text{
+  animation:stat-value-in .18s ease;
+}
+@keyframes stat-value-in{
+  from{opacity:0;}
+  to{opacity:1;}
+}
+@media (prefers-reduced-motion:reduce){
+  .stats-refreshable .stat-value,
+  .stats-refreshable .stat-subvalue,
+  .stats-refreshable .gauge-center-text{animation:none;}
+}
+
+/* Applied to whatever a route renders once its data has arrived, replacing
+   PageLoading or one of the skeletons. That swap was previously instant -
+   a hard cut from the loading state to a full page of content.
+   Deliberately only on the content side: fading PageLoading out as well
+   would overlap two animations and stretch the wait rather than smooth it.
+   Slightly longer than the .18s used elsewhere in this pass because it's a
+   whole page settling rather than one value updating. */
+.content-fade-in{animation:content-fade-in .22s ease;}
+@keyframes content-fade-in{
+  from{opacity:0;}
+  to{opacity:1;}
+}
+@media (prefers-reduced-motion:reduce){
+  .content-fade-in{animation:none;}
+}

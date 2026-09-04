@@ -25,21 +25,18 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
     if (window.innerWidth <= 900) setStrategiesExpanded(false)
   }, [])
 
+  // Just flips the theme - no transition-suppression dance around it any
+  // more. This used to add a .theme-switching class to <html> for one
+  // frame (double rAF) to force transition:none everywhere, because the
+  // surfaces that carried a hover transition faded while the ones that
+  // didn't snapped. body/.panel/.stat/inputs now all transition
+  // background-color at the same --transition-fast speed, so the switch
+  // cross-fades on its own and there's nothing left to suppress.
   function handleThemeToggle() {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
-    const root = document.documentElement
-    // Suppresses every element's own transition (mostly meant for hover,
-    // not this) for exactly one theme switch - see the .theme-switching
-    // comment in globals.css for why that's needed. Double rAF so the
-    // no-transition switch has actually painted before transitions come
-    // back, rather than racing the removal against the switch itself.
-    root.classList.add('theme-switching')
     setTheme(newTheme)
     localStorage.setItem('edgelog-theme', newTheme)
-    root.setAttribute('data-theme', newTheme)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => root.classList.remove('theme-switching'))
-    })
+    document.documentElement.setAttribute('data-theme', newTheme)
   }
 
   const instrumentById = {}
@@ -82,23 +79,25 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
               <span>Strategies</span>
               {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </div>
-            {strategiesExpanded && (
-              <div className="sidebar-substrategies">
-                {strategies.length === 0 && (
-                  <div className="sidebar-substrategy-empty">No strategies yet</div>
-                )}
-                {sortedStrategies.map((s) => {
-                  const inst = instrumentById[s.instrument_id]
-                  return (
-                    <Link key={s.id} href={`/app/${inst?.symbol}/strategies/${s.id}`} className="sidebar-substrategy">
-                      <span className="strategy-dot" style={{ background: inst?.color }} />
-                      {s.name}
-                      {inst && <span className="sidebar-substrategy-tag">{inst.symbol}</span>}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
+            {/* Always rendered, toggled by class rather than mounted/
+                unmounted - an element that unmounts has nothing left to
+                animate on collapse. See .sidebar-substrategies in
+                globals.css. */}
+            <div className={`sidebar-substrategies ${strategiesExpanded ? 'sidebar-substrategies-open' : ''}`}>
+              {strategies.length === 0 && (
+                <div className="sidebar-substrategy-empty">No strategies yet</div>
+              )}
+              {sortedStrategies.map((s) => {
+                const inst = instrumentById[s.instrument_id]
+                return (
+                  <Link key={s.id} href={`/app/${inst?.symbol}/strategies/${s.id}`} className="sidebar-substrategy">
+                    <span className="strategy-dot" style={{ background: inst?.color }} />
+                    {s.name}
+                    {inst && <span className="sidebar-substrategy-tag">{inst.symbol}</span>}
+                  </Link>
+                )
+              })}
+            </div>
 
             <Link href="/app/log" className={`sidebar-item ${active === 'trades' ? 'sidebar-item-active' : ''}`}>
               Trade Log

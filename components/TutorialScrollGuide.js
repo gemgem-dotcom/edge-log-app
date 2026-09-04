@@ -126,8 +126,14 @@ export default function TutorialScrollGuide({ onComplete }) {
       {[0, 1, 2, 3].map((i) => (
         <div key={i} ref={(el) => (bandRefs.current[i] = el)} className="tutorial-scrim-band tutorial-scrim-band-transparent" />
       ))}
-      <div ref={dimRef} className="tutorial-panel-dim" />
-      <div ref={ringRef} className="tutorial-spotlight-ring" />
+      {/* tutorial-follow-scroll opts both out of the step-to-step position
+          transition those two classes otherwise carry - see its rule in
+          globals.css. applyGeometry below rewrites top/left/width/height on
+          every scroll tick by design, and an eased transition on those
+          would put back the lag this component's direct-DOM-write approach
+          exists to avoid. */}
+      <div ref={dimRef} className="tutorial-panel-dim tutorial-follow-scroll" />
+      <div ref={ringRef} className="tutorial-spotlight-ring tutorial-follow-scroll" />
       {!ready && (
         <div ref={chevronsRef} className="tutorial-scroll-chevrons" onClick={handleChevronsClick}>
           <ChevronDown size={22} />

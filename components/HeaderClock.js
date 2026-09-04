@@ -7,6 +7,16 @@ import { formatTime12h } from '@/lib/tradeMath'
 
 const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
 
+// Symmetric fade-out-then-fade-in - matches WelcomeTransition.js's own
+// leaving-then-onDone timing convention (setState to start the CSS
+// transition, setTimeout the length of that transition to act once it's
+// actually finished) rather than the instant-swap-with-fade-in
+// stat-value-in uses elsewhere: a value the user just deliberately
+// clicked to change reads better as the old reading visibly leaving
+// before the new one arrives, not a hard cut with a fade tacked onto the
+// incoming side only.
+const FADE_MS = 260
+
 function pad(n) {
   return String(n).padStart(2, '0')
 }
@@ -49,6 +59,12 @@ export default function HeaderClock() {
   // 'local' (the browser's own clock, the default) or 'offset' (the
   // trader's configured UTC offset) - toggled by clicking the clock.
   const [mode, setMode] = useState('local')
+  // True for the FADE_MS window between a click and the actual mode flip
+  // below - drives .header-clock-fade-out (opacity:0) so the old reading
+  // fades out first; the mode itself only flips once that's finished, so
+  // the fade-in the removal of that class then triggers always starts
+  // from the new content, never a flash of it at full opacity mid-fade.
+  const [fadingOut, setFadingOut] = useState(false)
 
   useEffect(() => {
     setNow(new Date())
@@ -65,10 +81,16 @@ export default function HeaderClock() {
 
   // No configured offset to switch to (shouldn't happen past the timezone
   // gate, but this renders on every page under it) - clicking does nothing
-  // rather than silently showing a meaningless UTC+0 guess.
+  // rather than silently showing a meaningless UTC+0 guess. Also ignores a
+  // click that lands mid-fade, so a rapid double-click can't flip the mode
+  // twice before either fade finishes.
   function handleClick() {
-    if (offset === null) return
-    setMode((m) => (m === 'local' ? 'offset' : 'local'))
+    if (offset === null || fadingOut) return
+    setFadingOut(true)
+    setTimeout(() => {
+      setMode((m) => (m === 'local' ? 'offset' : 'local'))
+      setFadingOut(false)
+    }, FADE_MS)
   }
 
   if (now === null) return null
@@ -100,12 +122,18 @@ export default function HeaderClock() {
       onClick={handleClick}
       title={offset === null ? undefined : (showOffset ? 'Click to show your local time' : 'Click to show your set timezone')}
     >
-      {/* key replays the fade below on every mode switch - same
-          key+.stats-refreshable technique OverviewDashboard.js's stat
-          grids use to mark a value as having just changed, reusing that
-          rule's own stat-value-in keyframe rather than a second copy of
-          it. */}
-      <div className="header-clock-fade" key={mode}>
+      {/* transitionDuration set from the same FADE_MS the click handler's
+          setTimeout above uses, so the CSS transition and the moment the
+          content actually swaps can't drift apart - see that handler's
+          own comment. No key/remount here: the element stays mounted
+          throughout, toggling only the fade-out class, so the opacity
+          transition runs on a real style change instead of a fresh
+          element's fade-in (which a browser can collapse to an instant
+          jump on the very first paint). */}
+      <div
+        className={`header-clock-fade ${fadingOut ? 'header-clock-fade-out' : ''}`}
+        style={{ transitionDuration: `${FADE_MS}ms` }}
+      >
         <div className="header-clock-time">{formatTime12h(hhmmss)}</div>
         <div className="header-clock-date">{dayOrOffset} | {dateStr}</div>
       </div>

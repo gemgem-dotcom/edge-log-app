@@ -5,8 +5,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { offsetLabel } from '@/lib/timezone'
 import { formatTime12h } from '@/lib/tradeMath'
 
-const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
-
 // Symmetric fade-out-then-fade-in - matches WelcomeTransition.js's own
 // leaving-then-onDone timing convention (setState to start the CSS
 // transition, setTimeout the length of that transition to act once it's
@@ -33,7 +31,6 @@ function partsFor(date, useUTC) {
     day: useUTC ? date.getUTCDate() : date.getDate(),
     month: useUTC ? date.getUTCMonth() : date.getMonth(),
     year: useUTC ? date.getUTCFullYear() : date.getFullYear(),
-    weekday: useUTC ? date.getUTCDay() : date.getDay(),
   }
 }
 
@@ -102,7 +99,7 @@ export default function HeaderClock() {
   // the correct wall-clock time for that offset - same technique
   // lib/timezone.js's own formatInTz uses.
   const shifted = showOffset ? new Date(now.getTime() + offset * 3600000) : now
-  const { hours, minutes, seconds, day, month, year, weekday } = partsFor(shifted, showOffset)
+  const { hours, minutes, seconds, day, month, year } = partsFor(shifted, showOffset)
 
   // Routed through formatTime12h (lib/tradeMath.js) rather than a second
   // copy of the 12-hour conversion, so this reads exactly like every
@@ -110,11 +107,11 @@ export default function HeaderClock() {
   // "HH:MM:SS" shape that function already expects.
   const hhmmss = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
   const dateStr = `${pad(day)}/${pad(month + 1)}/${year}`
-  // The offset label replaces the day name in offset mode rather than
-  // sitting alongside it - confirming *which* zone is on screen matters
-  // more here than the day of week, and the clock has no room to show both
-  // without wrapping.
-  const dayOrOffset = showOffset ? offsetLabel(offset) : DAY_NAMES[weekday]
+  // Literal "LOCAL" rather than a day name - which reading is on screen
+  // matters more here than the day of week, and pairing it with the date
+  // on one line (date first, mode label second) reads as "this date, in
+  // this mode" rather than the mode label looking like it's naming the day.
+  const modeLabel = showOffset ? offsetLabel(offset) : 'LOCAL'
 
   return (
     <div
@@ -135,7 +132,7 @@ export default function HeaderClock() {
         style={{ transitionDuration: `${FADE_MS}ms` }}
       >
         <div className="header-clock-time">{formatTime12h(hhmmss)}</div>
-        <div className="header-clock-date">{dayOrOffset} | {dateStr}</div>
+        <div className="header-clock-date">{dateStr} | {modeLabel}</div>
       </div>
     </div>
   )

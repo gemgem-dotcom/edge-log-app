@@ -93,13 +93,30 @@ async function checkSymbol(dataSymbol, symbol, start, end) {
   return { dataSymbol, symbol, ok: true, detail: `ts_event=${record.ts_event ?? record.hd?.ts_event} close=${close}` }
 }
 
+// A weekday, >=48h in the past (comfortably past NQ's confirmed ~8h
+// embargo), at a fixed 15:00 UTC (10am ET) - deep in every one of these
+// products' core regular trading hours, not just "some session is open
+// somewhere." The first real run of this script picked a rolling
+// now-minus-48h instant that happened to land in GC's daily 21:00-22:00
+// UTC settlement halt and came back with zero bars - a false FAIL, not a
+// real symbol problem. Fixing the hour (not just the day) avoids repeating
+// that for GC or any other product with its own maintenance window.
+function pastWeekdayAt(hoursAgo, utcHour) {
+  let d = new Date(Date.now() - hoursAgo * 3600000)
+  d.setUTCHours(utcHour, 0, 0, 0)
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) {
+    d = new Date(d.getTime() - 24 * 3600000)
+  }
+  return d
+}
+
 async function main() {
-  const end = new Date(Date.now() - 48 * 3600000)
-  const start = new Date(end.getTime() - 3600000) // one hour window, plenty for a single 1m bar
+  const start = pastWeekdayAt(48, 15)
+  const end = new Date(start.getTime() + 3600000) // one hour window, plenty for a single 1m bar
   const startIso = start.toISOString()
   const endIso = end.toISOString()
 
-  console.log(`Window: ${startIso} to ${endIso} (48h-52h ago, past NQ's confirmed ~8h embargo)\n`)
+  console.log(`Window: ${startIso} to ${endIso} (a weekday, >=48h ago, 15:00-16:00 UTC / 10-11am ET core hours)\n`)
 
   const results = []
   for (const [dataSymbol, symbol] of Object.entries(CANDIDATES)) {

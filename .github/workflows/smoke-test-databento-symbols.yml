@@ -1,9 +1,11 @@
 # TEMPORARY, one-off check - delete this file once its single run has been
-# read. (Re-run #3: GC.c.0 came back empty on two different 1h windows on
-# two different days, which stopped looking like an unlucky hour - the
-# script's window widened to 6h and now also checks all 6 micro contracts
-# (MNQ/MES/MYM/MGC/MCL/MBT) on their own continuous roots, not just the 6
-# full-size ones from re-run #2.) Not workflow_dispatch (GitHub only lets you manually run a workflow
+# read. (Re-run #4: 11/12 resolved (all 6 micros, plus NQ/ES/YM/CL/BTC) -
+# only GC.c.0 stayed empty over a 6h window, while its own micro sibling
+# MGC.c.0 worked fine over the identical window. The script now also
+# queries any failing symbol's root under stype_in=parent (e.g. GC.FUT,
+# the same fallback lib/databento.js already uses for NQ near a rollover)
+# to tell apart "this root just isn't in the dataset" from "only its
+# continuous/.c.0 resolution is broken.") Not workflow_dispatch (GitHub only lets you manually run a workflow
 # that already exists on the default branch, which this repo's non-
 # negotiables don't let this session touch) - triggered by `push`, scoped
 # via `paths` to firing only when this exact file itself is added/changed,

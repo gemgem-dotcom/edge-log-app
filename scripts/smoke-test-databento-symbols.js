@@ -111,6 +111,40 @@ async function checkSymbol(catalogSymbol, symbol, start, end) {
   return { catalogSymbol, symbol, ok: true, detail: `ts_event=${record.ts_event ?? record.hd?.ts_event} close=${close}` }
 }
 
+// Secondary diagnostic for a symbol that failed under stype_in=continuous:
+// does its root resolve at all under stype_in=parent (symbols=`${root}.FUT`,
+// e.g. 'GC.FUT') the way lib/databento.js's resolveFrontMonthByVolume
+// already queries for NQ near a rollover? A parent-symbology hit with real
+// records but a continuous-symbology miss would point at .c.0 resolution
+// itself being the problem for that root, not the root/dataset entitlement
+// - useful to tell apart before assuming either explanation.
+async function checkParentSymbology(root, start, end) {
+  const url = new URL('/v0/timeseries.get_range', 'https://hist.databento.com')
+  url.searchParams.set('dataset', DATASET)
+  url.searchParams.set('schema', 'ohlcv-1m')
+  url.searchParams.set('symbols', `${root}.FUT`)
+  url.searchParams.set('stype_in', 'parent')
+  url.searchParams.set('start', start)
+  url.searchParams.set('end', end)
+  url.searchParams.set('encoding', 'json')
+
+  let res
+  try {
+    res = await fetch(url, { headers: { Authorization: authHeader() } })
+  } catch (err) {
+    return `parent symbology (${root}.FUT): network error: ${err.message}`
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    return `parent symbology (${root}.FUT): ${res.status} ${res.statusText} ${body}`.trim()
+  }
+  const text = await res.text()
+  const record = parseFirstRecord(text)
+  if (!record) return `parent symbology (${root}.FUT): also empty (raw body: ${text.length} bytes)`
+  const close = record.close / PRICE_SCALE
+  return `parent symbology (${root}.FUT): HAS data (instrument_id=${record.hd?.instrument_id ?? 'unknown'}, close=${close}) - continuous (.c.0) resolution is the specific problem, not the root/dataset entitlement`
+}
+
 // A weekday, >=48h in the past (comfortably past NQ's confirmed ~8h
 // embargo), at a fixed 15:00 UTC (10am ET) - deep in every one of these
 // products' core regular trading hours, not just "some session is open
@@ -152,6 +186,10 @@ async function main() {
 
   const failed = results.filter((r) => !r.ok)
   if (failed.length > 0) {
+    console.log()
+    for (const r of failed) {
+      console.log(await checkParentSymbology(r.catalogSymbol, startIso, endIso))
+    }
     console.log(`\n${failed.length} symbol(s) failed - re-run with a different window (e.g. a weekday hour) before concluding the symbol itself is wrong.`)
     process.exit(1)
   }

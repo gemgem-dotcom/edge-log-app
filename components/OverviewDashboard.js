@@ -11,7 +11,7 @@ import { totalTradeCount } from '@/lib/insightData'
 import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { pickGreeting } from '@/lib/greeting'
 import { computeStreak } from '@/lib/streak'
-import { daysToRollover, nextRolloverDate } from '@/lib/contractRollover'
+import { daysToRollover } from '@/lib/contractRollover'
 import EquityCurveChart from '@/components/EquityCurveChart'
 import FlippingStatChips from '@/components/FlippingStatChips'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
@@ -440,8 +440,8 @@ export default function OverviewDashboard({ instruments, strategies }) {
                       <th>Instrument</th>
                       <th>
                         <span className="th-with-tooltip">
-                          Overnight gap
-                          <TableHeaderTooltip text="Live — how much of the gap between yesterday's close and today's open is still unfilled." />
+                          Days to rollover
+                          <TableHeaderTooltip text="Front-month rollover/expiration date for this contract - liquidity shifts to the next expiry once trading in this one ends." />
                         </span>
                       </th>
                       <th>
@@ -459,39 +459,19 @@ export default function OverviewDashboard({ instruments, strategies }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {instruments.map((inst) => (
-                      <tr key={inst.id}>
-                        <td>{inst.symbol}</td>
-                        <td className="stat-placeholder">Needs Phase 2</td>
-                        <td className="stat-placeholder">Needs Phase 2</td>
-                        <td className="stat-placeholder">Needs Phase 2</td>
-                      </tr>
-                    ))}
+                    {instruments.map((inst) => {
+                      const days = daysToRollover(inst.data_symbol || inst.symbol, now)
+                      return (
+                        <tr key={inst.id}>
+                          <td>{inst.symbol}</td>
+                          <td>{days === null ? '—' : `${days}d`}</td>
+                          <td className="stat-placeholder">Not available yet</td>
+                          <td className="stat-placeholder">Not available yet</td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
-              </div>
-            </div>
-            <div className="panel">
-              <div className="stat-label dashboard-card-title">Days to rollover</div>
-              <div className="context-strip">
-                {instruments.map((inst) => {
-                  const dataSymbol = inst.data_symbol || inst.symbol
-                  const days = daysToRollover(dataSymbol, now)
-                  const rolloverDate = nextRolloverDate(dataSymbol, now)
-                  return (
-                    <div className="context-strip-row" key={inst.id}>
-                      <span className="context-strip-symbol">{inst.symbol}</span>
-                      <span className="context-strip-right">
-                        {rolloverDate && (
-                          <span className="context-strip-date">
-                            {new Date(rolloverDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        )}
-                        <span className="context-strip-value">{days === null ? '—' : `${days}d`}</span>
-                      </span>
-                    </div>
-                  )
-                })}
               </div>
             </div>
           </div>

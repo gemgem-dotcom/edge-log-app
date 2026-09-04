@@ -255,9 +255,6 @@ export default function InstrumentLayout({ children, params }) {
             <Link href={`/app/${currentSymbol}/log`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/log`) ? 'sidebar-item-active' : ''}`}>
               Trade Log
             </Link>
-            <Link href={`/app/${currentSymbol}/insights`} className={`sidebar-item ${isActive(`/app/${currentSymbol}/insights`) ? 'sidebar-item-active' : ''}`}>
-              Insights
-            </Link>
           </aside>
 
           <main className="main-area">{children}</main>

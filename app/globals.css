@@ -5,50 +5,50 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–610  Base: reset, typography, forms, tables, thumbnails,
+     1–642  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   611  Auth pages
-   677  Top nav
-   692  Instrument nav (topbar pill row)
-   759  Page layout
-   811  Tabs
-   821  Misc form helpers
-   827  Detail view
-   850  Holiday notice (site-wide, above the shell)
-   875  Shell layout (sidebar + topbar)
-   1152  Expandable trade rows
-   1200  Calendar
-   1248  Account settings page
-   1459  Light theme
-   1500  2FA
-   1515  Account fine print
-   1518  Screenshot preview (log new trade)
-   1560  Auth pages always dark
-   1595  Monthly P&L (calendar on Overview)
-   1682  Trade form: sections, validation, currency, screenshots
-   1920  Field tooltips
-   1982  Date/time picker (adds an optional popup to a typed input)
-   2091  In-header column filters (trade log table)
-   2139  Active filter chips
-   2202  Empty states, error banners, skeleton loaders
-   2281  Cross-instrument overview dashboard (/app)
-   2460  Not found / error boundary state pages
-   2473  Toast notifications
-   2501  Public policy pages (Privacy, Terms)
-   2520  Legal links (auth pages + account settings)
-   2559  Economic calendar card (mock - Overview pages)
-   2673  Calendar news badge (Monthly P&L day cells, mock)
-   2694  Streak badge (Overview + strategy detail pages)
-   2711  Market status pill (Overview + strategy detail pages)
-   2737  Today's brief & session stats
-   2772  Market context cards (all-instruments Overview)
-   2805  Edge Insights panel
-   2820  Unverified logged time badge
-   2837  Welcome transition (first-run)
-   2866  Zero-instrument empty state
-   2876  Tutorial overlay (first-run guided tour)
-   2956  Tutorial step 3 (guided form scroll)
-   3003  Press states, value changes, content fade-in
+   643  Auth pages
+   709  Top nav
+   724  Instrument nav (topbar pill row)
+   791  Page layout
+   843  Tabs
+   853  Misc form helpers
+   859  Detail view
+   882  Holiday notice (site-wide, above the shell)
+   907  Shell layout (sidebar + topbar)
+   1184  Expandable trade rows
+   1232  Calendar
+   1280  Account settings page
+   1491  Light theme
+   1532  2FA
+   1547  Account fine print
+   1550  Screenshot preview (log new trade)
+   1592  Auth pages always dark
+   1627  Monthly P&L (calendar on Overview)
+   1714  Trade form: sections, validation, currency, screenshots
+   1952  Field tooltips
+   2014  Date/time picker (adds an optional popup to a typed input)
+   2123  In-header column filters (trade log table)
+   2171  Active filter chips
+   2234  Empty states, error banners, skeleton loaders
+   2313  Cross-instrument overview dashboard (/app)
+   2492  Not found / error boundary state pages
+   2505  Toast notifications
+   2533  Public policy pages (Privacy, Terms)
+   2552  Legal links (auth pages + account settings)
+   2591  Economic calendar card (mock - Overview pages)
+   2705  Calendar news badge (Monthly P&L day cells, mock)
+   2726  Streak badge (Overview + strategy detail pages)
+   2743  Market status pill (Overview + strategy detail pages)
+   2769  Today's brief & session stats
+   2804  Market context cards (all-instruments Overview)
+   2837  Edge Insights panel
+   2852  Unverified logged time badge
+   2869  Welcome transition (first-run)
+   2898  Zero-instrument empty state
+   2908  Tutorial overlay (first-run guided tour)
+   2988  Tutorial step 3 (guided form scroll)
+   3035  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -148,6 +148,31 @@
   --line-hover: #333a47;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
+/* Baseline theme cross-fade for every element, not just `.panel`/`.stat`/
+   inputs above. Those three got their own explicit transition because
+   Part 3 named them specifically - but a real toggle showed that scope was
+   too narrow: `color` is inherited, so it looked covered, but a CSS
+   transition on an inherited property only plays on the element that
+   actually owns a `transition` declaration for it - every descendant
+   without one still snaps straight to the new value the instant the
+   custom property driving it changes. That's the vast majority of the
+   app's actual pixels - stat labels/values, chart bars and labels, gauge
+   legends, table cells, tooltip bubbles, badges - all of which live
+   outside `.panel`/`.stat`/inputs and were popping to their new color
+   while those three surfaces smoothly faded around them, which is what
+   read as a flash rather than a clean cross-fade.
+   Bare `*` is the lowest possible specificity on purpose: `transition` is
+   a single shorthand property, so any more specific selector that already
+   declares its own `transition` (every existing hover rule, `.panel`/
+   `.stat`/inputs' own rule above, `.tutorial-follow-scroll`'s
+   `transition:none`, `.readonly-field`'s deliberately `color`-less list)
+   replaces this wholesale rather than merging with it - this only fills
+   the gap for elements that declare no transition of their own. Limited
+   to the four paint properties an actual theme switch touches
+   (background-color/color/border-color/box-shadow), not `all` - nothing
+   that affects layout, so this can't introduce jank on properties that
+   have nothing to do with theming. */
+*{transition:background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);}
 body{
   /* A faint accent-tinted glow anchored near the top of the page, under
      the flat --bg - subtle enough not to compete with any panel sitting
@@ -221,19 +246,26 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
    where a .section-heading follows instead: its own 24px margin-top
    still wins that collapse regardless of this value. */
 .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:15px;}
-/* background-color/border-color transitions here (and on .panel and the
-   form inputs below) are what make the theme toggle read as one clean
-   cross-fade. Before them these surfaces had no transition at all and
-   snapped instantly while buttons/badges/sidebar rows faded over ~150ms on
-   their existing hover transitions - two speeds fighting on screen, which
-   is what the old .theme-switching{transition:none!important} class
-   existed to paper over. Matching the speeds removes the mismatch itself,
-   so that class (and the requestAnimationFrame dance in both
-   handleThemeToggle functions that applied it) is gone. */
+/* background-color/border-color/box-shadow transitions here (and on
+   .panel and the form inputs below) are what make the theme toggle read as
+   one clean cross-fade. Before them these surfaces had no transition at
+   all and snapped instantly while buttons/badges/sidebar rows faded over
+   ~150ms on their existing hover transitions - two speeds fighting on
+   screen, which is what the old .theme-switching{transition:none!important}
+   class existed to paper over. Matching the speeds removes the mismatch
+   itself, so that class (and the requestAnimationFrame dance in both
+   handleThemeToggle functions that applied it) is gone.
+   box-shadow is spelled out explicitly rather than left to the universal
+   `*` fallback further up the file: this rule's own `transition` shorthand
+   replaces that fallback wholesale for any property it doesn't also list,
+   and --panel-shadow itself changes on every theme switch (darker/more
+   opaque in dark theme, lighter in light) - both values share the same
+   two-layer structure, so the browser can interpolate them directly rather
+   than needing a snap. */
 .stat{
   background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 16px;
   box-shadow:var(--panel-shadow);
-  transition:background-color var(--transition-fast), border-color var(--transition-fast);
+  transition:background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 /* Quiet affordance only - a border step within the same color family (see
    --line-hover), deliberately not a lift/scale/shadow. A card is a surface
@@ -249,7 +281,7 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
 .panel{
   background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:24px;
   box-shadow:var(--panel-shadow);
-  transition:background-color var(--transition-fast), border-color var(--transition-fast);
+  transition:background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .panel-title{font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; margin-bottom:16px;}
 /* Reusable translucent surface for the glass-panel aesthetic - not applied
@@ -900,7 +932,7 @@ table{min-width:640px;}
      it changes, and an animated `top` would have that measurement land
      mid-transition instead of at the settled value. */
   position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
-  transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
+  transition:transform .25s ease, background-color .2s ease, border-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .shell-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
 /* First-run tutorial only (see useStickyTopbar.js's `anchored` option) -
@@ -1258,7 +1290,7 @@ a.shell-logo{color:inherit; text-decoration:none;}
      the variable can still be transiently non-zero right as the trader
      navigates here away from a page where it was showing. */
   position:fixed; top:var(--holiday-notice-height, 0px); left:0; right:0; z-index:90;
-  transition:transform .25s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
+  transition:transform .25s ease, background-color .2s ease, border-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
 }
 .account-topbar.topbar-hidden{transform:translateY(calc(-100% - 40px));}
 /* Same fix as .shell-topbar.topbar-pinned above - no explicit

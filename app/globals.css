@@ -5,50 +5,51 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–674  Base: reset, typography, forms, tables, thumbnails,
+     1–675  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   675  Auth pages
-   741  Top nav
-   756  Instrument nav (topbar pill row)
-   833  Page layout
-   887  Tabs
-   897  Misc form helpers
-   903  Detail view
-   926  Holiday notice (site-wide, above the shell)
-   951  Shell layout (sidebar + topbar)
-   1322  Expandable trade rows
-   1388  Calendar
-   1436  Account settings page
-   1652  Light theme
-   1693  2FA
-   1708  Account fine print
-   1711  Screenshot preview (log new trade)
-   1753  Auth pages always dark
-   1788  Monthly P&L (calendar on Overview)
-   1875  Trade form: sections, validation, currency, screenshots
-   2113  Field tooltips
-   2175  Date/time picker (adds an optional popup to a typed input)
-   2284  In-header column filters (trade log table)
-   2332  Active filter chips
-   2395  Empty states, error banners, skeleton loaders
-   2474  Cross-instrument overview dashboard (/app)
-   2653  Not found / error boundary state pages
-   2666  Toast notifications
-   2694  Public policy pages (Privacy, Terms)
-   2713  Legal links (auth pages + account settings)
-   2752  Economic calendar card (mock - Overview pages)
-   2866  Calendar news badge (Monthly P&L day cells, mock)
-   2887  Streak badge (Overview + strategy detail pages)
-   2910  Market status pill (Overview + strategy detail pages)
-   2936  Today's brief & session stats
-   2971  Market context cards (all-instruments Overview)
-   3004  Edge Insights panel
-   3019  Unverified logged time badge
-   3036  Welcome transition (first-run)
-   3065  Zero-instrument empty state
-   3075  Tutorial overlay (first-run guided tour)
-   3167  Tutorial step 3 (guided form scroll)
-   3214  Press states, value changes, content fade-in
+   676  Auth pages
+   742  Top nav
+   757  Instrument nav (topbar pill row)
+   834  Page layout
+   888  Tabs
+   898  Misc form helpers
+   904  Detail view
+   927  Holiday notice (site-wide, above the shell)
+   952  Shell layout (sidebar + topbar)
+   1323  Expandable trade rows
+   1389  Calendar
+   1437  Account settings page
+   1653  Light theme
+   1694  2FA
+   1709  Account fine print
+   1712  Screenshot preview (log new trade)
+   1754  Auth pages always dark
+   1789  Monthly P&L (calendar on Overview)
+   1876  Trade form: sections, validation, currency, screenshots
+   2114  Field tooltips
+   2176  Date/time picker (adds an optional popup to a typed input)
+   2285  In-header column filters (trade log table)
+   2333  Active filter chips
+   2396  Empty states, error banners, skeleton loaders
+   2475  Cross-instrument overview dashboard (/app)
+   2654  Not found / error boundary state pages
+   2667  Toast notifications
+   2695  Public policy pages (Privacy, Terms)
+   2714  Legal links (auth pages + account settings)
+   2753  Economic calendar card (mock - Overview pages)
+   2867  Calendar news badge (Monthly P&L day cells, mock)
+   2888  Streak badge (Overview + strategy detail pages)
+   2911  Market status pill (Overview + strategy detail pages)
+   2937  Today's brief & session stats
+   2972  Market context cards (all-instruments Overview)
+   3005  Edge Insights panel
+   3020  Unverified logged time badge
+   3037  Welcome transition (first-run)
+   3066  Zero-instrument empty state
+   3076  Tutorial overlay (first-run guided tour)
+   3168  Tutorial step 3 (guided form scroll)
+   3215  Press states, value changes, content fade-in
+   3312  Trade log column width stability
    ============================================================ */
 
 :root{
@@ -3307,3 +3308,28 @@ button:active{
 @media (prefers-reduced-motion:reduce){
   .content-fade-in{animation:none;}
 }
+
+/* ---------- Trade log column width stability ---------- */
+/* table-layout:fixed makes column widths depend only on the inline
+   percentages TradeLogTable.js computes from COLUMN_WEIGHTS (constants),
+   not on which rows happen to be rendered - see that file's own comment
+   for the bug this replaces (table-layout:auto sizes a column from only
+   its currently-rendered cells, so a filter that hides the row holding a
+   column's widest value shrinks it, reflowing every column after it).
+   Scoped to .table-cols-stable, which TradeLogTable.js only applies when
+   showFilters is on, so the two callers with no filter control at all
+   (the dashboard's calendar-day table, the Overview page's Recent trades
+   list) keep rendering exactly as before - nothing about their column
+   sizing was broken, and auto-layout already suits them fine since their
+   row set is never something the trader can change out from under it. */
+.table-cols-stable{table-layout:fixed;}
+/* Strategy names are free text with no fixed maximum - truncating with an
+   ellipsis (rather than wrapping, which would grow the row instead of
+   the column) keeps an unusually long one from breaking the fixed
+   layout above. Every other column here already has a hard ceiling on
+   its real content (a day name, LONG/SHORT, a dollar figure, ...) short
+   enough that this hasn't been needed for them. */
+/* :not([colspan]) excludes the expand row's single full-width cell - that
+   one holds the whole detail card (notes, tags, screenshots) and needs
+   to wrap normally, not truncate to one line. */
+.table-cols-stable td:not([colspan]){overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}

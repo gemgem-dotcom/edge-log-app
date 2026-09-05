@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 import { invalidateStrategies } from '@/lib/referenceDataCache'
 import { friendlyStrategyError } from '@/lib/supabaseErrors'
 import { hasResult } from '@/lib/tradeMath'
@@ -168,12 +169,16 @@ export default function StrategyDetailPage({ params }) {
       setStrategy(stratError ? null : s)
       if (stratError) return
 
-      const { data: tradeData, error: tradeError } = await supabase
+      // Paged, and ordered by id as the final tiebreak so page boundaries
+      // are stable - date+time alone is not unique.
+      const { data: tradeData, error: tradeError } = await fetchAllRows((from, to) => supabase
         .from('trades')
         .select('*')
         .eq('strategy_id', strategyId)
         .order('trade_date', { ascending: false })
         .order('trade_time', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to))
       if (tradeError) throw tradeError
 
       const computed = await computeStrategyStats(tradeData || [])

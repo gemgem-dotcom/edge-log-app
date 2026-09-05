@@ -115,9 +115,18 @@ export default function EditTradePage({ params }) {
     // field it actually depends on changed - an edit that only touches
     // reasoning/tags/discipline review shouldn't cost another API call
     // against a trade whose MFE/MAE/drawdown are already correct.
+    // trade_date and trade_time belong here as much as exit_time does: the
+    // Databento window MFE/MAE/drawdown are computed over runs from the
+    // entry instant to the exit instant, so correcting a mislogged date or
+    // entry time moves that window wholesale. Without them, fixing a trade
+    // logged on the wrong day left its excursions computed over the old
+    // day's prices while market_data_status still read 'complete' - wrong
+    // numbers presented as verified, which is worse than none.
     const excursionRelevantChanged =
       trade.direction !== updated.direction ||
       trade.entry !== updated.entry ||
+      trade.trade_date !== updated.trade_date ||
+      trade.trade_time !== updated.trade_time ||
       trade.exit_time !== updated.exit_time ||
       trade.exit_price !== updated.exit_price ||
       JSON.stringify(trade.additional_exits || []) !== JSON.stringify(updated.additional_exits || [])

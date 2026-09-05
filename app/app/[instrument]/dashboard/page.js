@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, use } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
@@ -336,8 +337,11 @@ async function loadData() {
     .order('created_at', { ascending: true })
     if (stratError) throw stratError
 
-    const { data: tradeData, error: tradeError } = await supabase
-    .from('trades').select('*').eq('instrument_id', instrument.id)
+    // Paged - every stat, the calendar, the equity curve and the streak on
+    // this page are computed from this array, so silently stopping at
+    // PostgREST's 1000-row cap would understate all of them at once.
+    const { data: tradeData, error: tradeError } = await fetchAllRows((from, to) => supabase
+    .from('trades').select('*').eq('instrument_id', instrument.id).order('id', { ascending: true }).range(from, to))
     if (tradeError) throw tradeError
 
     const grouped = {}

@@ -76,6 +76,10 @@ const PRICE_SCALE = 1e9
 // Regime-bucketing constants, mirrored from lib/tradeRegimes.js - see that
 // file's own comment on the +/-15% banding choice.
 const TRAILING_WINDOW = 20
+// How many still-unbucketed trades one run will consider per symbol. Well
+// clear of a normal backlog, and bounded so this can never turn into an
+// unpaged scan of every trade ever logged, across every user, every day.
+const GAP_SCAN_LIMIT = 500
 const HIGH_RATIO = 1.15
 const LOW_RATIO = 0.85
 
@@ -313,6 +317,18 @@ async function main() {
 // throws) must not stop the remaining 11 from being stored, since they're
 // entirely independent series.
 async function fetchAndStoreSymbol(admin, symbol, sessionDate, start, end) {
+  // Two independent halves, and the second must not depend on the first.
+  // The gap catch-up exists precisely to recover dates this job previously
+  // failed on, yet it used to sit after storeTodaysSession's early returns -
+  // so the one run guaranteed to skip it was a run where the fetch failed,
+  // which is exactly when there is a gap to catch up. A symbol whose
+  // continuous contract stops resolving would therefore never recover its
+  // older dates either.
+  await storeTodaysSession(admin, symbol, sessionDate, start, end)
+  await catchUpRegimeGaps(admin, symbol, sessionDate)
+}
+
+async function storeTodaysSession(admin, symbol, sessionDate, start, end) {
   log(`Fetching ${symbol} ohlcv-1m for session ${sessionDate} (${start} to ${end})`)
 
   let bars
@@ -380,14 +396,34 @@ async function fetchAndStoreSymbol(admin, symbol, sessionDate, start, end) {
     Sentry.captureMessage(`Regime backfill failed for ${symbol} ${sessionDate}: ${err.message}`, 'warning')
     log(`Regime backfill failed for ${symbol} ${sessionDate}: ${err.message}`)
   }
+}
 
+// Any *earlier* date for this symbol whose trades still have no regime,
+// despite that date already having its own market_session_stats row - a day
+// this job failed on, or one whose trades were logged after the fact.
+// Nothing else in the app retries an old date (regime is computed at save
+// time, or on the day it happens), so without this a skipped day's trades
+// stay unbucketed forever.
+async function catchUpRegimeGaps(admin, symbol, sessionDate) {
   try {
-    const { data: gapTrades } = await admin
+    const { data: gapTrades, error: gapError } = await admin
       .from('trades')
       .select('trade_date, instruments!inner(symbol)')
       .eq('instruments.symbol', symbol)
       .neq('trade_date', sessionDate)
       .or('volatility_regime.is.null,volume_regime.is.null')
+      // Newest first with an explicit bound. Unordered and unbounded, this
+      // silently took whatever 1000 rows PostgREST felt like returning -
+      // and dates that can never become computable (older than any stored
+      // market_session_stats row) would crowd out recent ones that can,
+      // forever, while being re-queried daily for all 12 symbols. Newest
+      // first means each run works on the dates most likely to resolve; the
+      // rest are picked up as the window moves.
+      .order('trade_date', { ascending: false })
+      .limit(GAP_SCAN_LIMIT)
+    // Previously discarded, so an RLS or timeout failure read as "no gaps"
+    // and this job reported success having silently done nothing.
+    if (gapError) throw gapError
 
     const gapDates = [...new Set((gapTrades || []).map((t) => t.trade_date))]
     for (const date of gapDates) {

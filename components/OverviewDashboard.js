@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
@@ -246,8 +247,10 @@ export default function OverviewDashboard({ instruments, strategies }) {
     try {
       const ids = instruments.map((i) => i.id)
 
-      const { data: tradeData, error: tradeError } = await supabase
-        .from('trades').select('*').in('instrument_id', ids)
+      // Paged - this array feeds every figure on the Overview page, so
+      // stopping at PostgREST's 1000-row cap would understate all of them.
+      const { data: tradeData, error: tradeError } = await fetchAllRows((from, to) => supabase
+        .from('trades').select('*').in('instrument_id', ids).order('id', { ascending: true }).range(from, to))
       if (tradeError) throw tradeError
 
       setAllTrades(tradeData || [])

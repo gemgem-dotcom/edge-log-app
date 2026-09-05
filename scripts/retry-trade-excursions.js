@@ -408,9 +408,16 @@ function sliceTicksForWindow(ticks, entryInstant, exitInstant) {
 // See lib/tradeExcursions.js's own copy of this function for the full
 // explanation - this is the same logic, standalone.
 function computeExcursion({ ticks, entry, direction }) {
-  const prices = ticks.map((t) => t.price)
-  const maxPrice = Math.max(...prices)
-  const minPrice = Math.min(...prices)
+  // A plain loop, not Math.max(...prices) - spreading a large array throws
+  // RangeError past ~100k arguments, and a multi-hour hold easily exceeds
+  // that (a +/-2 minute window is already ~24k prints). See the fuller note
+  // on lib/tradeExcursions.js's own copy.
+  let maxPrice = -Infinity
+  let minPrice = Infinity
+  for (const t of ticks) {
+    if (t.price > maxPrice) maxPrice = t.price
+    if (t.price < minPrice) minPrice = t.price
+  }
 
   const mfePoints = direction === 'long' ? maxPrice - entry : entry - minPrice
   const maePoints = direction === 'long' ? entry - minPrice : maxPrice - entry

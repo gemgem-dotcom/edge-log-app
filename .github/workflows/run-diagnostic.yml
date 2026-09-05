@@ -32,6 +32,22 @@ on:
         type: choice
         options:
           - scripts/smoke-test-databento-symbols.js
+          - scripts/pull-strategy-market-context.js
+      strategy:
+        description: >-
+          Strategy name (only read by pull-strategy-market-context.js)
+        required: false
+        type: string
+      instrument:
+        description: >-
+          Instrument symbol, e.g. NQ (only read by pull-strategy-market-context.js)
+        required: false
+        type: string
+      user_email:
+        description: >-
+          Account email to pull trades for (only read by pull-strategy-market-context.js)
+        required: false
+        type: string
 
 jobs:
   run:
@@ -57,4 +73,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          STRATEGY_NAME: ${{ inputs.strategy }}
+          INSTRUMENT_SYMBOL: ${{ inputs.instrument }}
+          USER_EMAIL: ${{ inputs.user_email }}
         run: node "${{ inputs.script }}"

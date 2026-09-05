@@ -151,7 +151,7 @@ export default function EditTradePage({ params }) {
   }
 
   if (loading) return <PageLoading />
-  if (error) return <div className="page-container"><PageError message={`Couldn't load this trade — ${error}`} onRetry={loadAll} /></div>
+  if (error) return <div className="page-container"><PageError message={`Couldn't load this trade — ${error}`} onRetry={() => loadAll()} /></div>
   if (!trade) return <div className="page-container"><div className="empty">Trade not found.</div></div>
 
   // Trades logged before distances existed only stored absolute prices, so

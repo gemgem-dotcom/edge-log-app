@@ -225,6 +225,7 @@ export default function TradeForm({
   const [showDisciplineMenu, setShowDisciplineMenu] = useState(false)
 
   const [saving, setSaving] = useState(false)
+  const [addingStrategySaving, setAddingStrategySaving] = useState(false)
 
   const todayStr = todayDateString()
   const riskReward = calcRiskReward(
@@ -499,9 +500,29 @@ export default function TradeForm({
 
   async function handleAddStrategy(e) {
     e.preventDefault()
-    if (!newStrategyName.trim()) return
+    // addingStrategySaving guards a double submit: the Add button was never
+    // disabled, so pressing Enter twice fired two inserts and the second hit
+    // the unique(instrument_id, name) constraint - surfacing "already exists"
+    // immediately after the strategy had in fact been created.
+    if (!newStrategyName.trim() || addingStrategySaving) return
     setFormError(null)
-    const { data: { user } } = await supabase.auth.getUser()
+    setAddingStrategySaving(true)
+    try {
+      await addStrategy()
+    } finally {
+      setAddingStrategySaving(false)
+    }
+  }
+
+  async function addStrategy() {
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    // Threw inside an unhandled promise before, so "Add" appeared to do
+    // nothing at all rather than reporting anything.
+    if (!user) {
+      setFormError('Your session has expired. Sign in again to add a strategy.')
+      return
+    }
     const { data, error } = await supabase
       .from('strategies')
       .insert([{ user_id: user.id, instrument_id: instrumentId, name: newStrategyName.trim() }])
@@ -754,9 +775,22 @@ export default function TradeForm({
     // The caller navigates away on success; returning an error message
     // string means it failed and the form should become editable again,
     // with that message shown instead of a native alert().
-    const result = await onSubmit({ values, screenshots, existingScreenshots })
-    if (typeof result === 'string') {
-      setFormError(result)
+    //
+    // The try/catch matters as much as the returned string: onSubmit is the
+    // page's own handler, and it can reject rather than return - both call
+    // sites read user.user_metadata straight off supabase.auth.getUser(),
+    // which is null once the session has expired. Without this, that threw
+    // past the setSaving(false) below and left the button reading "Saving…"
+    // and disabled forever, with no error and no way to recover the trade
+    // the trader had just typed except reloading and losing it.
+    try {
+      const result = await onSubmit({ values, screenshots, existingScreenshots })
+      if (typeof result === 'string') {
+        setFormError(result)
+        setSaving(false)
+      }
+    } catch {
+      setFormError('Could not save this trade. Your session may have expired — open a new tab, sign in again, then come back and press save.')
       setSaving(false)
     }
   }

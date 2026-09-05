@@ -282,6 +282,13 @@ export default function OverviewDashboard({ instruments, strategies }) {
   instruments.forEach((inst, i) => { instrumentById[inst.id] = { ...inst, color: strategyColor(i) } })
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
+  // Keeps this page's own trades in step with the table after a delete, so
+  // the stats, calendar, equity curve and streak recompute rather than
+  // continuing to count a row that has already disappeared.
+  function handleTradeDeleted(tradeId) {
+    setAllTrades((prev) => prev.filter((t) => t.id !== tradeId))
+  }
+
   const streak = computeStreak(allTrades)
 
   const briefText = streak
@@ -684,6 +691,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
                   showInstrumentColumn
                   instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
                   instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
+                  onTradeDeleted={handleTradeDeleted}
                 />
               </>
             )}

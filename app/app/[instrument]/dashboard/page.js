@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -101,9 +101,8 @@ function computeWeekdayPnl(trades) {
   })
 }
 
-// Monday of the ISO week containing dateStr, used as the bucket key when
-// the equity curve is grouped by week.
-// Sunday-start, matching the P&L calendar's own grid on this same page
+// Sunday of the week containing dateStr, the bucket key when the equity
+// curve is grouped by week. Sunday-start, matching the P&L calendar's grid
 // (CAL_HEADINGS begins 'Sun', and startWeekday pads from a raw getDay()).
 // This used to compute the ISO/Monday-start week, so a Sunday trade was
 // bucketed into the week *ending* that weekend by the equity curve while
@@ -278,11 +277,27 @@ export default function DashboardPage({ params }) {
   const [selectedDate, setSelectedDate] = useState(null)
   const [regime, setRegime] = useState(null)
 
+// Identifies the most recent load, so a slower earlier one can never write
+// its results over a newer one's.
+//
+// Measured, not assumed: this page currently DOES remount on an instrument
+// switch, so a superseded load's setState calls land on an unmounted
+// component and React discards them - the mismatch this guards against does
+// not occur today. It is kept because nothing enforces that remount. The
+// reset block below exists precisely because a soft nav was once expected
+// not to remount this page, and the heading is read straight from the URL
+// while the figures come from state - so if that ever changes again, the
+// failure mode is one instrument's P&L displayed under another's name,
+// silently. The guard costs one integer compare per write.
+const loadIdRef = useRef(0)
+
 useEffect(() => {
   loadData()
 }, [symbol])
 
 async function loadData() {
+  const loadId = ++loadIdRef.current
+  const superseded = () => loadId !== loadIdRef.current
   setLoading(true)
   setError(null)
   // Strategy ids and regime data are scoped to one instrument - carrying a
@@ -299,9 +314,21 @@ async function loadData() {
   setRegime(null)
   try {
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('no session')
     const { data: instrument } = await supabase
     .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).eq('archived', false).single()
-    if (!instrument) { setLoading(false); return }
+    if (superseded()) return
+    // Clearing instrumentId matters: it used to keep the PREVIOUS
+    // instrument's id here, which InstrumentMenu then acts on - so the
+    // archive control on a page that failed to load pointed at whichever
+    // instrument was open before it. Surfacing an error rather than
+    // returning silently, too; the page otherwise rendered fully and every
+    // action on it failed for no visible reason.
+    if (!instrument) {
+      setInstrumentId(null)
+      setError('that instrument could not be found.')
+      return
+    }
     setInstrumentId(instrument.id)
 
     const { data: stratData, error: stratError } = await supabase
@@ -318,6 +345,7 @@ async function loadData() {
         grouped[s.id] = (tradeData || []).filter((t) => t.strategy_id === s.id)
       }
 
+    if (superseded()) return
     setStrategies(stratData || [])
     setTradesByStrategy(grouped)
     setAllTrades(tradeData || [])
@@ -327,16 +355,21 @@ async function loadData() {
     // contract), so there's no NQ-family gate here anymore - a symbol whose
     // own daily job hasn't stored enough history yet simply resolves null,
     // exactly as an unsupported instrument used to.
-    setRegime(await latestClosedSessionRegime(supabase, symbol))
+    const nextRegime = await latestClosedSessionRegime(supabase, symbol)
+    if (superseded()) return
+    setRegime(nextRegime)
   } catch {
+    if (superseded()) return
     setError('something went wrong.')
   } finally {
-    setLoading(false)
+    // A superseded load must not clear the spinner - the load that replaced
+    // it is still running, and the page would flash its empty state.
+    if (!superseded()) setLoading(false)
   }
 }
 
 if (loading) return <DashboardSkeleton />
-if (error) return <div className="page-container"><PageError message={`Couldn't load your dashboard — ${error}`} onRetry={loadData} /></div>
+if (error) return <div className="page-container"><PageError message={`Couldn't load your dashboard — ${error}`} onRetry={() => loadData()} /></div>
 
 const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
@@ -427,6 +460,19 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const upcomingEvents = upcomingEconEvents(now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
+
+  // Drops a deleted trade from this page's own copy, so every figure derived
+  // from it - stats, calendar, equity curve, weekday chart, streak -
+  // recomputes immediately instead of still counting a row the table has
+  // already removed.
+  function handleTradeDeleted(tradeId) {
+    setAllTrades((prev) => prev.filter((t) => t.id !== tradeId))
+    setTradesByStrategy((prev) => {
+      const next = {}
+      for (const [sid, list] of Object.entries(prev)) next[sid] = list.filter((t) => t.id !== tradeId)
+      return next
+    })
+  }
 
 // classifiedTrades, not allTrades - the banner above the stats promises
 // that Unassigned trades are "not counted below until reassigned", and the
@@ -738,7 +784,7 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
 {selectedDate && (
   <>
   <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
-<TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} />
+<TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} onTradeDeleted={handleTradeDeleted} />
   </>
 )}
 </div>

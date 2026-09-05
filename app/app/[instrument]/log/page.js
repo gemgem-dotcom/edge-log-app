@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -46,18 +46,32 @@ export default function LogPage({ params }) {
     if (instrumentId) loadPage()
   }, [instrumentId, page, filters])
 
+  // Identifies the most recent load of each kind, so a slower earlier one
+  // can't overwrite a newer one's results. This page stays mounted across a
+  // soft nav and across every page/filter change, so two loads genuinely do
+  // overlap - clicking Next twice quickly used to leave page 2's rows sitting
+  // under a pager that reads 3.
+  const staticIdRef = useRef(0)
+  const pageIdRef = useRef(0)
+
   async function loadStatic() {
+    const loadId = ++staticIdRef.current
+    const superseded = () => loadId !== staticIdRef.current
     setLoading(true)
     setError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) throw new Error('no session')
       const { data: instrument } = await supabase
         .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).eq('archived', false).single()
-      if (!instrument) { setLoading(false); return }
+      if (superseded()) return
+      if (!instrument) { setError('that instrument could not be found.'); setLoading(false); return }
 
       const { data: stratData, error: stratError } = await supabase
         .from('strategies').select('*').eq('instrument_id', instrument.id).order('created_at', { ascending: true })
       if (stratError) throw stratError
+      if (superseded()) return
 
       setStrategies(stratData || [])
       setPage(0)
@@ -65,12 +79,15 @@ export default function LogPage({ params }) {
       fetchDistinctTags([instrument.id]).then((tags) => setTagOptions(tags.map((t) => ({ value: t, label: t }))))
       setInstrumentId(instrument.id)
     } catch {
+      if (superseded()) return
       setError('something went wrong.')
       setLoading(false)
     }
   }
 
   async function loadPage() {
+    const loadId = ++pageIdRef.current
+    const superseded = () => loadId !== pageIdRef.current
     setLoading(true)
     setError(null)
     try {
@@ -78,12 +95,14 @@ export default function LogPage({ params }) {
         instrumentIds: [instrumentId], page, pageSize: PAGE_SIZE, filters,
       })
       if (tradeError) throw tradeError
+      if (superseded()) return
       setTrades(pageTrades)
       setTotalCount(count)
     } catch {
+      if (superseded()) return
       setError('something went wrong.')
     } finally {
-      setLoading(false)
+      if (!superseded()) setLoading(false)
     }
   }
 

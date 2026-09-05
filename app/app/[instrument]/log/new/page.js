@@ -50,7 +50,11 @@ export default function NewTradePage({ params, searchParams }) {
   async function loadStrategies() {
     setStrategiesError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      // Threw inside an uncaught effect promise before, leaving a fully
+      // rendered form whose every save then failed with a generic message.
+      if (!user) throw new Error('no session')
       const freshTutorial = readTutorialState(user)
       setTutorial(freshTutorial)
       cacheTutorialState(freshTutorial)
@@ -61,7 +65,13 @@ export default function NewTradePage({ params, searchParams }) {
         .eq('symbol', symbol)
         .eq('archived', false)
         .single()
-      if (!instrument) return
+      // Returning silently left instrumentId null and the form fully
+      // usable - every save then violated NOT NULL and surfaced only
+      // "Could not save trade." Surface the real reason instead.
+      if (!instrument) {
+        setStrategiesError('That instrument could not be found.')
+        return
+      }
       setInstrumentId(instrument.id)
 
       const { data, error } = await supabase

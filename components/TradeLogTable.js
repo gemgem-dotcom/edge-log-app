@@ -177,6 +177,11 @@ export default function TradeLogTable({
   // unset and keeps the original behavior below completely unchanged;
   // their trade counts were never large enough to need it.
   remote = null,
+  // Local (non-remote) mode only: lets the page that owns these trades drop
+  // the deleted one from its own state, so the stats computed from it stay
+  // in step with the table. Remote mode has remote.onTradeDeleted instead,
+  // which refetches the page.
+  onTradeDeleted = null,
 }) {
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
@@ -309,7 +314,15 @@ export default function TradeLogTable({
       // this component optimistically trimming its own local array.
       invalidateTags()
       if (remote) remote.onTradeDeleted?.()
-      else setRows((prev) => prev.filter((t) => t.id !== trade.id))
+      else {
+        setRows((prev) => prev.filter((t) => t.id !== trade.id))
+        // The parent keeps its own copy of these trades and computes the
+        // stats, calendar, equity curve and streak from it, so trimming only
+        // this component's local array left the deleted trade still counted
+        // in every figure on the page until a reload - the row vanished
+        // while Total P&L and win rate stayed put.
+        onTradeDeleted?.(trade.id)
+      }
       if (expandedId === trade.id) setExpandedId(null)
     } else {
       setDeleteError("Couldn't delete that trade. Please try again.")

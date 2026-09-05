@@ -5,51 +5,51 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–693  Base: reset, typography, forms, tables, thumbnails,
+     1–675  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   694  Auth pages
-   760  Top nav
-   775  Instrument nav (topbar pill row)
-   852  Page layout
-   906  Tabs
-   916  Misc form helpers
-   922  Detail view
-   945  Holiday notice (site-wide, above the shell)
-   970  Shell layout (sidebar + topbar)
-   1341  Expandable trade rows
-   1407  Calendar
-   1455  Account settings page
-   1679  Light theme
-   1720  2FA
-   1735  Account fine print
-   1738  Screenshot preview (log new trade)
-   1780  Auth pages always dark
-   1815  Monthly P&L (calendar on Overview)
-   1902  Trade form: sections, validation, currency, screenshots
-   2140  Field tooltips
-   2202  Date/time picker (adds an optional popup to a typed input)
-   2311  In-header column filters (trade log table)
-   2359  Active filter chips
-   2422  Empty states, error banners, skeleton loaders
-   2501  Cross-instrument overview dashboard (/app)
-   2680  Not found / error boundary state pages
-   2693  Toast notifications
-   2721  Public policy pages (Privacy, Terms)
-   2740  Legal links (auth pages + account settings)
-   2779  Economic calendar card (mock - Overview pages)
-   2893  Calendar news badge (Monthly P&L day cells, mock)
-   2914  Streak badge (Overview + strategy detail pages)
-   2937  Market status pill (Overview + strategy detail pages)
-   2963  Today's brief & session stats
-   2998  Market context cards (all-instruments Overview)
-   3031  Edge Insights panel
-   3046  Unverified logged time badge
-   3063  Welcome transition (first-run)
-   3092  Zero-instrument empty state
-   3102  Tutorial overlay (first-run guided tour)
-   3194  Tutorial step 3 (guided form scroll)
-   3241  Press states, value changes, content fade-in
-   3338  Keyboard-reachable control resets
+   676  Auth pages
+   742  Top nav
+   757  Instrument nav (topbar pill row)
+   834  Page layout
+   888  Tabs
+   898  Misc form helpers
+   904  Detail view
+   927  Holiday notice (site-wide, above the shell)
+   952  Shell layout (sidebar + topbar)
+   1323  Expandable trade rows
+   1389  Calendar
+   1437  Account settings page
+   1653  Light theme
+   1694  2FA
+   1709  Account fine print
+   1712  Screenshot preview (log new trade)
+   1754  Auth pages always dark
+   1789  Monthly P&L (calendar on Overview)
+   1876  Trade form: sections, validation, currency, screenshots
+   2114  Field tooltips
+   2176  Date/time picker (adds an optional popup to a typed input)
+   2285  In-header column filters (trade log table)
+   2333  Active filter chips
+   2396  Empty states, error banners, skeleton loaders
+   2475  Cross-instrument overview dashboard (/app)
+   2654  Not found / error boundary state pages
+   2667  Toast notifications
+   2695  Public policy pages (Privacy, Terms)
+   2714  Legal links (auth pages + account settings)
+   2753  Economic calendar card (mock - Overview pages)
+   2867  Calendar news badge (Monthly P&L day cells, mock)
+   2888  Streak badge (Overview + strategy detail pages)
+   2911  Market status pill (Overview + strategy detail pages)
+   2937  Today's brief & session stats
+   2972  Market context cards (all-instruments Overview)
+   3005  Edge Insights panel
+   3020  Unverified logged time badge
+   3037  Welcome transition (first-run)
+   3066  Zero-instrument empty state
+   3076  Tutorial overlay (first-run guided tour)
+   3168  Tutorial step 3 (guided form scroll)
+   3215  Press states, value changes, content fade-in
+   3312  Keyboard-reachable control resets
    ============================================================ */
 
 :root{
@@ -492,19 +492,7 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .theme-toggle-btn, .calendar-nav-btn, .back-btn, .eye-btn, .strategy-menu-btn,
 .icon-edit-btn, .file-upload-btn, .screenshot-remove-btn, .field-tooltip-btn,
 .dt-picker-icon-btn, .dt-picker-nav-btn, .dt-picker-spin-btn, .dt-picker-day, .col-filter-btn,
-.trade-tag-filter-btn, .econ-impact-filter-btn, .econ-date-range-trigger, .econ-today-btn, .row-action-btn,
-/* Added along with the keyboard-reachable control resets further down this
-   file: every one of these was a <div>/<span> until that pass turned it
-   into a real <button> for Tab/Enter reachability, which is what made it
-   start matching this button{} rule's lift/shadow/brighten in the first
-   place - .del (Cancel/Add/Remove-exit/Add-tag/discipline-menu/copy-secret/
-   save-nickname), the Outcome dropdown trigger and its menu items, Clear
-   all, the account settings "Show all sign-ins" and EdgeInsightsPanel's
-   Regenerate (both .panel-link), the date picker's Today link, and the
-   screenshot lightbox's close button. Same fix, same reason, just not
-   caught in the original pass. */
-.del, .outcome-select-trigger, .outcome-menu-item, .filter-clear-all,
-.panel-link, .dt-picker-today-link, .modal-close{
+.trade-tag-filter-btn, .econ-impact-filter-btn, .econ-date-range-trigger, .econ-today-btn, .row-action-btn{
   box-shadow:none;
 }
 /* .eye-btn excluded here on purpose - see its own :hover rule below,
@@ -514,13 +502,7 @@ button:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4
 .theme-toggle-btn:hover, .calendar-nav-btn:hover, .back-btn:hover, .strategy-menu-btn:hover,
 .icon-edit-btn:hover, .file-upload-btn:hover, .screenshot-remove-btn:hover, .field-tooltip-btn:hover,
 .dt-picker-icon-btn:hover, .dt-picker-nav-btn:hover, .dt-picker-spin-btn:hover, .dt-picker-day:hover, .col-filter-btn:hover,
-.trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-date-range-trigger:hover, .econ-today-btn:hover, .row-action-btn:hover,
-/* Hover counterpart to the base box-shadow:none list above - without this
-   the lift (transform:translateY(-1px)) and bigger shadow from button:hover
-   still applied on mouseover even with the resting state fixed. */
-.del:hover, .outcome-select-trigger:hover, .outcome-menu-item:hover,
-.filter-clear-all:hover, .panel-link:hover, .dt-picker-today-link:hover,
-.modal-close:hover{
+.trade-tag-filter-btn:hover, .econ-impact-filter-btn:hover, .econ-date-range-trigger:hover, .econ-today-btn:hover, .row-action-btn:hover{
   transform:none; box-shadow:none;
 }
 /* filter:none, light theme only, scoped to just .trade-tag-filter-btn/
@@ -1613,14 +1595,6 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 .row-action-btn{font-size:12px; color:var(--muted); cursor:pointer; text-decoration:none; font-family:'Inter',sans-serif; display:inline-flex; align-items:center; justify-content:center; transition:color .15s ease, opacity .15s ease;}
 .row-action-btn:hover{color:var(--accent);}
 .row-action-danger{color:var(--loss);}.row-action-danger:hover{opacity:.75;}
-/* Re-asserted at higher specificity: the keyboard-reset rule further down
-   this file sets `button.row-action-btn{color:inherit}` (a class+type
-   compound), which - despite its type half being the "weaker" selector
-   kind - still counts as strictly higher specificity than this rule's
-   plain single class once their class counts are equal, and so was
-   winning regardless of source order and turning the delete icon the
-   same muted grey as Edit instead of red. */
-button.row-action-btn.row-action-danger{color:var(--loss);}
 .actions-col-header{min-width:70px;}
 
 
@@ -3356,37 +3330,3 @@ button.insights-regen-link{
 }
 .outcome-menu-item{width:100%; text-align:left;}
 .outcome-select-trigger{width:100%;}
-/* padding/border-radius weren't in the reset above, so the plain `button{}`
-   rule near the top of this file (padding:10px 22px, border-radius:100px -
-   the primary-CTA pill) was winning by element-selector default on every
-   property this list doesn't otherwise touch. That inflated a 15px delete
-   icon into a 59x35px box (measured) - the actual cause of the trade log's
-   row-height and "Clear all" pill regressions, not anything about the row
-   markup itself. .outcome-select-trigger and .outcome-menu-item are
-   deliberately absent here: .dt-picker-trigger/.outcome-menu-item's own
-   rules already set real padding at equal specificity but earlier in the
-   file, and adding padding:0 for them in this later rule would win the tie
-   and zero out an intentional value. */
-.dir-btn, button.del, button.row-action-btn, .tag-chip-remove,
-button.panel-link, button.filter-clear-all, button.dt-picker-today-link,
-button.sidebar-section-header, button.insights-regen-link{
-  padding:0; border-radius:0;
-}
-/* Same padding fix, minus border-radius: .dt-picker-nav-btn/.modal-close
-   already declare their own correct radius (6px / 50%) at equal
-   specificity to a rule here, so folding them into the block above would
-   win that tie by source order and flatten their corners. */
-button.dt-picker-nav-btn, button.modal-close{
-  padding:0;
-}
-/* .outcome-menu-item never declared its own border-radius (unlike the two
-   above), so it needs the same border-radius:0 the main block gives
-   everything else - just kept separate since it can't join that block
-   without also picking up padding:0, which would stomp its own, real
-   `padding:0 12px` (declared earlier in the file at equal specificity;
-   see that rule's own comment). Without this each dropdown option
-   rendered as a rounded pill (button{}'s border-radius:100px) inside a
-   rectangular list. */
-.outcome-menu-item{
-  border-radius:0;
-}

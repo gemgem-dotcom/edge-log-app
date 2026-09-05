@@ -16,23 +16,54 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
-  const [ready, setReady] = useState(false)
+  const [recoveryEvent, setRecoveryEvent] = useState(false)
+  // Read once, during the first client render, before anything below has a
+  // chance to strip the URL. PKCE turns the emailed recovery link into a
+  // ?code= param (see lib/supabaseClient.js's flowType note); the hash form
+  // covers a link issued before that. A bare visit to /reset-password by
+  // someone who is merely signed in carries neither.
+  const [recoveryLinkInUrl] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).has('code')
+      || window.location.hash.includes('type=recovery')
+  })
 
   useEffect(() => {
+    // PASSWORD_RECOVERY only - deliberately NOT SIGNED_IN, and no
+    // getSession() fallback. Both used to count, which meant merely holding
+    // any live session was enough to set a new password here without
+    // knowing the current one. That bypassed the re-authentication
+    // components/account/PasswordSection.js enforces on the very same
+    // action (it re-verifies via signInWithPassword first), so a stolen
+    // cookie or an unattended logged-in browser could take the account over
+    // permanently just by visiting this route.
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setReady(true)
-      }
-    })
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setReady(true)
+      if (event === 'PASSWORD_RECOVERY') setRecoveryEvent(true)
     })
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  // Derived, not stored: recoveryLinkInUrl is already known at first render,
+  // so folding it in here rather than setting state from the effect avoids a
+  // cascading re-render for a value that never changes. It covers the race
+  // where detectSessionInUrl (see lib/supabaseClient.js) consumes the
+  // recovery link and fires PASSWORD_RECOVERY before the effect subscribes -
+  // arriving with a recovery code is itself proof of the emailed link,
+  // unlike an existing session, which proves nothing about whether this
+  // person knows the current password.
+  const ready = recoveryLinkInUrl || recoveryEvent
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    // Not just the disabled submit button above - implicit submission
+    // (Enter inside a text field) isn't reliably blocked by a disabled
+    // button across browsers, and this is the check that actually protects
+    // the account takeover described in the effect below.
+    if (!ready) {
+      setError('Open the reset link from your email to set a new password.')
+      return
+    }
     const passwordRuleError = validatePassword(password)
     if (passwordRuleError) {
       setError(passwordRuleError)
@@ -66,7 +97,11 @@ export default function ResetPasswordPage() {
           <>
             <h1 className="auth-welcome">Reset password</h1>
             <p className="auth-subtitle">
-              {ready ? 'Enter a new password for your account.' : 'Verifying your reset link...'}
+              {ready
+                ? 'Enter a new password for your account.'
+                : recoveryLinkInUrl
+                  ? 'Verifying your reset link...'
+                  : 'Open the reset link from your email to set a new password. To change a password you already know, use Account settings.'}
             </p>
             <form onSubmit={handleSubmit}>
               <div className="field full">

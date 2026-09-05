@@ -16,6 +16,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabaseConfig'
+import { isMockDbEnabled } from '@/lib/mockMode'
 
 export async function proxy(request) {
   // Mock-DB dev mode (npm run dev:mock) never talks to real Supabase -
@@ -27,7 +28,11 @@ export async function proxy(request) {
   // CLAUDE.md calls out as how UI changes get verified without touching
   // production data. Same escape hatch every mock-DB-aware file already
   // uses, just needed here too since proxy.js sits outside that alias.
-  if (process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true') {
+  //
+  // isMockDbEnabled(), not the env var directly - this branch skips the auth
+  // check entirely, so it additionally refuses to engage in a production
+  // build. See lib/mockMode.js for why that second condition is there.
+  if (isMockDbEnabled()) {
     return NextResponse.next()
   }
 

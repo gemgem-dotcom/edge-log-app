@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 import { overallInsightData, instrumentInsightData, strategyInsightData, totalTradeCount } from '@/lib/insightData'
+import { isMockDbEnabled } from '@/lib/mockMode'
 
 const ANTHROPIC_MODEL = 'claude-sonnet-5'
 const ANTHROPIC_MAX_TOKENS = 1536
@@ -175,7 +176,10 @@ export async function POST(req) {
     const { scope, tradeCount: clientTradeCount, previousNarrative } = body
     if (!scope) return new Response(JSON.stringify({ error: 'scope is required' }), { status: 400 })
 
-    if (process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true') {
+    // isMockDbEnabled(), not the env var directly - this returns before the
+    // caller is ever authenticated, so it must never engage in production.
+    // See lib/mockMode.js.
+    if (isMockDbEnabled()) {
       return new Response(
         JSON.stringify({ narrative: MOCK_NARRATIVE, generatedAt: new Date().toISOString(), tradeCount: clientTradeCount ?? 0 }),
         { status: 200 },

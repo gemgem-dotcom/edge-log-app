@@ -180,10 +180,34 @@ yet wired up. Same story for the volatility and key-levels cards on those pages.
   exist) — a placeholder string is fine. Edit `lib/supabaseClient.mock.js`'s
   `MOCK_TRADES` directly for whatever a specific change needs to exercise (a
   multi-exit trade, a trade with screenshots, an open trade, and so on).
+
+  **The mock resolves instantly, so it cannot show you a timing bug — and it
+  will make a broken fix look verified.** Loading states, spinner flashes, and
+  any race between two in-flight loads simply do not exist against it. A
+  perceived-slowness fix was once confirmed this way and shipped having changed
+  nothing measurable. Set `NEXT_PUBLIC_MOCK_LATENCY_MS` (and
+  `NEXT_PUBLIC_MOCK_LATENCY_PER_ROW_MS`, so a heavier query genuinely takes
+  longer than a lighter one) before concluding anything about how fast
+  something feels:
+
+  ```
+  NEXT_PUBLIC_MOCK_LATENCY_MS=150 NEXT_PUBLIC_MOCK_LATENCY_PER_ROW_MS=25 npm run dev:mock
+  ```
+
+  And when a fix is meant to remove a visible behaviour, check that the test
+  actually fails without the fix before trusting that it passes with it.
 - **`npm run css:toc`** regenerates `globals.css`'s table of contents from the
   file's actual `/* ---------- Section ---------- */` banners. Run it after any CSS
   edit that adds, removes, or moves a section — `npm run css:toc:check` reports
   (without writing) whether it's currently stale, for a sanity check before a commit.
+- **`npm run lint:ci`** is what CI runs: `eslint .` capped at the current warning
+  baseline via `--max-warnings`. Plain `npm run lint` exits 0 no matter how many
+  warnings accumulate, which is how forty-nine of them built up unnoticed. Clear
+  warnings and lower the number in `package.json`; never raise it.
+- **Need to run a script that requires real credentials?** Use the "Run a
+  diagnostic script" workflow (`.github/workflows/run-diagnostic.yml`,
+  Actions → Run workflow) rather than putting a production key in a terminal.
+  It already has this repo's Databento and Supabase secrets in scope.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

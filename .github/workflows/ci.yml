@@ -87,4 +87,10 @@ jobs:
         run: npm install
 
       - name: Run ESLint
-        run: npm run lint
+        # lint:ci, not lint - it caps warnings at the current baseline, so
+        # the count can only go down. A plain `eslint .` exits 0 no matter
+        # how many warnings accumulate, which made warning number fifty
+        # invisible among the forty-nine already there. Lower the number in
+        # package.json as warnings are cleared; a real error still fails
+        # this job on its own regardless.
+        run: npm run lint:ci

@@ -85,7 +85,19 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 
 Navigate to the relevant page, interact with whatever the change touches, and either
 screenshot it for a visual check or assert against specific values/text - whichever fits
-what's actually being verified. When done:
+what's actually being verified.
+
+Two traps worth knowing about, both of which have produced a confidently-wrong
+"verified" before:
+
+- **The mock resolves instantly, so it cannot reproduce a timing bug.** Loading
+  states, spinner flashes and races between two in-flight loads don't exist against
+  it. Set `NEXT_PUBLIC_MOCK_LATENCY_MS` (and `NEXT_PUBLIC_MOCK_LATENCY_PER_ROW_MS`,
+  so a heavier query really is slower than a lighter one) before concluding anything
+  about how fast something feels.
+- **Check the test fails without the fix.** A check that passes either way proves
+  nothing. Disable the fix, confirm the check goes red, then re-enable it - otherwise
+  the mock data may simply not contain the case that triggers the bug. When done:
 
 ```
 kill %1   # or the dev server's actual job/PID

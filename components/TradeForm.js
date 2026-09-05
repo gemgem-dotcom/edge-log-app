@@ -43,6 +43,13 @@ const BREAKEVEN_TOLERANCE_POINTS = 5
 function inferOutcome(initial) {
   if (isBlank(initial.execution.exit_price)) return ''
   if ((initial.additionalExits || []).length > 0) return 'custom'
+  // An exactly-zero stored R is the signature of a Breakeven save (see
+  // handleSubmit). Checked before the price-based rules below because a
+  // breakeven exit is allowed to sit up to BREAKEVEN_TOLERANCE_POINTS from
+  // entry, while the epsilon rule further down only recognises an exit at
+  // entry - so without this, re-opening a scratched trade offered "Custom"
+  // and quietly re-derived a non-zero R the moment it was saved again.
+  if (initial.rMultiple === 0) return 'breakeven'
   const direction = initial.direction
   const entry = parseFloat(initial.setup.entry)
   const exitPrice = parseFloat(initial.execution.exit_price)
@@ -704,7 +711,19 @@ export default function TradeForm({
       // needs weights) even though exit price is mandatory - falls back to
       // the plain primary-exit R-multiple rather than storing null in that
       // case.
-      r_multiple: realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice),
+      // A Breakeven outcome stores exactly 0R, not the R its exit price
+      // happens to compute to. BREAKEVEN_TOLERANCE_POINTS deliberately lets
+      // the trader scratch a few points either side of entry and still call
+      // it breakeven, but every statistic in the app classifies by the sign
+      // of r_multiple (edgeEngine.js's `r_multiple > 0` / `< 0`) - so an NQ
+      // long scratched 4 points above a 10-point stop was landing as +0.40R
+      // and counting as a WIN. One breakeven beside one real win and one
+      // real loss showed a 66.7% win rate instead of 50%.
+      //
+      // Only R is zeroed. `pnl` still reflects the few dollars that really
+      // did change hands - that money is real, and the trader's own label is
+      // what says the trade was a scratch rather than an edge.
+      r_multiple: outcome === 'breakeven' ? 0 : (realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice)),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       // Rows the trader added but left entirely untouched (e.g. clicked

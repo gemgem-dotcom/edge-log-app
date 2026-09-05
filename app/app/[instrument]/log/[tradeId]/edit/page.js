@@ -178,6 +178,10 @@ export default function EditTradePage({ params }) {
       contracts: e.contracts ?? '',
     })),
     pnl: trade.pnl ?? null,
+    // Read only by inferOutcome, to recognise a trade that was saved as
+    // Breakeven - see its own comment for why the exit price alone can't
+    // tell that apart from a Custom exit near entry.
+    rMultiple: trade.r_multiple ?? null,
     tags: trade.tags || [],
     reviewedNoIssues: trade.reviewed_no_issues ?? false,
     disciplineTags: trade.discipline_tags || [],

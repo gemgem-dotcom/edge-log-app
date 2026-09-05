@@ -671,7 +671,15 @@ export default function TradeLogTable({
                           </div>
                           <div>
                             <label>Time in drawdown</label>
-                            <div>{excursionCell(t, timezoneOffset, t.market_data_status === 'complete' ? formatDuration(Math.round(t.drawdown_seconds / 60)) : null)}</div>
+                            {/* drawdown_seconds is nullable even on a
+                                'complete' trade, and null / 60 is 0 - which
+                                formatDuration renders as a confident "0m",
+                                i.e. "never underwater", for a trade whose
+                                drawdown simply wasn't recorded. The adjacent
+                                excursion cells route through
+                                formatExcursionPoints, which handles null
+                                properly; this one didn't. */}
+                            <div>{excursionCell(t, timezoneOffset, t.market_data_status === 'complete' && t.drawdown_seconds !== null && t.drawdown_seconds !== undefined ? formatDuration(Math.round(t.drawdown_seconds / 60)) : null)}</div>
                           </div>
                         </div>
 

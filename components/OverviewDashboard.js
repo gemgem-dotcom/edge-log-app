@@ -102,12 +102,14 @@ function computeOverallStats(allTrades) {
   }
 }
 
-// Monday of the ISO week containing dateStr, used as the bucket key when
-// the equity curve is grouped by week.
+// Sunday of the week containing dateStr, used as the bucket key when the
+// equity curve is grouped by week. Sunday-start to match this page's own
+// P&L calendar grid (CAL_HEADINGS begins 'Sun') - see the identical note on
+// dashboard/page.js's copy for what the previous Monday-start version did
+// to a Sunday trade.
 function weekStart(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
-  const day = d.getDay()
-  d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day))
+  d.setDate(d.getDate() - d.getDay())
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
@@ -143,10 +145,11 @@ function buildEquityCurve(trades, group) {
 }
 
 // Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
-// Sun-Fri - Saturday is skipped entirely, since none of these instruments'
-// sessions land on it in any timezone. Every weekday is always included,
-// even with zero trades - AvgPnlByWeekdayChart renders those as a flat
-// $0 with no bar rather than omitting the row.
+// Sun-Fri, plus Saturday only when something actually landed there - see
+// the fuller note on dashboard/page.js's identical copy for why a UTC+14
+// trader really can have Saturday trades. Sun-Fri are always included even
+// with zero trades - AvgPnlByWeekdayChart renders those as a flat $0 with
+// no bar rather than omitting the row.
 function computeWeekdayPnl(trades) {
   const byDay = new Map()
   for (const t of trades) {
@@ -157,7 +160,8 @@ function computeWeekdayPnl(trades) {
     entry.count += 1
     byDay.set(day, entry)
   }
-  return [0, 1, 2, 3, 4, 5].map((day) => {
+  const days = byDay.has(6) ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5]
+  return days.map((day) => {
     const entry = byDay.get(day)
     return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
   })
@@ -296,7 +300,9 @@ export default function OverviewDashboard({ instruments, strategies }) {
   // their totals need to stay on screen to dim.
   const instrumentSegments = instruments.map((inst, i) => {
     const trades = allTrades.filter((t) => t.instrument_id === inst.id && hasResult(t) && hasDollar(t))
-    return { id: inst.id, label: inst.symbol, value: trades.reduce((s, t) => s + t.pnl, 0), color: strategyColor(i) }
+    // null, not 0, when no trade on this instrument carries a $ figure -
+    // see the identical note on dashboard/page.js's strategySegments.
+    return { id: inst.id, label: inst.symbol, value: trades.length > 0 ? trades.reduce((s, t) => s + t.pnl, 0) : null, color: strategyColor(i) }
   })
 
   // Full per-instrument stats (independent of allTrades filtering by
@@ -314,8 +320,17 @@ export default function OverviewDashboard({ instruments, strategies }) {
       label: 'Total P&L',
       segments: instrumentSegments
         .slice()
-        .sort((a, b) => b.value - a.value)
-        .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
+        // A null value (no $ figures at all) sorts last rather than
+        // poisoning the comparator - null - number is NaN, which leaves the
+        // whole list in an arbitrary order.
+        .sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))
+        .map((seg) => ({
+          id: seg.id,
+          label: seg.label,
+          color: seg.color,
+          value: seg.value === null ? '—' : fmtD(seg.value),
+          tone: seg.value === null ? 'neu' : colorClass(seg.value),
+        })),
     },
     {
       label: 'Expectancy',

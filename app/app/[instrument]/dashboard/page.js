@@ -72,10 +72,18 @@ function hasDollar(t) {
 }
 
 // Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
-// Sun-Fri - Saturday is skipped entirely, since none of these instruments'
-// sessions land on it in any timezone. Every weekday is always included,
-// even with zero trades - AvgPnlByWeekdayChart renders those as a flat
-// $0 with no bar rather than omitting the row.
+// Sun-Fri, plus Saturday only when something actually landed there. Sun-Fri
+// are always included even with zero trades - AvgPnlByWeekdayChart renders
+// those as a flat $0 with no bar rather than omitting the row.
+//
+// Saturday used to be dropped unconditionally, on the reasoning that no
+// instrument's session lands on it. That holds in ET, but trade_date is
+// stored in the trader's own configured zone, and lib/timezone.js offers up
+// to UTC+14: a Friday 09:30 ET entry is already Saturday for them, so their
+// Saturday P&L silently vanished from this chart while edgeEngine.js's
+// day_of_week dimension still counted it - two views of one dataset
+// disagreeing. Conditional rather than always-on so the ordinary case
+// doesn't grow a permanently empty seventh row.
 function computeWeekdayPnl(trades) {
   const byDay = new Map()
   for (const t of trades) {
@@ -86,7 +94,8 @@ function computeWeekdayPnl(trades) {
     entry.count += 1
     byDay.set(day, entry)
   }
-  return [0, 1, 2, 3, 4, 5].map((day) => {
+  const days = byDay.has(6) ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5]
+  return days.map((day) => {
     const entry = byDay.get(day)
     return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
   })
@@ -94,10 +103,16 @@ function computeWeekdayPnl(trades) {
 
 // Monday of the ISO week containing dateStr, used as the bucket key when
 // the equity curve is grouped by week.
+// Sunday-start, matching the P&L calendar's own grid on this same page
+// (CAL_HEADINGS begins 'Sun', and startWeekday pads from a raw getDay()).
+// This used to compute the ISO/Monday-start week, so a Sunday trade was
+// bucketed into the week *ending* that weekend by the equity curve while
+// the calendar's "Weekly P&L" column put it in the row beginning that day -
+// the same trade in two different weeks on one page. Futures reopen Sunday
+// evening ET, so this is an ordinary trade, not an edge case.
 function weekStart(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
-  const day = d.getDay()
-  d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day))
+  d.setDate(d.getDate() - d.getDay())
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
@@ -336,7 +351,12 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   // on the all-instruments page).
   const strategySegments = strategies.map((s, i) => {
     const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
-    return { id: s.id, label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
+    // null, not 0, when no trade on this strategy carries a $ figure. `pnl`
+    // is nullable and the trader can clear it, so summing an empty set was
+    // rendering a confident +$0.00 for a strategy that might be +6.4R -
+    // indistinguishable from one that genuinely broke even. The stat cards
+    // already make this distinction via hasD; the chips didn't.
+    return { id: s.id, label: s.name, value: trades.length > 0 ? trades.reduce((sum, t) => sum + t.pnl, 0) : null, color: strategyColor(i) }
   })
 
   // Full per-strategy stats (from every trade, independent of perfStrategy -
@@ -360,7 +380,13 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
     {
       label: 'Total P&L',
       segments: alphaStrategySegments
-        .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
+        .map((seg) => ({
+          id: seg.id,
+          label: seg.label,
+          color: seg.color,
+          value: seg.value === null ? '—' : fmtD(seg.value),
+          tone: seg.value === null ? 'neu' : colorClass(seg.value),
+        })),
     },
     {
       label: 'Expectancy',
@@ -402,7 +428,15 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const upcomingEvents = upcomingEconEvents(now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
-const calTrades = calStrategy === 'all' ? allTrades : allTrades.filter((t) => t.strategy_id === calStrategy)
+// classifiedTrades, not allTrades - the banner above the stats promises
+// that Unassigned trades are "not counted below until reassigned", and the
+// stat cards honour that (they run off classifiedTrades), but the calendar
+// and the monthly card were reading the unfiltered set. So All-Time Total
+// P&L could read +$1,000 while March showed +$200, with the difference
+// sitting in calendar cells the page had just said it was excluding. The
+// per-strategy branch was already effectively filtered - an Unassigned
+// trade has no strategy_id to match - so only the 'all' case changes.
+const calTrades = calStrategy === 'all' ? classifiedTrades : classifiedTrades.filter((t) => t.strategy_id === calStrategy)
   const tradesByDate = {}
     for (const t of calTrades) {
       tradesByDate[t.trade_date] = tradesByDate[t.trade_date] || []

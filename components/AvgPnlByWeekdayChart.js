@@ -2,8 +2,12 @@
 
 import { useState } from 'react'
 
-const WEEKDAY_SHORT = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI']
-const WEEKDAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+// Indexed by Date#getDay, so Saturday has to be present even though the
+// callers only pass a row for it when the trader actually has a Saturday
+// trade (see computeWeekdayPnl) - without it that row renders a blank label
+// and an undefined tooltip title rather than "SAT"/"Saturday".
+const WEEKDAY_SHORT = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+const WEEKDAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 function fmtD(val) {
   if (val === null || val === undefined) return '—'

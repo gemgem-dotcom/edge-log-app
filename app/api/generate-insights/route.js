@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 import { overallInsightData, instrumentInsightData, strategyInsightData, totalTradeCount } from '@/lib/insightData'
+import { isMockDbEnabled } from '@/lib/mockMode'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 const ANTHROPIC_MODEL = 'claude-sonnet-5'
 const ANTHROPIC_MAX_TOKENS = 1536
@@ -103,14 +105,22 @@ function scopedClient(token) {
 // way the dashboard/log pages do, so there's no reason to fetch the rest
 // (notes, reasoning, screenshot_urls, entry/exit prices, ...) just to
 // throw it away before the dataset ever reaches Claude.
-const INSIGHT_TRADE_COLUMNS = 'r_multiple, session, trade_date, strategy_id, instrument_id, discipline_tags, reviewed_no_issues, volatility_regime, volume_regime, pnl, mfe_points, mae_points, stop_distance, drawdown_seconds, trade_time, exit_time'
+// market_data_status and excursion_fallback are here purely so
+// insightData.js's excursionStats can tell a verified MFE/MAE from one the
+// UI itself refuses to display - without them selected its guard would see
+// undefined on every row and drop every excursion. Treat them as part of
+// reading mfe_points/mae_points at all, not as optional extras.
+const INSIGHT_TRADE_COLUMNS = 'r_multiple, session, trade_date, strategy_id, instrument_id, discipline_tags, reviewed_no_issues, volatility_regime, volume_regime, pnl, mfe_points, mae_points, stop_distance, drawdown_seconds, trade_time, exit_time, market_data_status, excursion_fallback'
 
 async function buildDataset(supabase, scope) {
   if (scope === 'overall') {
     const { data: instruments } = await supabase.from('instruments').select('*').eq('archived', false)
     const ids = (instruments || []).map((i) => i.id)
+    // Paged - the model is told these are the trader's real numbers, so a
+    // silent 1000-row truncation would have it reason confidently about a
+    // fraction of the journal while describing it as the whole thing.
     const { data: trades } = ids.length
-      ? await supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).in('instrument_id', ids)
+      ? await fetchAllRows((from, to) => supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).in('instrument_id', ids).order('id', { ascending: true }).range(from, to))
       : { data: [] }
     return { data: overallInsightData(trades || [], instruments || []), tradeCount: totalTradeCount(trades || []) }
   }
@@ -120,7 +130,7 @@ async function buildDataset(supabase, scope) {
     const { data: instrument } = await supabase.from('instruments').select('*').eq('id', instrumentId).single()
     if (!instrument) return null
     const { data: strategies } = await supabase.from('strategies').select('*').eq('instrument_id', instrumentId).eq('archived', false)
-    const { data: trades } = await supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).eq('instrument_id', instrumentId)
+    const { data: trades } = await fetchAllRows((from, to) => supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).eq('instrument_id', instrumentId).order('id', { ascending: true }).range(from, to))
     return {
       data: instrumentInsightData(trades || [], strategies || [], instrument.symbol),
       tradeCount: totalTradeCount(trades || []),
@@ -131,7 +141,7 @@ async function buildDataset(supabase, scope) {
     const strategyId = scope.slice('strategy:'.length)
     const { data: strategy } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
     if (!strategy) return null
-    const { data: trades } = await supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).eq('strategy_id', strategyId)
+    const { data: trades } = await fetchAllRows((from, to) => supabase.from('trades').select(INSIGHT_TRADE_COLUMNS).eq('strategy_id', strategyId).order('id', { ascending: true }).range(from, to))
     return {
       data: strategyInsightData(trades || [], strategy.name),
       tradeCount: totalTradeCount(trades || []),
@@ -175,7 +185,10 @@ export async function POST(req) {
     const { scope, tradeCount: clientTradeCount, previousNarrative } = body
     if (!scope) return new Response(JSON.stringify({ error: 'scope is required' }), { status: 400 })
 
-    if (process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true') {
+    // isMockDbEnabled(), not the env var directly - this returns before the
+    // caller is ever authenticated, so it must never engage in production.
+    // See lib/mockMode.js.
+    if (isMockDbEnabled()) {
       return new Response(
         JSON.stringify({ narrative: MOCK_NARRATIVE, generatedAt: new Date().toISOString(), tradeCount: clientTradeCount ?? 0 }),
         { status: 200 },

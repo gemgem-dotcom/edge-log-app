@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
 import { addOrRestoreInstrument } from '@/lib/instruments'
@@ -28,6 +29,7 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
   const [adding, setAdding] = useState(false)
   const [newSymbol, setNewSymbol] = useState('')
   const [addError, setAddError] = useState(null)
+  const [savingInstrument, setSavingInstrument] = useState(false)
   const [pos, setPos] = useState(null)
   const triggerRef = useRef(null)
   const close = useCallback(() => { setAdding(false); setAddError(null) }, [])
@@ -76,9 +78,28 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
 
   async function handleAddInstrument(e) {
     e.preventDefault()
-    if (!newSymbol) return
+    // savingInstrument guards a double submit, the same way the two
+    // add-strategy forms do - the Add button is never disabled, so a second
+    // Enter fired a second insert against unique(user_id, symbol).
+    if (!newSymbol || savingInstrument) return
     setAddError(null)
-    const { data: { user } } = await supabase.auth.getUser()
+    setSavingInstrument(true)
+    try {
+      await addInstrument()
+    } finally {
+      setSavingInstrument(false)
+    }
+  }
+
+  async function addInstrument() {
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    // Threw inside an unhandled promise before, so "Add" silently did
+    // nothing once a session had expired.
+    if (!user) {
+      setAddError('Your session has expired. Sign in again to add an instrument.')
+      return
+    }
     const { error } = await addOrRestoreInstrument(user.id, newSymbol)
     if (!error) {
       const addedSymbol = newSymbol
@@ -122,7 +143,7 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
         ))}
       </div>
       <div className="instrument-nav-add-wrap" ref={addRef}>
-        <span ref={triggerRef} className="instrument-nav-add" data-tutorial-target="add-instrument" onClick={handleTrigger}>+ Add instrument</span>
+        <span ref={triggerRef} className="instrument-nav-add" data-tutorial-target="add-instrument" onClick={handleTrigger}><Plus size={13} /> Add instrument</span>
         {adding && pos && (
           <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
             <form onSubmit={handleAddInstrument} className="instrument-add-form">

@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
-import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { invalidateTags } from '@/lib/tagsCache'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
@@ -95,8 +94,8 @@ export default function EditTradePage({ params }) {
     // for the save-time-computation half of this.
     const dateChanged = trade.trade_date !== values.trade_date
     let regimes = {}
-    if (dateChanged && catalogEntryFor(symbol)?.data_symbol === 'NQ') {
-      regimes = (await regimesForDate(values.trade_date)) || { volatility_regime: null, volume_regime: null }
+    if (dateChanged) {
+      regimes = (await regimesForDate(symbol, values.trade_date)) || { volatility_regime: null, volume_regime: null }
     }
 
     const { data: updated, error } = await supabase.from('trades').update({
@@ -116,9 +115,18 @@ export default function EditTradePage({ params }) {
     // field it actually depends on changed - an edit that only touches
     // reasoning/tags/discipline review shouldn't cost another API call
     // against a trade whose MFE/MAE/drawdown are already correct.
+    // trade_date and trade_time belong here as much as exit_time does: the
+    // Databento window MFE/MAE/drawdown are computed over runs from the
+    // entry instant to the exit instant, so correcting a mislogged date or
+    // entry time moves that window wholesale. Without them, fixing a trade
+    // logged on the wrong day left its excursions computed over the old
+    // day's prices while market_data_status still read 'complete' - wrong
+    // numbers presented as verified, which is worse than none.
     const excursionRelevantChanged =
       trade.direction !== updated.direction ||
       trade.entry !== updated.entry ||
+      trade.trade_date !== updated.trade_date ||
+      trade.trade_time !== updated.trade_time ||
       trade.exit_time !== updated.exit_time ||
       trade.exit_price !== updated.exit_price ||
       JSON.stringify(trade.additional_exits || []) !== JSON.stringify(updated.additional_exits || [])
@@ -152,7 +160,7 @@ export default function EditTradePage({ params }) {
   }
 
   if (loading) return <PageLoading />
-  if (error) return <div className="page-container"><PageError message={`Couldn't load this trade — ${error}`} onRetry={loadAll} /></div>
+  if (error) return <div className="page-container"><PageError message={`Couldn't load this trade — ${error}`} onRetry={() => loadAll()} /></div>
   if (!trade) return <div className="page-container"><div className="empty">Trade not found.</div></div>
 
   // Trades logged before distances existed only stored absolute prices, so
@@ -179,6 +187,10 @@ export default function EditTradePage({ params }) {
       contracts: e.contracts ?? '',
     })),
     pnl: trade.pnl ?? null,
+    // Read only by inferOutcome, to recognise a trade that was saved as
+    // Breakeven - see its own comment for why the exit price alone can't
+    // tell that apart from a Custom exit near entry.
+    rMultiple: trade.r_multiple ?? null,
     tags: trade.tags || [],
     reviewedNoIssues: trade.reviewed_no_issues ?? false,
     disciplineTags: trade.discipline_tags || [],

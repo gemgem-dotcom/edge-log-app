@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import {
@@ -28,6 +28,7 @@ export default function InstrumentLayout({ children, params }) {
   const [addingStrategy, setAddingStrategy] = useState(false)
   const [newStrategyName, setNewStrategyName] = useState('')
   const [strategyAddError, setStrategyAddError] = useState(null)
+  const [savingStrategy, setSavingStrategy] = useState(false)
   const [theme, setTheme] = useState('dark')
   // Seeded from the sessionStorage cache, not the hardcoded default - see
   // cacheTutorialState's own comment in lib/tutorial.js for why (renders
@@ -109,15 +110,39 @@ export default function InstrumentLayout({ children, params }) {
   // redirects here via router.push, a client-side transition that leaves
   // this layout mounted, so without this its sidebar list would keep
   // showing the deleted strategy until a full page reload.
+  // Identifies the most recent load, so a slower earlier one can't overwrite
+  // it - see the guards inside loadData.
+  const loadIdRef = useRef(0)
+
   useEffect(() => {
     loadData()
   }, [currentSymbol, pathname])
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser()
+    const loadId = ++loadIdRef.current
+    const superseded = () => loadId !== loadIdRef.current
+
+    // getSession(), not getUser(). This effect re-runs on every in-app
+    // navigation (see its pathname dependency above), and getUser()
+    // revalidates the token against the auth server - a real network round
+    // trip on every single click, which is also what widened the window for
+    // one navigation's results to land after the next one's. Nothing here
+    // needs a server-revalidated token: it reads user.id to scope a query
+    // that RLS scopes again server-side regardless, plus user_metadata,
+    // which every write path refreshes on the local session anyway. Same
+    // reasoning as app/app/page.js's own loadInstruments.
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    // proxy.js already redirects a signed-out visitor before this page
+    // ships, so this is the expired-mid-session case. Bailing quietly beats
+    // throwing inside an uncaught effect promise, which left the sidebar
+    // and instrument nav permanently empty with no error at all.
+    if (!user) return
+
     // Read fresh on every load (not just mount) so a page refresh
     // mid-tutorial resumes at the stored step instead of restarting.
     const freshTutorial = readTutorialState(user)
+    if (superseded()) return
     setTutorial(freshTutorial)
     cacheTutorialState(freshTutorial)
 
@@ -131,21 +156,44 @@ export default function InstrumentLayout({ children, params }) {
       }
     }
     const instrumentData = await getInstruments(supabase, user.id)
+    if (superseded()) return
     setInstruments(instrumentData)
 
     const current = instrumentData.find((i) => i.symbol === currentSymbol)
     if (current) {
       setCurrentInstrumentId(current.id)
       const stratData = await getStrategies(supabase, current.id)
+      // Without this, switching instruments quickly could leave the sidebar
+      // listing the previous instrument's strategies under the new one's
+      // name - the same class of mismatch as the dashboard's own guard.
+      if (superseded()) return
       setStrategies(stratData)
     }
   }
 
   async function handleAddStrategy(e) {
     e.preventDefault()
-    if (!newStrategyName.trim() || !currentInstrumentId) return
+    // savingStrategy guards a double submit - the Add button is never
+    // disabled, so pressing Enter twice fired two inserts and the second
+    // tripped unique(instrument_id, name), showing "already exists" right
+    // after the strategy had actually been created.
+    if (!newStrategyName.trim() || !currentInstrumentId || savingStrategy) return
     setStrategyAddError(null)
-    const { data: { user } } = await supabase.auth.getUser()
+    setSavingStrategy(true)
+    try {
+      await addStrategy()
+    } finally {
+      setSavingStrategy(false)
+    }
+  }
+
+  async function addStrategy() {
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    if (!user) {
+      setStrategyAddError('Your session has expired. Sign in again to add a strategy.')
+      return
+    }
     const { error } = await supabase
       .from('strategies')
       .insert([{ user_id: user.id, instrument_id: currentInstrumentId, name: newStrategyName.trim() }])

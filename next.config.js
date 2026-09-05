@@ -27,9 +27,14 @@
 // builds its own client from) is deliberately NOT aliased here - mock mode
 // is for exercising the app's own pages against fake data, not for testing
 // the Google OAuth callback flow.
+// The NODE_ENV half mirrors lib/mockMode.js (which this file can't import -
+// it's CommonJS, evaluated before the app's module graph exists). `next dev`
+// sets NODE_ENV=development, so dev:mock is unaffected; `next build` sets
+// production, so a production bundle can never resolve to the fake client
+// even if the env var were set. Belt and braces with the runtime guards.
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true' ? {
+  turbopack: process.env.NEXT_PUBLIC_USE_MOCK_DB === 'true' && process.env.NODE_ENV !== 'production' ? {
     resolveAlias: {
       '@/lib/supabaseClient': './lib/supabaseClient.mock.js',
     },

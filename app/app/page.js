@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { getInstruments, getStrategies, peekReferenceData } from '@/lib/referenceDataCache'
 import { TUTORIAL_STEPS, readTutorialState, startTutorial, completeTutorial, takeQueuedClosingScreen, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import { usePageTitle } from '@/lib/usePageTitle'
 import PageLoading from '@/components/PageLoading'
@@ -12,9 +13,17 @@ import TutorialOverlay from '@/components/TutorialOverlay'
 import TimezoneGate from '@/components/TimezoneGate'
 
 export default function AppHome() {
-  const [loading, setLoading] = useState(true)
-  const [instruments, setInstruments] = useState([])
-  const [strategies, setStrategies] = useState([])
+  // Seeded from the shared instruments/strategies cache, so arriving here
+  // from anywhere else under /app - which has already warmed it - renders
+  // the real shell on the very first paint instead of a full-screen
+  // PageLoading that loadInstruments() then replaces a tick later. Same
+  // trick, and the same "confirm it with the real load right after",
+  // as the tutorial state seeded below. A cold cache (landing here first,
+  // or a hard refresh) peeks null and gates on loading exactly as before.
+  const [warm] = useState(peekReferenceData)
+  const [loading, setLoading] = useState(warm === null)
+  const [instruments, setInstruments] = useState(warm?.instruments ?? [])
+  const [strategies, setStrategies] = useState(warm?.strategies ?? [])
 
   // Onboarding step - a user with zero instruments always lands here, which
   // also happens if an existing user later deletes all of theirs, not just
@@ -67,17 +76,35 @@ export default function AppHome() {
     if (takeQueuedClosingScreen()) setShowClosing(true)
   }, [])
 
+  // Only ever called from the mount effect above, so there's no setLoading
+  // (true) here to reset: on a cold start `loading` is already true, and on
+  // a warm one setting it would throw away the seeded first paint this is
+  // running to confirm.
   async function loadInstruments() {
-    setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase
-      .from('instruments')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('archived', false)
-      .order('created_at', { ascending: true })
-
-    const loadedInstruments = data || []
+    // getSession(), not getUser() - getUser() revalidates the token against
+    // the auth server (see proxy.js's own note on that distinction), a real
+    // network round-trip that the full-screen PageLoading below sat behind
+    // on every single mount. getSession() reads the already-stored session
+    // locally, so this resolves immediately. Nothing here needs a
+    // server-revalidated token: it reads user.id to scope a query that row
+    // level security scopes again server-side regardless, plus
+    // user_metadata, which every write path (updateUser in
+    // handleNameSubmit and all of lib/tutorial.js) refreshes on the local
+    // session in the same breath. app/app/layout.js - this page's own
+    // parent, which has already resolved a session by the time anything
+    // here runs - reads full_name/timezone off getSession() the same way.
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session.user
+    // Routed through the shared instruments/strategies cache
+    // (referenceDataCache.js) rather than a fresh query every time - the
+    // same rows [instrument]/layout.js's sidebar just fetched (or will
+    // fetch) landing here right after, and re-querying from scratch was
+    // the one thing standing between "any page -> All instruments" and an
+    // instant transition, since this cache hit skips the network
+    // round-trip entirely on a warm cache. Every write path that touches
+    // either table already invalidates it (see that file's own comment),
+    // so this can't go stale.
+    const loadedInstruments = await getInstruments(supabase, user.id)
     setInstruments(loadedInstruments)
     setUserName(user.user_metadata?.full_name || '')
 
@@ -90,15 +117,14 @@ export default function AppHome() {
     cacheTutorialState(t)
     setShowWelcome(loadedInstruments.length === 0 && t.status === 'pending')
 
-    if (!error && loadedInstruments.length > 0) {
-      const ids = loadedInstruments.map((i) => i.id)
-      const { data: stratData } = await supabase
-        .from('strategies')
-        .select('*')
-        .in('instrument_id', ids)
-        .eq('archived', false)
-        .order('created_at', { ascending: true })
-      setStrategies(stratData || [])
+    if (loadedInstruments.length > 0) {
+      // Per-instrument, not one combined query - matches how the cache is
+      // actually keyed (strategiesCache is a Map by instrument_id), so an
+      // instrument whose strategies are already warm from a visit to its
+      // own dashboard costs nothing here even when a sibling instrument
+      // still needs a real fetch.
+      const strategyLists = await Promise.all(loadedInstruments.map((i) => getStrategies(supabase, i.id)))
+      setStrategies(strategyLists.flat())
       setLoading(false)
       return
     }

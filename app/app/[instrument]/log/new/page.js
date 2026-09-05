@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
-import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { invalidateTags } from '@/lib/tagsCache'
 import { readTutorialState, completeTutorial, queueClosingScreen, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import { browserOffsetGuess } from '@/lib/timezone'
@@ -51,7 +50,11 @@ export default function NewTradePage({ params, searchParams }) {
   async function loadStrategies() {
     setStrategiesError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      // Threw inside an uncaught effect promise before, leaving a fully
+      // rendered form whose every save then failed with a generic message.
+      if (!user) throw new Error('no session')
       const freshTutorial = readTutorialState(user)
       setTutorial(freshTutorial)
       cacheTutorialState(freshTutorial)
@@ -62,7 +65,13 @@ export default function NewTradePage({ params, searchParams }) {
         .eq('symbol', symbol)
         .eq('archived', false)
         .single()
-      if (!instrument) return
+      // Returning silently left instrumentId null and the form fully
+      // usable - every save then violated NOT NULL and surfaced only
+      // "Could not save trade." Surface the real reason instead.
+      if (!instrument) {
+        setStrategiesError('That instrument could not be found.')
+        return
+      }
       setInstrumentId(instrument.id)
 
       const { data, error } = await supabase
@@ -105,7 +114,7 @@ export default function NewTradePage({ params, searchParams }) {
     // case the two columns are just left out below rather than written as
     // null (scripts/fetch-daily-market-stats.js backfills them in bulk once
     // the session does close - see lib/tradeRegimes.js's header comment).
-    const regimes = catalogEntryFor(symbol)?.data_symbol === 'NQ' ? await regimesForDate(values.trade_date) : null
+    const regimes = await regimesForDate(symbol, values.trade_date)
 
     const { data: inserted, error } = await supabase.from('trades').insert([{
       ...values,

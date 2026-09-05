@@ -10,7 +10,8 @@
     "css:toc": "node scripts/update-css-toc.js",
     "css:toc:check": "node scripts/update-css-toc.js --check",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:ci": "eslint . --max-warnings=49"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.73.0",

@@ -1,9 +1,20 @@
 #!/usr/bin/env node
 
-// Fetches NQ's completed daily session stats from Databento and stores them
-// in market_session_stats - see the .github/workflows/refresh-market-
-// session-stats.yml this runs under, and the comment above `create table
-// market_session_stats` in schema.sql for the full picture.
+// Fetches every catalog instrument's completed daily session stats from
+// Databento and stores them in market_session_stats - see the
+// .github/workflows/refresh-market-session-stats.yml this runs under, and
+// the comment above `create table market_session_stats` in schema.sql for
+// the full picture.
+//
+// One row per EXACT contract (all 12 of lib/instrumentCatalog.js's symbols,
+// full-size and micro alike), not one per data_symbol family. A mini and
+// its own micro track the same underlying but trade on separate order
+// books, so their own range/volume genuinely differ - bucketing an MNQ
+// trade against NQ's numbers would be measuring a market the trader wasn't
+// in. market_session_stats' key column is still named `data_symbol` (it was
+// always free-text, never FK'd to instruments.data_symbol, so widening what
+// it holds needed no schema change), but every row written here now stores
+// the exact catalog symbol.
 //
 // Deliberately standalone rather than importing lib/databento.js or
 // lib/marketHours.js: this repo has no "type": "module" in package.json, so
@@ -51,14 +62,24 @@ Sentry.init({
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
 })
 
-const DATA_SYMBOL = 'NQ'
-const DATABENTO_SYMBOL = 'NQ.c.0'
+// Every symbol in lib/instrumentCatalog.js, duplicated here rather than
+// imported for the same ESM reason the header gives for lib/databento.js -
+// treat adding an instrument to that catalog as also needing an entry here.
+// Each fetches its own `${symbol}.c.0` continuous front-month contract;
+// every one of these was confirmed to resolve live against a real API key
+// (scripts/smoke-test-databento-symbols.js) rather than assumed, except GC,
+// which needs the volume fallback in fetchSessionBars below.
+const SYMBOLS = ['NQ', 'MNQ', 'ES', 'MES', 'YM', 'MYM', 'GC', 'MGC', 'CL', 'MCL', 'BTC', 'MBT']
 const DATASET = 'GLBX.MDP3'
 const PRICE_SCALE = 1e9
 
 // Regime-bucketing constants, mirrored from lib/tradeRegimes.js - see that
 // file's own comment on the +/-15% banding choice.
 const TRAILING_WINDOW = 20
+// How many still-unbucketed trades one run will consider per symbol. Well
+// clear of a normal backlog, and bounded so this can never turn into an
+// unpaged scan of every trade ever logged, across every user, every day.
+const GAP_SCAN_LIMIT = 500
 const HIGH_RATIO = 1.15
 const LOW_RATIO = 0.85
 
@@ -121,11 +142,16 @@ function authHeader() {
   return 'Basic ' + Buffer.from(`${apiKey}:`).toString('base64')
 }
 
+// instrumentId is only read by resolveFrontMonthInstrumentId below (an
+// OHLCV record carries no `symbol` of its own, just this raw numeric id);
+// every other caller ignores it. Same shape lib/databento.js's own
+// normalizeRecord returns, for the same reason.
 function normalizeRecord(record) {
   return {
     high: record.high / PRICE_SCALE,
     low: record.low / PRICE_SCALE,
     volume: Number(record.volume),
+    instrumentId: record.hd?.instrument_id ?? null,
   }
 }
 
@@ -145,12 +171,12 @@ function parseOhlcvRecords(text) {
   return trimmed.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => normalizeRecord(JSON.parse(l)))
 }
 
-async function fetchOhlcv1m({ symbol, start, end }) {
+async function fetchOhlcv1m({ symbols, stypeIn, start, end }) {
   const url = new URL('/v0/timeseries.get_range', 'https://hist.databento.com')
   url.searchParams.set('dataset', DATASET)
   url.searchParams.set('schema', 'ohlcv-1m')
-  url.searchParams.set('symbols', symbol)
-  url.searchParams.set('stype_in', 'continuous')
+  url.searchParams.set('symbols', symbols)
+  url.searchParams.set('stype_in', stypeIn)
   url.searchParams.set('start', start)
   url.searchParams.set('end', end)
   url.searchParams.set('encoding', 'json')
@@ -161,6 +187,64 @@ async function fetchOhlcv1m({ symbol, start, end }) {
     throw new Error(`Databento get_range failed: ${res.status} ${res.statusText} ${body}`.trim())
   }
   return parseOhlcvRecords(await res.text())
+}
+
+// Which contract actually traded the most volume across the window, as a
+// raw instrument_id - resolved through parent symbology (`${root}.FUT`)
+// rather than the continuous `.c.0` shortcut. Same aggregation
+// lib/databento.js's own resolveFrontMonthByVolume does for NQ near a
+// quarterly roll; returns null (caller gives up on this symbol for today)
+// if the fetch or the aggregation comes up empty.
+async function resolveFrontMonthInstrumentId(root, start, end) {
+  let records
+  try {
+    records = await fetchOhlcv1m({ symbols: `${root}.FUT`, stypeIn: 'parent', start, end })
+  } catch {
+    return null
+  }
+
+  const volumeByInstrument = new Map()
+  for (const r of records) {
+    if (r.instrumentId === null || r.instrumentId === undefined) continue
+    volumeByInstrument.set(r.instrumentId, (volumeByInstrument.get(r.instrumentId) || 0) + r.volume)
+  }
+
+  let bestId = null
+  let bestVolume = -1
+  for (const [id, vol] of volumeByInstrument) {
+    if (vol > bestVolume) {
+      bestVolume = vol
+      bestId = id
+    }
+  }
+  return bestId
+}
+
+// Continuous front-month first, falling back to resolving the actual
+// highest-volume contract by hand when that comes back empty.
+//
+// The fallback exists because GC.c.0 genuinely does not resolve on this
+// account: confirmed live (scripts/smoke-test-databento-symbols.js) that it
+// returns zero bars even across a 6-hour core-hours window, on a day when a
+// parent-symbology lookup for that identical window has real gold data, and
+// when its own micro sibling MGC.c.0 resolves fine. So it's specific to
+// that root's continuous resolution, not entitlement or market hours.
+//
+// Written as "whenever continuous is empty" rather than "if symbol is GC"
+// deliberately: the same quirk showing up on another root later (or GC's
+// resolution being fixed upstream) then needs no code change either way,
+// and an empty continuous result is exactly the signal to fall back on
+// regardless of which symbol produced it. The extra request only ever
+// happens on a symbol that returned nothing, so a normal day still costs
+// one request per symbol.
+async function fetchSessionBars(symbol, start, end) {
+  const bars = await fetchOhlcv1m({ symbols: `${symbol}.c.0`, stypeIn: 'continuous', start, end })
+  if (bars.length > 0) return bars
+
+  const instrumentId = await resolveFrontMonthInstrumentId(symbol, start, end)
+  if (instrumentId === null) return []
+  log(`${symbol}: continuous (.c.0) returned nothing - falling back to instrument_id ${instrumentId} (highest volume this session).`)
+  return fetchOhlcv1m({ symbols: String(instrumentId), stypeIn: 'instrument_id', start, end })
 }
 
 function parseCloseMinutes(closeTime) {
@@ -212,13 +296,46 @@ async function main() {
   // session - so excluding it costs nothing.
   const end = etWallClockToUtc(sessionDate, closeMinutes).toISOString()
 
-  log(`Fetching NQ ohlcv-1m for session ${sessionDate} (${start} to ${end})`)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set')
+  const admin = createClient(supabaseUrl, serviceKey)
+
+  // Sequential, not Promise.all: 12 symbols x 1-2 requests is well within
+  // any sane rate limit run one at a time, and a burst of a dozen parallel
+  // range requests is exactly the shape of traffic a historical API is
+  // likely to throttle. The whole job has a full day before it needs to
+  // finish, so there's nothing to gain from the parallel version.
+  for (const symbol of SYMBOLS) {
+    await fetchAndStoreSymbol(admin, symbol, sessionDate, start, end)
+  }
+}
+
+// One symbol's whole pass: fetch, store, backfill regime for that session,
+// then catch up any older dates still missing it. Every failure inside is
+// contained to this symbol - a symbol whose fetch dies (or whose backfill
+// throws) must not stop the remaining 11 from being stored, since they're
+// entirely independent series.
+async function fetchAndStoreSymbol(admin, symbol, sessionDate, start, end) {
+  // Two independent halves, and the second must not depend on the first.
+  // The gap catch-up exists precisely to recover dates this job previously
+  // failed on, yet it used to sit after storeTodaysSession's early returns -
+  // so the one run guaranteed to skip it was a run where the fetch failed,
+  // which is exactly when there is a gap to catch up. A symbol whose
+  // continuous contract stops resolving would therefore never recover its
+  // older dates either.
+  await storeTodaysSession(admin, symbol, sessionDate, start, end)
+  await catchUpRegimeGaps(admin, symbol, sessionDate)
+}
+
+async function storeTodaysSession(admin, symbol, sessionDate, start, end) {
+  log(`Fetching ${symbol} ohlcv-1m for session ${sessionDate} (${start} to ${end})`)
 
   let bars
   try {
-    bars = await fetchOhlcv1m({ symbol: DATABENTO_SYMBOL, start, end })
+    bars = await fetchSessionBars(symbol, start, end)
   } catch (err) {
-    // Fail gracefully: skip this day rather than crash the job, so a
+    // Fail gracefully: skip this symbol rather than crash the job, so a
     // Databento outage or an unresolved symbol on some future date doesn't
     // take the whole scheduled workflow down. Still reported to Sentry
     // (not re-thrown) - a graceful skip is invisible in the GitHub Actions
@@ -226,13 +343,13 @@ async function main() {
     // how a persistent, silent failure (an expired API key, a shifted
     // embargo window) could go unnoticed for a long time - see the systems-
     // map audit's finding #2.
-    Sentry.captureMessage(`Databento fetch failed, skipping ${sessionDate}: ${err.message}`, 'warning')
-    log(`Databento fetch failed, skipping ${sessionDate}: ${err.message}`)
+    Sentry.captureMessage(`Databento fetch failed for ${symbol}, skipping ${sessionDate}: ${err.message}`, 'warning')
+    log(`Databento fetch failed for ${symbol}, skipping ${sessionDate}: ${err.message}`)
     return
   }
 
   if (bars.length === 0) {
-    log(`No bars returned for ${sessionDate} - skipping (nothing to store).`)
+    log(`No bars returned for ${symbol} ${sessionDate} - skipping (nothing to store).`)
     return
   }
 
@@ -241,18 +358,19 @@ async function main() {
   const totalRange = totalHigh - totalLow
   const totalVolume = bars.reduce((sum, b) => sum + b.volume, 0)
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set')
-  const admin = createClient(supabaseUrl, serviceKey)
-
   const { error } = await admin.from('market_session_stats').upsert(
-    { data_symbol: DATA_SYMBOL, session_date: sessionDate, total_range: totalRange, total_volume: totalVolume },
+    { data_symbol: symbol, session_date: sessionDate, total_range: totalRange, total_volume: totalVolume },
     { onConflict: 'data_symbol,session_date' }
   )
-  if (error) throw new Error(`Supabase upsert failed: ${error.message}`)
+  if (error) {
+    // Same containment as the fetch above - one symbol's write failing
+    // shouldn't cost the other 11 theirs.
+    Sentry.captureMessage(`Supabase upsert failed for ${symbol} ${sessionDate}: ${error.message}`, 'warning')
+    log(`Supabase upsert failed for ${symbol} ${sessionDate}: ${error.message}`)
+    return
+  }
 
-  log(`Stored ${sessionDate}: range=${totalRange.toFixed(2)} volume=${totalVolume}`)
+  log(`Stored ${symbol} ${sessionDate}: range=${totalRange.toFixed(2)} volume=${totalVolume}`)
 
   // Backfill regime on every trade dated this session, across every user,
   // now that it's actually computable, then separately catch up any
@@ -267,52 +385,74 @@ async function main() {
   // so a problem here never undoes or fails the stats write above, which
   // is the primary, already-succeeded part of this job.
   try {
-    const regimes = await regimeForSessionDate(admin, sessionDate, { total_range: totalRange, total_volume: totalVolume })
+    const regimes = await regimeForSessionDate(admin, symbol, sessionDate, { total_range: totalRange, total_volume: totalVolume })
     if (!regimes) {
-      log(`No trailing history yet for ${sessionDate} - skipping regime backfill.`)
+      log(`No trailing history yet for ${symbol} ${sessionDate} - skipping regime backfill.`)
     } else {
-      const n = await backfillTradesForDate(admin, sessionDate, regimes)
-      log(n === 0 ? `No trades to backfill regime for ${sessionDate}.` : `Backfilled regime (${regimes.volatility_regime}/${regimes.volume_regime}) on ${n} trade(s) for ${sessionDate}.`)
+      const n = await backfillTradesForDate(admin, symbol, sessionDate, regimes)
+      log(n === 0 ? `No trades to backfill regime for ${symbol} ${sessionDate}.` : `Backfilled regime (${regimes.volatility_regime}/${regimes.volume_regime}) on ${n} trade(s) for ${symbol} ${sessionDate}.`)
     }
   } catch (err) {
-    Sentry.captureMessage(`Regime backfill failed for ${sessionDate}: ${err.message}`, 'warning')
-    log(`Regime backfill failed for ${sessionDate}: ${err.message}`)
-  }
-
-  try {
-    const { data: gapTrades } = await admin
-      .from('trades')
-      .select('trade_date, instruments!inner(data_symbol)')
-      .eq('instruments.data_symbol', DATA_SYMBOL)
-      .neq('trade_date', sessionDate)
-      .or('volatility_regime.is.null,volume_regime.is.null')
-
-    const gapDates = [...new Set((gapTrades || []).map((t) => t.trade_date))]
-    for (const date of gapDates) {
-      const regimes = await regimeForSessionDate(admin, date)
-      if (!regimes) continue // still not computable (e.g. a very recent date) - leave it for a later run
-      const n = await backfillTradesForDate(admin, date, regimes)
-      if (n > 0) log(`Backfilled regime (${regimes.volatility_regime}/${regimes.volume_regime}) on ${n} trade(s) for ${date} (gap catch-up).`)
-    }
-  } catch (err) {
-    Sentry.captureMessage(`Regime gap catch-up failed: ${err.message}`, 'warning')
-    log(`Regime gap catch-up failed: ${err.message}`)
+    Sentry.captureMessage(`Regime backfill failed for ${symbol} ${sessionDate}: ${err.message}`, 'warning')
+    log(`Regime backfill failed for ${symbol} ${sessionDate}: ${err.message}`)
   }
 }
 
-// { volatility_regime, volume_regime } for `date`, or null if not
-// computable yet (no trailing baseline, or - only relevant for the gap
-// catch-up path above, since main() already has today's own row in hand -
-// `date` itself has no market_session_stats row). `ownStats` lets main()'s
-// own call pass the just-fetched totals directly rather than immediately
-// re-reading the row it just wrote.
-async function regimeForSessionDate(admin, date, ownStats) {
+// Any *earlier* date for this symbol whose trades still have no regime,
+// despite that date already having its own market_session_stats row - a day
+// this job failed on, or one whose trades were logged after the fact.
+// Nothing else in the app retries an old date (regime is computed at save
+// time, or on the day it happens), so without this a skipped day's trades
+// stay unbucketed forever.
+async function catchUpRegimeGaps(admin, symbol, sessionDate) {
+  try {
+    const { data: gapTrades, error: gapError } = await admin
+      .from('trades')
+      .select('trade_date, instruments!inner(symbol)')
+      .eq('instruments.symbol', symbol)
+      .neq('trade_date', sessionDate)
+      .or('volatility_regime.is.null,volume_regime.is.null')
+      // Newest first with an explicit bound. Unordered and unbounded, this
+      // silently took whatever 1000 rows PostgREST felt like returning -
+      // and dates that can never become computable (older than any stored
+      // market_session_stats row) would crowd out recent ones that can,
+      // forever, while being re-queried daily for all 12 symbols. Newest
+      // first means each run works on the dates most likely to resolve; the
+      // rest are picked up as the window moves.
+      .order('trade_date', { ascending: false })
+      .limit(GAP_SCAN_LIMIT)
+    // Previously discarded, so an RLS or timeout failure read as "no gaps"
+    // and this job reported success having silently done nothing.
+    if (gapError) throw gapError
+
+    const gapDates = [...new Set((gapTrades || []).map((t) => t.trade_date))]
+    for (const date of gapDates) {
+      const regimes = await regimeForSessionDate(admin, symbol, date)
+      if (!regimes) continue // still not computable (e.g. a very recent date) - leave it for a later run
+      const n = await backfillTradesForDate(admin, symbol, date, regimes)
+      if (n > 0) log(`Backfilled regime (${regimes.volatility_regime}/${regimes.volume_regime}) on ${n} trade(s) for ${symbol} ${date} (gap catch-up).`)
+    }
+  } catch (err) {
+    Sentry.captureMessage(`Regime gap catch-up failed for ${symbol}: ${err.message}`, 'warning')
+    log(`Regime gap catch-up failed for ${symbol}: ${err.message}`)
+  }
+}
+
+// { volatility_regime, volume_regime } for one symbol on `date`, or null if
+// not computable yet (no trailing baseline, or - only relevant for the gap
+// catch-up path above, since the caller already has today's own row in hand
+// - `date` itself has no market_session_stats row for this symbol).
+// `ownStats` lets the caller pass the just-fetched totals directly rather
+// than immediately re-reading the row it just wrote. Every comparison here
+// stays within one symbol's own series: a micro is bucketed against its own
+// 20-session history, never its full-size sibling's.
+async function regimeForSessionDate(admin, symbol, date, ownStats) {
   let ownRow = ownStats
   if (!ownRow) {
     const { data } = await admin
       .from('market_session_stats')
       .select('total_range, total_volume')
-      .eq('data_symbol', DATA_SYMBOL)
+      .eq('data_symbol', symbol)
       .eq('session_date', date)
       .maybeSingle()
     if (!data) return null
@@ -322,7 +462,7 @@ async function regimeForSessionDate(admin, date, ownStats) {
   const { data: trailing } = await admin
     .from('market_session_stats')
     .select('total_range, total_volume')
-    .eq('data_symbol', DATA_SYMBOL)
+    .eq('data_symbol', symbol)
     .lt('session_date', date)
     .order('session_date', { ascending: false })
     .limit(TRAILING_WINDOW)
@@ -333,26 +473,31 @@ async function regimeForSessionDate(admin, date, ownStats) {
   return { volatility_regime: bucketFor(ownRow.total_range, avgRange), volume_regime: bucketFor(ownRow.total_volume, avgVolume) }
 }
 
-// Applies `regimes` to every still-unbucketed NQ trade dated `date`,
-// across every user - a real server-side join (PostgREST's `!inner`
-// embed) on trades.instrument_id -> instruments.id, filtered by the
-// joined row's data_symbol, not "fetch every NQ instrument's id into a JS
-// array, then .in() against it". That two-step version's array grows with
-// the total number of NQ instruments ever created across every user; this
-// version's cost is set by Postgres's own query planner (index-backed,
+// Applies `regimes` to every still-unbucketed trade on this exact symbol
+// dated `date`, across every user - a real server-side join (PostgREST's
+// `!inner` embed) on trades.instrument_id -> instruments.id, filtered by
+// the joined row's symbol, not "fetch every matching instrument's id into a
+// JS array, then .in() against it". That two-step version's array grows
+// with the total number of such instruments ever created across every user;
+// this version's cost is set by Postgres's own query planner (index-backed,
 // same as any other join) regardless of how many users the app has.
+//
+// instruments.symbol (the exact contract, 'MNQ') rather than
+// instruments.data_symbol (the family, 'NQ') - matching what
+// market_session_stats now stores per row, so an MNQ trade is tagged from
+// MNQ's own session and never from NQ's.
 // Returns how many rows it updated.
-async function backfillTradesForDate(admin, date, regimes) {
+async function backfillTradesForDate(admin, symbol, date, regimes) {
   const { data: trades } = await admin
     .from('trades')
-    .select('id, instruments!inner(data_symbol)')
-    .eq('instruments.data_symbol', DATA_SYMBOL)
+    .select('id, instruments!inner(symbol)')
+    .eq('instruments.symbol', symbol)
     .eq('trade_date', date)
     .or('volatility_regime.is.null,volume_regime.is.null')
   if (!trades || trades.length === 0) return 0
 
   const { error } = await admin.from('trades').update(regimes).in('id', trades.map((t) => t.id))
-  if (error) throw new Error(`Regime backfill update failed for ${date}: ${error.message}`)
+  if (error) throw new Error(`Regime backfill update failed for ${symbol} ${date}: ${error.message}`)
   return trades.length
 }
 

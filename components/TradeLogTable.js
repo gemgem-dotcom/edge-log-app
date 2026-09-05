@@ -177,6 +177,11 @@ export default function TradeLogTable({
   // unset and keeps the original behavior below completely unchanged;
   // their trade counts were never large enough to need it.
   remote = null,
+  // Local (non-remote) mode only: lets the page that owns these trades drop
+  // the deleted one from its own state, so the stats computed from it stay
+  // in step with the table. Remote mode has remote.onTradeDeleted instead,
+  // which refetches the page.
+  onTradeDeleted = null,
 }) {
   const [rows, setRows] = useState(trades)
   const [expandedId, setExpandedId] = useState(null)
@@ -309,7 +314,15 @@ export default function TradeLogTable({
       // this component optimistically trimming its own local array.
       invalidateTags()
       if (remote) remote.onTradeDeleted?.()
-      else setRows((prev) => prev.filter((t) => t.id !== trade.id))
+      else {
+        setRows((prev) => prev.filter((t) => t.id !== trade.id))
+        // The parent keeps its own copy of these trades and computes the
+        // stats, calendar, equity curve and streak from it, so trimming only
+        // this component's local array left the deleted trade still counted
+        // in every figure on the page until a reload - the row vanished
+        // while Total P&L and win rate stayed put.
+        onTradeDeleted?.(trade.id)
+      }
       if (expandedId === trade.id) setExpandedId(null)
     } else {
       setDeleteError("Couldn't delete that trade. Please try again.")
@@ -671,7 +684,15 @@ export default function TradeLogTable({
                           </div>
                           <div>
                             <label>Time in drawdown</label>
-                            <div>{excursionCell(t, timezoneOffset, t.market_data_status === 'complete' ? formatDuration(Math.round(t.drawdown_seconds / 60)) : null)}</div>
+                            {/* drawdown_seconds is nullable even on a
+                                'complete' trade, and null / 60 is 0 - which
+                                formatDuration renders as a confident "0m",
+                                i.e. "never underwater", for a trade whose
+                                drawdown simply wasn't recorded. The adjacent
+                                excursion cells route through
+                                formatExcursionPoints, which handles null
+                                properly; this one didn't. */}
+                            <div>{excursionCell(t, timezoneOffset, t.market_data_status === 'complete' && t.drawdown_seconds !== null && t.drawdown_seconds !== undefined ? formatDuration(Math.round(t.drawdown_seconds / 60)) : null)}</div>
                           </div>
                         </div>
 

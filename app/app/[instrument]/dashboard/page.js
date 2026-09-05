@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { strategyColor } from '@/lib/strategyColor'
 import { hasResult } from '@/lib/tradeMath'
@@ -29,7 +30,6 @@ import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
-const NQ_DATA_SYMBOL = 'NQ'
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
 const EQUITY_GROUPS = [
@@ -73,10 +73,18 @@ function hasDollar(t) {
 }
 
 // Average $ P&L per weekday (0=Sun..6=Sat, matching Date#getDay), ordered
-// Sun-Fri - Saturday is skipped entirely, since none of these instruments'
-// sessions land on it in any timezone. Every weekday is always included,
-// even with zero trades - AvgPnlByWeekdayChart renders those as a flat
-// $0 with no bar rather than omitting the row.
+// Sun-Fri, plus Saturday only when something actually landed there. Sun-Fri
+// are always included even with zero trades - AvgPnlByWeekdayChart renders
+// those as a flat $0 with no bar rather than omitting the row.
+//
+// Saturday used to be dropped unconditionally, on the reasoning that no
+// instrument's session lands on it. That holds in ET, but trade_date is
+// stored in the trader's own configured zone, and lib/timezone.js offers up
+// to UTC+14: a Friday 09:30 ET entry is already Saturday for them, so their
+// Saturday P&L silently vanished from this chart while edgeEngine.js's
+// day_of_week dimension still counted it - two views of one dataset
+// disagreeing. Conditional rather than always-on so the ordinary case
+// doesn't grow a permanently empty seventh row.
 function computeWeekdayPnl(trades) {
   const byDay = new Map()
   for (const t of trades) {
@@ -87,18 +95,24 @@ function computeWeekdayPnl(trades) {
     entry.count += 1
     byDay.set(day, entry)
   }
-  return [0, 1, 2, 3, 4, 5].map((day) => {
+  const days = byDay.has(6) ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5]
+  return days.map((day) => {
     const entry = byDay.get(day)
     return { day, avg: entry ? entry.sum / entry.count : 0, count: entry ? entry.count : 0 }
   })
 }
 
-// Monday of the ISO week containing dateStr, used as the bucket key when
-// the equity curve is grouped by week.
+// Sunday of the week containing dateStr, the bucket key when the equity
+// curve is grouped by week. Sunday-start, matching the P&L calendar's grid
+// (CAL_HEADINGS begins 'Sun', and startWeekday pads from a raw getDay()).
+// This used to compute the ISO/Monday-start week, so a Sunday trade was
+// bucketed into the week *ending* that weekend by the equity curve while
+// the calendar's "Weekly P&L" column put it in the row beginning that day -
+// the same trade in two different weeks on one page. Futures reopen Sunday
+// evening ET, so this is an ordinary trade, not an edge case.
 function weekStart(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
-  const day = d.getDay()
-  d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day))
+  d.setDate(d.getDate() - d.getDay())
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
@@ -264,11 +278,27 @@ export default function DashboardPage({ params }) {
   const [selectedDate, setSelectedDate] = useState(null)
   const [regime, setRegime] = useState(null)
 
+// Identifies the most recent load, so a slower earlier one can never write
+// its results over a newer one's.
+//
+// Measured, not assumed: this page currently DOES remount on an instrument
+// switch, so a superseded load's setState calls land on an unmounted
+// component and React discards them - the mismatch this guards against does
+// not occur today. It is kept because nothing enforces that remount. The
+// reset block below exists precisely because a soft nav was once expected
+// not to remount this page, and the heading is read straight from the URL
+// while the figures come from state - so if that ever changes again, the
+// failure mode is one instrument's P&L displayed under another's name,
+// silently. The guard costs one integer compare per write.
+const loadIdRef = useRef(0)
+
 useEffect(() => {
   loadData()
 }, [symbol])
 
 async function loadData() {
+  const loadId = ++loadIdRef.current
+  const superseded = () => loadId !== loadIdRef.current
   setLoading(true)
   setError(null)
   // Strategy ids and regime data are scoped to one instrument - carrying a
@@ -285,9 +315,21 @@ async function loadData() {
   setRegime(null)
   try {
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('no session')
     const { data: instrument } = await supabase
     .from('instruments').select('*').eq('user_id', user.id).eq('symbol', symbol).eq('archived', false).single()
-    if (!instrument) { setLoading(false); return }
+    if (superseded()) return
+    // Clearing instrumentId matters: it used to keep the PREVIOUS
+    // instrument's id here, which InstrumentMenu then acts on - so the
+    // archive control on a page that failed to load pointed at whichever
+    // instrument was open before it. Surfacing an error rather than
+    // returning silently, too; the page otherwise rendered fully and every
+    // action on it failed for no visible reason.
+    if (!instrument) {
+      setInstrumentId(null)
+      setError('that instrument could not be found.')
+      return
+    }
     setInstrumentId(instrument.id)
 
     const { data: stratData, error: stratError } = await supabase
@@ -295,8 +337,11 @@ async function loadData() {
     .order('created_at', { ascending: true })
     if (stratError) throw stratError
 
-    const { data: tradeData, error: tradeError } = await supabase
-    .from('trades').select('*').eq('instrument_id', instrument.id)
+    // Paged - every stat, the calendar, the equity curve and the streak on
+    // this page are computed from this array, so silently stopping at
+    // PostgREST's 1000-row cap would understate all of them at once.
+    const { data: tradeData, error: tradeError } = await fetchAllRows((from, to) => supabase
+    .from('trades').select('*').eq('instrument_id', instrument.id).order('id', { ascending: true }).range(from, to))
     if (tradeError) throw tradeError
 
     const grouped = {}
@@ -304,25 +349,31 @@ async function loadData() {
         grouped[s.id] = (tradeData || []).filter((t) => t.strategy_id === s.id)
       }
 
+    if (superseded()) return
     setStrategies(stratData || [])
     setTradesByStrategy(grouped)
     setAllTrades(tradeData || [])
 
-    // NQ-family only, matching lib/tradeRegimes.js's own scope - every
-    // other instrument's trades never carry volatility_regime/volume_regime,
-    // so there's nothing this clause could match and no point in the query.
-    if (catalogEntryFor(symbol)?.data_symbol === NQ_DATA_SYMBOL) {
-      setRegime(await latestClosedSessionRegime(supabase))
-    }
+    // Every catalog instrument now has its own market_session_stats series
+    // (scripts/fetch-daily-market-stats.js fetches all 12, keyed per exact
+    // contract), so there's no NQ-family gate here anymore - a symbol whose
+    // own daily job hasn't stored enough history yet simply resolves null,
+    // exactly as an unsupported instrument used to.
+    const nextRegime = await latestClosedSessionRegime(supabase, symbol)
+    if (superseded()) return
+    setRegime(nextRegime)
   } catch {
+    if (superseded()) return
     setError('something went wrong.')
   } finally {
-    setLoading(false)
+    // A superseded load must not clear the spinner - the load that replaced
+    // it is still running, and the page would flash its empty state.
+    if (!superseded()) setLoading(false)
   }
 }
 
 if (loading) return <DashboardSkeleton />
-if (error) return <div className="page-container"><PageError message={`Couldn't load your dashboard — ${error}`} onRetry={loadData} /></div>
+if (error) return <div className="page-container"><PageError message={`Couldn't load your dashboard — ${error}`} onRetry={() => loadData()} /></div>
 
 const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const unclassifiedCount = allTrades.length - classifiedTrades.length
@@ -337,7 +388,12 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   // on the all-instruments page).
   const strategySegments = strategies.map((s, i) => {
     const trades = (tradesByStrategy[s.id] || []).filter((t) => hasResult(t) && hasDollar(t))
-    return { id: s.id, label: s.name, value: trades.reduce((sum, t) => sum + t.pnl, 0), color: strategyColor(i) }
+    // null, not 0, when no trade on this strategy carries a $ figure. `pnl`
+    // is nullable and the trader can clear it, so summing an empty set was
+    // rendering a confident +$0.00 for a strategy that might be +6.4R -
+    // indistinguishable from one that genuinely broke even. The stat cards
+    // already make this distinction via hasD; the chips didn't.
+    return { id: s.id, label: s.name, value: trades.length > 0 ? trades.reduce((sum, t) => sum + t.pnl, 0) : null, color: strategyColor(i) }
   })
 
   // Full per-strategy stats (from every trade, independent of perfStrategy -
@@ -361,7 +417,13 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
     {
       label: 'Total P&L',
       segments: alphaStrategySegments
-        .map((seg) => ({ id: seg.id, label: seg.label, color: seg.color, value: fmtD(seg.value), tone: colorClass(seg.value) })),
+        .map((seg) => ({
+          id: seg.id,
+          label: seg.label,
+          color: seg.color,
+          value: seg.value === null ? '—' : fmtD(seg.value),
+          tone: seg.value === null ? 'neu' : colorClass(seg.value),
+        })),
     },
     {
       label: 'Expectancy',
@@ -397,13 +459,34 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   // strategy x regime signal for the most recently closed session - see
   // lib/todaysBrief.js. The existing sentence just above stays exactly as
   // it was either way.
-  const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime })
+  const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime, symbol })
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const upcomingEvents = upcomingEconEvents(now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
-const calTrades = calStrategy === 'all' ? allTrades : allTrades.filter((t) => t.strategy_id === calStrategy)
+  // Drops a deleted trade from this page's own copy, so every figure derived
+  // from it - stats, calendar, equity curve, weekday chart, streak -
+  // recomputes immediately instead of still counting a row the table has
+  // already removed.
+  function handleTradeDeleted(tradeId) {
+    setAllTrades((prev) => prev.filter((t) => t.id !== tradeId))
+    setTradesByStrategy((prev) => {
+      const next = {}
+      for (const [sid, list] of Object.entries(prev)) next[sid] = list.filter((t) => t.id !== tradeId)
+      return next
+    })
+  }
+
+// classifiedTrades, not allTrades - the banner above the stats promises
+// that Unassigned trades are "not counted below until reassigned", and the
+// stat cards honour that (they run off classifiedTrades), but the calendar
+// and the monthly card were reading the unfiltered set. So All-Time Total
+// P&L could read +$1,000 while March showed +$200, with the difference
+// sitting in calendar cells the page had just said it was excluding. The
+// per-strategy branch was already effectively filtered - an Unassigned
+// trade has no strategy_id to match - so only the 'all' case changes.
+const calTrades = calStrategy === 'all' ? classifiedTrades : classifiedTrades.filter((t) => t.strategy_id === calStrategy)
   const tradesByDate = {}
     for (const t of calTrades) {
       tradesByDate[t.trade_date] = tradesByDate[t.trade_date] || []
@@ -705,7 +788,7 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
 {selectedDate && (
   <>
   <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
-<TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} />
+<TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} onTradeDeleted={handleTradeDeleted} />
   </>
 )}
 </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { strategyColor } from '@/lib/strategyColor'
 import AppShell from '@/components/AppShell'
@@ -39,11 +39,21 @@ export default function AllTradesPage() {
     if (instruments.length > 0) loadPage()
   }, [instruments, page, filters])
 
+  // Identifies the most recent load of each kind - see the identical note in
+  // app/app/[instrument]/log/page.js. Clicking Next twice quickly used to
+  // leave the earlier page's rows under the later page's pager.
+  const staticIdRef = useRef(0)
+  const pageIdRef = useRef(0)
+
   async function loadStatic() {
+    const loadId = ++staticIdRef.current
+    const superseded = () => loadId !== staticIdRef.current
     setLoading(true)
     setError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) throw new Error('no session')
       const { data: instrumentData, error: instError } = await supabase
         .from('instruments').select('*').eq('user_id', user.id).eq('archived', false).order('created_at', { ascending: true })
       if (instError) throw instError
@@ -53,6 +63,7 @@ export default function AllTradesPage() {
         .from('strategies').select('*').in('instrument_id', ids).eq('archived', false)
         .order('created_at', { ascending: true })
       if (stratError) throw stratError
+      if (superseded()) return
 
       setInstruments(instrumentData || [])
       setStrategies(stratData || [])
@@ -64,12 +75,15 @@ export default function AllTradesPage() {
         setLoading(false)
       }
     } catch {
+      if (superseded()) return
       setError('something went wrong.')
       setLoading(false)
     }
   }
 
   async function loadPage() {
+    const loadId = ++pageIdRef.current
+    const superseded = () => loadId !== pageIdRef.current
     setLoading(true)
     setError(null)
     try {
@@ -77,12 +91,14 @@ export default function AllTradesPage() {
         instrumentIds: instruments.map((i) => i.id), page, pageSize: PAGE_SIZE, filters,
       })
       if (tradeError) throw tradeError
+      if (superseded()) return
       setTrades(pageTrades)
       setTotalCount(count)
     } catch {
+      if (superseded()) return
       setError('something went wrong.')
     } finally {
-      setLoading(false)
+      if (!superseded()) setLoading(false)
     }
   }
 

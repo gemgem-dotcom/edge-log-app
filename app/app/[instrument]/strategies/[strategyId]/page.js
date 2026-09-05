@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, use } from 'react'
+import { useState, useEffect, useCallback, useRef, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MoreVertical, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 import { invalidateStrategies } from '@/lib/referenceDataCache'
 import { friendlyStrategyError } from '@/lib/supabaseErrors'
 import { hasResult } from '@/lib/tradeMath'
@@ -128,11 +129,20 @@ export default function StrategyDetailPage({ params }) {
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
+  // Identifies the most recent load, so a slower earlier one can't land on
+  // top of it - clicking straight from one strategy card to another leaves
+  // this page mounted (see the reset note below), so two loads can overlap
+  // and the slower one used to win, showing one strategy's trades and stats
+  // under another's name.
+  const loadIdRef = useRef(0)
+
   useEffect(() => {
     loadData()
   }, [strategyId])
 
   async function loadData() {
+    const loadId = ++loadIdRef.current
+    const superseded = () => loadId !== loadIdRef.current
     setLoading(true)
     setError(null)
     // Menu/modal open-state and the duration-bucket filter are scoped to
@@ -155,25 +165,43 @@ export default function StrategyDetailPage({ params }) {
       // not a real failure worth surfacing as an error banner.
       const { data: s, error: stratError } = await supabase.from('strategies').select('*').eq('id', strategyId).single()
       if (stratError && stratError.code !== 'PGRST116') throw stratError
+      if (superseded()) return
       setStrategy(stratError ? null : s)
       if (stratError) return
 
-      const { data: tradeData, error: tradeError } = await supabase
+      // Paged, and ordered by id as the final tiebreak so page boundaries
+      // are stable - date+time alone is not unique.
+      const { data: tradeData, error: tradeError } = await fetchAllRows((from, to) => supabase
         .from('trades')
         .select('*')
         .eq('strategy_id', strategyId)
         .order('trade_date', { ascending: false })
         .order('trade_time', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to))
       if (tradeError) throw tradeError
 
-      setTrades(tradeData || [])
       const computed = await computeStrategyStats(tradeData || [])
+      if (superseded()) return
+      setTrades(tradeData || [])
       setStats(computed)
     } catch {
+      if (superseded()) return
       setError('something went wrong.')
     } finally {
-      setLoading(false)
+      // A superseded load must not clear the spinner - its replacement is
+      // still running, and the page would flash an empty state.
+      if (!superseded()) setLoading(false)
     }
+  }
+
+  // Keeps this page's own trades (and therefore every stat computed from
+  // them) in step with the table after a delete - the row used to vanish
+  // while Total P&L, win rate and the equity curve still counted it.
+  async function handleTradeDeleted(tradeId) {
+    const remaining = trades.filter((t) => t.id !== tradeId)
+    setTrades(remaining)
+    setStats(await computeStrategyStats(remaining))
   }
 
   function openRename() {
@@ -216,7 +244,7 @@ export default function StrategyDetailPage({ params }) {
   }
 
   if (loading) return <StrategyDetailSkeleton />
-  if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={loadData} /></div>
+  if (error) return <div className="page-container"><PageError message={`Couldn't load this strategy — ${error}`} onRetry={() => loadData()} /></div>
   if (!strategy) return <div className="page-container"><div className="empty">Strategy not found.</div></div>
 
   const streak = computeStreak(trades)
@@ -332,6 +360,7 @@ export default function StrategyDetailPage({ params }) {
           showFilters={true}
           symbol={symbol}
           pageSize={15}
+          onTradeDeleted={handleTradeDeleted}
           emptyState={
             <EmptyState
               title="No trades yet"

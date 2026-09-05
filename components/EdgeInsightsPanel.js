@@ -60,6 +60,11 @@ export default function EdgeInsightsPanel({ scope, tradeCount }) {
     setState((s) => ({ ...s, loading: true }))
     getCachedInsight(scope).then((result) => {
       if (!cancelled) setState({ loading: false, ...result })
+    }).catch(() => {
+      // Without this the panel sat on "Loading..." forever after any
+      // network blip - the promise rejected with nothing attached to
+      // handle it, so loading never cleared and there was nothing to retry.
+      if (!cancelled) setState({ loading: false, narrative: null, generatedAt: null, error: "Couldn't load your insights. Please try again." })
     })
     return () => { cancelled = true }
   }, [scope, tradeCount])

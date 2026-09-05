@@ -10,45 +10,45 @@
    675  Auth pages
    741  Top nav
    756  Instrument nav (topbar pill row)
-   823  Page layout
-   877  Tabs
-   887  Misc form helpers
-   893  Detail view
-   916  Holiday notice (site-wide, above the shell)
-   941  Shell layout (sidebar + topbar)
-   1277  Expandable trade rows
-   1343  Calendar
-   1391  Account settings page
-   1607  Light theme
-   1648  2FA
-   1663  Account fine print
-   1666  Screenshot preview (log new trade)
-   1708  Auth pages always dark
-   1743  Monthly P&L (calendar on Overview)
-   1830  Trade form: sections, validation, currency, screenshots
-   2068  Field tooltips
-   2130  Date/time picker (adds an optional popup to a typed input)
-   2239  In-header column filters (trade log table)
-   2287  Active filter chips
-   2350  Empty states, error banners, skeleton loaders
-   2429  Cross-instrument overview dashboard (/app)
-   2608  Not found / error boundary state pages
-   2621  Toast notifications
-   2649  Public policy pages (Privacy, Terms)
-   2668  Legal links (auth pages + account settings)
-   2707  Economic calendar card (mock - Overview pages)
-   2821  Calendar news badge (Monthly P&L day cells, mock)
-   2842  Streak badge (Overview + strategy detail pages)
-   2859  Market status pill (Overview + strategy detail pages)
-   2885  Today's brief & session stats
-   2920  Market context cards (all-instruments Overview)
-   2953  Edge Insights panel
-   2968  Unverified logged time badge
-   2985  Welcome transition (first-run)
-   3014  Zero-instrument empty state
-   3024  Tutorial overlay (first-run guided tour)
-   3104  Tutorial step 3 (guided form scroll)
-   3151  Press states, value changes, content fade-in
+   833  Page layout
+   887  Tabs
+   897  Misc form helpers
+   903  Detail view
+   926  Holiday notice (site-wide, above the shell)
+   951  Shell layout (sidebar + topbar)
+   1322  Expandable trade rows
+   1388  Calendar
+   1436  Account settings page
+   1652  Light theme
+   1693  2FA
+   1708  Account fine print
+   1711  Screenshot preview (log new trade)
+   1753  Auth pages always dark
+   1788  Monthly P&L (calendar on Overview)
+   1875  Trade form: sections, validation, currency, screenshots
+   2113  Field tooltips
+   2175  Date/time picker (adds an optional popup to a typed input)
+   2284  In-header column filters (trade log table)
+   2332  Active filter chips
+   2395  Empty states, error banners, skeleton loaders
+   2474  Cross-instrument overview dashboard (/app)
+   2653  Not found / error boundary state pages
+   2666  Toast notifications
+   2694  Public policy pages (Privacy, Terms)
+   2713  Legal links (auth pages + account settings)
+   2752  Economic calendar card (mock - Overview pages)
+   2866  Calendar news badge (Monthly P&L day cells, mock)
+   2887  Streak badge (Overview + strategy detail pages)
+   2910  Market status pill (Overview + strategy detail pages)
+   2936  Today's brief & session stats
+   2971  Market context cards (all-instruments Overview)
+   3004  Edge Insights panel
+   3019  Unverified logged time badge
+   3036  Welcome transition (first-run)
+   3065  Zero-instrument empty state
+   3075  Tutorial overlay (first-run guided tour)
+   3167  Tutorial step 3 (guided form scroll)
+   3214  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -779,10 +779,20 @@ table{min-width:640px;}
 .instrument-nav-item:hover{color:var(--text); background:var(--panel-hover);}
 .instrument-nav-item-active{background:rgba(59,167,255,.12); color:var(--accent);}
 .instrument-nav-add-wrap{position:relative; flex-shrink:0;}
+/* display:inline-flex (not the plain inline-block this used to be) since
+   this now carries a Plus icon alongside its label, same as "Log new
+   trade"/the sidebar's "Add new" - it was the one "+" trigger in the app
+   still spelling the plus out as a literal character instead of the
+   lucide icon the other two use, which read as a mismatch sitting next
+   to them. 13px is between the other two's own icon sizes (16px on
+   .new-trade-btn, the app's primary CTA; 14px on .sidebar-substrategy-add)
+   - proportioned down to match this trigger's own smaller 12.5px text. */
 .instrument-nav-add{
-  display:inline-block; padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
+  display:inline-flex; align-items:center; gap:5px;
+  padding:7px 10px; border-radius:100px; color:var(--accent); font-size:12.5px;
   font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color .15s ease;
 }
+.instrument-nav-add svg{width:13px; height:13px; flex-shrink:0;}
 .instrument-nav-add:hover{background:var(--panel-hover);}
 /* Fixed rather than absolute, and positioned inline from a measured rect
    (see InstrumentNav.js) - the trigger sits outside .instrument-nav-scroll
@@ -1031,7 +1041,28 @@ a.shell-logo{color:inherit; text-decoration:none;}
    plain text block reads as too close to the icon buttons at that same
    gap the icons use between each other, so this widens just this one
    side without touching that shared gap value. */
-.header-clock{display:flex; flex-direction:column; align-items:flex-end; text-align:right; flex-shrink:0; margin-right:10px;}
+/* cursor:pointer - clicking toggles local time and the trader's own
+   configured UTC offset (HeaderClock.js), so this needs to read as
+   interactive despite carrying none of .icon-btn's usual boxed-control
+   chrome. opacity on :hover is the only feedback for the same reason a
+   background/border would look out of place on plain topbar text. */
+.header-clock{display:flex; flex-direction:column; align-items:flex-end; text-align:right; flex-shrink:0; margin-right:10px; cursor:pointer; transition:opacity var(--transition-fast);}
+.header-clock:hover{opacity:.75;}
+/* Symmetric fade-out-then-fade-in, not stat-value-in's instant-swap-
+   with-fade-in - HeaderClock.js's click handler toggles
+   .header-clock-fade-out first and only swaps the displayed time/mode
+   once that fade-out has actually finished (its own setTimeout, same
+   length as transitionDuration below), so removing the class then fades
+   the new content in from 0 rather than cutting straight to it. Applied
+   to an element that stays mounted throughout (no key/remount) so this
+   is a real transition between two style states, not a fresh element's
+   fade-in - which a browser can collapse to an instant jump on the very
+   first paint. */
+.header-clock-fade{opacity:1; transition-property:opacity; transition-timing-function:ease;}
+.header-clock-fade-out{opacity:0;}
+@media (prefers-reduced-motion:reduce){
+  .header-clock-fade{transition:none;}
+}
 /* JetBrains Mono, matching every other live/logged time value in the app
    (trade log cells, r-pills, TimePicker's own display) rather than a
    second time-display style. font-variant-numeric:tabular-nums keeps
@@ -1075,10 +1106,16 @@ a.shell-logo{color:inherit; text-decoration:none;}
 
 .new-trade-btn{
   display:flex; align-items:center; gap:6px; background:var(--accent); color:#04121f;
-  font-weight:700; font-size:13px; padding:9px 16px; border-radius:100px; text-decoration:none;
+  font-weight:700; font-size:13px; padding:9px 16px 9px 13px; border-radius:100px; text-decoration:none;
   white-space:nowrap; flex-shrink:0; transition:filter .15s ease, transform .15s ease, box-shadow .15s ease;
   box-shadow:0 1px 2px rgba(0,0,0,.3);
 }
+/* Left padding trimmed 3px below the right: measured with equal left/
+   right gaps either side reads as too much empty space before the "+" -
+   the Plus icon's own stroke sits inset within its square SVG box (a
+   centered cross, not a shape that fills its corners the way a letter's
+   ink does), so identical padding on both sides looks asymmetric even
+   though the boxes themselves are even. */
 /* Not a <button>, so it doesn't inherit the base button:hover rule - given
    its own copy since it's the app's most-repeated primary CTA. */
 .new-trade-btn:hover{filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.3);}
@@ -1185,7 +1222,15 @@ a.shell-logo{color:inherit; text-decoration:none;}
    .new-trade-btn below is a descendant selector, not scoped to a direct
    child, so it still reaches that nested copy too). */
 .header-pills-row > .new-trade-btn, .header-pills-row > .log-trade-menu-wrap{margin-left:auto;}
-.header-pills-row .new-trade-btn{padding:6px 14px; font-size:12.5px; gap:7px;}
+.header-pills-row .new-trade-btn{padding:6px 14px 6px 11px; font-size:12.5px; gap:7px;}
+/* The icon itself doesn't inherit the shrink above (it's a fixed 16px
+   size prop, not an em-relative unit) - left alone it stayed at its
+   original full-size-button proportions while the text and padding
+   around it shrank to pill size, reading as oversized next to the
+   smaller label. Scaled down to the same ~14px the sidebar's own
+   "+ Add new" uses at a comparable font-size, rather than literally
+   matching the 16/13 ratio of the original full-size button. */
+.header-pills-row .new-trade-btn svg{width:14px; height:14px;}
 @media (max-width:640px){
   /* Same "a content-sized pill button wrapped onto its own line reads as
      an arbitrary floating shape" reasoning as .page-header-row/
@@ -2849,7 +2894,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   border-radius:99px; font-size:12.5px; font-weight:600; white-space:nowrap;
   border:1px solid transparent;
 }
-.streak-badge-win{background:rgba(51,193,122,.14); color:var(--win);}
+/* padding-left trimmed 3px, same reasoning as .new-trade-btn's own
+   left-padding trim above: the fire emoji only renders on the win
+   variant, and like the Plus icon it sits inset within its own glyph
+   box rather than filling it, so the symmetric padding every other pill
+   here uses reads as too much empty space before it specifically. The
+   loss variant has no leading glyph, so it keeps the base padding. */
+.streak-badge-win{background:rgba(51,193,122,.14); color:var(--win); padding-left:11px;}
 .streak-badge-loss{background:rgba(225,92,92,.14); color:var(--loss);}
 /* line-height:1 keeps the emoji glyph's own taller leading from inflating
    the flex item (and so the whole pill) a pixel taller than its sibling
@@ -3074,6 +3125,18 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    doesn't happen in that component at all - it spotlights one fixed
    target for the whole step. */
 .tutorial-follow-scroll{transition:none;}
+/* Applied by TutorialOverlay.js's measure() to whichever real DOM node is
+   currently wearing the spotlight ring above - not every step's trigger
+   (most are plain hover-background links with nothing to suppress), but
+   .new-trade-btn ("Log new trade", step 2) does have a real button:hover
+   lift, and hovering it mid-tutorial made the button visibly detach from
+   a glow that's meant to be hugging it in place. Only cancels the lift
+   itself, not the brightness/shadow hover feedback - those don't fight
+   with a ring sitting a fixed few px outside the button's edge the way
+   the button physically moving does. Relies on plain source order to win
+   over button:hover/.new-trade-btn:hover above (identical specificity,
+   this rule simply comes later in the file) rather than !important. */
+.tutorial-target-glow:hover{transform:none;}
 @media (prefers-reduced-motion:reduce){
   /* Nothing to say about the pulse any more - it's gone for everyone. What
      this still suppresses is the step-to-step glide: a reduced-motion user

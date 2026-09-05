@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 const CSV_HEADERS = [
   'instrument', 'data_symbol', 'strategy', 'trade_date', 'trade_time', 'direction', 'entry', 'stop',
@@ -19,11 +20,19 @@ export default function DataExportSection() {
     setExporting(true)
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: trades, error } = await supabase
+    // Paged: an export that silently stopped at PostgREST's 1000-row cap
+    // would hand the trader a file they reasonably believe is their whole
+    // journal, with the oldest 1000 trades in it and no warning. Ordered by
+    // trade_date then id so the page boundaries are stable - trade_date
+    // alone is not unique, and rows tied on it could otherwise repeat or
+    // vanish across pages.
+    const { data: trades, error } = await fetchAllRows((from, to) => supabase
       .from('trades')
       .select('*, instruments(symbol, data_symbol), strategies(name)')
       .eq('user_id', user.id)
       .order('trade_date', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to))
 
     setExporting(false)
     if (error) {

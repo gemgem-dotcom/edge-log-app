@@ -448,23 +448,30 @@ alter table trades drop column if exists in_plan;
 -- one-time backfill into screenshot_urls above actually ran.
 
 -- Daily completed-session market data (lib/databento.js, scripts/
--- fetch-daily-market-stats.js) - one row per trading day, shared by every
--- trader rather than duplicated per user. The brief this shipped under
--- specified `instrument_id uuid references instruments(id)` as this table's
--- key, but instruments is a per-user table (unique(user_id, symbol)) with no
--- single shared "NQ" row to reference, and CLAUDE.md's own domain rules say
--- future market-data lookups should key off data_symbol, not a specific
--- instruments row, since that's what groups mini/micro contracts (MNQ, NQ)
--- onto the same underlying series. Flagged to the user, who confirmed
--- data_symbol over the brief's literal instrument_id FK - see the PR
--- description for the full reasoning.
+-- fetch-daily-market-stats.js) - one row per contract per trading day,
+-- shared by every trader rather than duplicated per user. The brief this
+-- shipped under specified `instrument_id uuid references instruments(id)`
+-- as this table's key, but instruments is a per-user table (unique(user_id,
+-- symbol)) with no single shared "NQ" row to reference, so this is keyed by
+-- a plain text symbol instead - see the PR description for the full
+-- reasoning.
+--
+-- Despite the column's name, what that text actually holds is the EXACT
+-- catalog symbol ('MNQ'), not the data_symbol family ('NQ'). It started as
+-- the family, on the reasoning that data_symbol is what groups mini/micro
+-- contracts onto one underlying series - but a mini and its micro trade on
+-- separate order books with genuinely different range/volume, so tagging an
+-- MNQ trade from NQ's session was measuring the wrong book. Widening what
+-- the column holds needed no DDL change (it was always free text, never
+-- FK'd to instruments.data_symbol), so the name stayed. Readers join
+-- instruments.symbol against it, never instruments.data_symbol.
 --
 -- No RLS ownership policy makes sense here (no user_id - this isn't anyone's
 -- data) - RLS is still enabled, but only a read policy exists. Writes come
 -- exclusively from scripts/fetch-daily-market-stats.js using
 -- SUPABASE_SERVICE_ROLE_KEY (bypasses RLS entirely), the same key already
 -- used by the two API routes in app/api/ - see README.md/NOTES.md.
-create table market_session_stats (
+create table if not exists market_session_stats (
   data_symbol text not null,
   session_date date not null,
   total_range numeric not null,
@@ -474,6 +481,10 @@ create table market_session_stats (
 );
 
 alter table market_session_stats enable row level security;
+-- drop-then-create rather than a bare create: Postgres has no
+-- "create policy if not exists", and this file is meant to run top to
+-- bottom repeatedly.
+drop policy if exists "Anyone signed in can read market session stats" on market_session_stats;
 create policy "Anyone signed in can read market session stats"
   on market_session_stats for select
   using (auth.role() = 'authenticated');
@@ -591,7 +602,7 @@ alter table trades add column if not exists trade_time_unverified boolean;
 -- (or via the panel's own manual "Regenerate" control). narrative is the
 -- literal text Claude returned - no structured fields, since the whole
 -- point of this feature is prose findings, not another table.
-create table edge_insights (
+create table if not exists edge_insights (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
   scope text not null,
@@ -603,6 +614,7 @@ create table edge_insights (
 );
 
 alter table edge_insights enable row level security;
+drop policy if exists "Users manage their own AI insights" on edge_insights;
 create policy "Users manage their own AI insights"
   on edge_insights for all
   using (auth.uid() = user_id)
@@ -651,3 +663,24 @@ create index if not exists trades_trade_date_idx on trades(trade_date);
 -- the values line up without any translation at either end.
 alter table trades add column if not exists day_of_week smallint generated always as (extract(dow from trade_date)) stored;
 create index if not exists trades_day_of_week_idx on trades(day_of_week);
+
+-- One-time correction after market_session_stats was re-keyed from the
+-- data_symbol family ('NQ') to the exact traded contract ('MNQ') - see the
+-- comment above that table. Trades on a micro contract were bucketed
+-- against their full-size sibling's range and volume, which is a different
+-- order book with genuinely different numbers. The daily job only fills
+-- regimes that are null, so those already-wrong values would otherwise
+-- never be revisited, leaving two incompatible regimes in one column: old
+-- micro rows judged against NQ, new ones against MNQ.
+--
+-- Clearing them hands those trades back to the job's own gap catch-up,
+-- which recomputes each against its own contract's history on the next run.
+-- Safe to re-run: once corrected, these rows no longer match the join.
+-- Only micro contracts are affected - a full-size trade's family key and
+-- its exact symbol are the same string, so its stored regime was already
+-- computed against the right series.
+update trades set volatility_regime = null, volume_regime = null
+where instrument_id in (
+  select id from instruments where symbol in ('MNQ', 'MES', 'MYM', 'MGC', 'MCL', 'MBT')
+)
+and (volatility_regime is not null or volume_regime is not null);

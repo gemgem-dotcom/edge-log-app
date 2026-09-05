@@ -43,6 +43,13 @@ const BREAKEVEN_TOLERANCE_POINTS = 5
 function inferOutcome(initial) {
   if (isBlank(initial.execution.exit_price)) return ''
   if ((initial.additionalExits || []).length > 0) return 'custom'
+  // An exactly-zero stored R is the signature of a Breakeven save (see
+  // handleSubmit). Checked before the price-based rules below because a
+  // breakeven exit is allowed to sit up to BREAKEVEN_TOLERANCE_POINTS from
+  // entry, while the epsilon rule further down only recognises an exit at
+  // entry - so without this, re-opening a scratched trade offered "Custom"
+  // and quietly re-derived a non-zero R the moment it was saved again.
+  if (initial.rMultiple === 0) return 'breakeven'
   const direction = initial.direction
   const entry = parseFloat(initial.setup.entry)
   const exitPrice = parseFloat(initial.execution.exit_price)
@@ -218,6 +225,7 @@ export default function TradeForm({
   const [showDisciplineMenu, setShowDisciplineMenu] = useState(false)
 
   const [saving, setSaving] = useState(false)
+  const [addingStrategySaving, setAddingStrategySaving] = useState(false)
 
   const todayStr = todayDateString()
   const riskReward = calcRiskReward(
@@ -492,9 +500,29 @@ export default function TradeForm({
 
   async function handleAddStrategy(e) {
     e.preventDefault()
-    if (!newStrategyName.trim()) return
+    // addingStrategySaving guards a double submit: the Add button was never
+    // disabled, so pressing Enter twice fired two inserts and the second hit
+    // the unique(instrument_id, name) constraint - surfacing "already exists"
+    // immediately after the strategy had in fact been created.
+    if (!newStrategyName.trim() || addingStrategySaving) return
     setFormError(null)
-    const { data: { user } } = await supabase.auth.getUser()
+    setAddingStrategySaving(true)
+    try {
+      await addStrategy()
+    } finally {
+      setAddingStrategySaving(false)
+    }
+  }
+
+  async function addStrategy() {
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    // Threw inside an unhandled promise before, so "Add" appeared to do
+    // nothing at all rather than reporting anything.
+    if (!user) {
+      setFormError('Your session has expired. Sign in again to add a strategy.')
+      return
+    }
     const { data, error } = await supabase
       .from('strategies')
       .insert([{ user_id: user.id, instrument_id: instrumentId, name: newStrategyName.trim() }])
@@ -704,7 +732,19 @@ export default function TradeForm({
       // needs weights) even though exit price is mandatory - falls back to
       // the plain primary-exit R-multiple rather than storing null in that
       // case.
-      r_multiple: realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice),
+      // A Breakeven outcome stores exactly 0R, not the R its exit price
+      // happens to compute to. BREAKEVEN_TOLERANCE_POINTS deliberately lets
+      // the trader scratch a few points either side of entry and still call
+      // it breakeven, but every statistic in the app classifies by the sign
+      // of r_multiple (edgeEngine.js's `r_multiple > 0` / `< 0`) - so an NQ
+      // long scratched 4 points above a 10-point stop was landing as +0.40R
+      // and counting as a WIN. One breakeven beside one real win and one
+      // real loss showed a 66.7% win rate instead of 50%.
+      //
+      // Only R is zeroed. `pnl` still reflects the few dollars that really
+      // did change hands - that money is real, and the trader's own label is
+      // what says the trade was a scratch rather than an edge.
+      r_multiple: outcome === 'breakeven' ? 0 : (realizedR !== null ? realizedR : calcRMultiple(direction, entry, stopPrice, exitPrice)),
       reasoning: form.reasoning.value.trim(),
       contracts: isBlank(execution.contracts) ? null : parseInt(execution.contracts),
       // Rows the trader added but left entirely untouched (e.g. clicked
@@ -735,9 +775,22 @@ export default function TradeForm({
     // The caller navigates away on success; returning an error message
     // string means it failed and the form should become editable again,
     // with that message shown instead of a native alert().
-    const result = await onSubmit({ values, screenshots, existingScreenshots })
-    if (typeof result === 'string') {
-      setFormError(result)
+    //
+    // The try/catch matters as much as the returned string: onSubmit is the
+    // page's own handler, and it can reject rather than return - both call
+    // sites read user.user_metadata straight off supabase.auth.getUser(),
+    // which is null once the session has expired. Without this, that threw
+    // past the setSaving(false) below and left the button reading "Saving…"
+    // and disabled forever, with no error and no way to recover the trade
+    // the trader had just typed except reloading and losing it.
+    try {
+      const result = await onSubmit({ values, screenshots, existingScreenshots })
+      if (typeof result === 'string') {
+        setFormError(result)
+        setSaving(false)
+      }
+    } catch {
+      setFormError('Could not save this trade. Your session may have expired — open a new tab, sign in again, then come back and press save.')
       setSaving(false)
     }
   }

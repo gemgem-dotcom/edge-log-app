@@ -1,0 +1,60 @@
+# Manually-run diagnostic script runner.
+#
+# Some of this repo's scripts can only be exercised with real credentials -
+# scripts/smoke-test-databento-symbols.js needs a live DATABENTO_API_KEY to
+# tell a symbol that genuinely doesn't resolve from one that just had no
+# trading in the window it asked for. There was previously no way to run
+# such a thing without either pasting a production key into a terminal or
+# committing a throwaway workflow and deleting it afterwards (which is
+# exactly what happened when the 12 contract symbols were being verified).
+#
+# This is that path, permanently: pick a script, press Run workflow, read
+# the log. The secrets are the ones this repo already holds for the two
+# scheduled jobs, so nothing new needs configuring.
+#
+# workflow_dispatch only - it has no schedule and no push trigger, so it
+# runs exactly when a person asks it to. Note that GitHub only offers the
+# Run workflow button for a workflow present on the DEFAULT branch, so this
+# becomes usable once merged, not from a feature branch.
+#
+# `script` is a choice rather than free text on purpose: a free-text input
+# would let anyone able to run this workflow execute an arbitrary path in
+# the repo with the service-role key and the Databento key in scope.
+
+name: Run a diagnostic script
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: Which diagnostic to run
+        required: true
+        type: choice
+        options:
+          - scripts/smoke-test-databento-symbols.js
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # 22 for the same reason the two scheduled workflows pin it - see
+          # refresh-market-session-stats.yml's own note on @supabase/
+          # supabase-js needing native WebSocket support.
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ${{ inputs.script }}
+        env:
+          DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+        run: node "${{ inputs.script }}"

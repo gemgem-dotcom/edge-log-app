@@ -47,7 +47,7 @@ export default function ScreenshotLightbox({ shots, index, onIndexChange, onClos
         </div>
       )}
       <div className={`modal-content${hasMultiple ? ' has-nav' : ''}`} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-close" onClick={onClose}>✕</div>
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <img src={shots[index]} alt={`Trade screenshot ${index + 1} of ${shots.length}`} />
       </div>
       {hasMultiple && (

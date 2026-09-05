@@ -103,13 +103,13 @@ export default function EdgeInsightsPanel({ scope, tradeCount }) {
             <button>'s own default text-decoration rendering (confirmed
             live: a <button> here showed a doubled/thick underline on
             hover that this doesn't). */}
-        <span
+        <button type="button"
           className="panel-link"
           style={{ cursor: regenerating ? 'default' : 'pointer', opacity: regenerating ? 0.6 : 1 }}
           onClick={regenerating ? undefined : handleGenerate}
         >
           {genLabel}
-        </span>
+        </button>
       </div>
     </div>
   )

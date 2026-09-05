@@ -915,14 +915,14 @@ export default function TradeForm({
                   value={newStrategyName} onChange={(e) => setNewStrategyName(e.target.value)}
                 />
                 <div className="instrument-add-form-actions">
-                  <span className="del" onClick={() => { setAddingStrategy(false); setNewStrategyName('') }}>Cancel</span>
+                  <button type="button" className="del" onClick={() => { setAddingStrategy(false); setNewStrategyName('') }}>Cancel</button>
                   <button type="button" onClick={handleAddStrategy}>Add</button>
                 </div>
               </div>
             ) : (
-              <span className="del" style={{ color: 'var(--accent)' }} onClick={() => setAddingStrategy(true)}>
+              <button type="button" className="del" style={{ color: 'var(--accent)' }} onClick={() => setAddingStrategy(true)}>
                 + Add new strategy
-              </span>
+              </button>
             )}
           </div>
           <div className="field half">
@@ -951,9 +951,24 @@ export default function TradeForm({
           </div>
           <div className="field wide">
             <label>Direction</label>
-            <div className="dir-toggle dir-toggle-square">
-              <div className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`} onClick={() => handleDirectionChange('long')}>Long</div>
-              <div className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`} onClick={() => handleDirectionChange('short')}>Short</div>
+            {/* Real buttons, not divs. Direction is mandatory and has no
+                other input on this form, so as plain divs it was
+                unreachable by Tab - a keyboard or screen-reader user could
+                not log a trade at all. aria-pressed carries the selected
+                state that the colour alone conveyed. */}
+            <div className="dir-toggle dir-toggle-square" role="group" aria-label="Direction">
+              <button
+                type="button"
+                className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`}
+                aria-pressed={direction === 'long'}
+                onClick={() => handleDirectionChange('long')}
+              >Long</button>
+              <button
+                type="button"
+                className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`}
+                aria-pressed={direction === 'short'}
+                onClick={() => handleDirectionChange('short')}
+              >Short</button>
             </div>
             {errors.direction && <span className="field-error">{errors.direction}</span>}
           </div>
@@ -997,23 +1012,34 @@ export default function TradeForm({
               <div className="field">
                 <label>Outcome</label>
                 <div className="outcome-select-wrap" ref={outcomeMenuRef}>
-                  <div
+                  {/* Also a real button: Outcome is mandatory, and nothing
+                      below it (the exit price/time fields) renders until one
+                      is chosen, so a div here blocked the form for keyboard
+                      users just as the direction toggle did. */}
+                  <button
+                    type="button"
                     className={`dt-picker-trigger outcome-select-trigger ${outcome === '' ? 'select-placeholder' : ''}`}
+                    aria-haspopup="listbox"
+                    aria-expanded={showOutcomeMenu}
                     onClick={() => setShowOutcomeMenu((v) => !v)}
+                    onKeyDown={(e) => { if (e.key === 'Escape' && showOutcomeMenu) { e.stopPropagation(); setShowOutcomeMenu(false) } }}
                   >
                     <span>{OUTCOME_LABELS[outcome] || 'Select'}</span>
                     <ChevronDown size={14} />
-                  </div>
+                  </button>
                   {showOutcomeMenu && (
-                    <div className="outcome-menu">
+                    <div className="outcome-menu" role="listbox" aria-label="Outcome">
                       {Object.entries(OUTCOME_LABELS).map(([value, label]) => (
-                        <div
+                        <button
                           key={value}
+                          type="button"
+                          role="option"
+                          aria-selected={outcome === value}
                           className="outcome-menu-item"
                           onClick={() => { handleOutcomeChange(value); setShowOutcomeMenu(false) }}
                         >
                           {label}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -1028,9 +1054,9 @@ export default function TradeForm({
               {renderExitFields(0)}
               {isCustomOutcome && (
                 <div className="field full">
-                  <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                  <button type="button" className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
                     + Add another exit
-                  </span>
+                  </button>
                 </div>
               )}
             </>
@@ -1046,15 +1072,15 @@ export default function TradeForm({
                     {renderLegRBadge(row.exit_price)}
                     <div className="exit-row-fields">{renderExitFields(i + 1)}</div>
                     {i === additionalExits.length - 1 && (
-                      <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
+                      <button type="button" className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</button>
                     )}
                   </li>
                 ))}
               </ol>
               {isCustomOutcome && (
-                <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                <button type="button" className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
                   + Add another exit
-                </span>
+                </button>
               )}
             </div>
           ))}
@@ -1116,7 +1142,7 @@ export default function TradeForm({
                       onFocus={() => setShowSuggestions(true)}
                       onKeyDown={handleTagKeyDown}
                     />
-                    <span className="del" style={{ color: 'var(--accent)' }} onClick={() => handleAddTag()}>Add</span>
+                    <button type="button" className="del" style={{ color: 'var(--accent)' }} onClick={() => handleAddTag()}>Add</button>
                   </span>
                   {showSuggestions && tagSuggestions.length > 0 && (
                     <div className="tag-suggestions">
@@ -1127,9 +1153,9 @@ export default function TradeForm({
                   )}
                 </span>
               ) : (
-                <span className="del" style={{ color: 'var(--accent)' }} onClick={() => { setAddingTag(true); setShowSuggestions(true) }}>
+                <button type="button" className="del" style={{ color: 'var(--accent)' }} onClick={() => { setAddingTag(true); setShowSuggestions(true) }}>
                   + Add tag
-                </span>
+                </button>
               )}
             </div>
           </div>
@@ -1159,9 +1185,9 @@ export default function TradeForm({
                   </span>
                 ))}
                 <span className="discipline-menu-wrap" ref={disciplineMenuRef}>
-                  <span className="del" style={{ color: 'var(--loss)' }} onClick={() => setShowDisciplineMenu((v) => !v)}>
+                  <button type="button" className="del" style={{ color: 'var(--loss)' }} onClick={() => setShowDisciplineMenu((v) => !v)}>
                     + Add issue
-                  </span>
+                  </button>
                   {showDisciplineMenu && (
                     <div className="discipline-menu">
                       {DISCIPLINE_GROUPS.map((group) => {

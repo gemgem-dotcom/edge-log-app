@@ -279,7 +279,7 @@ export default function StrategyDetailPage({ params }) {
             onChange={(e) => setRenameValue(e.target.value)}
           />
           <button type="submit" disabled={savingRename}>{savingRename ? 'Saving…' : 'Save'}</button>
-          <span className="del" onClick={() => setRenaming(false)}>Cancel</span>
+          <button type="button" className="del" onClick={() => setRenaming(false)}>Cancel</button>
         </form>
       )}
 

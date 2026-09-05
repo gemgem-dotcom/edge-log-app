@@ -104,7 +104,12 @@ function scopedClient(token) {
 // way the dashboard/log pages do, so there's no reason to fetch the rest
 // (notes, reasoning, screenshot_urls, entry/exit prices, ...) just to
 // throw it away before the dataset ever reaches Claude.
-const INSIGHT_TRADE_COLUMNS = 'r_multiple, session, trade_date, strategy_id, instrument_id, discipline_tags, reviewed_no_issues, volatility_regime, volume_regime, pnl, mfe_points, mae_points, stop_distance, drawdown_seconds, trade_time, exit_time'
+// market_data_status and excursion_fallback are here purely so
+// insightData.js's excursionStats can tell a verified MFE/MAE from one the
+// UI itself refuses to display - without them selected its guard would see
+// undefined on every row and drop every excursion. Treat them as part of
+// reading mfe_points/mae_points at all, not as optional extras.
+const INSIGHT_TRADE_COLUMNS = 'r_multiple, session, trade_date, strategy_id, instrument_id, discipline_tags, reviewed_no_issues, volatility_regime, volume_regime, pnl, mfe_points, mae_points, stop_distance, drawdown_seconds, trade_time, exit_time, market_data_status, excursion_fallback'
 
 async function buildDataset(supabase, scope) {
   if (scope === 'overall') {

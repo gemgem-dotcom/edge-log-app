@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
-import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { invalidateTags } from '@/lib/tagsCache'
 import { readTutorialState, completeTutorial, queueClosingScreen, cacheTutorialState, readCachedTutorialState } from '@/lib/tutorial'
 import { browserOffsetGuess } from '@/lib/timezone'
@@ -105,7 +104,7 @@ export default function NewTradePage({ params, searchParams }) {
     // case the two columns are just left out below rather than written as
     // null (scripts/fetch-daily-market-stats.js backfills them in bulk once
     // the session does close - see lib/tradeRegimes.js's header comment).
-    const regimes = catalogEntryFor(symbol)?.data_symbol === 'NQ' ? await regimesForDate(values.trade_date) : null
+    const regimes = await regimesForDate(symbol, values.trade_date)
 
     const { data: inserted, error } = await supabase.from('trades').insert([{
       ...values,

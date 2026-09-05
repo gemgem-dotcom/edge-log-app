@@ -1,8 +1,10 @@
-# Daily NQ market-session-stats fetch
+# Daily market-session-stats fetch
 #
-# Runs scripts/fetch-daily-market-stats.js once a day, fetching NQ's
+# Runs scripts/fetch-daily-market-stats.js once a day, fetching the
 # *previous* completed session's ohlcv-1m bars from Databento's Historical
-# API and storing total_range/total_volume in market_session_stats. See
+# API for every instrument in lib/instrumentCatalog.js (all 12, each on its
+# own exact contract rather than collapsed onto its data_symbol family) and
+# storing total_range/total_volume per contract in market_session_stats. See
 # schema.sql's comment above `create table market_session_stats` and
 # NOTES.md for the full picture.
 #
@@ -45,7 +47,7 @@
 #                                no-ops if this isn't set, so leaving it out
 #                                is safe, just silent on a graceful-skip day.
 
-name: Refresh NQ market session stats
+name: Refresh market session stats
 
 on:
   schedule:
@@ -78,7 +80,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Fetch and store yesterday's NQ session stats
+      - name: Fetch and store yesterday's session stats
         env:
           DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

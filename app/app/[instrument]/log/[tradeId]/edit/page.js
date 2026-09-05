@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadScreenshots } from '@/lib/screenshots'
 import { computeTradeSessions } from '@/lib/tradeSessions'
 import { regimesForDate } from '@/lib/tradeRegimes'
-import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { invalidateTags } from '@/lib/tagsCache'
 import { browserOffsetGuess } from '@/lib/timezone'
 import { requestTradeExcursionBackfill } from '@/lib/tradeExcursionClient'
@@ -95,8 +94,8 @@ export default function EditTradePage({ params }) {
     // for the save-time-computation half of this.
     const dateChanged = trade.trade_date !== values.trade_date
     let regimes = {}
-    if (dateChanged && catalogEntryFor(symbol)?.data_symbol === 'NQ') {
-      regimes = (await regimesForDate(values.trade_date)) || { volatility_regime: null, volume_regime: null }
+    if (dateChanged) {
+      regimes = (await regimesForDate(symbol, values.trade_date)) || { volatility_regime: null, volume_regime: null }
     }
 
     const { data: updated, error } = await supabase.from('trades').update({

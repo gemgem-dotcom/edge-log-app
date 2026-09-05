@@ -29,7 +29,6 @@ import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 
-const NQ_DATA_SYMBOL = 'NQ'
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
 const EQUITY_GROUPS = [
@@ -308,12 +307,12 @@ async function loadData() {
     setTradesByStrategy(grouped)
     setAllTrades(tradeData || [])
 
-    // NQ-family only, matching lib/tradeRegimes.js's own scope - every
-    // other instrument's trades never carry volatility_regime/volume_regime,
-    // so there's nothing this clause could match and no point in the query.
-    if (catalogEntryFor(symbol)?.data_symbol === NQ_DATA_SYMBOL) {
-      setRegime(await latestClosedSessionRegime(supabase))
-    }
+    // Every catalog instrument now has its own market_session_stats series
+    // (scripts/fetch-daily-market-stats.js fetches all 12, keyed per exact
+    // contract), so there's no NQ-family gate here anymore - a symbol whose
+    // own daily job hasn't stored enough history yet simply resolves null,
+    // exactly as an unsupported instrument used to.
+    setRegime(await latestClosedSessionRegime(supabase, symbol))
   } catch {
     setError('something went wrong.')
   } finally {
@@ -397,7 +396,7 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   // strategy x regime signal for the most recently closed session - see
   // lib/todaysBrief.js. The existing sentence just above stays exactly as
   // it was either way.
-  const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime })
+  const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime, symbol })
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const upcomingEvents = upcomingEconEvents(now)

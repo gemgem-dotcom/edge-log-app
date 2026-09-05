@@ -448,16 +448,23 @@ alter table trades drop column if exists in_plan;
 -- one-time backfill into screenshot_urls above actually ran.
 
 -- Daily completed-session market data (lib/databento.js, scripts/
--- fetch-daily-market-stats.js) - one row per trading day, shared by every
--- trader rather than duplicated per user. The brief this shipped under
--- specified `instrument_id uuid references instruments(id)` as this table's
--- key, but instruments is a per-user table (unique(user_id, symbol)) with no
--- single shared "NQ" row to reference, and CLAUDE.md's own domain rules say
--- future market-data lookups should key off data_symbol, not a specific
--- instruments row, since that's what groups mini/micro contracts (MNQ, NQ)
--- onto the same underlying series. Flagged to the user, who confirmed
--- data_symbol over the brief's literal instrument_id FK - see the PR
--- description for the full reasoning.
+-- fetch-daily-market-stats.js) - one row per contract per trading day,
+-- shared by every trader rather than duplicated per user. The brief this
+-- shipped under specified `instrument_id uuid references instruments(id)`
+-- as this table's key, but instruments is a per-user table (unique(user_id,
+-- symbol)) with no single shared "NQ" row to reference, so this is keyed by
+-- a plain text symbol instead - see the PR description for the full
+-- reasoning.
+--
+-- Despite the column's name, what that text actually holds is the EXACT
+-- catalog symbol ('MNQ'), not the data_symbol family ('NQ'). It started as
+-- the family, on the reasoning that data_symbol is what groups mini/micro
+-- contracts onto one underlying series - but a mini and its micro trade on
+-- separate order books with genuinely different range/volume, so tagging an
+-- MNQ trade from NQ's session was measuring the wrong book. Widening what
+-- the column holds needed no DDL change (it was always free text, never
+-- FK'd to instruments.data_symbol), so the name stayed. Readers join
+-- instruments.symbol against it, never instruments.data_symbol.
 --
 -- No RLS ownership policy makes sense here (no user_id - this isn't anyone's
 -- data) - RLS is still enabled, but only a read policy exists. Writes come

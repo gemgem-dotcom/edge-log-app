@@ -65,12 +65,12 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
         <div className="field wide">
           <label>Theme</label>
           <div className="dir-toggle">
-            <button type="button" aria-pressed={theme === 'dark'} className={`dir-btn ${theme === 'dark' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('dark')}>
+            <div className={`dir-btn ${theme === 'dark' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('dark')}>
               <Moon size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Dark
-            </button>
-            <button type="button" aria-pressed={theme === 'light'} className={`dir-btn ${theme === 'light' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('light')}>
+            </div>
+            <div className={`dir-btn ${theme === 'light' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('light')}>
               <Sun size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Light
-            </button>
+            </div>
           </div>
         </div>
         <div className="field wide" style={{ marginTop: '14px' }}>

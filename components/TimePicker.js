@@ -153,19 +153,8 @@ export default function TimePicker({ value, onChange }) {
     editingFieldRef.current = field
     setFieldText('')
   }
-  // `field` is passed explicitly rather than read from editingField state:
-  // the arrow-key handler below ends the edit while the input keeps focus,
-  // and onFocus does not fire again for an already-focused element, so
-  // relying on that state meant a keystroke right after an arrow press was
-  // applied to FIELD_SETTERS[null] - silently dropped at best. Deriving the
-  // target from the argument makes typing work whenever the field has
-  // focus, however it got there.
-  function handleFieldChange(e, field) {
+  function handleFieldChange(e) {
     const digits = e.target.value.replace(/\D/g, '').slice(0, 2)
-    if (editingField !== field) {
-      setEditingField(field)
-      editingFieldRef.current = field
-    }
     setFieldText(digits)
     // Commits as soon as 2 digits are typed, but stays in edit mode (rather
     // than clearing editingField/fieldText right away) so the field keeps
@@ -173,7 +162,7 @@ export default function TimePicker({ value, onChange }) {
     // display value - otherwise Backspace would have nothing of its own
     // left to delete. commitField (on blur) is what actually ends the edit.
     if (digits.length === 2) {
-      FIELD_SETTERS[field](Number(digits))
+      FIELD_SETTERS[editingField](Number(digits))
     }
   }
   function commitField() {
@@ -189,30 +178,8 @@ export default function TimePicker({ value, onChange }) {
       <input
         type="text" inputMode="numeric" className="dt-picker-spin-value" aria-label={label}
         value={editingField === field ? fieldText : display}
-        onFocus={() => startEdit(field)} onChange={(e) => handleFieldChange(e, field)} onBlur={commitField}
-        // Arrow keys are how a spinner is expected to work, and without
-        // them a keyboard user's only route to 09:47:23 was tabbing to each
-        // Increase button and pressing Enter forty-seven times. The
-        // surrounding text input is readOnly (inputMode "none"), so typing
-        // into the field itself does nothing either - these segments are
-        // the one place a value can actually be entered.
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') { e.target.blur(); return }
-          // Selecting the text after a spin is what makes typing work
-          // straight afterwards: the field is no longer mid-edit, so it
-          // shows the committed value, and a keystroke would otherwise
-          // append to it ("01" + "1" -> "011", truncated back to "01") and
-          // appear to do nothing. With the value selected the keystroke
-          // replaces it, exactly like a native spinner. Deferred a frame so
-          // it runs after React has painted the new value.
-          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-            e.preventDefault()
-            const input = e.target
-            commitField()
-            if (e.key === 'ArrowUp') onUp(); else onDown()
-            requestAnimationFrame(() => input.select())
-          }
-        }}
+        onFocus={() => startEdit(field)} onChange={handleFieldChange} onBlur={commitField}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
       />
       <button type="button" className="dt-picker-spin-btn" aria-label={`Decrease ${label}`} onClick={onDown}><ChevronDown size={14} /></button>
     </div>

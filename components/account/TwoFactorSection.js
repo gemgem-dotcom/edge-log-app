@@ -134,9 +134,9 @@ export default function TwoFactorSection({ initialFactors }) {
           )}
           <div className="mfa-secret-row">
             <span className="trade-id-cell">{enrollSecret}</span>
-            <button type="button" className="del" onClick={handleCopySecret}>
+            <span className="del" onClick={handleCopySecret}>
               {secretCopied ? <><Check size={12} style={{ verticalAlign: '-2px' }} /> copied</> : <><Copy size={12} style={{ verticalAlign: '-2px' }} /> copy</>}
-            </button>
+            </span>
           </div>
           <div className="field wide" style={{ marginTop: '14px' }}>
             <label>6-digit code</label>

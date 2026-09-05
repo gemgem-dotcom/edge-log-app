@@ -286,7 +286,7 @@ export default function InstrumentLayout({ children, params }) {
                       onChange={(e) => setNewStrategyName(e.target.value)}
                     />
                     <div className="sidebar-strategy-add-actions">
-                      <button type="button" className="del" onClick={cancelAddStrategy}>Cancel</button>
+                      <span className="del" onClick={cancelAddStrategy}>Cancel</span>
                       <button type="submit">Add</button>
                     </div>
                   </form>

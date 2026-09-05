@@ -81,8 +81,8 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
                     {editingDeviceId === ev.id ? (
                       <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
                         <input type="text" value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={ev.device || 'Unknown device'} style={{ padding: '4px 8px', fontSize: '13px', width: '140px' }} autoFocus />
-                        <button type="button" className="del save-link" onClick={() => handleSaveNickname(ev.id)}>Save</button>
-                        <button type="button" className="del" onClick={() => { setEditingDeviceId(null); setNicknameInput('') }}>Cancel</button>
+                        <span className="del save-link" onClick={() => handleSaveNickname(ev.id)}>Save</span>
+                        <span className="del" onClick={() => { setEditingDeviceId(null); setNicknameInput('') }}>Cancel</span>
                       </span>
                     ) : (
                       <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
@@ -100,9 +100,9 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
           </div>
           {loginEvents.length > 5 && (
             <div className="panel-link-row">
-              <button type="button" className="panel-link" onClick={() => setShowAllEvents(!showAllEvents)}>
+              <span className="panel-link" style={{ cursor: 'pointer' }} onClick={() => setShowAllEvents(!showAllEvents)}>
                 {showAllEvents ? 'Show fewer' : `Show all ${loginEvents.length} sign-ins`}
-              </button>
+              </span>
             </div>
           )}
         </>

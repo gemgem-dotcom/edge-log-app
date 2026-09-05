@@ -5,51 +5,50 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–675  Base: reset, typography, forms, tables, thumbnails,
+     1–674  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   676  Auth pages
-   742  Top nav
-   757  Instrument nav (topbar pill row)
-   834  Page layout
-   888  Tabs
-   898  Misc form helpers
-   904  Detail view
-   927  Holiday notice (site-wide, above the shell)
-   952  Shell layout (sidebar + topbar)
-   1323  Expandable trade rows
-   1389  Calendar
-   1437  Account settings page
-   1653  Light theme
-   1694  2FA
-   1709  Account fine print
-   1712  Screenshot preview (log new trade)
-   1754  Auth pages always dark
-   1789  Monthly P&L (calendar on Overview)
-   1876  Trade form: sections, validation, currency, screenshots
-   2114  Field tooltips
-   2176  Date/time picker (adds an optional popup to a typed input)
-   2285  In-header column filters (trade log table)
-   2333  Active filter chips
-   2396  Empty states, error banners, skeleton loaders
-   2475  Cross-instrument overview dashboard (/app)
-   2654  Not found / error boundary state pages
-   2667  Toast notifications
-   2695  Public policy pages (Privacy, Terms)
-   2714  Legal links (auth pages + account settings)
-   2753  Economic calendar card (mock - Overview pages)
-   2867  Calendar news badge (Monthly P&L day cells, mock)
-   2888  Streak badge (Overview + strategy detail pages)
-   2911  Market status pill (Overview + strategy detail pages)
-   2937  Today's brief & session stats
-   2972  Market context cards (all-instruments Overview)
-   3005  Edge Insights panel
-   3020  Unverified logged time badge
-   3037  Welcome transition (first-run)
-   3066  Zero-instrument empty state
-   3076  Tutorial overlay (first-run guided tour)
-   3168  Tutorial step 3 (guided form scroll)
-   3215  Press states, value changes, content fade-in
-   3312  Keyboard-reachable control resets
+   675  Auth pages
+   741  Top nav
+   756  Instrument nav (topbar pill row)
+   833  Page layout
+   887  Tabs
+   897  Misc form helpers
+   903  Detail view
+   926  Holiday notice (site-wide, above the shell)
+   951  Shell layout (sidebar + topbar)
+   1322  Expandable trade rows
+   1388  Calendar
+   1436  Account settings page
+   1652  Light theme
+   1693  2FA
+   1708  Account fine print
+   1711  Screenshot preview (log new trade)
+   1753  Auth pages always dark
+   1788  Monthly P&L (calendar on Overview)
+   1875  Trade form: sections, validation, currency, screenshots
+   2113  Field tooltips
+   2175  Date/time picker (adds an optional popup to a typed input)
+   2284  In-header column filters (trade log table)
+   2332  Active filter chips
+   2395  Empty states, error banners, skeleton loaders
+   2474  Cross-instrument overview dashboard (/app)
+   2653  Not found / error boundary state pages
+   2666  Toast notifications
+   2694  Public policy pages (Privacy, Terms)
+   2713  Legal links (auth pages + account settings)
+   2752  Economic calendar card (mock - Overview pages)
+   2866  Calendar news badge (Monthly P&L day cells, mock)
+   2887  Streak badge (Overview + strategy detail pages)
+   2910  Market status pill (Overview + strategy detail pages)
+   2936  Today's brief & session stats
+   2971  Market context cards (all-instruments Overview)
+   3004  Edge Insights panel
+   3019  Unverified logged time badge
+   3036  Welcome transition (first-run)
+   3065  Zero-instrument empty state
+   3075  Tutorial overlay (first-run guided tour)
+   3167  Tutorial step 3 (guided form scroll)
+   3214  Press states, value changes, content fade-in
    ============================================================ */
 
 :root{
@@ -3308,25 +3307,3 @@ button:active{
 @media (prefers-reduced-motion:reduce){
   .content-fade-in{animation:none;}
 }
-
-/* ---------- Keyboard-reachable control resets ---------- */
-/* These controls were <div>/<span> with an onClick, which meant Tab never
-   reached them and Enter/Space did nothing - the direction toggle and the
-   Outcome dropdown are both mandatory on the trade form, so between them a
-   keyboard-only or screen-reader user could not log a trade at all. They
-   are now real <button>s; these rules strip the UA button chrome so they
-   keep the exact appearance they already had. The focus ring comes from
-   the shared a/button/[tabindex]:focus-visible rule near the top of this
-   file, so nothing extra is needed for that.
-   width:100%/text-align:left on the menu item because a button shrink-wraps
-   its text by default, where the div filled its container's width. */
-.dir-btn, .outcome-select-trigger, .outcome-menu-item, button.del,
-button.row-action-btn, .tag-chip-remove, button.panel-link,
-button.filter-clear-all, button.dt-picker-today-link,
-button.dt-picker-nav-btn, button.modal-close, button.sidebar-section-header,
-button.insights-regen-link{
-  appearance:none; -webkit-appearance:none;
-  border:0; margin:0; font:inherit; background:none; color:inherit;
-}
-.outcome-menu-item{width:100%; text-align:left;}
-.outcome-select-trigger{width:100%;}

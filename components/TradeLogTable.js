@@ -487,7 +487,7 @@ export default function TradeLogTable({
               </button>
             </span>
           ))}
-          <button type="button" className="filter-clear-all" onClick={clearAllFilters}>Clear all</button>
+          <span className="filter-clear-all" onClick={clearAllFilters}>Clear all</span>
         </div>
       )}
       {showFilters && (
@@ -600,15 +600,13 @@ export default function TradeLogTable({
                       >
                         <Pencil size={15} />
                       </Link>
-                      <button
-                        type="button"
+                      <span
                         className="row-action-btn row-action-danger"
                         onClick={(e) => handleDelete(e, t)}
                         title="Delete trade"
-                        aria-label="Delete trade"
                       >
                         <Trash2 size={15} />
-                      </button>
+                      </span>
                     </span>
                   </td>
                 </tr>

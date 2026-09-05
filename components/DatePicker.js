@@ -260,9 +260,9 @@ export default function DatePicker({ value, onChange, min, max }) {
       {open && (
         <div className="dt-picker-popup">
           <div className="dt-picker-nav">
-            <button type="button" className="dt-picker-nav-btn" onClick={prevMonth} aria-label="Previous month"><ChevronLeft size={16} /></button>
+            <span className="dt-picker-nav-btn" onClick={prevMonth} aria-label="Previous month"><ChevronLeft size={16} /></span>
             <span className="dt-picker-nav-label">{MONTH_NAMES[viewMonth]} {viewYear}</span>
-            <button type="button" className="dt-picker-nav-btn" onClick={nextMonth} aria-label="Next month"><ChevronRight size={16} /></button>
+            <span className="dt-picker-nav-btn" onClick={nextMonth} aria-label="Next month"><ChevronRight size={16} /></span>
           </div>
           <div className="dt-picker-weekdays">
             {WEEKDAYS.map((w, i) => <span key={i}>{w}</span>)}
@@ -287,7 +287,7 @@ export default function DatePicker({ value, onChange, min, max }) {
             ))}
           </div>
           <div className="dt-picker-footer">
-            <button type="button" className="dt-picker-today-link" onClick={goToToday}>Today</button>
+            <span className="dt-picker-today-link" onClick={goToToday}>Today</span>
           </div>
         </div>
       )}

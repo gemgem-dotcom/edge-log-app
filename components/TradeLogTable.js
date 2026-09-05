@@ -19,6 +19,32 @@ const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
 const UNCLASSIFIED = 'unclassified'
 
+// Relative column widths, applied (as percentages, see colWidthPercents
+// below) only once a table can actually be filtered - see the
+// "table-cols-stable" class this drives in globals.css for the underlying
+// bug. Not measured from whatever happens to be on screen right now (that
+// IS the bug - a table-layout:auto column's width is the max preferred
+// width across only its currently-rendered cells, so hiding the row
+// holding a column's widest value shrinks it, and every column after it
+// reflows to fill the reclaimed space). These are constants instead:
+// captured from this table's own current auto-computed proportions across
+// its three filterable pages, which - confirmed by direct measurement -
+// hold the same ratio to each other regardless of which optional columns
+// happen to be present. Fixing them as percentages of table width
+// reproduces today's proportions while making them independent of which
+// rows are actually visible.
+const COLUMN_WEIGHTS = {
+  date: 1, day: 0.92, instrument: 1, strategy: 1.71,
+  direction: 1.1, result: 0.9, pnl: 0.84, actions: 0.74,
+}
+
+// `present` lists exactly the column kinds this render's props turn on, in
+// the same left-to-right order they're rendered in the <thead> below.
+function colWidthPercents(present) {
+  const total = present.reduce((sum, key) => sum + COLUMN_WEIGHTS[key], 0)
+  return Object.fromEntries(present.map((key) => [key, `${(COLUMN_WEIGHTS[key] / total * 100).toFixed(3)}%`]))
+}
+
 // Checkbox-style filter button + dropdown above the table, same interaction
 // pattern as EconomicCalendarCard's impact filter (independent checkboxes,
 // applied immediately, closes on outside click/scroll) - not shared code
@@ -466,6 +492,30 @@ export default function TradeLogTable({
     + (showStrategyColumn ? 1 : 0)
     + (showInstrumentColumn ? 1 : 0)
 
+  // Only computed (and only applied to the <th> elements below) when
+  // showFilters is on - see the effect's own comment just below.
+  const colWidths = showFilters
+    ? colWidthPercents([
+        'date',
+        ...(showDayColumn ? ['day'] : []),
+        ...(showInstrumentColumn ? ['instrument'] : []),
+        ...(showStrategyColumn ? ['strategy'] : []),
+        'direction', 'result',
+        ...(showPnlColumn ? ['pnl'] : []),
+        'actions',
+      ])
+    : null
+
+  // Locks every bounded column's width once a trader can actually filter
+  // this table down to a handful of rows - see the ".table-cols-stable"
+  // rule this drives in globals.css for why (in short: a shrinking Day or
+  // Instrument column reflows every column after it, table-wide, and
+  // filtering is exactly what can make that column's own widest value
+  // disappear from view). Left off on the callers that don't render a
+  // Filter control at all (the dashboard's calendar-day table, the
+  // Overview page's Recent trades list) - their row set never changes
+  // under the trader's own control, so there's nothing to stabilize
+  // against and no reason to touch how they currently render.
   return (
     <div id="tableWrap">
       <ErrorBanner message={deleteError} />
@@ -501,41 +551,45 @@ export default function TradeLogTable({
             : `${visible.length} of ${rows.length} trades`}
         </div>
       )}
-      <table>
+      <table className={showFilters ? 'table-cols-stable' : undefined}>
         <thead>
           <tr>
-            <th>Date</th>
+            <th className="col-date" style={colWidths ? { width: colWidths.date } : undefined}>Date</th>
             {showDayColumn && (
-              <th>
+              <th className="col-day" style={colWidths ? { width: colWidths.day } : undefined}>
                 <span className="th-label">Day</span>
                 {showFilters && (
                   <ColumnFilter mode="multi" options={dayOptions} value={filterDays} onChange={setFilterDays} />
                 )}
               </th>
             )}
-            {showInstrumentColumn && <th>Instrument</th>}
+            {showInstrumentColumn && (
+              <th className="col-instrument" style={colWidths ? { width: colWidths.instrument } : undefined}>Instrument</th>
+            )}
             {showStrategyColumn && (
-              <th>
+              <th style={colWidths ? { width: colWidths.strategy } : undefined}>
                 <span className="th-label">Strategy</span>
                 {showFilters && (
                   <ColumnFilter mode="multi" options={strategyOptions} value={filterStrategies} onChange={setFilterStrategies} />
                 )}
               </th>
             )}
-            <th>
+            <th className="col-direction" style={colWidths ? { width: colWidths.direction } : undefined}>
               <span className="th-label">Direction</span>
               {showFilters && (
                 <ColumnFilter mode="single" options={directionOptions} value={filterDirection} onChange={setFilterDirection} />
               )}
             </th>
-            <th>
+            <th className="col-result" style={colWidths ? { width: colWidths.result } : undefined}>
               <span className="th-label">Result</span>
               {showFilters && (
                 <ColumnFilter mode="single" options={resultOptions} value={filterResult} onChange={setFilterResult} />
               )}
             </th>
-            {showPnlColumn && <th>P&amp;L</th>}
-            <th className="actions-col-header"></th>
+            {showPnlColumn && (
+              <th className="col-pnl" style={colWidths ? { width: colWidths.pnl } : undefined}>P&amp;L</th>
+            )}
+            <th className="actions-col-header" style={colWidths ? { width: colWidths.actions } : undefined}></th>
           </tr>
         </thead>
         <tbody>

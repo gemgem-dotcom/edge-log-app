@@ -5,51 +5,52 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–675  Base: reset, typography, forms, tables, thumbnails,
+     1–676  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   676  Auth pages
-   742  Top nav
-   757  Instrument nav (topbar pill row)
-   834  Page layout
-   888  Tabs
-   898  Misc form helpers
-   904  Detail view
-   927  Holiday notice (site-wide, above the shell)
-   959  Shell layout (sidebar + topbar)
-   1330  Expandable trade rows
-   1396  Calendar
-   1444  Account settings page
-   1660  Light theme
-   1701  2FA
-   1716  Account fine print
-   1719  Screenshot preview (log new trade)
-   1761  Auth pages always dark
-   1796  Monthly P&L (calendar on Overview)
-   1883  Trade form: sections, validation, currency, screenshots
-   2121  Field tooltips
-   2183  Date/time picker (adds an optional popup to a typed input)
-   2292  In-header column filters (trade log table)
-   2340  Active filter chips
-   2403  Empty states, error banners, skeleton loaders
-   2482  Cross-instrument overview dashboard (/app)
-   2661  Not found / error boundary state pages
-   2674  Toast notifications
-   2702  Public policy pages (Privacy, Terms)
-   2721  Legal links (auth pages + account settings)
-   2760  Economic calendar card (mock - Overview pages)
-   2874  Calendar news badge (Monthly P&L day cells, mock)
-   2895  Streak badge (Overview + strategy detail pages)
-   2918  Market status pill (Overview + strategy detail pages)
-   2944  Today's brief & session stats
-   2979  Market context cards (all-instruments Overview)
-   3012  Edge Insights panel
-   3027  Unverified logged time badge
-   3044  Welcome transition (first-run)
-   3073  Zero-instrument empty state
-   3083  Tutorial overlay (first-run guided tour)
-   3175  Tutorial step 3 (guided form scroll)
-   3222  Press states, value changes, content fade-in
-   3319  Trade log column width stability
+   677  Auth pages
+   743  Top nav
+   758  Instrument nav (topbar pill row)
+   835  Page layout
+   889  Tabs
+   899  Misc form helpers
+   905  Detail view
+   928  Holiday notice (site-wide, above the shell)
+   960  Shell layout (sidebar + topbar)
+   1331  Expandable trade rows
+   1397  Calendar
+   1445  Account settings page
+   1661  Light theme
+   1702  2FA
+   1717  Account fine print
+   1720  Screenshot preview (log new trade)
+   1762  Auth pages always dark
+   1797  Monthly P&L (calendar on Overview)
+   1884  Trade form: sections, validation, currency, screenshots
+   2122  Field tooltips
+   2184  Date/time picker (adds an optional popup to a typed input)
+   2293  In-header column filters (trade log table)
+   2341  Active filter chips
+   2404  Empty states, error banners, skeleton loaders
+   2483  Cross-instrument overview dashboard (/app)
+   2662  Not found / error boundary state pages
+   2675  Toast notifications
+   2703  Public policy pages (Privacy, Terms)
+   2722  Legal links (auth pages + account settings)
+   2761  Economic calendar card (mock - Overview pages)
+   2875  Calendar news badge (Monthly P&L day cells, mock)
+   2896  Streak badge (Overview + strategy detail pages)
+   2919  Market status pill (Overview + strategy detail pages)
+   2945  Today's brief & session stats
+   2980  Market context cards (all-instruments Overview)
+   3013  Edge Insights panel
+   3028  Unverified logged time badge
+   3045  Welcome transition (first-run)
+   3074  Zero-instrument empty state
+   3084  Tutorial overlay (first-run guided tour)
+   3176  Tutorial step 3 (guided form scroll)
+   3223  Press states, value changes, content fade-in
+   3320  Trade log column width stability
+   3345  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -3340,3 +3341,19 @@ button:active{
    one holds the whole detail card (notes, tags, screenshots) and needs
    to wrap normally, not truncate to one line. */
 .table-cols-stable td:not([colspan]){overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+/* ---------- Strategy notes panel ---------- */
+/* Taller than the base textarea rule's min-height:38px (a one-line hint,
+   sized for the trade form's own Notes field) - this one is meant to hold
+   a whole strategy's written-out conditions and rules, not a quick
+   sentence. Margin-free, same as every other panel's own last child -
+   .panel already supplies the padding around it. background:transparent
+   and border:none override the base textarea rule's --panel-2 fill and
+   --line border, which read as a visibly boxed control sitting inside
+   the panel rather than part of it - this is meant to read as part of
+   the panel's own surface, not a distinct field on top of it.
+   border-color:transparent on :focus for the same reason - the base
+   textarea:focus rule would otherwise draw an --accent border back in
+   the moment this is actually being typed into. */
+.strategy-notes-textarea{min-height:110px; margin:0; background:transparent; border:none;}
+.strategy-notes-textarea:focus{border-color:transparent;}

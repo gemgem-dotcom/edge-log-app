@@ -684,3 +684,9 @@ where instrument_id in (
   select id from instruments where symbol in ('MNQ', 'MES', 'MYM', 'MGC', 'MCL', 'MBT')
 )
 and (volatility_regime is not null or volume_regime is not null);
+
+-- Free-text notes on a strategy (its conditions, rules, anything else the
+-- trader wants to keep track of) - edited on the strategy detail page,
+-- autosaved on blur. Nullable, no default: most existing strategies have
+-- none yet.
+alter table strategies add column if not exists notes text;

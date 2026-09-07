@@ -129,6 +129,12 @@ export default function StrategyDetailPage({ params }) {
   const [deleting, setDeleting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
+  // What notes last actually saved to the database, so a blur that didn't
+  // change anything (tabbing through the page, or clicking in and straight
+  // back out) doesn't fire a write + toast for nothing. Reset in loadData
+  // below, alongside the strategy row it came from.
+  const notesBaselineRef = useRef('')
+
   // Identifies the most recent load, so a slower earlier one can't land on
   // top of it - clicking straight from one strategy card to another leaves
   // this page mounted (see the reset note below), so two loads can overlap
@@ -167,6 +173,7 @@ export default function StrategyDetailPage({ params }) {
       if (stratError && stratError.code !== 'PGRST116') throw stratError
       if (superseded()) return
       setStrategy(stratError ? null : s)
+      notesBaselineRef.current = stratError ? '' : (s.notes || '')
       if (stratError) return
 
       // Paged, and ordered by id as the final tiebreak so page boundaries
@@ -208,6 +215,19 @@ export default function StrategyDetailPage({ params }) {
     setRenameValue(strategy.name)
     setRenaming(true)
     setMenuOpen(false)
+  }
+
+  async function handleNotesBlur() {
+    const value = strategy.notes || ''
+    if (value === notesBaselineRef.current) return
+    const { error } = await supabase.from('strategies').update({ notes: value }).eq('id', strategyId)
+    if (!error) {
+      notesBaselineRef.current = value
+      invalidateStrategies(strategy.instrument_id)
+      toast.success('Notes saved.')
+    } else {
+      setFormError(friendlyStrategyError(error))
+    }
   }
 
   async function handleRename(e) {
@@ -292,6 +312,17 @@ export default function StrategyDetailPage({ params }) {
           lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
         />
         <Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
+      </div>
+
+      <div className="panel">
+        <textarea
+          className="strategy-notes-textarea"
+          value={strategy.notes || ''}
+          onChange={(e) => setStrategy((prev) => ({ ...prev, notes: e.target.value }))}
+          onBlur={handleNotesBlur}
+          placeholder="Define this strategy's conditions, rules, and keep track of any other notes here."
+          aria-label="Strategy notes"
+        />
       </div>
 
       <div className="section-heading">Performance</div>

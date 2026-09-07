@@ -18,6 +18,15 @@ export default function StrategyDetailSkeleton() {
         <div className="skel skel-pill" style={{ width: '140px', marginLeft: 'auto' }} />
       </div>
 
+      {/* Notes panel - no section-heading above it on the real page, so
+          none here either. minHeight matches .strategy-notes-textarea's
+          own min-height:110px in globals.css, so this panel doesn't
+          resize (and shift Performance below it) once the real notes
+          textarea replaces this placeholder. */}
+      <div className="panel">
+        <div className="skel" style={{ minHeight: '110px' }} />
+      </div>
+
       <div className="section-heading">Performance</div>
       <div className="panel">
         <div className="performance-card-subgrid" style={{ marginTop: 0 }}>

@@ -34,6 +34,7 @@ on:
           - scripts/smoke-test-databento-symbols.js
           - scripts/pull-strategy-market-context.js
           - scripts/list-strategy-screenshots.js
+          - scripts/scan-strategy-setup-days.js
       strategy:
         description: >-
           Strategy name (only read by pull-strategy-market-context.js /
@@ -56,6 +57,16 @@ on:
         description: >-
           Comma-separated trade_date list to print full 5m profile rows for
           (only read by pull-strategy-market-context.js)
+        required: false
+        type: string
+      scan_start_date:
+        description: >-
+          YYYY-MM-DD scan range start (only read by scan-strategy-setup-days.js)
+        required: false
+        type: string
+      scan_end_date:
+        description: >-
+          YYYY-MM-DD scan range end (only read by scan-strategy-setup-days.js)
         required: false
         type: string
 
@@ -87,4 +98,6 @@ jobs:
           INSTRUMENT_SYMBOL: ${{ inputs.instrument }}
           USER_EMAIL: ${{ inputs.user_email }}
           DEBUG_TRADE_DATES: ${{ inputs.debug_trade_dates }}
+          SCAN_START_DATE: ${{ inputs.scan_start_date }}
+          SCAN_END_DATE: ${{ inputs.scan_end_date }}
         run: node "${{ inputs.script }}"

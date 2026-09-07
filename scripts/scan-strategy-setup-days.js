@@ -36,11 +36,15 @@
 // Databento usage - the bars are already fetched - just more CPU, which
 // is trivial for an in-memory array pass.) Checks both directions for a
 // rejection at that minute's 5m POC once the impulse has reached that
-// minute's 15m POC zone. Records the FIRST qualifying touch of the day (a
-// whipsaw day can trigger several; only the first is what a trader
-// scanning live would actually see first) plus a count of any later ones,
-// and whether that touch's date/time lines up with an actual logged
-// trade.
+// minute's 15m POC zone. Records EVERY qualifying touch of the day (a
+// whipsaw day can trigger several) and whether each touch's date/time
+// lines up with an actual logged trade - not just the first touch. An
+// earlier version only recorded/matched the first touch of the day on the
+// theory that's what a trader scanning live would see first, but that
+// missed real matches: a trade can legitimately be taken on the 2nd or 3rd
+// touch of the day (the trader passing on an earlier one), and checking
+// only the first touch undercounted matchedCount and hid those trades from
+// the candidate dataset entirely.
 //
 // Prints one JSON line per scanned day (prefixed DAY_CONTEXT:) plus a
 // closing SUMMARY: line - reads from the job log, writes nothing back to
@@ -457,18 +461,27 @@ async function main() {
         })
       }
 
+      // Every candidate in the day is checked against the trade log, not
+      // just the first - a trade taken on the 2nd or 3rd touch of the day
+      // (a real, common case: the trader passing on an earlier touch and
+      // taking a later one) was previously invisible to matchedCount/
+      // unmatchedCount and to the printed line, since only foundCandidates[0]
+      // was ever inspected. That undercounted real matches: cross-checking
+      // the 9 trades the static-snapshot version of this script missed
+      // entirely showed 3 of them (2026-05-20, 08-14, 08-21) landing on a
+      // later touch of a day that did have candidates, not the first one.
       if (foundCandidates.length > 0) {
         daysWithCandidate++
-        const first = foundCandidates[0]
-        if (first.matchedTrade) matchedCount++
-        else unmatchedCount++
+        for (const c of foundCandidates) {
+          if (c.matchedTrade) matchedCount++
+          else unmatchedCount++
+        }
       }
 
       console.log('DAY_CONTEXT:' + JSON.stringify({
         date: dateStr,
         candidateCount: foundCandidates.length,
-        firstCandidate: foundCandidates[0] || null,
-        laterCandidateCount: Math.max(0, foundCandidates.length - 1),
+        candidates: foundCandidates,
       }))
     } catch (err) {
       log(`${dateStr} failed: ${err.message}`)

@@ -4,27 +4,40 @@
 // scheduled. Run manually via the "Run a diagnostic script" GitHub Action.
 //
 // Pulls every trade logged under one strategy (STRATEGY_NAME, scoped to one
-// instrument's INSTRUMENT_SYMBOL) and, for each, fetches the real Databento
-// market data around it - the prior completed session's volume profile (a
-// coarse "which price zone traded the most" read, built from ohlcv-1m bar
-// volume rather than raw tick prints, to keep this first pass cheap against
-// the account's $125 historical credit) and the hour and a half of price
-// action immediately before entry - so a strategy's actual setup can be
-// characterized from real market context instead of guessed at from
-// entry/stop/target prices alone.
+// instrument's INSTRUMENT_SYMBOL) and, for each, rebuilds the same two
+// rolling volume profiles the trader actually uses to find this setup: a
+// 5-minute profile over a rolling 270-bar lookback and a 15-minute profile
+// over a rolling 240-bar lookback (both real trader-supplied parameters,
+// not guessed at - see the "Second pass" note below). Both are built from
+// real Databento ohlcv-1m bars, aggregated up rather than fetched as a
+// distinct schema (see fetchOhlcv1m's own comment on why).
+//
+// For each trade this reports: where the entry sits relative to each
+// profile's proof-of-concept node (POC) and its top-3 highest-volume
+// zones, and whether the few minutes immediately before entry show a
+// wick into one of those zones that closed back out in the trade's
+// direction - the actual mechanical signature of a "rejection" trade,
+// rather than just "was the entry close to a high-volume price".
 //
 // This is a data-gathering step, not a finished indicator: it prints one
 // JSON object per trade (prefixed TRADE_CONTEXT:) plus a closing SUMMARY:
 // line, meant to be read from the workflow's job log and analyzed from
 // there - it does not write anything back to Supabase or anywhere else.
 //
-// Deliberately standalone (duplicates the ET-session-boundary math from
-// lib/databento.js / scripts/fetch-daily-market-stats.js and the wall-clock
-// -to-UTC-instant math from lib/tradeSessions.js) rather than importing
-// those - this repo has no "type": "module" in package.json, so their
-// `export`/`import` syntax isn't reliably loadable from a plain `node
-// scripts/...` invocation. Same reason those two scripts already duplicate
-// this logic instead of sharing it.
+// Second pass: the first version of this script (see PR #177) guessed at
+// "HVZ" as the top-3 buckets of the single prior CME session, which only
+// matched about half the logged trades - a coin flip, not a signal. The
+// trader then gave the actual definition they trade off: a 5m volume
+// profile (270-bar rolling lookback) and a 15m volume profile (240-bar
+// rolling lookback). This version replaces the session-based guess with
+// that real definition.
+//
+// Deliberately standalone (duplicates the wall-clock-to-UTC-instant math
+// from lib/tradeSessions.js) rather than importing it - this repo has no
+// "type": "module" in package.json, so its `export`/`import` syntax isn't
+// reliably loadable from a plain `node scripts/...` invocation. Same
+// reason scripts/fetch-daily-market-stats.js already duplicates similar
+// Databento/date logic instead of importing lib/databento.js.
 //
 // Usage: node scripts/pull-strategy-market-context.js
 // Env: DATABENTO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL,
@@ -36,20 +49,29 @@ const DATASET = 'GLBX.MDP3'
 const PRICE_SCALE = 1e9
 const BASE_URL = 'https://hist.databento.com'
 
-// How wide one volume-profile bucket is, in points - coarse on purpose for
-// this first pass (see header comment). 25 points on NQ is roughly the
-// width of a small consolidation, not a single price.
-const BUCKET_POINTS = 25
-// How many of the highest-volume buckets from the prior session count as
-// "the HVZs" a trade's entry gets measured against.
+// The trader's own indicator parameters - not guesses. See header comment.
+const PROFILE_5M = { intervalMinutes: 5, lookbackBars: 270 }
+const PROFILE_15M = { intervalMinutes: 15, lookbackBars: 240 }
+// How many price rows each profile is split into across its own high-low
+// range - a typical default for a volume-profile study (matches common
+// charting-platform defaults; the trader didn't specify their own row
+// count, so this is the one guessed parameter left).
+const PROFILE_ROWS = 30
+// How many of a profile's highest-volume rows count as its "zones" for the
+// entry-proximity and rejection checks.
 const TOP_ZONES = 3
+// How far back from entry (in raw 1-minute bars) to look for a wick into a
+// zone that closed back out before entry - the actual "rejection" motion.
+const REJECTION_LOOKBACK_MINUTES = 15
 // How far back from entry to pull 1-minute bars for the immediate pre-entry
-// read (approach direction, recent range, ATR).
-const LOOKBACK_MINUTES = 90
-// A trade's entry within this many points of a prior-session high-volume
-// zone counts toward the summary's "near an HVZ" tally - a loose first-pass
-// threshold, not a claim about the strategy's real trigger distance.
-const HVZ_PROXIMITY_POINTS = 15
+// read (recent range, ATR) - kept separate from the profile lookbacks
+// since it's just a shorter, human-readable window.
+const PRE_ENTRY_WINDOW_MINUTES = 90
+// Calendar hours of 1-minute bars to fetch per trade, ending at entry - has
+// to comfortably exceed the 15m profile's 240*15 = 3600 real trading
+// minutes (60h) even after a weekend (~49h closed) and daily maintenance
+// breaks, so a Monday-morning trade can still fill its whole lookback.
+const FETCH_LOOKBACK_HOURS = 120
 
 function log(...args) {
   console.error(new Date().toISOString(), ...args)
@@ -57,54 +79,6 @@ function log(...args) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-// ---------- duplicated ET / session-boundary math ----------
-// See scripts/fetch-daily-market-stats.js's own copy of this - same reason
-// for the duplication (this file's header comment).
-
-function etOffsetMinutesFor(dateStr) {
-  const noonUtc = new Date(`${dateStr}T12:00:00Z`)
-  const etString = noonUtc.toLocaleString('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit' })
-  const [h, m] = etString.split(':').map(Number)
-  const etMinutesOfDay = (h % 24) * 60 + m
-  let offset = etMinutesOfDay - 12 * 60
-  if (offset > 720) offset -= 1440
-  if (offset <= -720) offset += 1440
-  return offset
-}
-
-function easternPartsFor(instant) {
-  const dateStr = instant.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const timeStr = instant.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false })
-  const [h, m] = timeStr.split(':').map(Number)
-  return { dateStr, minutesOfDay: h * 60 + m }
-}
-
-function etWallClockToUtc(dateStr, minutesOfDay) {
-  const offset = etOffsetMinutesFor(dateStr)
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const baseUtcMs = Date.UTC(y, m - 1, d, 0, 0, 0)
-  return new Date(baseUtcMs + (minutesOfDay - offset) * 60000)
-}
-
-function addDaysToDateStr(dateStr, days) {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const dt = new Date(Date.UTC(y, m - 1, d))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
-
-// The CME/Globex trading day containing `instant`: 6pm ET the evening
-// before through 6pm ET on the session's own date. Mirrors lib/
-// databento.js's sessionBoundsFor.
-function sessionBoundsFor(instant) {
-  const { dateStr, minutesOfDay } = easternPartsFor(instant)
-  let sessionDateStr = dateStr
-  if (minutesOfDay >= 18 * 60) sessionDateStr = addDaysToDateStr(dateStr, 1)
-  const end = etWallClockToUtc(sessionDateStr, 18 * 60)
-  const start = etWallClockToUtc(addDaysToDateStr(sessionDateStr, -1), 18 * 60)
-  return { start, end, sessionDateStr }
 }
 
 // Same "local = UTC + offset" convention as lib/tradeSessions.js's own
@@ -125,6 +99,9 @@ function authHeader() {
 
 function normalizeRecord(record) {
   return {
+    // Kept as a string (nanosecond epoch) rather than parsed into a Number -
+    // real values here (~1.8e18) blow past Number.MAX_SAFE_INTEGER, so the
+    // aggregation below reads it back out via BigInt instead.
     tsEvent: record.ts_event ?? record.hd?.ts_event ?? null,
     open: record.open / PRICE_SCALE,
     high: record.high / PRICE_SCALE,
@@ -147,6 +124,12 @@ function parseOhlcvRecords(text) {
   return trimmed.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => normalizeRecord(JSON.parse(l)))
 }
 
+// ohlcv-1m only - Databento's fixed-interval schemas for this dataset are
+// 1s/1m/1h/1d, no 5m/15m of their own, so the two profiles below are built
+// by aggregating 1-minute bars up rather than requesting a schema that
+// doesn't exist. One fetch per trade (not two, the way the first pass did)
+// since this window comfortably covers both the profile lookbacks and the
+// shorter pre-entry read.
 async function fetchOhlcv1m(symbol, start, end) {
   const url = new URL('/v0/timeseries.get_range', BASE_URL)
   url.searchParams.set('dataset', DATASET)
@@ -167,20 +150,76 @@ async function fetchOhlcv1m(symbol, start, end) {
 
 // ---------- analysis ----------
 
-// { bucketStart, volume }[] sorted by volume desc - the highest-volume
-// price buckets across a set of bars, built from each bar's own volume
-// weighted onto its midpoint price. A first-pass stand-in for a true
-// tick-built volume profile (see header comment).
-function volumeProfile(bars) {
+// Groups consecutive 1-minute bars into `intervalMinutes` bars, keyed by
+// each bar's own minute-of-epoch (via BigInt - see normalizeRecord's own
+// comment on why tsEvent stays a string). Only ever produces a bar for a
+// span that actually has 1-minute data in it, so a maintenance-break or
+// weekend gap just contributes no bar rather than a hole to fill - the same
+// "rolling N *real* bars back" behavior a charting platform's own volume
+// profile study would show.
+function aggregateBars(bars, intervalMinutes) {
+  const groups = []
+  let current = null
+  let currentKey = null
+  for (const bar of bars) {
+    const minuteEpoch = BigInt(bar.tsEvent) / 1000000000n / 60n
+    const key = minuteEpoch / BigInt(intervalMinutes)
+    if (currentKey === null || key !== currentKey) {
+      if (current) groups.push(current)
+      current = { open: bar.open, high: bar.high, low: bar.low, close: bar.close, volume: bar.volume }
+      currentKey = key
+    } else {
+      current.high = Math.max(current.high, bar.high)
+      current.low = Math.min(current.low, bar.low)
+      current.close = bar.close
+      current.volume += bar.volume
+    }
+  }
+  if (current) groups.push(current)
+  return groups
+}
+
+// A volume profile over `bars`, split into `rows` equal-width price bands
+// spanning the bars' own high-low range - the standard "fixed row count"
+// construction most charting platforms' volume profile study uses. Returns
+// the point-of-control (single highest-volume row) and every row sorted by
+// volume descending, each bar's volume weighted onto its own midpoint price
+// (a bar's volume traded across its whole range, not just one price - the
+// midpoint is the standard approximation here, same tradeoff the first
+// pass's session-level version made).
+function volumeProfile(bars, rows) {
+  if (bars.length === 0) return { poc: null, zones: [], bucketSize: null, barsUsed: 0 }
+  const high = Math.max(...bars.map((b) => b.high))
+  const low = Math.min(...bars.map((b) => b.low))
+  const bucketSize = (high - low) / rows || 1
   const byBucket = new Map()
   for (const bar of bars) {
     const mid = (bar.high + bar.low) / 2
-    const bucketStart = Math.floor(mid / BUCKET_POINTS) * BUCKET_POINTS
-    byBucket.set(bucketStart, (byBucket.get(bucketStart) || 0) + bar.volume)
+    let idx = Math.floor((mid - low) / bucketSize)
+    if (idx >= rows) idx = rows - 1
+    if (idx < 0) idx = 0
+    byBucket.set(idx, (byBucket.get(idx) || 0) + bar.volume)
   }
-  return [...byBucket.entries()]
-    .map(([bucketStart, volume]) => ({ bucketStart, bucketEnd: bucketStart + BUCKET_POINTS, volume }))
+  const zones = [...byBucket.entries()]
+    .map(([idx, volume]) => ({ bucketStart: low + idx * bucketSize, bucketEnd: low + (idx + 1) * bucketSize, volume }))
     .sort((a, b) => b.volume - a.volume)
+  return { poc: zones[0] || null, zones, bucketSize, barsUsed: bars.length }
+}
+
+function zoneCenter(zone) {
+  return (zone.bucketStart + zone.bucketEnd) / 2
+}
+
+function priceInZone(price, zone) {
+  return price >= zone.bucketStart && price < zone.bucketEnd
+}
+
+function distanceToPoc(price, profile) {
+  return profile.poc ? Math.abs(price - zoneCenter(profile.poc)) : null
+}
+
+function entryInsideTopZones(price, profile) {
+  return profile.zones.slice(0, TOP_ZONES).some((z) => priceInZone(price, z))
 }
 
 function averageTrueRange(bars) {
@@ -197,14 +236,23 @@ function averageTrueRange(bars) {
   return count ? sum / count : null
 }
 
-function distanceToNearestZone(price, zones) {
-  let best = null
-  for (const z of zones) {
-    const center = (z.bucketStart + z.bucketEnd) / 2
-    const dist = Math.abs(price - center)
-    if (best === null || dist < best) best = dist
+// Did price wick into one of a profile's top zones in the REJECTION_
+// LOOKBACK_MINUTES before entry, then close back outside it in the trade's
+// own direction? For a short, "into the zone" means price ran UP into it
+// (the zone capped the rally); for a long, price ran DOWN into it (the zone
+// held as support). This is the actual mechanical signature "rejection"
+// implies, not just "the entry happened to be near a high-volume price".
+function findRejection(recentBars, direction, profile) {
+  const topZones = profile.zones.slice(0, TOP_ZONES)
+  if (topZones.length === 0) return null
+  for (const bar of recentBars) {
+    const touchPrice = direction === 'short' ? bar.high : bar.low
+    const zone = topZones.find((z) => priceInZone(touchPrice, z))
+    if (!zone) continue
+    const closedBackOut = direction === 'short' ? bar.close < zone.bucketStart : bar.close >= zone.bucketEnd
+    if (closedBackOut) return { touchPrice, zone, closedBackOut: true }
   }
-  return best
+  return null
 }
 
 async function findUserIdByEmail(admin, email) {
@@ -266,35 +314,43 @@ async function main() {
   }
   log(`${trades.length} trade(s) under "${strategyName}" (${instrumentSymbol}). Pulling market context...`)
 
-  let nearHvzCount = 0
   let usableCount = 0
+  let insideTop5mCount = 0
+  let insideTop15mCount = 0
+  let insideEitherCount = 0
+  let rejection5mCount = 0
+  let rejection15mCount = 0
 
   for (const trade of trades) {
     try {
       const entryInstant = wallClockToInstant(trade.trade_date, trade.trade_time, offsetHours)
-      const currentSession = sessionBoundsFor(entryInstant)
-      // An instant safely inside the prior session, to derive its bounds.
-      const priorSession = sessionBoundsFor(new Date(currentSession.start.getTime() - 3600000))
+      const fetchStart = new Date(entryInstant.getTime() - FETCH_LOOKBACK_HOURS * 3600000)
+      const oneMinBars = await fetchOhlcv1m(instrument.symbol, fetchStart, entryInstant)
 
-      const [priorSessionBars, preEntryBars] = await Promise.all([
-        fetchOhlcv1m(instrument.symbol, priorSession.start, priorSession.end),
-        fetchOhlcv1m(instrument.symbol, new Date(entryInstant.getTime() - LOOKBACK_MINUTES * 60000), entryInstant),
-      ])
-
-      if (priorSessionBars.length === 0 || preEntryBars.length === 0) {
+      if (oneMinBars.length === 0) {
         log(`Trade ${trade.id} (${trade.trade_date}): no bars returned - skipping (embargo, holiday, or gap).`)
         continue
       }
 
-      const zones = volumeProfile(priorSessionBars).slice(0, TOP_ZONES)
-      const distanceToHvz = distanceToNearestZone(trade.entry, zones)
-      const windowHigh = Math.max(...preEntryBars.map((b) => b.high))
-      const windowLow = Math.min(...preEntryBars.map((b) => b.low))
-      const atr = averageTrueRange(preEntryBars.slice(-15))
-      const near = distanceToHvz !== null && distanceToHvz <= HVZ_PROXIMITY_POINTS
+      const bars5m = aggregateBars(oneMinBars, PROFILE_5M.intervalMinutes).slice(-PROFILE_5M.lookbackBars)
+      const bars15m = aggregateBars(oneMinBars, PROFILE_15M.intervalMinutes).slice(-PROFILE_15M.lookbackBars)
+      const profile5m = volumeProfile(bars5m, PROFILE_ROWS)
+      const profile15m = volumeProfile(bars15m, PROFILE_ROWS)
+
+      const preEntryBars = oneMinBars.filter((b) => Number(BigInt(b.tsEvent) / 1000000000n) >= entryInstant.getTime() / 1000 - PRE_ENTRY_WINDOW_MINUTES * 60)
+      const recentBars = oneMinBars.filter((b) => Number(BigInt(b.tsEvent) / 1000000000n) >= entryInstant.getTime() / 1000 - REJECTION_LOOKBACK_MINUTES * 60)
+
+      const inside5m = entryInsideTopZones(trade.entry, profile5m)
+      const inside15m = entryInsideTopZones(trade.entry, profile15m)
+      const rejection5m = findRejection(recentBars, trade.direction, profile5m)
+      const rejection15m = findRejection(recentBars, trade.direction, profile15m)
 
       usableCount++
-      if (near) nearHvzCount++
+      if (inside5m) insideTop5mCount++
+      if (inside15m) insideTop15mCount++
+      if (inside5m || inside15m) insideEitherCount++
+      if (rejection5m) rejection5mCount++
+      if (rejection15m) rejection15mCount++
 
       console.log('TRADE_CONTEXT:' + JSON.stringify({
         tradeId: trade.id,
@@ -308,14 +364,28 @@ async function main() {
         rMultiple: trade.r_multiple,
         stopDistance: trade.stop_distance,
         targetDistance: trade.target_distance,
-        priorSessionDate: priorSession.sessionDateStr,
-        priorSessionHvzZones: zones,
-        distanceToNearestHvz: distanceToHvz,
-        nearHvz: near,
-        preEntryWindowMinutes: LOOKBACK_MINUTES,
-        preEntryWindowHigh: windowHigh,
-        preEntryWindowLow: windowLow,
-        preEntryAtr14: atr,
+        profile5m: {
+          barsUsed: profile5m.barsUsed,
+          bucketSize: profile5m.bucketSize,
+          poc: profile5m.poc,
+          topZones: profile5m.zones.slice(0, TOP_ZONES),
+          entryInsideTopZones: inside5m,
+          distanceToPoc: distanceToPoc(trade.entry, profile5m),
+          rejection: rejection5m,
+        },
+        profile15m: {
+          barsUsed: profile15m.barsUsed,
+          bucketSize: profile15m.bucketSize,
+          poc: profile15m.poc,
+          topZones: profile15m.zones.slice(0, TOP_ZONES),
+          entryInsideTopZones: inside15m,
+          distanceToPoc: distanceToPoc(trade.entry, profile15m),
+          rejection: rejection15m,
+        },
+        preEntryWindowMinutes: PRE_ENTRY_WINDOW_MINUTES,
+        preEntryWindowHigh: preEntryBars.length ? Math.max(...preEntryBars.map((b) => b.high)) : null,
+        preEntryWindowLow: preEntryBars.length ? Math.min(...preEntryBars.map((b) => b.low)) : null,
+        preEntryAtr14: averageTrueRange(preEntryBars.slice(-15)),
       }))
     } catch (err) {
       log(`Trade ${trade.id} (${trade.trade_date}) failed: ${err.message}`)
@@ -333,9 +403,15 @@ async function main() {
     instrumentSymbol,
     totalTrades: trades.length,
     usableTrades: usableCount,
-    nearHvzCount,
-    hvzProximityPoints: HVZ_PROXIMITY_POINTS,
-    bucketPoints: BUCKET_POINTS,
+    insideTop5mCount,
+    insideTop15mCount,
+    insideEitherCount,
+    rejection5mCount,
+    rejection15mCount,
+    profileRows: PROFILE_ROWS,
+    topZones: TOP_ZONES,
+    profile5m: PROFILE_5M,
+    profile15m: PROFILE_15M,
   }))
 }
 

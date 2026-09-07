@@ -199,10 +199,33 @@ async function fetchOhlcv1mRaw(symbols, stypeIn, start, end) {
 // repo has no "type": "module", so their ESM export/import isn't reliably
 // loadable from a plain `node scripts/...` invocation - the same reason
 // this whole file already duplicates other Databento/date logic).
+// Bug fixed here (see 2026-06-16/2026-06-18 still showing the exact same
+// bad distances after the first version of this fallback shipped):
+// resolveFrontMonthInstrumentId used to be asked "which contract traded
+// the most volume across the WHOLE [start, end] fetch window" - up to 120
+// hours (5 calendar days) per FETCH_LOOKBACK_HOURS. Near a roll, the
+// outgoing contract can easily still hold the majority of volume summed
+// across five whole days even after real trading has already shifted to
+// the new front month for the specific session that matters (the one
+// containing `end`, i.e. the trade's own entry) - so the "most volume
+// overall" answer silently kept resolving to the same wrong contract
+// continuous was already picking, and the fallback was a no-op in
+// practice. Now resolves using only a narrow window immediately before
+// `end` (this mirrors how lib/databento.js's own resolveFrontMonthByVolume
+// is only ever called with one session's bounds, never a multi-day range),
+// then fetches the FULL [start, end] lookback under that one resolved
+// contract - a bounded approximation if the roll itself falls inside the
+// lookback (older bars would come from a contract that may not have
+// existed yet, likely returning fewer bars for that stretch rather than
+// wrong-priced ones), but correct for the part that actually matters: the
+// contract trading at and around entry.
+const ROLLOVER_RESOLUTION_WINDOW_HOURS = 6
+
 async function fetchOhlcv1m(symbol, start, end, { nearRollover } = {}) {
   if (!nearRollover) return fetchOhlcv1mRaw(`${symbol}.c.0`, 'continuous', start, end)
 
-  const instrumentId = await resolveFrontMonthInstrumentId(symbol, start, end)
+  const resolutionStart = new Date(end.getTime() - ROLLOVER_RESOLUTION_WINDOW_HOURS * 3600000)
+  const instrumentId = await resolveFrontMonthInstrumentId(symbol, resolutionStart, end)
   if (instrumentId === null) return fetchOhlcv1mRaw(`${symbol}.c.0`, 'continuous', start, end)
   return fetchOhlcv1mRaw(String(instrumentId), 'instrument_id', start, end)
 }

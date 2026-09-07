@@ -367,15 +367,27 @@ function volumeProfile(bars, rows) {
 // past halfway of the 5m node before a 5m node that has a value of <1%."
 // Walks profile5m's rows outward from the row containing `entry`, in the
 // trade's direction, until finding the first row whose money-flow is under
-// 1% of the profile's peak row - the point where real liquidity thins out.
-// Returns the halfway price of the row just before that one (the trader's
-// own stated TP ceiling/floor), or null if entry falls outside the
-// profile's range or no sub-1% row is found within it.
+// 1% of the profile's TOTAL money flow - the point where real liquidity
+// thins out. Returns the halfway price of the row just before that one
+// (the trader's own stated TP ceiling/floor), or null if entry falls
+// outside the profile's range or no sub-1% row is found within it.
+//
+// The percent basis matters and was wrong in the first version of this
+// function: it compared each row against the profile's PEAK row (LpM in
+// the source - vtLV / vtMX), which on real NQ data never drops anywhere
+// near 1% across just 25 rows (the trader's own screenshot of the real
+// indicator's row labels showed values like 0.42%, 0.79%, 1.92%, 3.03% -
+// far too varied and far too low overall to be "% of peak"). The source's
+// own row-label text confirms the real basis: `vtLV / rpVST.sum() * 100`
+// - each row's share of the profile's TOTAL, not its peak. With 25 rows an
+// even split already averages 4% each, so a real row legitimately landing
+// under 1% of the total is common - unlike under 1% of the peak, which
+// this script's corrected math essentially never produced.
 function tpNodeBoundary(profile5m, entry, direction) {
   const zones = profile5m.zones
   if (!zones || zones.length === 0) return null
-  const maxFlow = Math.max(...zones.map((z) => z.moneyFlow))
-  if (!maxFlow) return null
+  const totalFlow = zones.reduce((sum, z) => sum + z.moneyFlow, 0)
+  if (!totalFlow) return null
 
   const byPrice = [...zones].sort((a, b) => a.bucketStart - b.bucketStart)
   let entryIdx = byPrice.findIndex((z) => entry >= z.bucketStart && entry < z.bucketEnd)
@@ -383,7 +395,7 @@ function tpNodeBoundary(profile5m, entry, direction) {
 
   const step = direction === 'long' ? 1 : -1
   for (let i = entryIdx + step; i >= 0 && i < byPrice.length; i += step) {
-    if (byPrice[i].moneyFlow / maxFlow >= 0.01) continue
+    if (byPrice[i].moneyFlow / totalFlow >= 0.01) continue
     const prior = byPrice[i - step]
     if (!prior) return null
     return zoneCenter(prior)
@@ -667,11 +679,19 @@ async function main() {
         // explicitly opted into that env var, to debug tpNodeBoundary
         // against a specific trade's real chart row-by-row.
         profile5mRowsDebug: DEBUG_TRADE_DATES.includes(trade.trade_date)
-          ? [...profile5m.zones].sort((a, b) => a.bucketStart - b.bucketStart).map((z) => ({
-              bucketStart: z.bucketStart,
-              bucketEnd: z.bucketEnd,
-              pctOfPeak: Number((z.moneyFlow / Math.max(...profile5m.zones.map((zz) => zz.moneyFlow)) * 100).toFixed(2)),
-            }))
+          ? (() => {
+              const totalFlow = profile5m.zones.reduce((sum, z) => sum + z.moneyFlow, 0)
+              return [...profile5m.zones].sort((a, b) => a.bucketStart - b.bucketStart).map((z) => ({
+                bucketStart: z.bucketStart,
+                bucketEnd: z.bucketEnd,
+                // % of the profile's TOTAL money flow - matches the real
+                // indicator's own row-label basis (vtLV / rpVST.sum() * 100
+                // in the shared Pine source), not % of the peak row. See
+                // tpNodeBoundary's own comment for why this distinction is
+                // the whole point of this debug field.
+                pctOfTotal: Number((z.moneyFlow / totalFlow * 100).toFixed(2)),
+              }))
+            })()
           : undefined,
         openingRange,
         tpNodeBoundary: tpBoundary,

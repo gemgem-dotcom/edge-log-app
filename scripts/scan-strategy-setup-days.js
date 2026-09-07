@@ -24,17 +24,23 @@
 // Any fix made to one script's copy of this logic (see that file's own
 // "Fourth pass" and roll-window history) should be mirrored here too.
 //
-// For each trading day in the scan window: builds profile5m/profile15m
-// once from bars up to 9:30 ET (a static snapshot - the rolling lookback
-// barely moves over a 90-minute window, so recomputing it every minute
-// would cost a lot of Databento usage for no meaningful accuracy gain),
-// then walks 1-minute bars from 9:30 through 11:00 tracking the running
-// impulse high/low and checking both directions for a rejection at the 5m
-// POC once the impulse has reached the 15m POC zone. Records the FIRST
-// qualifying touch of the day (a whipsaw day can trigger several; only
-// the first is what a trader scanning live would actually see first) plus
-// a count of any later ones, and whether that touch's date/time lines up
-// with an actual logged trade.
+// For each trading day in the scan window: walks 1-minute bars from 9:30
+// through 11:00, tracking the running impulse high/low and, on EVERY bar,
+// recomputing both profile5m and profile15m from bars up to that exact
+// minute - the trader confirmed their real indicator recomputes every
+// minute too, not once at the open. (A first version of this script
+// snapshotted the profile once at 9:30 and held it static for the whole
+// 90-minute window to save recomputation - it missed 9 of the 24 logged
+// trades entirely, because a touch late in the window can easily
+// reference a POC that's shifted since 9:30. Recomputing costs no extra
+// Databento usage - the bars are already fetched - just more CPU, which
+// is trivial for an in-memory array pass.) Checks both directions for a
+// rejection at that minute's 5m POC once the impulse has reached that
+// minute's 15m POC zone. Records the FIRST qualifying touch of the day (a
+// whipsaw day can trigger several; only the first is what a trader
+// scanning live would actually see first) plus a count of any later ones,
+// and whether that touch's date/time lines up with an actual logged
+// trade.
 //
 // Prints one JSON line per scanned day (prefixed DAY_CONTEXT:) plus a
 // closing SUMMARY: line - reads from the job log, writes nothing back to
@@ -389,28 +395,37 @@ async function main() {
         continue
       }
 
-      const barsUpToOpen = oneMinBars.filter((b) => barEpochSeconds(b) <= open930.getTime() / 1000)
-      if (barsUpToOpen.length === 0) {
-        log(`${dateStr}: no bars before open - skipping.`)
-        continue
-      }
-      const bars5m = aggregateBars(barsUpToOpen, PROFILE_5M.intervalMinutes).slice(-PROFILE_5M.lookbackBars)
-      const bars15m = aggregateBars(barsUpToOpen, PROFILE_15M.intervalMinutes).slice(-PROFILE_15M.lookbackBars)
-      const profile5m = volumeProfile(bars5m, PROFILE_ROWS)
-      const profile15m = volumeProfile(bars15m, PROFILE_ROWS)
-
       const scanBars = oneMinBars.filter((b) => {
         const t = barEpochSeconds(b)
         return t >= open930.getTime() / 1000 && t <= scanWindowEnd.getTime() / 1000
       })
+      if (scanBars.length === 0) {
+        log(`${dateStr}: no bars in the scan window - skipping.`)
+        continue
+      }
 
       let impulseHigh = null
       let impulseLow = null
       const foundCandidates = []
 
+      // Recomputed on every bar, not once at 9:30 and held static - the
+      // trader confirmed their real indicator recomputes every minute, and
+      // a first version of this script that snapshotted the profile once
+      // at market open missed 9 of the 24 logged trades entirely (a touch
+      // late in the 90-minute window can easily reference a POC that's
+      // shifted since 9:30). barsUpToNow only ever grows as bar advances,
+      // so this still costs one pass over already-fetched in-memory bars
+      // per minute - no extra Databento usage, just more CPU (trivial: a
+      // handful of array operations per minute, not another network call).
       for (const bar of scanBars) {
         impulseHigh = impulseHigh === null ? bar.high : Math.max(impulseHigh, bar.high)
         impulseLow = impulseLow === null ? bar.low : Math.min(impulseLow, bar.low)
+
+        const barsUpToNow = oneMinBars.filter((b) => barEpochSeconds(b) <= barEpochSeconds(bar))
+        const bars5m = aggregateBars(barsUpToNow, PROFILE_5M.intervalMinutes).slice(-PROFILE_5M.lookbackBars)
+        const bars15m = aggregateBars(barsUpToNow, PROFILE_15M.intervalMinutes).slice(-PROFILE_15M.lookbackBars)
+        const profile5m = volumeProfile(bars5m, PROFILE_ROWS)
+        const profile15m = volumeProfile(bars15m, PROFILE_ROWS)
 
         const reachedInto15PocZone = !!(profile15m.poc && impulseLow <= profile15m.poc.bucketEnd && impulseHigh >= profile15m.poc.bucketStart)
         if (!reachedInto15PocZone || !profile5m.poc) continue

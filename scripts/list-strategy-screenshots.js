@@ -73,11 +73,19 @@ function screenshotPathsFor(trade) {
 // A legacy path can already be a full http(s) URL (pre-migration objects,
 // same distinction lib/screenshots.js's getScreenshotUrls draws) - signing
 // one of those would fail, so it's passed through unchanged instead.
+//
+// The URL comes back base64-encoded, not plain - GitHub Actions
+// automatically masks any log line containing the literal value of a
+// secret it has in scope, and every signed URL's origin is exactly
+// NEXT_PUBLIC_SUPABASE_URL (also a secret here), so a plain signedUrl
+// printed to the job log comes back as "***" and is unrecoverable from
+// there. Base64 never contains that literal substring, so it survives the
+// log and is decoded back on the reading end instead.
 async function signPath(admin, path) {
-  if (/^https?:\/\//.test(path)) return { path, signedUrl: path, legacy: true }
+  if (/^https?:\/\//.test(path)) return { path, signedUrlBase64: Buffer.from(path).toString('base64'), legacy: true }
   const { data, error } = await admin.storage.from('screenshots').createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS)
-  if (error || !data?.signedUrl) return { path, signedUrl: null, error: error?.message || 'no signed URL returned' }
-  return { path, signedUrl: data.signedUrl }
+  if (error || !data?.signedUrl) return { path, signedUrlBase64: null, error: error?.message || 'no signed URL returned' }
+  return { path, signedUrlBase64: Buffer.from(data.signedUrl).toString('base64') }
 }
 
 async function main() {

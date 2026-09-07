@@ -95,6 +95,14 @@ const PRE_ENTRY_WINDOW_MINUTES = 90
 // minutes (60h) even after a weekend (~49h closed) and daily maintenance
 // breaks, so a Monday-morning trade can still fill its whole lookback.
 const FETCH_LOOKBACK_HOURS = 120
+// Comma-separated trade_date list (DEBUG_TRADE_DATES env var) - trades in
+// this list get their full 5m profile (all 25 rows, sorted by price, with
+// each row's %-of-peak) printed alongside the usual summary fields. Off by
+// default: 24 trades' worth of full 25-row profiles would roughly double
+// this script's already-large log output for no benefit on a normal run -
+// only worth paying for when actually debugging tpNodeBoundary against a
+// specific trade's real chart.
+const DEBUG_TRADE_DATES = (process.env.DEBUG_TRADE_DATES || '').split(',').map((s) => s.trim()).filter(Boolean)
 
 function log(...args) {
   console.error(new Date().toISOString(), ...args)
@@ -158,14 +166,13 @@ function parseOhlcvRecords(text) {
 // ohlcv-1m only - Databento's fixed-interval schemas for this dataset are
 // 1s/1m/1h/1d, no 5m/15m of their own, so both profiles below are built by
 // aggregating 1-minute bars up rather than requesting a schema that
-// doesn't exist. One fetch per trade covers both profile lookbacks and the
-// shorter pre-entry/opening-range reads.
-async function fetchOhlcv1m(symbol, start, end) {
+// doesn't exist.
+async function fetchOhlcv1mRaw(symbols, stypeIn, start, end) {
   const url = new URL('/v0/timeseries.get_range', BASE_URL)
   url.searchParams.set('dataset', DATASET)
   url.searchParams.set('schema', 'ohlcv-1m')
-  url.searchParams.set('symbols', `${symbol}.c.0`)
-  url.searchParams.set('stype_in', 'continuous')
+  url.searchParams.set('symbols', symbols)
+  url.searchParams.set('stype_in', stypeIn)
   url.searchParams.set('start', start.toISOString())
   url.searchParams.set('end', end.toISOString())
   url.searchParams.set('encoding', 'json')
@@ -176,6 +183,74 @@ async function fetchOhlcv1m(symbol, start, end) {
     throw new Error(`Databento get_range failed: ${res.status} ${res.statusText} ${body}`.trim())
   }
   return parseOhlcvRecords(await res.text())
+}
+
+// lib/databento.js's own NQ_CONTINUOUS_SYMBOL comment (this repo's already-
+// established, live-confirmed finding, PR #122): NQ.c.0's continuous-roll
+// resolution disagrees with which contract is actually trading the volume
+// within ROLL_PROXIMITY_DAYS of a quarterly roll - real volume can move to
+// the next contract several days before Databento's own roll rule catches
+// up. This script originally always used the plain continuous symbol,
+// which is exactly why two trades landing in that window (2026-06-16,
+// 2026-06-18, against the 2026-06-19 NQ roll) came back with an entry
+// price far outside the fetched bars' own high/low range - not a logging
+// error, a wrong-contract fetch. Below mirrors lib/databento.js's
+// resolveFrontMonthByVolume/isNearRollover instead of importing them (this
+// repo has no "type": "module", so their ESM export/import isn't reliably
+// loadable from a plain `node scripts/...` invocation - the same reason
+// this whole file already duplicates other Databento/date logic).
+async function fetchOhlcv1m(symbol, start, end, { nearRollover } = {}) {
+  if (!nearRollover) return fetchOhlcv1mRaw(`${symbol}.c.0`, 'continuous', start, end)
+
+  const instrumentId = await resolveFrontMonthInstrumentId(symbol, start, end)
+  if (instrumentId === null) return fetchOhlcv1mRaw(`${symbol}.c.0`, 'continuous', start, end)
+  return fetchOhlcv1mRaw(String(instrumentId), 'instrument_id', start, end)
+}
+
+// Which contract actually traded the most volume across [start, end] -
+// resolved through parent symbology (`${root}.FUT`) rather than the
+// continuous `.c.0` shortcut, which is exactly the resolution ROLL_
+// PROXIMITY_DAYS windows can't trust. Mirrors lib/databento.js's
+// resolveFrontMonthByVolume. Returns a raw instrument_id (fetchOhlcv1mRaw
+// takes it directly via stype_in: 'instrument_id'), or null if the fetch
+// or aggregation comes up empty, so the caller falls back to the
+// continuous symbol rather than fail outright.
+async function resolveFrontMonthInstrumentId(root, start, end) {
+  let records
+  try {
+    records = await fetchOhlcv1mRaw(`${root}.FUT`, 'parent', start, end)
+  } catch {
+    return null
+  }
+
+  const volumeByInstrument = new Map()
+  for (const r of records) {
+    if (r.instrumentId === null || r.instrumentId === undefined) continue
+    volumeByInstrument.set(r.instrumentId, (volumeByInstrument.get(r.instrumentId) || 0) + r.volume)
+  }
+
+  let bestId = null
+  let bestVolume = -1
+  for (const [id, vol] of volumeByInstrument) {
+    if (vol > bestVolume) {
+      bestVolume = vol
+      bestId = id
+    }
+  }
+  return bestId
+}
+
+// Same ROLL_PROXIMITY_DAYS gate as lib/databento.js's isNearRollover, using
+// this repo's real published NQ roll calendar (lib/contractRollover.json)
+// rather than reimplementing the holiday-adjustment nuance that file's
+// adjustForHolidays applies - a roll landing on a holiday shifts by at most
+// a day or two, never enough to move a trade in or out of a +/-10-day
+// window, so the unadjusted listed dates are close enough for this gate.
+const ROLL_PROXIMITY_DAYS = 10
+const NQ_ROLLOVER_DATES = require('../lib/contractRollover.json').NQ.map((d) => new Date(`${d}T00:00:00Z`))
+function isNearRollover(tradeDateStr) {
+  const tradeDate = new Date(`${tradeDateStr}T00:00:00Z`)
+  return NQ_ROLLOVER_DATES.some((rollDate) => Math.abs(rollDate.getTime() - tradeDate.getTime()) / 86400000 <= ROLL_PROXIMITY_DAYS)
 }
 
 // ---------- volume profile ----------
@@ -506,7 +581,9 @@ async function main() {
     try {
       const entryInstant = wallClockToInstant(trade.trade_date, trade.trade_time, offsetHours)
       const fetchStart = new Date(entryInstant.getTime() - FETCH_LOOKBACK_HOURS * 3600000)
-      const oneMinBars = await fetchOhlcv1m(instrument.symbol, fetchStart, entryInstant)
+      const nearRollover = isNearRollover(trade.trade_date)
+      if (nearRollover) log(`Trade ${trade.id} (${trade.trade_date}) is within ${ROLL_PROXIMITY_DAYS} days of an NQ roll - resolving front-month by volume instead of trusting the continuous symbol.`)
+      const oneMinBars = await fetchOhlcv1m(instrument.symbol, fetchStart, entryInstant, { nearRollover })
 
       if (oneMinBars.length === 0) {
         log(`Trade ${trade.id} (${trade.trade_date}): no bars returned - skipping (embargo, holiday, or gap).`)
@@ -563,6 +640,16 @@ async function main() {
         profile15mPoc: profile15m.poc,
         distanceEntryToPoc5m: distanceToPoc(trade.entry, profile5m),
         distanceEntryToPoc15m: distanceToPoc(trade.entry, profile15m),
+        // See DEBUG_TRADE_DATES's own comment - only populated for trades
+        // explicitly opted into that env var, to debug tpNodeBoundary
+        // against a specific trade's real chart row-by-row.
+        profile5mRowsDebug: DEBUG_TRADE_DATES.includes(trade.trade_date)
+          ? [...profile5m.zones].sort((a, b) => a.bucketStart - b.bucketStart).map((z) => ({
+              bucketStart: z.bucketStart,
+              bucketEnd: z.bucketEnd,
+              pctOfPeak: Number((z.moneyFlow / Math.max(...profile5m.zones.map((zz) => zz.moneyFlow)) * 100).toFixed(2)),
+            }))
+          : undefined,
         openingRange,
         tpNodeBoundary: tpBoundary,
         tpWithinRule,

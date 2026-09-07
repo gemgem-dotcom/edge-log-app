@@ -52,6 +52,12 @@ on:
           pull-strategy-market-context.js / list-strategy-screenshots.js)
         required: false
         type: string
+      debug_trade_dates:
+        description: >-
+          Comma-separated trade_date list to print full 5m profile rows for
+          (only read by pull-strategy-market-context.js)
+        required: false
+        type: string
 
 jobs:
   run:
@@ -80,4 +86,5 @@ jobs:
           STRATEGY_NAME: ${{ inputs.strategy }}
           INSTRUMENT_SYMBOL: ${{ inputs.instrument }}
           USER_EMAIL: ${{ inputs.user_email }}
+          DEBUG_TRADE_DATES: ${{ inputs.debug_trade_dates }}
         run: node "${{ inputs.script }}"

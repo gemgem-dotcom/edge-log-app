@@ -78,21 +78,31 @@
 //
 // ---------- how outcome is measured ----------
 //
-// Stop: structurally beyond the rejection wick's own extreme, plus a
-// volatility buffer of STOP_BUFFER_ATR_MULT x the recent 1-minute ATR -
-// NOT a fixed point count. A flat stop cannot adapt across volatility
-// regimes, and volatility regime is one of the things under test, so a
-// flat stop would silently confound it.
+// NOT as a single simulated stop and target. A first year-long run did
+// that - wick plus 0.25x the 1-minute ATR for the stop, fixed 2R/3R
+// targets - and produced a median risk of 16.8 points against a trader
+// whose own logged median stop is 35.75. Two things followed: the stop
+// was tight enough to be taken out by noise, and a 2R target landed ~34
+// points away, about 1.3 heatmap bins, so the path features could not
+// express "travel from yellow into blue" even in principle. The result
+// was a clean null (31.7% at a 2R target where breakeven is 33.3%) that
+// could not distinguish "the setup has no edge" from "the exits were
+// wrong".
 //
-// Target: fixed multiples of that risk (2R and 3R), NOT a node-based
-// target. A node-based target makes target DISTANCE a function of level
-// quality, which confounds exactly the variable being measured. Fixed R
-// keeps every event's outcome comparable on one scale.
+// So each event now carries an EXCURSION PROFILE instead: the first bar
+// index at which price reached each rung of EXCURSION_ATR_GRID, both
+// favourably and adversely. Any (stop, target) pair is then decided
+// offline by comparing the two indices - identical sequencing to a
+// bar-by-bar simulation, but it searches the entire exit space from one
+// scan rather than testing a single guessed point in it. Distances are
+// in ATR multiples so a rung means the same thing across volatility
+// regimes; atr1m ships alongside so points are recoverable.
 //
-// Both are resolved by walking forward bar-by-bar to see which price
-// reaches first, with the conservative convention that a bar containing
-// both is scored as the stop (1-minute OHLC does not reveal intra-bar
-// sequence).
+// Also new: rejection QUALITY (wickFraction, closeStrength,
+// volumeRatio). The event definition alone treats a one-tick poke into a
+// zone exactly like a thirty-point spike, so the first run measured
+// where rejections happen in great detail and never measured whether
+// they were any good - the most obvious thing a trader actually reads.
 //
 // ---------- data handling ----------
 //
@@ -177,7 +187,6 @@ const OPENING_RANGE_MINUTES = 30
 const ATR_DAYS = 14
 const ATR_1M_BARS = 20
 const STOP_BUFFER_ATR_MULT = 0.25
-const TARGET_R_MULTIPLES = [2, 3]
 
 const ROLL_PROXIMITY_DAYS = 10
 const ROLLOVER_RESOLUTION_WINDOW_HOURS = 6
@@ -556,31 +565,72 @@ function averageTrueRange(bars) {
 // Structural stop beyond the rejection wick plus a volatility buffer, then
 // fixed R targets - see this file's header for why neither is node-based
 // or a flat point count.
-function simulateOutcomes(barsAfter, direction, entry, wickExtreme, atr1m) {
-  const buffer = (atr1m ?? 0) * STOP_BUFFER_ATR_MULT
-  const stopPrice = direction === 'long' ? wickExtreme - buffer : wickExtreme + buffer
-  const riskPoints = Math.abs(entry - stopPrice)
-  if (!(riskPoints > 0)) return { riskPoints: null, outcomes: {} }
-
-  const outcomes = {}
-  let firstResolvedBars = null
-  for (const rMult of TARGET_R_MULTIPLES) {
-    const targetPrice = direction === 'long' ? entry + riskPoints * rMult : entry - riskPoints * rMult
-    let result = 'unresolved'
-    let bars = null
-    for (let i = 0; i < barsAfter.length; i++) {
-      const bar = barsAfter[i]
-      const stopHit = direction === 'long' ? bar.low <= stopPrice : bar.high >= stopPrice
-      const targetHit = direction === 'long' ? bar.high >= targetPrice : bar.low <= targetPrice
-      if (stopHit) { result = 'loss'; bars = i + 1; break }
-      if (targetHit) { result = 'win'; bars = i + 1; break }
-    }
-    outcomes[`r${rMult}`] = result
-    // The tightest target resolves first and is what frees the trader up
-    // to take another signal, so it sets the cooldown below.
-    if (firstResolvedBars === null && bars !== null) firstResolvedBars = bars
+// How convincing is this rejection, as a bar? The event definition alone
+// ("wick pierced the zone, close came back out") treats a one-tick poke
+// exactly like a thirty-point spike, which is plainly not how a trader
+// reads a chart - so the first year-long scan measured WHERE rejections
+// happen in great detail and never measured whether they were any good.
+// These are the cheapest three that capture it: how much of the bar is
+// the rejecting wick, how far back through its own range price closed,
+// and whether the bar traded unusual volume while doing it.
+function rejectionQuality(bar, direction, recentBars) {
+  const range = bar.high - bar.low
+  if (!(range > 0)) return { wickFraction: null, closeStrength: null, volumeRatio: null }
+  const wick = direction === 'long'
+    ? Math.min(bar.open, bar.close) - bar.low
+    : bar.high - Math.max(bar.open, bar.close)
+  const closeStrength = direction === 'long'
+    ? (bar.close - bar.low) / range
+    : (bar.high - bar.close) / range
+  let volumeRatio = null
+  if (recentBars.length >= 5) {
+    const vols = recentBars.map((b) => b.volume).filter((v) => v > 0).sort((a, b) => a - b)
+    const medianVol = vols.length ? vols[Math.floor(vols.length / 2)] : 0
+    if (medianVol > 0) volumeRatio = bar.volume / medianVol
   }
-  return { riskPoints, stopPrice, outcomes, barsToResolve: firstResolvedBars }
+  return { wickFraction: Math.max(0, wick) / range, closeStrength, volumeRatio }
+}
+
+// Instead of simulating ONE stop and target, record how far and how fast
+// price travelled in each direction - as the first bar index at which it
+// reached each distance on a grid. Every (stop, target) pair is then
+// computable offline from one scan: the trade wins if the target's
+// first-touch index is lower than the stop's, loses otherwise, and is
+// unresolved if neither fires. Exactly the same sequencing a bar-by-bar
+// simulation gives, but it searches the whole exit space rather than one
+// point in it.
+//
+// Why this replaced a single simulated stop: the first version used the
+// rejection wick plus 0.25x the 1-minute ATR, giving a median risk of
+// 16.8 points against a trader whose own logged median stop is 35.75. At
+// that size a 2R target sat ~34 points away - about 1.3 heatmap bins - so
+// the path features could not express "travel from yellow into blue" even
+// in principle, and the stop was tight enough to be hit by noise. Rather
+// than guess a better single number, this grid lets the data pick.
+//
+// Distances are in multiples of the current 1-minute ATR rather than raw
+// points, so a level means the same thing in a quiet week and a wild one;
+// atr1m ships with the event so points can be recovered.
+const EXCURSION_ATR_GRID = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]
+
+function excursionProfile(barsAfter, direction, entry, atr1m) {
+  if (!(atr1m > 0)) return null
+  const favorable = new Array(EXCURSION_ATR_GRID.length).fill(null)
+  const adverse = new Array(EXCURSION_ATR_GRID.length).fill(null)
+
+  for (let i = 0; i < barsAfter.length; i++) {
+    const bar = barsAfter[i]
+    const fav = direction === 'long' ? bar.high - entry : entry - bar.low
+    const adv = direction === 'long' ? entry - bar.low : bar.high - entry
+    for (let g = 0; g < EXCURSION_ATR_GRID.length; g++) {
+      const d = EXCURSION_ATR_GRID[g] * atr1m
+      if (favorable[g] === null && fav >= d) favorable[g] = i + 1
+      if (adverse[g] === null && adv >= d) adverse[g] = i + 1
+    }
+    // Both extremes past the widest rung means nothing further can change.
+    if (favorable[favorable.length - 1] !== null && adverse[adverse.length - 1] !== null) break
+  }
+  return { favorable, adverse }
 }
 
 // ---------- main ----------
@@ -740,15 +790,22 @@ async function main() {
             const t = barEpochSeconds(b)
             return t > nowEpoch && t <= nowEpoch + FORWARD_WINDOW_MINUTES * 60
           })
-          const sim = simulateOutcomes(barsAfter, direction, bar.close, wickExtreme, atr1m)
-          if (!sim.riskPoints) continue
+          const excursion = excursionProfile(barsAfter, direction, bar.close, atr1m)
+          if (!excursion) continue
+          const quality = rejectionQuality(bar, direction, recentBars)
+          // Reference risk for the path corridor and the cooldown: the
+          // trader's own median stop is ~2x the old wick-plus-buffer, so
+          // this uses a wider structural stop and the excursion grid above
+          // lets the analysis re-cut it anyway.
+          const refRisk = Math.abs(bar.close - (direction === 'long' ? wickExtreme : wickExtreme)) + atr1m * STOP_BUFFER_ATR_MULT
+          // Hold this direction until a mid-grid move resolves, so the next
+          // event is a genuinely new setup rather than the same one
+          // re-firing - see blockedUntilEpoch.
+          const resolveIdx = excursion.favorable[5] ?? excursion.adverse[5] ?? FORWARD_WINDOW_MINUTES
+          blockedUntilEpoch[direction] = nowEpoch + resolveIdx * 60
 
-          // Hold this direction until the trade would have resolved, so
-          // the next event is a genuinely new setup - see blockedUntilEpoch.
-          blockedUntilEpoch[direction] = nowEpoch + (sim.barsToResolve ?? FORWARD_WINDOW_MINUTES) * 60
-
-          const path2R = pathAhead(heatmap, bar.close, direction, sim.riskPoints, 2)
-          const path3R = pathAhead(heatmap, bar.close, direction, sim.riskPoints, 3)
+          const path2R = pathAhead(heatmap, bar.close, direction, refRisk, 2)
+          const path3R = pathAhead(heatmap, bar.close, direction, refRisk, 3)
           const entryBin = binAt(wickExtreme, heatmap)
 
           console.log('EVENT:' + JSON.stringify({
@@ -802,8 +859,16 @@ async function main() {
             openRangeVsAtr: minutesSinceOpen >= OPENING_RANGE_MINUTES ? openRangeVsAtr : null,
             atrDaily,
             minutesSinceOpen,
-            riskPoints: sim.riskPoints,
-            outcomes: sim.outcomes,
+            atr1m,
+            riskPoints: refRisk,
+            wickFraction: quality.wickFraction,
+            closeStrength: quality.closeStrength,
+            volumeRatio: quality.volumeRatio,
+            // First bar index at which price reached each rung of
+            // EXCURSION_ATR_GRID, favourably and adversely. Any (stop,
+            // target) pair is decided offline by comparing the two.
+            fav: excursion.favorable,
+            adv: excursion.adverse,
           }))
           eventCount++
           dayEvents++
@@ -826,7 +891,7 @@ async function main() {
     eventCount,
     heatmapLookbackDays: HEATMAP_LOOKBACK_DAYS,
     heatmapMaxBins: HEATMAP_MAX_BINS,
-    targetRMultiples: TARGET_R_MULTIPLES,
+    excursionAtrGrid: EXCURSION_ATR_GRID,
   }))
 }
 

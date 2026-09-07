@@ -42,6 +42,23 @@
 // This version replaces the generic top-3-zone checks with that specific,
 // ordered mechanism.
 //
+// Fourth pass: comparing this script's computed POCs against the real "5
+// POC"/"15 POC" price labels the trader had drawn on their own trade
+// screenshots (a LuxAlgo "Delta Flow Profile" indicator, source shared)
+// showed a real gap - e.g. one trade's real 5m POC sat around 29,748-851,
+// this script's approximation landed near 29,740, close enough to look
+// plausible but not the same level. Root cause: volumeProfile below used
+// to dump each bar's whole volume onto its own midpoint price - the real
+// indicator splits a bar's volume across every row its high-low range
+// actually spans, and weights each row by its own center price ("money
+// flow", not raw volume). volumeProfile now mirrors that math directly.
+// Every entry price checked against a screenshot's real POC label landed
+// within a few points of it (often exact to the cent) - so the entry rule
+// really is "enter at the 5m POC", precisely, and this rewrite is what it
+// takes to reproduce that number from raw bars instead of reading it off
+// a chart. Also adds the trader's own take-profit rule (see
+// tpNodeBoundary below), not previously modeled at all.
+//
 // Deliberately standalone (duplicates the wall-clock-to-UTC-instant math
 // from lib/tradeSessions.js) rather than importing it - this repo has no
 // "type": "module" in package.json, so its `export`/`import` syntax isn't
@@ -63,10 +80,9 @@ const BASE_URL = 'https://hist.databento.com'
 const PROFILE_5M = { intervalMinutes: 5, lookbackBars: 270 }
 const PROFILE_15M = { intervalMinutes: 15, lookbackBars: 240 }
 // How many price rows each profile is split into across its own high-low
-// range - a typical default for a volume-profile study (matches common
-// charting-platform defaults; the trader didn't specify their own row
-// count, so this is the one guessed parameter left).
-const PROFILE_ROWS = 30
+// range - the trader's own LuxAlgo Delta Flow Profile setting (Number of
+// Rows), not a guess.
+const PROFILE_ROWS = 25
 // How far back from entry (in raw 1-minute bars) to look for a wick into
 // the 5m POC that closed back out before entry - the "rejection" motion.
 const REJECTION_LOOKBACK_MINUTES = 15
@@ -193,29 +209,88 @@ function aggregateBars(bars, intervalMinutes) {
 }
 
 // A volume profile over `bars`, split into `rows` equal-width price bands
-// spanning the bars' own high-low range - the standard "fixed row count"
-// construction most charting platforms' volume profile study uses. Returns
-// the point-of-control (single highest-volume row) and every row sorted by
-// volume descending, each bar's volume weighted onto its own midpoint price
-// (a bar's volume traded across its whole range, not just one price - the
-// midpoint is the standard approximation here).
+// spanning the bars' own high-low range - reimplemented to match the exact
+// math of the real indicator the trader uses (LuxAlgo's "Delta Flow
+// Profile", Money Flow Profile component - the trader shared its source).
+// Two things this gets right that a naive "assign each bar's whole volume
+// to its own midpoint" approximation (this function's first version)
+// didn't, which is why that version's POC values didn't closely match the
+// real indicator's on real trades:
+//
+// 1. A bar whose high-low range spans multiple rows has its volume split
+//    across all of them, proportional to how much of the bar's own range
+//    falls in each row (vPOR below) - not dumped entirely into one row.
+// 2. Each row's accumulated volume is weighted by that row's own center
+//    price before comparing rows (LuxAlgo calls this "money flow" - volume
+//    times price, a dollar-turnover proxy) - not raw volume.
+//
+// Mirrors the source's own loop structure (rpVST.set(l, ... + nzV[bI] *
+// vPOR * rowCenter)) directly rather than a from-scratch reimplementation,
+// so a future discrepancy is easy to diff against the original.
 function volumeProfile(bars, rows) {
   if (bars.length === 0) return { poc: null, zones: [], bucketSize: null, barsUsed: 0 }
   const high = Math.max(...bars.map((b) => b.high))
   const low = Math.min(...bars.map((b) => b.low))
-  const bucketSize = (high - low) / rows || 1
-  const byBucket = new Map()
+  const step = (high - low) / rows || 1
+  const rowTotals = new Array(rows).fill(0)
+
   for (const bar of bars) {
-    const mid = (bar.high + bar.low) / 2
-    let idx = Math.floor((mid - low) / bucketSize)
-    if (idx >= rows) idx = rows - 1
-    if (idx < 0) idx = 0
-    byBucket.set(idx, (byBucket.get(idx) || 0) + bar.volume)
+    const barRange = bar.high - bar.low
+    for (let l = 0; l < rows; l++) {
+      const rowLow = low + l * step
+      const rowHigh = rowLow + step
+      if (bar.high < rowLow || bar.low >= rowHigh) continue
+
+      let vPOR
+      if (barRange <= 0) {
+        vPOR = 1
+      } else if (bar.low >= rowLow && bar.high > rowHigh) {
+        vPOR = (rowHigh - bar.low) / barRange
+      } else if (bar.high <= rowHigh && bar.low < rowLow) {
+        vPOR = (bar.high - rowLow) / barRange
+      } else if (bar.low >= rowLow && bar.high <= rowHigh) {
+        vPOR = 1
+      } else {
+        vPOR = step / barRange
+      }
+
+      const rowCenter = rowLow + step / 2
+      rowTotals[l] += bar.volume * vPOR * rowCenter
+    }
   }
-  const zones = [...byBucket.entries()]
-    .map(([idx, volume]) => ({ bucketStart: low + idx * bucketSize, bucketEnd: low + (idx + 1) * bucketSize, volume }))
-    .sort((a, b) => b.volume - a.volume)
-  return { poc: zones[0] || null, zones, bucketSize, barsUsed: bars.length }
+
+  const zones = rowTotals
+    .map((moneyFlow, l) => ({ bucketStart: low + l * step, bucketEnd: low + (l + 1) * step, moneyFlow }))
+    .sort((a, b) => b.moneyFlow - a.moneyFlow)
+  return { poc: zones[0] || null, zones, bucketSize: step, barsUsed: bars.length }
+}
+
+// The trader's own take-profit rule, not entry: "I will not place a TP
+// past halfway of the 5m node before a 5m node that has a value of <1%."
+// Walks profile5m's rows outward from the row containing `entry`, in the
+// trade's direction, until finding the first row whose money-flow is under
+// 1% of the profile's peak row - the point where real liquidity thins out.
+// Returns the halfway price of the row just before that one (the trader's
+// own stated TP ceiling/floor), or null if entry falls outside the
+// profile's range or no sub-1% row is found within it.
+function tpNodeBoundary(profile5m, entry, direction) {
+  const zones = profile5m.zones
+  if (!zones || zones.length === 0) return null
+  const maxFlow = Math.max(...zones.map((z) => z.moneyFlow))
+  if (!maxFlow) return null
+
+  const byPrice = [...zones].sort((a, b) => a.bucketStart - b.bucketStart)
+  let entryIdx = byPrice.findIndex((z) => entry >= z.bucketStart && entry < z.bucketEnd)
+  if (entryIdx === -1) entryIdx = entry < byPrice[0].bucketStart ? -1 : byPrice.length
+
+  const step = direction === 'long' ? 1 : -1
+  for (let i = entryIdx + step; i >= 0 && i < byPrice.length; i += step) {
+    if (byPrice[i].moneyFlow / maxFlow >= 0.01) continue
+    const prior = byPrice[i - step]
+    if (!prior) return null
+    return zoneCenter(prior)
+  }
+  return null
 }
 
 function zoneCenter(zone) {
@@ -424,6 +499,8 @@ async function main() {
   let rejectionAtPoc5Count = 0
   let biasComputableCount = 0
   let biasMatchesCount = 0
+  let tpRuleComputableCount = 0
+  let tpWithinRuleCount = 0
 
   for (const trade of trades) {
     try {
@@ -445,6 +522,9 @@ async function main() {
       const recentBars = oneMinBars.filter((b) => barEpochSeconds(b) >= entryInstant.getTime() / 1000 - REJECTION_LOOKBACK_MINUTES * 60)
 
       const openingRange = buildOpeningRangeContext({ oneMinBars, trade, offsetHours, profile5m, profile15m, recentBars })
+      const tpBoundary = tpNodeBoundary(profile5m, trade.entry, trade.direction)
+      const tpWithinRule = tpBoundary === null ? null
+        : trade.direction === 'long' ? trade.target <= tpBoundary : trade.target >= tpBoundary
 
       usableCount++
       if (openingRange.reachedInto15PocZone) reachedInto15PocCount++
@@ -453,6 +533,10 @@ async function main() {
       if (openingRange.biasDirection) {
         biasComputableCount++
         if (openingRange.biasDirectionMatchesTradeDirection) biasMatchesCount++
+      }
+      if (tpBoundary !== null) {
+        tpRuleComputableCount++
+        if (tpWithinRule) tpWithinRuleCount++
       }
 
       console.log('TRADE_CONTEXT:' + JSON.stringify({
@@ -467,9 +551,21 @@ async function main() {
         rMultiple: trade.r_multiple,
         stopDistance: trade.stop_distance,
         targetDistance: trade.target_distance,
+        // distanceEntryToPoc5m/15m below are the key fidelity check against
+        // this rewrite's whole reason for existing (see header's "Fourth
+        // pass") - compare them against the real "5 POC"/"15 POC" price
+        // labels on the trader's own chart screenshots for the same trade.
+        // A small number here (a few points) means this script's profile
+        // math now actually reproduces the real indicator; a large one
+        // means it still doesn't and needs another look before trusting
+        // anything derived from it.
         profile5mPoc: profile5m.poc,
         profile15mPoc: profile15m.poc,
+        distanceEntryToPoc5m: distanceToPoc(trade.entry, profile5m),
+        distanceEntryToPoc15m: distanceToPoc(trade.entry, profile15m),
         openingRange,
+        tpNodeBoundary: tpBoundary,
+        tpWithinRule,
         preEntryWindowMinutes: PRE_ENTRY_WINDOW_MINUTES,
         preEntryWindowHigh: preEntryBars.length ? Math.max(...preEntryBars.map((b) => b.high)) : null,
         preEntryWindowLow: preEntryBars.length ? Math.min(...preEntryBars.map((b) => b.low)) : null,
@@ -496,6 +592,8 @@ async function main() {
     rejectionAtPoc5Count,
     biasComputableCount,
     biasMatchesCount,
+    tpRuleComputableCount,
+    tpWithinRuleCount,
     profileRows: PROFILE_ROWS,
     profile5m: PROFILE_5M,
     profile15m: PROFILE_15M,

@@ -15,41 +15,41 @@
    898  Misc form helpers
    904  Detail view
    927  Holiday notice (site-wide, above the shell)
-   952  Shell layout (sidebar + topbar)
-   1323  Expandable trade rows
-   1389  Calendar
-   1437  Account settings page
-   1653  Light theme
-   1694  2FA
-   1709  Account fine print
-   1712  Screenshot preview (log new trade)
-   1754  Auth pages always dark
-   1789  Monthly P&L (calendar on Overview)
-   1876  Trade form: sections, validation, currency, screenshots
-   2114  Field tooltips
-   2176  Date/time picker (adds an optional popup to a typed input)
-   2285  In-header column filters (trade log table)
-   2333  Active filter chips
-   2396  Empty states, error banners, skeleton loaders
-   2475  Cross-instrument overview dashboard (/app)
-   2654  Not found / error boundary state pages
-   2667  Toast notifications
-   2695  Public policy pages (Privacy, Terms)
-   2714  Legal links (auth pages + account settings)
-   2753  Economic calendar card (mock - Overview pages)
-   2867  Calendar news badge (Monthly P&L day cells, mock)
-   2888  Streak badge (Overview + strategy detail pages)
-   2911  Market status pill (Overview + strategy detail pages)
-   2937  Today's brief & session stats
-   2972  Market context cards (all-instruments Overview)
-   3005  Edge Insights panel
-   3020  Unverified logged time badge
-   3037  Welcome transition (first-run)
-   3066  Zero-instrument empty state
-   3076  Tutorial overlay (first-run guided tour)
-   3168  Tutorial step 3 (guided form scroll)
-   3215  Press states, value changes, content fade-in
-   3312  Trade log column width stability
+   959  Shell layout (sidebar + topbar)
+   1330  Expandable trade rows
+   1396  Calendar
+   1444  Account settings page
+   1660  Light theme
+   1701  2FA
+   1716  Account fine print
+   1719  Screenshot preview (log new trade)
+   1761  Auth pages always dark
+   1796  Monthly P&L (calendar on Overview)
+   1883  Trade form: sections, validation, currency, screenshots
+   2121  Field tooltips
+   2183  Date/time picker (adds an optional popup to a typed input)
+   2292  In-header column filters (trade log table)
+   2340  Active filter chips
+   2403  Empty states, error banners, skeleton loaders
+   2482  Cross-instrument overview dashboard (/app)
+   2661  Not found / error boundary state pages
+   2674  Toast notifications
+   2702  Public policy pages (Privacy, Terms)
+   2721  Legal links (auth pages + account settings)
+   2760  Economic calendar card (mock - Overview pages)
+   2874  Calendar news badge (Monthly P&L day cells, mock)
+   2895  Streak badge (Overview + strategy detail pages)
+   2918  Market status pill (Overview + strategy detail pages)
+   2944  Today's brief & session stats
+   2979  Market context cards (all-instruments Overview)
+   3012  Edge Insights panel
+   3027  Unverified logged time badge
+   3044  Welcome transition (first-run)
+   3073  Zero-instrument empty state
+   3083  Tutorial overlay (first-run guided tour)
+   3175  Tutorial step 3 (guided form scroll)
+   3222  Press states, value changes, content fade-in
+   3319  Trade log column width stability
    ============================================================ */
 
 :root{
@@ -941,12 +941,19 @@ table{min-width:640px;}
   background:rgba(59,167,255,.12); border-bottom:1px solid rgba(59,167,255,.25);
   color:var(--text); padding:10px 44px; font-size:13px; font-weight:600; text-align:center;
 }
+/* border-radius/box-shadow explicitly zeroed - this is a real <button>,
+   so it otherwise inherits the global button{} rule's pill chrome
+   (border-radius:100px, a drop shadow), which around a bare 14px icon
+   with 4px padding rendered as a visible circle behind the X. Same for
+   :hover's transform/box-shadow below - button:hover's own
+   translateY(-1px) would otherwise fight this button's translateY(-50%)
+   vertical centering. */
 .holiday-notice-dismiss{
   position:absolute; right:16px; top:50%; transform:translateY(-50%);
-  background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;
+  background:none; border:none; border-radius:0; box-shadow:none; color:var(--muted); cursor:pointer; padding:4px;
   display:flex; align-items:center; justify-content:center; transition:color .15s ease;
 }
-.holiday-notice-dismiss:hover{color:var(--text);}
+.holiday-notice-dismiss:hover{color:var(--text); transform:translateY(-50%); box-shadow:none;}
 .holiday-notice-dismiss svg{width:14px; height:14px; flex-shrink:0;}
 
 /* ---------- Shell layout (sidebar + topbar) ---------- */

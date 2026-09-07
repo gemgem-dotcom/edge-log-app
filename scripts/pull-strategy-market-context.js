@@ -142,6 +142,19 @@ function normalizeRecord(record) {
     // real values here (~1.8e18) blow past Number.MAX_SAFE_INTEGER, so the
     // aggregation below reads it back out via BigInt instead.
     tsEvent: record.ts_event ?? record.hd?.ts_event ?? null,
+    // This was missing entirely until now - the actual reason the roll-
+    // window fix (PR #183/#184) never changed a single trade's numbers
+    // despite firing and despite narrowing its resolution window: without
+    // instrumentId captured here, resolveFrontMonthInstrumentId's `r.
+    // instrumentId === undefined` check skipped every record it ever saw,
+    // volumeByInstrument stayed empty, and it silently returned null every
+    // single time - falling back to the exact same continuous-symbol fetch
+    // regardless of any other change made around it. lib/databento.js's own
+    // normalizeRecord already captures this; this file's separate copy
+    // (duplicated for the ESM reason this file's header explains) simply
+    // never did. hd.instrument_id - an OHLCV record has no `symbol` field
+    // of its own, only this raw numeric id.
+    instrumentId: record.hd?.instrument_id ?? null,
     open: record.open / PRICE_SCALE,
     high: record.high / PRICE_SCALE,
     low: record.low / PRICE_SCALE,

@@ -61,6 +61,20 @@
 //                         the same thing in a quiet month and a wild one.
 //   minutesSinceOpen    - a control, not a condition.
 //
+// Plus the path axis, which the first version of this script missed
+// entirely and which the trader named directly: they reject out of a
+// high-volume ("yellow") heatmap area into a low-volume ("blue") one, and
+// stand aside when the trade would run from yellow into more yellow. That
+// is a statement about what lies BETWEEN entry and target, not about the
+// entry level - and the first version measured only the level. See
+// pathAhead(): entryIntensity, pathMeanIntensity, pathNodeDistanceR and
+// clearanceRatio, all expressed relative to the heatmap's own median row
+// so they mean the same thing across volatility regimes. This is the
+// leading candidate for what separates a taken rejection from a passed
+// one: a validation run showed the unfiltered signal winning 33.3% at a
+// 2R target, where breakeven IS 33.3% - the level alone is worth
+// precisely nothing, so all of the edge has to come from selection.
+//
 // ---------- how outcome is measured ----------
 //
 // Stop: structurally beyond the rejection wick's own extreme, plus a
@@ -118,6 +132,12 @@ const HEATMAP_ROWS = 120
 // distribution would put ~0.83% in each, so this is roughly "twice its
 // fair share of volume".
 const HEATMAP_NODE_MIN_SHARE = 0.017
+// How much thicker than the heatmap's own median row a row must be to
+// count as a shelf price would have to grind through - the "yellow" in
+// the trader's own reject-from-yellow-into-blue description. Relative to
+// the median rather than an absolute share so it means the same thing
+// across a quiet month and a wild one.
+const HEATMAP_WALL_INTENSITY = 1.5
 
 // Trading window scanned for events, in minutes after the 9:30 NY open.
 // Stops well before the cash close so every event still has room for its
@@ -399,6 +419,75 @@ function heatmapNodeAt(price, heatmap) {
   return share >= HEATMAP_NODE_MIN_SHARE ? { zone, share } : null
 }
 
+// The median share of the rows where price has actually traded. Used to
+// express every heatmap reading as a MULTIPLE of typical rather than as a
+// raw share: raw shares depend on how wide a range the last 20 sessions
+// covered, so 2% means something different in a quiet month than a wild
+// one, and would not be comparable across a year. Relative intensity is:
+// 1.0 = an ordinary row, >1 = "yellow" (volume has persistently
+// transacted here), <1 = "blue" (it has not).
+function heatmapMedianShare(heatmap) {
+  if (!heatmap || !heatmap.totalFlow) return null
+  const shares = heatmap.zones.map((z) => z.flow / heatmap.totalFlow).filter((s) => s > 0).sort((a, b) => a - b)
+  if (shares.length === 0) return null
+  return shares[Math.floor(shares.length / 2)]
+}
+
+function relativeIntensity(price, heatmap, medianShare) {
+  if (!heatmap || !heatmap.totalFlow || !medianShare) return null
+  const zone = heatmap.zones.find((z) => priceInZone(price, z))
+  if (!zone) return null
+  return (zone.flow / heatmap.totalFlow) / medianShare
+}
+
+// What the trade has to travel THROUGH to reach its target, which is the
+// piece the rest of this script was missing entirely. The trader's own
+// stated rule is about the path, not the entry: reject out of a
+// high-volume ("yellow") area into a low-volume ("blue") one, and stand
+// aside when a rejection would have to trade from yellow into more
+// yellow. The mechanism is standard auction logic - price is absorbed and
+// chops where volume has persistently transacted, and travels fast where
+// it has not - so a target sitting behind a thick shelf is a target price
+// has to grind into, while the same distance through thin volume is a
+// target it can reach in one move.
+//
+// Returns intensities relative to the heatmap's own median row (see
+// heatmapMedianShare), plus how far away the first genuinely thick row
+// is, expressed in R so it is directly comparable to the target distance:
+// nodeDistanceR < 2 means a wall sits between entry and the 2R target.
+function pathAhead(heatmap, medianShare, entry, direction, riskPoints, targetRMultiple) {
+  if (!heatmap || !heatmap.totalFlow || !medianShare || !(riskPoints > 0)) return null
+  const targetPrice = direction === 'long' ? entry + riskPoints * targetRMultiple : entry - riskPoints * targetRMultiple
+  const lo = Math.min(entry, targetPrice)
+  const hi = Math.max(entry, targetPrice)
+
+  const corridor = heatmap.zones.filter((z) => z.bucketEnd > lo && z.bucketStart < hi)
+  if (corridor.length === 0) return null
+  const intensities = corridor.map((z) => (z.flow / heatmap.totalFlow) / medianShare)
+
+  // Walk outward from entry in the trade's direction for the first row
+  // thick enough to act as a shelf, so "is there a wall in the way" is a
+  // distance rather than an average that a single thick row can hide in.
+  const ordered = direction === 'long'
+    ? corridor.slice().sort((a, b) => a.bucketStart - b.bucketStart)
+    : corridor.slice().sort((a, b) => b.bucketStart - a.bucketStart)
+  let nodeDistanceR = null
+  for (const zone of ordered) {
+    if ((zone.flow / heatmap.totalFlow) / medianShare < HEATMAP_WALL_INTENSITY) continue
+    const edge = direction === 'long' ? zone.bucketStart : zone.bucketEnd
+    const distance = Math.abs(edge - entry)
+    if (distance <= 0) continue
+    nodeDistanceR = distance / riskPoints
+    break
+  }
+
+  return {
+    meanIntensity: intensities.reduce((a, b) => a + b, 0) / intensities.length,
+    maxIntensity: Math.max(...intensities),
+    nodeDistanceR,
+  }
+}
+
 // ---------- conditions ----------
 
 // Net directional travel divided by total travel over the window: 1.0 is a
@@ -434,18 +523,24 @@ function simulateOutcomes(barsAfter, direction, entry, wickExtreme, atr1m) {
   if (!(riskPoints > 0)) return { riskPoints: null, outcomes: {} }
 
   const outcomes = {}
+  let firstResolvedBars = null
   for (const rMult of TARGET_R_MULTIPLES) {
     const targetPrice = direction === 'long' ? entry + riskPoints * rMult : entry - riskPoints * rMult
     let result = 'unresolved'
-    for (const bar of barsAfter) {
+    let bars = null
+    for (let i = 0; i < barsAfter.length; i++) {
+      const bar = barsAfter[i]
       const stopHit = direction === 'long' ? bar.low <= stopPrice : bar.high >= stopPrice
       const targetHit = direction === 'long' ? bar.high >= targetPrice : bar.low <= targetPrice
-      if (stopHit) { result = 'loss'; break }
-      if (targetHit) { result = 'win'; break }
+      if (stopHit) { result = 'loss'; bars = i + 1; break }
+      if (targetHit) { result = 'win'; bars = i + 1; break }
     }
     outcomes[`r${rMult}`] = result
+    // The tightest target resolves first and is what frees the trader up
+    // to take another signal, so it sets the cooldown below.
+    if (firstResolvedBars === null && bars !== null) firstResolvedBars = bars
   }
-  return { riskPoints, stopPrice, outcomes }
+  return { riskPoints, stopPrice, outcomes, barsToResolve: firstResolvedBars }
 }
 
 // ---------- main ----------
@@ -490,6 +585,7 @@ async function main() {
       const priorSessions = sessionBuffer.slice(0, -1)
       const historyBars = priorSessions.flatMap((s) => s.bars)
       const heatmap = volumeProfile(historyBars, HEATMAP_ROWS)
+      const heatmapMedian = heatmapMedianShare(heatmap)
 
       const priorSession = priorSessions[priorSessions.length - 1]
       const priorHigh = Math.max(...priorSession.bars.map((b) => b.high))
@@ -533,6 +629,16 @@ async function main() {
       // Cursor into the 1-minute series, advanced as the scan walks forward
       // so each minute costs a short scan rather than a full pass.
       let idxAll = 0
+      // Consecutive bars grinding along the same level fire the rejection
+      // test over and over - a validation run over six weeks produced 92
+      // events on one day, 65% of them within three minutes of a prior
+      // same-direction one. Those are not independent observations, they
+      // are one setup counted repeatedly, and left in they let a single
+      // choppy session dominate a year of statistics. So once a direction
+      // fires, it is suppressed until that trade would actually have
+      // resolved - which is also the real constraint a trader is under,
+      // since they are in the position and cannot take it again.
+      const blockedUntilEpoch = { long: 0, short: 0 }
 
       for (const bar of scanBars) {
         const nowEpoch = barEpochSeconds(bar)
@@ -544,6 +650,7 @@ async function main() {
           seriesAsOf(bars15mAll, dayBars, PROFILE_15M.intervalMinutes, PROFILE_15M.lookbackBars, nowEpoch), PROFILE_ROWS)
 
         for (const direction of ['long', 'short']) {
+          if (nowEpoch < blockedUntilEpoch[direction]) continue
           const wickExtreme = direction === 'long' ? bar.low : bar.high
 
           // Which level families does this wick reject at? A rejection
@@ -578,6 +685,14 @@ async function main() {
           const sim = simulateOutcomes(barsAfter, direction, bar.close, wickExtreme, atr1m)
           if (!sim.riskPoints) continue
 
+          // Hold this direction until the trade would have resolved, so
+          // the next event is a genuinely new setup - see blockedUntilEpoch.
+          blockedUntilEpoch[direction] = nowEpoch + (sim.barsToResolve ?? FORWARD_WINDOW_MINUTES) * 60
+
+          const path2R = pathAhead(heatmap, heatmapMedian, bar.close, direction, sim.riskPoints, 2)
+          const path3R = pathAhead(heatmap, heatmapMedian, bar.close, direction, sim.riskPoints, 3)
+          const entryIntensity = relativeIntensity(wickExtreme, heatmap, heatmapMedian)
+
           console.log('EVENT:' + JSON.stringify({
             date: dateStr,
             time: new Date(nowEpoch * 1000).toISOString(),
@@ -587,6 +702,23 @@ async function main() {
             confluenceCount: levels.length,
             levelShares: Object.fromEntries(levels.map((l) => [l.name, l.share])),
             heatmapShare: hmNode ? hmNode.share : null,
+            // The trader's reject-from-yellow-into-blue rule, made
+            // measurable: how thick the level itself is, how thick the
+            // ground between it and the target is, and how far off the
+            // first real shelf sits in R. entryIntensity is populated for
+            // every event, not only ones passing the node threshold, so
+            // "rejected from thin" is a value rather than a null.
+            entryIntensity,
+            pathMeanIntensity2R: path2R ? path2R.meanIntensity : null,
+            pathMaxIntensity2R: path2R ? path2R.maxIntensity : null,
+            pathNodeDistanceR2R: path2R ? path2R.nodeDistanceR : null,
+            pathMeanIntensity3R: path3R ? path3R.meanIntensity : null,
+            pathNodeDistanceR3R: path3R ? path3R.nodeDistanceR : null,
+            // >1 = rejecting out of ground thicker than what lies ahead,
+            // i.e. the yellow-into-blue case; <1 = into more yellow.
+            clearanceRatio2R: path2R && entryIntensity && path2R.meanIntensity > 0
+              ? entryIntensity / path2R.meanIntensity
+              : null,
             efficiencyRatio: efficiencyRatio(effBars),
             priorRangePosition: priorRange > 0 ? (wickExtreme - priorLow) / priorRange : null,
             insidePriorRange: wickExtreme >= priorLow && wickExtreme <= priorHigh,

@@ -322,8 +322,16 @@ async function findUserIdByEmail(admin, email) {
   }
 }
 
-function findMatchingTrade(trades, dateStr, touchInstant, offsetHours) {
-  const candidates = trades.filter((t) => t.trade_date === dateStr)
+function findMatchingTrade(trades, dateStr, touchInstant, offsetHours, direction) {
+  // Direction must match too, not just date/time proximity - without this,
+  // two candidates a few minutes apart in OPPOSITE directions (a real
+  // whipsaw: price rejects long, then rejects short minutes later) can
+  // both fall inside TRADE_MATCH_TOLERANCE_MINUTES of the same logged
+  // trade and both get reported as "matched", even though only one of
+  // them is actually the setup the trader took. Caught by cross-checking
+  // 2026-06-16 against its screenshot: the trade was logged short, but a
+  // long-direction candidate 4 minutes earlier was also matching it.
+  const candidates = trades.filter((t) => t.trade_date === dateStr && t.direction === direction)
   if (candidates.length === 0) return null
   const touchMinutes = touchInstant.getTime()
   let best = null
@@ -446,7 +454,7 @@ async function main() {
           return t > barEpochSeconds(bar) && t <= barEpochSeconds(bar) + FORWARD_WINDOW_MINUTES * 60
         })
         const { mfe, mae } = forwardExcursion(barsAfter, direction, touchPrice)
-        const matchedTrade = findMatchingTrade(trades || [], dateStr, touchInstant, offsetHours)
+        const matchedTrade = findMatchingTrade(trades || [], dateStr, touchInstant, offsetHours, direction)
 
         foundCandidates.push({
           time: touchInstant.toISOString(),

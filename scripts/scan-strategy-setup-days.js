@@ -46,6 +46,18 @@
 // only the first touch undercounted matchedCount and hid those trades from
 // the candidate dataset entirely.
 //
+// Every candidate also gets turned into a real simulated trade, not just
+// an MFE/MAE proxy: entry at the touch, stop at a fixed distance (the
+// median of this strategy's own logged stop_distance values - the
+// trader's real risk sizing, not a guess), target at tpNodeBoundary (the
+// trader's own codified TP rule), then a bar-by-bar walk of the forward
+// window to see which one price reaches first (see
+// resolveSimulatedTrade). This is what makes "replicate the setup across
+// similar conditions" answerable: apply the exact same rule (entry +
+// stop + target) to every occurrence of the setup, not just the ones
+// that happened to get logged, and see what the win rate/expectancy
+// would have been.
+//
 // Prints one JSON line per scanned day (prefixed DAY_CONTEXT:) plus a
 // closing SUMMARY: line - reads from the job log, writes nothing back to
 // Supabase or anywhere else.
@@ -66,10 +78,12 @@ const PROFILE_15M = { intervalMinutes: 15, lookbackBars: 240 }
 const PROFILE_ROWS = 25
 const FETCH_LOOKBACK_HOURS = 120
 const SCAN_WINDOW_MINUTES = 90
-// How far forward from a candidate touch to measure MFE/MAE - a rough,
-// direction-aware "did price actually move favorably after this" proxy,
-// since there's no codified stop-placement rule yet to simulate a real R.
-const FORWARD_WINDOW_MINUTES = 60
+// How far forward from a candidate touch to measure MFE/MAE and to walk
+// for the stop/target simulation below. 240 (4h), not the original 60 -
+// the trader's own logged R-multiples on this strategy run as high as
+// 7-8R against a typical ~20-40pt stop, i.e. 150-300+ points of
+// favorable travel, which a 60-minute window can't fit for most trades.
+const FORWARD_WINDOW_MINUTES = 240
 // A logged trade counts as "matching" a candidate touch when it's the
 // same calendar date and its trade_time sits within this many minutes of
 // the touch - loose enough to survive a few minutes of manual entry lag,
@@ -309,6 +323,39 @@ function forwardExcursion(barsAfterTouch, direction, touchPrice) {
   return { mfe: touchPrice - Math.min(...lows), mae: Math.max(...highs) - touchPrice }
 }
 
+// Turns a candidate touch into an actual simulated trade: enter at
+// touchPrice, walk barsAfterTouch bar-by-bar (they're already in
+// chronological order) and see whether price reaches the stop
+// (touchPrice -/+ stopDistance) or the target (targetPrice, the trader's
+// own tpNodeBoundary rule) first. This is what makes "replicate the
+// setup" a real backtest rather than another MFE/MAE proxy: MFE/MAE only
+// say how far price went in each direction over the window, not which
+// one it would have hit FIRST, which is the only thing that determines
+// whether a real trade following this rule wins or loses.
+//
+// If a single bar's range contains both the stop and the target (a wide
+// or gappy bar), the stop is assumed to win - the standard conservative
+// backtesting convention, since intra-bar sequencing isn't known from
+// 1-minute OHLC alone.
+function resolveSimulatedTrade(barsAfterTouch, direction, touchPrice, stopDistance, targetPrice) {
+  if (stopDistance == null || targetPrice == null) return { outcome: 'no-rule', rMultiple: null, barsToResolve: null }
+  const stopPrice = direction === 'long' ? touchPrice - stopDistance : touchPrice + stopDistance
+  const targetDistance = direction === 'long' ? targetPrice - touchPrice : touchPrice - targetPrice
+  // A target the trader's own rule places on the wrong side of entry (can
+  // happen when tpNodeBoundary lands past a node closer than the stop
+  // itself) isn't a valid trade to simulate.
+  if (targetDistance <= 0) return { outcome: 'no-rule', rMultiple: null, barsToResolve: null }
+
+  for (let i = 0; i < barsAfterTouch.length; i++) {
+    const bar = barsAfterTouch[i]
+    const stopHit = direction === 'long' ? bar.low <= stopPrice : bar.high >= stopPrice
+    const targetHit = direction === 'long' ? bar.high >= targetPrice : bar.low <= targetPrice
+    if (stopHit) return { outcome: 'loss', rMultiple: -1, barsToResolve: i + 1 }
+    if (targetHit) return { outcome: 'win', rMultiple: targetDistance / stopDistance, barsToResolve: i + 1 }
+  }
+  return { outcome: 'unresolved', rMultiple: null, barsToResolve: null }
+}
+
 async function findUserIdByEmail(admin, email) {
   let page = 1
   const perPage = 1000
@@ -378,10 +425,25 @@ async function main() {
 
   const { data: trades, error: tradesError } = await admin
     .from('trades')
-    .select('id, trade_date, trade_time, direction, r_multiple')
+    .select('id, trade_date, trade_time, direction, r_multiple, stop_distance')
     .eq('strategy_id', strategy.id)
   if (tradesError) throw tradesError
   log(`${trades?.length ?? 0} logged trade(s) under "${strategyName}" (${instrumentSymbol}) to match candidates against.`)
+
+  // A single representative stop size (points), taken from the trader's
+  // own actual risk-sizing on this strategy's logged trades - not a
+  // guess, and not per-candidate (a candidate touch has no logged stop of
+  // its own since most of them were never taken). Used below to turn
+  // every candidate into a real simulated trade: entry at the touch,
+  // stop at this distance, target at tpNodeBoundary - the trader's own
+  // codified TP rule - so "replicate the setup" means literally running
+  // the trader's own risk unit and TP rule against every occurrence of
+  // the setup, not just the ones actually logged.
+  const stopDistances = (trades || []).map((t) => t.stop_distance).filter((v) => typeof v === 'number' && v > 0).sort((a, b) => a - b)
+  const medianStopDistance = stopDistances.length
+    ? stopDistances[Math.floor(stopDistances.length / 2)]
+    : null
+  log(`Median logged stop distance for this strategy: ${medianStopDistance ?? 'n/a'} points (from ${stopDistances.length} trade(s)).`)
 
   const days = []
   for (let d = scanStart; d <= scanEnd; d = addDaysToDateStr(d, 1)) {
@@ -455,6 +517,8 @@ async function main() {
         })
         const { mfe, mae } = forwardExcursion(barsAfter, direction, touchPrice)
         const matchedTrade = findMatchingTrade(trades || [], dateStr, touchInstant, offsetHours, direction)
+        const target = tpNodeBoundary(profile5m, touchPrice, direction)
+        const simulated = resolveSimulatedTrade(barsAfter, direction, touchPrice, medianStopDistance, target)
 
         foundCandidates.push({
           time: touchInstant.toISOString(),
@@ -462,9 +526,12 @@ async function main() {
           touchPrice,
           distanceToPoc5m: distanceToPoc(touchPrice, profile5m),
           distanceToPoc15m: distanceToPoc(touchPrice, profile15m),
-          tpNodeBoundary: tpNodeBoundary(profile5m, touchPrice, direction),
+          tpNodeBoundary: target,
           forwardMfePoints: mfe,
           forwardMaePoints: mae,
+          simulatedOutcome: simulated.outcome,
+          simulatedRMultiple: simulated.rMultiple,
+          simulatedBarsToResolve: simulated.barsToResolve,
           matchedTrade: matchedTrade ? { tradeId: matchedTrade.id, tradeTime: matchedTrade.trade_time, direction: matchedTrade.direction, rMultiple: matchedTrade.r_multiple } : null,
         })
       }
@@ -507,6 +574,7 @@ async function main() {
     daysWithCandidate,
     matchedCount,
     unmatchedCount,
+    medianStopDistance,
   }))
 }
 

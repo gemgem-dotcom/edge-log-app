@@ -29,10 +29,11 @@
 //
 //   poc5      - POC of the rolling 5m/270-bar volume profile
 //   poc15     - POC of the rolling 15m/240-bar volume profile
-//   heatmap   - a high-intensity row of a rolling 20-SESSION volume-at-
-//               price profile (the "historical heatmap" - the same idea as
-//               a heatmap indicator: where has real volume persistently
-//               transacted over weeks, not minutes)
+//   heatmap   - a yellow (high-density) bin of the rolling 7-CALENDAR-DAY
+//               volume-at-price heatmap, built to the trader's own
+//               indicator settings (Rolling anchor, 1 week, Max Bins 35)
+//               and rolling forward continuously with every bar, today's
+//               developing volume included
 //
 // The same touch can qualify against more than one family at once, which
 // is the point: `confluenceCount` makes "these levels lined up" a measured
@@ -67,12 +68,12 @@
 // stand aside when the trade would run from yellow into more yellow. That
 // is a statement about what lies BETWEEN entry and target, not about the
 // entry level - and the first version measured only the level. See
-// pathAhead(): entryIntensity, pathMeanIntensity, pathNodeDistanceR and
-// clearanceRatio, all expressed relative to the heatmap's own median row
-// so they mean the same thing across volatility regimes. This is the
-// leading candidate for what separates a taken rejection from a passed
-// one: a validation run showed the unfiltered signal winning 33.3% at a
-// 2R target, where breakeven IS 33.3% - the level alone is worth
+// pathAhead(), in the indicator's own density bands. This is a HYPOTHESIS
+// competing with the other conditions on equal footing, not an assumption
+// the script is built around - the goal is to find what actually has an
+// edge, which may or may not be the trader's stated rule. It is a leading
+// candidate because a validation run showed the unfiltered signal winning
+// 33.3% at a 2R target where breakeven IS 33.3%: the level alone is worth
 // precisely nothing, so all of the edge has to come from selection.
 //
 // ---------- how outcome is measured ----------
@@ -96,13 +97,12 @@
 // ---------- data handling ----------
 //
 // Bars are fetched ONE DAY AT A TIME and kept in a rolling in-memory
-// buffer of the last HEATMAP_LOOKBACK_SESSIONS sessions. That buffer
-// feeds all three level families plus the ATR and prior-session stats, so
-// a 20-session heatmap costs no more Databento usage than a 5-day one -
-// each day's bars are fetched exactly once no matter how many later days
-// look back at them. The first ~20 days of any scan range produce no
-// events while the buffer fills, so start the range about a month before
-// the period actually being studied.
+// buffer of SESSION_BUFFER_SESSIONS sessions. That buffer feeds all three
+// level families plus the ATR and prior-session stats, so the rolling
+// 7-day heatmap costs no extra Databento usage - each day's bars are
+// fetched exactly once no matter how many later days look back at them.
+// The first ~12 days of any scan range produce no events while the buffer
+// fills, so start the range a few weeks before the period being studied.
 //
 // Prints one JSON line per event (prefixed EVENT:) plus a closing
 // SUMMARY: line, read from the job log. Writes nothing anywhere.
@@ -121,23 +121,50 @@ const PROFILE_5M = { intervalMinutes: 5, lookbackBars: 270 }
 const PROFILE_15M = { intervalMinutes: 15, lookbackBars: 240 }
 const PROFILE_ROWS = 25
 
-// The rolling historical heatmap: volume-at-price over this many prior
-// sessions, in this many rows. More rows than the intraday profiles
-// because it spans a far wider price range - 25 rows over a month of NQ
-// would make each row hundreds of points tall and meaningless.
-const HEATMAP_LOOKBACK_SESSIONS = 20
-const HEATMAP_ROWS = 120
-// A heatmap row counts as a "node" worth rejecting at when it holds at
-// least this share of the heatmap's total volume. With 120 rows, uniform
-// distribution would put ~0.83% in each, so this is roughly "twice its
-// fair share of volume".
-const HEATMAP_NODE_MIN_SHARE = 0.017
-// How much thicker than the heatmap's own median row a row must be to
-// count as a shelf price would have to grind through - the "yellow" in
-// the trader's own reject-from-yellow-into-blue description. Relative to
-// the median rather than an absolute share so it means the same thing
-// across a quiet month and a wild one.
-const HEATMAP_WALL_INTENSITY = 1.5
+// The rolling historical heatmap: volume-at-price over a trailing window
+// that moves forward continuously with every bar, per the trader's own
+// description of their indicator - SEVEN CALENDAR DAYS, not seven
+// sessions, and critically NOT "the last N completed sessions". A first
+// version of this script used 20 completed prior sessions and excluded
+// the current day entirely, which was wrong twice over: far too long a
+// window, and blind to the developing volume of the very session being
+// traded. Every level the path features measured was therefore a shelf
+// that does not appear on the trader's chart.
+const HEATMAP_LOOKBACK_DAYS = 7
+// Sessions kept in memory. Ten trading sessions spans roughly fourteen
+// calendar days, so a seven-CALENDAR-day window is fully covered even
+// when it straddles a weekend and a holiday - and it also comfortably
+// covers the 15m profile's 240-bar (60-hour) lookback.
+const SESSION_BUFFER_SESSIONS = 10
+// Bins the heatmap splits its price range into - the indicator's own "Max
+// Bins" setting, read off the trader's real configuration screen. A first
+// version used 120, which made every band about a third the height and
+// changed whether a shelf registered as standing in the way of a target
+// at all. Each event carries heatmapBinHeight so this stays checkable
+// against a real chart rather than trusted.
+const HEATMAP_MAX_BINS = 35
+
+// The indicator's own density bands, again straight off its settings:
+// Low Density 0-25% renders blue, Mid 25-75% grey, High 75-100% yellow.
+// So the trader's "reject in yellow, trade into blue" is a statement
+// about these bands, and the honest way to test it is in the same terms
+// rather than through a hand-rolled multiple-of-median proxy.
+//
+// Ambiguity worth naming: a density band can mean share-of-the-peak-bin
+// (a colour gradient normalised to the busiest bin) or percentile RANK
+// among bins (which would paint exactly a quarter of bins yellow by
+// construction). A colour scale usually means the former, but rather than
+// guess again, both are emitted per event - densityOfMax and densityRank -
+// and the analysis can settle which reproduces the trader's chart.
+const HEATMAP_HIGH_DENSITY = 0.75
+const HEATMAP_LOW_DENSITY = 0.25
+
+// The 7-day window shifts by one minute per scanned bar, so recomputing it
+// every minute would mean rebuilding a ~10,000-bar profile 330 times a day
+// for a window that has moved 0.01%. Recomputed on this cadence instead -
+// a bounded approximation of a continuously rolling window, and the only
+// deliberate one in this script.
+const HEATMAP_REBUILD_MINUTES = 5
 
 // Trading window scanned for events, in minutes after the 9:30 NY open.
 // Stops well before the cash close so every event still has room for its
@@ -406,85 +433,98 @@ function zoneShare(zone, totalFlow) {
   return zone.flow / totalFlow
 }
 
-// The rolling historical heatmap: which price rows have persistently
-// absorbed volume over the last HEATMAP_LOOKBACK_SESSIONS sessions. Built
-// straight from raw 1-minute bars rather than an aggregated interval,
-// since at this lookback the row height (not the bar interval) is what
-// sets resolution.
-function heatmapNodeAt(price, heatmap) {
+// ---------- heatmap density ----------
+
+// The rolling heatmap, in the density terms the indicator itself uses.
+// Each bin carries two readings because the indicator's "Low/Mid/High
+// Density (0-25/25-75/75-100%)" bands are ambiguous between them (see
+// HEATMAP_HIGH_DENSITY): densityOfMax is the bin's volume as a share of
+// the busiest bin, the usual meaning of a colour gradient; densityRank is
+// its percentile rank among bins, which by construction paints a fixed
+// quarter of bins yellow. Emitting both means the analysis can settle
+// which one reproduces the trader's chart instead of this script guessing
+// a third time.
+function decorateHeatmap(heatmap) {
   if (!heatmap || !heatmap.totalFlow) return null
-  const zone = heatmap.zones.find((z) => priceInZone(price, z))
-  if (!zone) return null
-  const share = zone.flow / heatmap.totalFlow
-  return share >= HEATMAP_NODE_MIN_SHARE ? { zone, share } : null
+  const flows = heatmap.zones.map((z) => z.flow)
+  const maxFlow = Math.max(...flows)
+  if (!(maxFlow > 0)) return null
+  const sorted = flows.slice().sort((a, b) => a - b)
+  const bins = heatmap.zones.map((z) => {
+    let below = 0
+    while (below < sorted.length && sorted[below] < z.flow) below++
+    return {
+      bucketStart: z.bucketStart,
+      bucketEnd: z.bucketEnd,
+      densityOfMax: z.flow / maxFlow,
+      densityRank: sorted.length > 1 ? below / (sorted.length - 1) : 0,
+    }
+  })
+  return { bins, binHeight: heatmap.bucketSize }
 }
 
-// The median share of the rows where price has actually traded. Used to
-// express every heatmap reading as a MULTIPLE of typical rather than as a
-// raw share: raw shares depend on how wide a range the last 20 sessions
-// covered, so 2% means something different in a quiet month than a wild
-// one, and would not be comparable across a year. Relative intensity is:
-// 1.0 = an ordinary row, >1 = "yellow" (volume has persistently
-// transacted here), <1 = "blue" (it has not).
-function heatmapMedianShare(heatmap) {
-  if (!heatmap || !heatmap.totalFlow) return null
-  const shares = heatmap.zones.map((z) => z.flow / heatmap.totalFlow).filter((s) => s > 0).sort((a, b) => a - b)
-  if (shares.length === 0) return null
-  return shares[Math.floor(shares.length / 2)]
+function binAt(price, decorated) {
+  if (!decorated) return null
+  return decorated.bins.find((b) => price >= b.bucketStart && price < b.bucketEnd) || null
 }
 
-function relativeIntensity(price, heatmap, medianShare) {
-  if (!heatmap || !heatmap.totalFlow || !medianShare) return null
-  const zone = heatmap.zones.find((z) => priceInZone(price, z))
-  if (!zone) return null
-  return (zone.flow / heatmap.totalFlow) / medianShare
+// Is this bin one the trader would read as yellow (high density, price has
+// persistently transacted here and tends to be absorbed) or blue (low
+// density, price travels through)?
+function isYellow(bin) {
+  return !!bin && bin.densityOfMax >= HEATMAP_HIGH_DENSITY
 }
 
-// What the trade has to travel THROUGH to reach its target, which is the
-// piece the rest of this script was missing entirely. The trader's own
-// stated rule is about the path, not the entry: reject out of a
-// high-volume ("yellow") area into a low-volume ("blue") one, and stand
-// aside when a rejection would have to trade from yellow into more
-// yellow. The mechanism is standard auction logic - price is absorbed and
-// chops where volume has persistently transacted, and travels fast where
-// it has not - so a target sitting behind a thick shelf is a target price
-// has to grind into, while the same distance through thin volume is a
-// target it can reach in one move.
+function isBlue(bin) {
+  return !!bin && bin.densityOfMax <= HEATMAP_LOW_DENSITY
+}
+
+// What the trade has to travel THROUGH to reach its target - the piece the
+// entry level alone cannot express. The trader's stated rule is about the
+// path: reject out of a high-density ("yellow") area into a low-density
+// ("blue") one, and stand aside when the trade would run from yellow into
+// more yellow. The mechanism is ordinary auction logic - price is absorbed
+// where volume has persistently transacted and travels fast where it has
+// not - so a target behind a thick shelf has to be ground into, while the
+// same distance through thin volume can be covered in one move.
 //
-// Returns intensities relative to the heatmap's own median row (see
-// heatmapMedianShare), plus how far away the first genuinely thick row
-// is, expressed in R so it is directly comparable to the target distance:
-// nodeDistanceR < 2 means a wall sits between entry and the 2R target.
-function pathAhead(heatmap, medianShare, entry, direction, riskPoints, targetRMultiple) {
-  if (!heatmap || !heatmap.totalFlow || !medianShare || !(riskPoints > 0)) return null
+// This is a HYPOTHESIS being measured, not an assumption being encoded.
+// Everything here is reported as raw values alongside the other
+// conditions, and it competes with them on equal footing; the rule may
+// well turn out not to be what carries the edge.
+function pathAhead(decorated, entry, direction, riskPoints, targetRMultiple) {
+  if (!decorated || !(riskPoints > 0)) return null
   const targetPrice = direction === 'long' ? entry + riskPoints * targetRMultiple : entry - riskPoints * targetRMultiple
   const lo = Math.min(entry, targetPrice)
   const hi = Math.max(entry, targetPrice)
 
-  const corridor = heatmap.zones.filter((z) => z.bucketEnd > lo && z.bucketStart < hi)
+  const corridor = decorated.bins.filter((b) => b.bucketEnd > lo && b.bucketStart < hi)
   if (corridor.length === 0) return null
-  const intensities = corridor.map((z) => (z.flow / heatmap.totalFlow) / medianShare)
 
-  // Walk outward from entry in the trade's direction for the first row
-  // thick enough to act as a shelf, so "is there a wall in the way" is a
-  // distance rather than an average that a single thick row can hide in.
+  // Walk outward from entry in the trade's own direction so "is there a
+  // wall in the way" is a distance rather than an average a single thick
+  // bin can hide inside of.
   const ordered = direction === 'long'
     ? corridor.slice().sort((a, b) => a.bucketStart - b.bucketStart)
     : corridor.slice().sort((a, b) => b.bucketStart - a.bucketStart)
-  let nodeDistanceR = null
-  for (const zone of ordered) {
-    if ((zone.flow / heatmap.totalFlow) / medianShare < HEATMAP_WALL_INTENSITY) continue
-    const edge = direction === 'long' ? zone.bucketStart : zone.bucketEnd
+  let yellowWallDistanceR = null
+  for (const bin of ordered) {
+    if (!isYellow(bin)) continue
+    const edge = direction === 'long' ? bin.bucketStart : bin.bucketEnd
     const distance = Math.abs(edge - entry)
     if (distance <= 0) continue
-    nodeDistanceR = distance / riskPoints
+    yellowWallDistanceR = distance / riskPoints
     break
   }
 
+  const densities = corridor.map((b) => b.densityOfMax)
   return {
-    meanIntensity: intensities.reduce((a, b) => a + b, 0) / intensities.length,
-    maxIntensity: Math.max(...intensities),
-    nodeDistanceR,
+    meanDensity: densities.reduce((a, b) => a + b, 0) / densities.length,
+    maxDensity: Math.max(...densities),
+    yellowFraction: corridor.filter(isYellow).length / corridor.length,
+    blueFraction: corridor.filter(isBlue).length / corridor.length,
+    yellowWallDistanceR,
+    targetBin: binAt(targetPrice, decorated),
   }
 }
 
@@ -559,7 +599,7 @@ async function main() {
 
   // Rolling buffer of prior sessions' 1-minute bars, oldest first. Each
   // day is fetched exactly once and then reused by every later day that
-  // looks back at it - which is what makes a 20-session heatmap free.
+  // looks back at it - which is what makes the 7-day heatmap free.
   const sessionBuffer = []
   let eventCount = 0
   let daysWithEvents = 0
@@ -578,14 +618,13 @@ async function main() {
       }
 
       sessionBuffer.push({ dateStr, bars: dayBars })
-      while (sessionBuffer.length > HEATMAP_LOOKBACK_SESSIONS + 1) sessionBuffer.shift()
-      // Not enough history yet to build the long lookback honestly.
-      if (sessionBuffer.length <= HEATMAP_LOOKBACK_SESSIONS) continue
+      while (sessionBuffer.length > SESSION_BUFFER_SESSIONS) sessionBuffer.shift()
+      // Not enough history yet to fill a 7-day heatmap window or the 15m
+      // profile's 240-bar lookback honestly.
+      if (sessionBuffer.length < SESSION_BUFFER_SESSIONS) continue
 
       const priorSessions = sessionBuffer.slice(0, -1)
       const historyBars = priorSessions.flatMap((s) => s.bars)
-      const heatmap = volumeProfile(historyBars, HEATMAP_ROWS)
-      const heatmapMedian = heatmapMedianShare(heatmap)
 
       const priorSession = priorSessions[priorSessions.length - 1]
       const priorHigh = Math.max(...priorSession.bars.map((b) => b.high))
@@ -629,6 +668,8 @@ async function main() {
       // Cursor into the 1-minute series, advanced as the scan walks forward
       // so each minute costs a short scan rather than a full pass.
       let idxAll = 0
+      let heatmap = null
+      let heatmapBuiltAt = null
       // Consecutive bars grinding along the same level fire the rejection
       // test over and over - a validation run over six weeks produced 92
       // events on one day, 65% of them within three minutes of a prior
@@ -643,6 +684,21 @@ async function main() {
       for (const bar of scanBars) {
         const nowEpoch = barEpochSeconds(bar)
         while (idxAll + 1 < allBars.length && barEpochSeconds(allBars[idxAll + 1]) <= nowEpoch) idxAll++
+
+        // The heatmap window rolls forward continuously with price, and
+        // includes TODAY's volume as the session develops - it is not a
+        // set of completed prior sessions. Rebuilt on a cadence rather
+        // than every minute (see HEATMAP_REBUILD_MINUTES); only bars at or
+        // before `now` ever enter it, so the roll introduces no lookahead.
+        if (heatmapBuiltAt === null || nowEpoch - heatmapBuiltAt >= HEATMAP_REBUILD_MINUTES * 60) {
+          const windowStart = nowEpoch - HEATMAP_LOOKBACK_DAYS * 86400
+          const windowBars = allBars.filter((b) => {
+            const t = barEpochSeconds(b)
+            return t >= windowStart && t <= nowEpoch
+          })
+          heatmap = decorateHeatmap(volumeProfile(windowBars, HEATMAP_MAX_BINS))
+          heatmapBuiltAt = nowEpoch
+        }
 
         const profile5m = volumeProfile(
           seriesAsOf(bars5mAll, dayBars, PROFILE_5M.intervalMinutes, PROFILE_5M.lookbackBars, nowEpoch), PROFILE_ROWS)
@@ -664,12 +720,14 @@ async function main() {
             const closedOut = direction === 'long' ? bar.close >= zone.bucketEnd : bar.close < zone.bucketStart
             if (closedOut) levels.push({ name, share })
           }
-          const hmNode = heatmapNodeAt(wickExtreme, heatmap)
-          if (hmNode) {
+          // A heatmap level worth rejecting at is a yellow (high-density)
+          // bin - the ground the trader treats as capable of holding price.
+          const hmBin = binAt(wickExtreme, heatmap)
+          if (isYellow(hmBin)) {
             const closedOut = direction === 'long'
-              ? bar.close >= hmNode.zone.bucketEnd
-              : bar.close < hmNode.zone.bucketStart
-            if (closedOut) levels.push({ name: 'heatmap', share: hmNode.share })
+              ? bar.close >= hmBin.bucketEnd
+              : bar.close < hmBin.bucketStart
+            if (closedOut) levels.push({ name: 'heatmap', share: hmBin.densityOfMax })
           }
           if (levels.length === 0) continue
 
@@ -689,9 +747,9 @@ async function main() {
           // the next event is a genuinely new setup - see blockedUntilEpoch.
           blockedUntilEpoch[direction] = nowEpoch + (sim.barsToResolve ?? FORWARD_WINDOW_MINUTES) * 60
 
-          const path2R = pathAhead(heatmap, heatmapMedian, bar.close, direction, sim.riskPoints, 2)
-          const path3R = pathAhead(heatmap, heatmapMedian, bar.close, direction, sim.riskPoints, 3)
-          const entryIntensity = relativeIntensity(wickExtreme, heatmap, heatmapMedian)
+          const path2R = pathAhead(heatmap, bar.close, direction, sim.riskPoints, 2)
+          const path3R = pathAhead(heatmap, bar.close, direction, sim.riskPoints, 3)
+          const entryBin = binAt(wickExtreme, heatmap)
 
           console.log('EVENT:' + JSON.stringify({
             date: dateStr,
@@ -701,23 +759,36 @@ async function main() {
             levelTypes: levels.map((l) => l.name),
             confluenceCount: levels.length,
             levelShares: Object.fromEntries(levels.map((l) => [l.name, l.share])),
-            heatmapShare: hmNode ? hmNode.share : null,
-            // The trader's reject-from-yellow-into-blue rule, made
-            // measurable: how thick the level itself is, how thick the
-            // ground between it and the target is, and how far off the
-            // first real shelf sits in R. entryIntensity is populated for
-            // every event, not only ones passing the node threshold, so
-            // "rejected from thin" is a value rather than a null.
-            entryIntensity,
-            pathMeanIntensity2R: path2R ? path2R.meanIntensity : null,
-            pathMaxIntensity2R: path2R ? path2R.maxIntensity : null,
-            pathNodeDistanceR2R: path2R ? path2R.nodeDistanceR : null,
-            pathMeanIntensity3R: path3R ? path3R.meanIntensity : null,
-            pathNodeDistanceR3R: path3R ? path3R.nodeDistanceR : null,
-            // >1 = rejecting out of ground thicker than what lies ahead,
-            // i.e. the yellow-into-blue case; <1 = into more yellow.
-            clearanceRatio2R: path2R && entryIntensity && path2R.meanIntensity > 0
-              ? entryIntensity / path2R.meanIntensity
+            // The trader's reject-from-yellow-into-blue rule, expressed in
+            // the indicator's own density bands rather than a proxy. Both
+            // readings of "density" are carried (see decorateHeatmap) so
+            // the analysis can settle which matches their chart.
+            entryDensityOfMax: entryBin ? entryBin.densityOfMax : null,
+            entryDensityRank: entryBin ? entryBin.densityRank : null,
+            entryIsYellow: entryBin ? isYellow(entryBin) : null,
+            entryIsBlue: entryBin ? isBlue(entryBin) : null,
+            // Null entry density is not missing data - it means the wick
+            // sat outside the whole 7-day heatmap range, i.e. price beyond
+            // all recent value, which is a condition in its own right.
+            entryOutsideHeatmap: entryBin === null,
+            heatmapBinHeight: heatmap ? heatmap.binHeight : null,
+
+            pathMeanDensity2R: path2R ? path2R.meanDensity : null,
+            pathMaxDensity2R: path2R ? path2R.maxDensity : null,
+            pathYellowFraction2R: path2R ? path2R.yellowFraction : null,
+            pathBlueFraction2R: path2R ? path2R.blueFraction : null,
+            yellowWallDistanceR2R: path2R ? path2R.yellowWallDistanceR : null,
+            targetIsBlue2R: path2R && path2R.targetBin ? isBlue(path2R.targetBin) : null,
+            pathMeanDensity3R: path3R ? path3R.meanDensity : null,
+            pathYellowFraction3R: path3R ? path3R.yellowFraction : null,
+            yellowWallDistanceR3R: path3R ? path3R.yellowWallDistanceR : null,
+
+            // The trader's stated rule as one boolean, so it can be tested
+            // directly as a single hypothesis rather than reconstructed
+            // from parts afterwards: rejected off ground that holds, with
+            // no yellow shelf standing between entry and the target.
+            traderRuleMatch2R: entryBin
+              ? (!isBlue(entryBin) && path2R !== null && path2R.yellowWallDistanceR === null)
               : null,
             efficiencyRatio: efficiencyRatio(effBars),
             priorRangePosition: priorRange > 0 ? (wickExtreme - priorLow) / priorRange : null,
@@ -753,7 +824,8 @@ async function main() {
     tradingDaysScanned: days.length,
     daysWithEvents,
     eventCount,
-    heatmapLookbackSessions: HEATMAP_LOOKBACK_SESSIONS,
+    heatmapLookbackDays: HEATMAP_LOOKBACK_DAYS,
+    heatmapMaxBins: HEATMAP_MAX_BINS,
     targetRMultiples: TARGET_R_MULTIPLES,
   }))
 }

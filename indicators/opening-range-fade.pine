@@ -5,17 +5,21 @@
 // STATUS: NOT VALIDATED. Do not trade this yet.
 //
 // This rule was the single best cell out of 990 tested against a year of NQ
-// 1-minute bars, and "best of 990" is a description of a search, not of an
-// edge. It did NOT clear the multiple-comparison threshold that search
-// applied (z = 3.43 against a 4.06 bar). It has passed only one gate since:
-// all four quarters of the exploration period were positive, though the first
-// was +0.6 points a trade and sat slightly BELOW its own random-entry null,
-// so that is really three quarters and a shrug.
+// 1-minute bars, and "best of 990" describes a search, not an edge. It did NOT
+// clear that search's multiple-comparison threshold (z = 3.43 against a 4.06
+// bar). Four of four exploration quarters were positive, but the first was
+// +0.6 points a trade and sat slightly BELOW its own random-entry null, so
+// that is three quarters and a shrug. The out-of-sample test that would settle
+// it has not run - it died when the Databento account hit its budget - so the
+// holdout is unspent rather than passed.
 //
-// The out-of-sample test that would settle it has not run. It was launched and
-// died when the Databento account hit its budget, so the holdout is unspent
-// rather than passed. Until it is scored, this chart is a way to look at the
-// rule, not a reason to take it.
+// WHAT ONE DAY CAN TELL YOU: nothing. The measured win rate is 52%, at 1.5
+// risk for 2 reward. A loss is the single most likely outcome of any given
+// signal, and a day with no signal at all is ordinary - the backtest averaged
+// 1.2 trades per session across 184 sessions. The edge, IF it exists, is about
+// 6.5 points a trade against a per-trade spread of 42 points. It cannot be
+// seen by eye over any number of days you would be willing to sit through.
+// That is what the table in the corner is for.
 // ---------------------------------------------------------------------------
 //
 // THE RULE
@@ -23,58 +27,61 @@
 //   2. The first close ABOVE that range is a SHORT. The first close BELOW it
 //      is a LONG. It fades the break; it does not follow it.
 //   3. One signal per side per session, at most two a day.
-//   4. Stop 1.5x ATR(20), target 2x ATR(20), both measured on the 1-minute
-//      chart at the signal bar.
+//   4. Stop 1.5x ATR, target 2x ATR, sized at the signal bar.
 //
-// Direction is the part people get backwards, so to be explicit: a break of
-// the opening range UP is a sell. In the same search, trading those breaks in
-// the obvious direction was the single WORST cell of all 870 scored, at -8.79
-// points a trade. That mirror is arithmetic rather than independent evidence -
-// it is the same trade with the sign flipped - but it does mean the rule and
-// its opposite are not both plausible. One of them is losing money.
+// Direction is the part that gets transcribed backwards, so explicitly: a
+// break of the opening range UP is a sell. Trading those breaks the obvious
+// way was the WORST of all 870 cells scored, at -8.79 points a trade.
 //
-// NOTES ON USE
-//   - Built for the 1-MINUTE chart. The ATR that sizes the stop and target is
-//     computed on whatever timeframe you load, so a 5-minute chart silently
-//     gives you a stop five times wider than the one that was tested.
-//   - The backtest entered at the OPEN OF THE BAR AFTER the signal, never at
-//     the signal bar's close. The marker prints on the signal bar; the fill it
-//     represents is the next bar's open.
-//   - Costs were charged at 1 point round trip. At a 2x ATR target on a ~15
-//     point ATR that is about 3% of the target, which is small - but it is the
-//     difference between a marginal edge and no edge, so do not net it out.
+// FIDELITY TO THE BACKTEST - two things that silently break a transcription:
+//
+//   ATR IS A SIMPLE AVERAGE OF TRUE RANGE, NOT ta.atr(). Pine's built-in atr()
+//   applies Wilder's RMA smoothing; the backtest used a plain SMA over 20
+//   bars. They are not the same number, and since it sizes both the stop and
+//   the target, using the built-in quietly tests a different strategy. This
+//   script uses ta.sma(ta.tr(true), atrLen) to match.
+//
+//   BUILT FOR THE 1-MINUTE CHART. The ATR is computed on whatever timeframe is
+//   loaded, so a 5-minute chart gives a stop five times wider than the tested
+//   one. The table warns when the timeframe is wrong.
+//
+// The tested fill was the OPEN OF THE BAR AFTER the signal, never the signal
+// bar's close, and the tally below follows that. Costs are charged per trade.
 
 indicator("Opening Range Fade (30m)", overlay = true, max_lines_count = 500, max_labels_count = 500)
 
 // ---------- inputs ----------
 
-orMinutes    = input.int(30, "Opening range (minutes)", minval = 1, maxval = 180,
-     tooltip = "Minutes after the open that define the range. 30 is the tested value.")
-sessionTz    = input.string("America/New_York", "Exchange timezone")
-openHour     = input.int(9,  "Session open hour", minval = 0, maxval = 23)
-openMinute   = input.int(30, "Session open minute", minval = 0, maxval = 59)
-sessionLen   = input.int(390, "Session length (minutes)", minval = 60,
-     tooltip = "390 = 09:30 to 16:00.")
-lastEntryMin = input.int(330, "Latest entry (minutes after open)", minval = 1,
-     tooltip = "Signals after this are ignored, so every trade has room to resolve before the close.")
+orMinutes    = input.int(30, "Opening range (minutes)", minval = 1, maxval = 180, group = "Rule")
+lastEntryMin = input.int(330, "Latest entry (minutes after open)", minval = 1, group = "Rule",
+     tooltip = "Signals later than this are ignored so every trade has room to resolve.")
+atrLen       = input.int(20,  "ATR length (simple average of TR)", minval = 2, group = "Rule")
+stopMult     = input.float(1.5, "Stop (x ATR)",   minval = 0.1, step = 0.1, group = "Rule")
+targetMult   = input.float(2.0, "Target (x ATR)", minval = 0.1, step = 0.1, group = "Rule")
+maxHoldBars  = input.int(120, "Maximum hold (bars)", minval = 5, group = "Rule")
 
-atrLen       = input.int(20,  "ATR length", minval = 2)
-stopMult     = input.float(1.5, "Stop (x ATR)",   minval = 0.1, step = 0.1)
-targetMult   = input.float(2.0, "Target (x ATR)", minval = 0.1, step = 0.1)
+sessionTz    = input.string("America/New_York", "Exchange timezone", group = "Session")
+openHour     = input.int(9,  "Session open hour", minval = 0, maxval = 23, group = "Session")
+openMinute   = input.int(30, "Session open minute", minval = 0, maxval = 59, group = "Session")
+sessionLen   = input.int(390, "Session length (minutes)", minval = 60, group = "Session")
 
-showLevels   = input.bool(true, "Draw stop and target")
-showRange    = input.bool(true, "Draw the opening range")
+costPoints   = input.float(1.0, "Round-trip cost (points)", minval = 0, step = 0.25, group = "Scoring",
+     tooltip = "Two ticks of slippage plus commission. The backtest charged this on every trade.")
+
+showLevels   = input.bool(true, "Draw stop and target", group = "Display")
+showRange    = input.bool(true, "Draw the opening range", group = "Display")
+showTable    = input.bool(true, "Show the running tally", group = "Display")
 
 // ---------- session clock ----------
 //
-// Minutes since the open, computed from the exchange-timezone wall clock
-// rather than a session string, so the whole thing survives DST without a
-// second set of inputs.
+// Minutes since the open from the exchange-timezone wall clock rather than a
+// session string, so this survives DST without a second set of inputs.
 
 minutesSinceOpen = (hour(time, sessionTz) * 60 + minute(time, sessionTz)) - (openHour * 60 + openMinute)
 inSession        = minutesSinceOpen >= 0 and minutesSinceOpen < sessionLen
 newSession       = inSession and not inSession[1]
 inOpeningRange   = inSession and minutesSinceOpen < orMinutes
+sessionEnding    = inSession and minutesSinceOpen >= sessionLen - 1
 
 var float orHigh    = na
 var float orLow     = na
@@ -93,12 +100,10 @@ if inOpeningRange
 
 // ---------- signals ----------
 
-atrValue = ta.atr(atrLen)
+// Simple average of true range, deliberately NOT ta.atr() - see the header.
+atrValue = ta.sma(ta.tr(true), atrLen)
 
-// The range must be complete, the session must still have room, and the ATR
-// must exist - on the first bars of a chart it does not.
-armed = inSession and minutesSinceOpen >= orMinutes and minutesSinceOpen <= lastEntryMin
-     and not na(orHigh) and not na(orLow) and not na(atrValue)
+armed = inSession and minutesSinceOpen >= orMinutes and minutesSinceOpen <= lastEntryMin and not na(orHigh) and not na(orLow) and not na(atrValue)
 
 // Fade: a break UP is a sell, a break DOWN is a buy.
 shortSignal = armed and not firedUp   and close > orHigh
@@ -109,33 +114,118 @@ if shortSignal
 if longSignal
     firedDown := true
 
+// ---------- running tally ----------
+//
+// Each call site of this function keeps its own state, so longs and shorts are
+// tracked as two independent slots. That matches the backtest, where one
+// signal per side means a long and a short can be live at the same time.
+//
+// A bar whose range covers BOTH the stop and the target is counted as a loss
+// and reported separately. One-minute data cannot say which came first, and
+// calling those wins is the easiest way to invent an edge.
+
+trackSide(bool signal, int dir, float atrNow, float stopM, float tgtM, int maxHold, bool forceClose, float cost) =>
+    var int   state   = 0        // 0 flat, 1 filled next bar, 2 live
+    var float sigAtr  = na
+    var float entry   = na
+    var float stopP   = na
+    var float tgtP    = na
+    var int   held    = 0
+    var int   wins    = 0
+    var int   losses  = 0
+    var int   ties    = 0
+    var int   unres   = 0
+    var float points  = 0.0
+
+    if state == 1
+        entry := open
+        stopP := entry - dir * stopM * sigAtr
+        tgtP  := entry + dir * tgtM * sigAtr
+        held  := 0
+        state := 2
+
+    if state == 2
+        held += 1
+        hitTarget = dir == 1 ? high >= tgtP : low  <= tgtP
+        hitStop   = dir == 1 ? low  <= stopP : high >= stopP
+        if hitTarget and hitStop
+            ties   += 1
+            losses += 1
+            points := points - math.abs(entry - stopP) - cost
+            state  := 0
+        else if hitTarget
+            wins   += 1
+            points := points + math.abs(tgtP - entry) - cost
+            state  := 0
+        else if hitStop
+            losses += 1
+            points := points - math.abs(entry - stopP) - cost
+            state  := 0
+        else if held >= maxHold or forceClose
+            unres  += 1
+            points := points + dir * (close - entry) - cost
+            state  := 0
+
+    if state == 0 and signal
+        sigAtr := atrNow
+        state  := 1
+
+    [wins, losses, ties, unres, points]
+
+[lWins, lLosses, lTies, lUnres, lPoints] = trackSide(longSignal,  1, atrValue, stopMult, targetMult, maxHoldBars, sessionEnding, costPoints)
+[sWins, sLosses, sTies, sUnres, sPoints] = trackSide(shortSignal, -1, atrValue, stopMult, targetMult, maxHoldBars, sessionEnding, costPoints)
+
 // ---------- plotting ----------
 
-plot(showRange and inSession and not na(orHigh) ? orHigh : na, "OR high", color.new(color.gray, 20),
-     style = plot.style_linebr, linewidth = 1)
-plot(showRange and inSession and not na(orLow) ? orLow : na, "OR low", color.new(color.gray, 20),
-     style = plot.style_linebr, linewidth = 1)
+plot(showRange and inSession and not na(orHigh) ? orHigh : na, "OR high", color.new(color.gray, 20), style = plot.style_linebr)
+plot(showRange and inSession and not na(orLow)  ? orLow  : na, "OR low",  color.new(color.gray, 20), style = plot.style_linebr)
 
-plotshape(longSignal,  "Long (fade the break down)", shape.triangleup,   location.belowbar,
-     color.new(color.teal, 0), size = size.small)
-plotshape(shortSignal, "Short (fade the break up)",  shape.triangledown, location.abovebar,
-     color.new(color.maroon, 0), size = size.small)
+plotshape(longSignal,  "Long (fade the break down)", shape.triangleup,   location.belowbar, color.new(color.teal, 0),   size = size.small)
+plotshape(shortSignal, "Short (fade the break up)",  shape.triangledown, location.abovebar, color.new(color.maroon, 0), size = size.small)
 
-// Stop and target are drawn from the signal bar's close as an approximation of
-// the next bar's open, which is where the tested rule actually filled. On a
-// 1-minute NQ chart the two are usually the same price; when they are not, the
-// real fill is the open.
 if showLevels and (longSignal or shortSignal)
     dir       = longSignal ? 1 : -1
-    entryRef  = close
-    stopPrice = entryRef - dir * stopMult * atrValue
-    tgtPrice  = entryRef + dir * targetMult * atrValue
-    line.new(bar_index, stopPrice, bar_index + 30, stopPrice, color = color.new(color.red, 30), width = 1)
-    line.new(bar_index, tgtPrice,  bar_index + 30, tgtPrice,  color = color.new(color.green, 30), width = 1)
-    label.new(bar_index, tgtPrice, str.format("{0}  stop {1}  target {2}", dir == 1 ? "LONG" : "SHORT",
-         math.round(stopMult * atrValue, 2), math.round(targetMult * atrValue, 2)),
-         style = label.style_label_down, color = color.new(color.gray, 80),
-         textcolor = chart.fg_color, size = size.tiny)
+    stopPrice = close - dir * stopMult * atrValue
+    tgtPrice  = close + dir * targetMult * atrValue
+    line.new(bar_index, stopPrice, bar_index + 30, stopPrice, color = color.new(color.red, 30))
+    line.new(bar_index, tgtPrice,  bar_index + 30, tgtPrice,  color = color.new(color.green, 30))
+
+// ---------- the tally table ----------
+
+if showTable and barstate.islast
+    wins    = lWins + sWins
+    losses  = lLosses + sLosses
+    ties    = lTies + sTies
+    unres   = lUnres + sUnres
+    total   = wins + losses + unres
+    points  = lPoints + sPoints
+    decided = wins + losses
+
+    var table t = table.new(position.top_right, 2, 8, border_width = 1)
+    table.cell(t, 0, 0, "OR Fade (30m)", text_color = chart.fg_color, text_size = size.small)
+    table.cell(t, 1, 0, timeframe.period == "1" ? "1m ok" : timeframe.period + " - WRONG TF",
+         text_color = timeframe.period == "1" ? color.gray : color.red, text_size = size.small)
+    table.cell(t, 0, 1, "trades", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 1, str.tostring(total), text_color = chart.fg_color, text_size = size.small)
+    table.cell(t, 0, 2, "win rate", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 2, decided > 0 ? str.tostring(100.0 * wins / decided, "#.#") + "%" : "-",
+         text_color = chart.fg_color, text_size = size.small)
+    table.cell(t, 0, 3, "net points", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 3, str.tostring(points, "#.#"),
+         text_color = points > 0 ? color.teal : color.maroon, text_size = size.small)
+    table.cell(t, 0, 4, "per trade", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 4, total > 0 ? str.tostring(points / total, "#.##") : "-",
+         text_color = total > 0 and points > 0 ? color.teal : color.maroon, text_size = size.small)
+    table.cell(t, 0, 5, "unresolved", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 5, str.tostring(unres), text_color = chart.fg_color, text_size = size.small)
+    table.cell(t, 0, 6, "same-bar ties", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 6, str.tostring(ties), text_color = chart.fg_color, text_size = size.small)
+    // Below roughly 100 trades the per-trade figure is dominated by variance -
+    // the backtest needed 223 to reach 2.9 sigma. This row says so rather than
+    // leaving a small, flattering number looking like evidence.
+    table.cell(t, 0, 7, "verdict", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 7, total < 100 ? "too few to read" : (points > 0 ? "positive so far" : "negative so far"),
+         text_color = total < 100 ? color.orange : chart.fg_color, text_size = size.small)
 
 alertcondition(longSignal,  "OR fade long",  "Opening range broke DOWN - fade it long (enter next bar's open)")
 alertcondition(shortSignal, "OR fade short", "Opening range broke UP - fade it short (enter next bar's open)")

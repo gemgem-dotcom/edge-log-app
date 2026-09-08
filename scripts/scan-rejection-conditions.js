@@ -750,8 +750,19 @@ async function main() {
       // since they are in the position and cannot take it again.
       const blockedUntilEpoch = {}
 
+      // Running extremes since the 9:30 open, and whether the move has
+      // reached the 15m POC yet. Both are needed for the range-position
+      // test below and neither existed before: priorRangePosition measures
+      // position in YESTERDAY's range, which is a different thing.
+      let dayHigh = null
+      let dayLow = null
+      let reachedPoc15 = false
+      const openPrice = scanBars[0].open
+
       for (const bar of scanBars) {
         const nowEpoch = barEpochSeconds(bar)
+        dayHigh = dayHigh === null ? bar.high : Math.max(dayHigh, bar.high)
+        dayLow = dayLow === null ? bar.low : Math.min(dayLow, bar.low)
         while (idxAll + 1 < allBars.length && barEpochSeconds(allBars[idxAll + 1]) <= nowEpoch) idxAll++
 
         // The heatmap window rolls forward continuously with price, and
@@ -773,6 +784,12 @@ async function main() {
           seriesAsOf(bars5mAll, dayBars, PROFILE_5M.intervalMinutes, PROFILE_5M.lookbackBars, nowEpoch), PROFILE_ROWS)
         const profile15m = volumeProfile(
           seriesAsOf(bars15mAll, dayBars, PROFILE_15M.intervalMinutes, PROFILE_15M.lookbackBars, nowEpoch), PROFILE_ROWS)
+        // The trader's stated precondition: the impulse off the open has to
+        // reach the 15m POC before the 5m POC fill is taken. True on 21 of
+        // their 24 logged trades, so worth measuring rather than assuming.
+        if (profile15m.poc && dayLow <= profile15m.poc.bucketEnd && dayHigh >= profile15m.poc.bucketStart) {
+          reachedPoc15 = true
+        }
 
         // A resting limit order at the MIDDLE of a level fills the moment
         // price trades there. That is what the trader actually does - "all
@@ -894,6 +911,20 @@ async function main() {
             atrDaily,
             minutesSinceOpen,
             atr1m,
+            // Where the fill sits inside the day's move so far: 0 at the
+            // low since the open, 1 at the high. Mined out of the trader's
+            // own 24 trades, where longs never sat above 0.63 and shorts
+            // never below 0.43 - a clean separation that their stated POC
+            // rule does not produce on its own, since a 22-hour volume
+            // level can land anywhere in a given day's range. This is the
+            // first candidate selection criterion that came from their
+            // trades rather than from a guess.
+            rangePosition: (dayHigh - dayLow) > 0 ? (limitPrice - dayLow) / (dayHigh - dayLow) : null,
+            dayRangePoints: dayHigh - dayLow,
+            reachedPoc15,
+            // Net move off the open, and whether this trade leans against
+            // it. They faded the impulse on 17 of 24.
+            impulseDirection: (dayHigh - openPrice) > (openPrice - dayLow) ? 'up' : 'down',
             riskPoints: refRisk,
             wickFraction: quality.wickFraction,
             closeStrength: quality.closeStrength,

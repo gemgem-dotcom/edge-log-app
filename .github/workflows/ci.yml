@@ -71,6 +71,17 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      # End-to-end smoke of scan-rejection-conditions.js against synthetic
+      # bars, no Databento key needed. The unit tests only cover extracted
+      # pure functions, which is exactly how a rewrite shipped a reference
+      # to a variable it had deleted: `node -c` passed, lint passed, and
+      # the error only surfaced as "285 days failed / 0 events" at the end
+      # of a 20-minute Actions job. The scan catches per-day errors and
+      # still exits 0, so this asserts on event count and failure count
+      # rather than trusting the exit status.
+      - name: Smoke-test the rejection scan
+        run: npm run smoke:scan
+
   lint:
     runs-on: ubuntu-latest
 

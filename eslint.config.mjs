@@ -18,6 +18,26 @@ import nextConfig from 'eslint-config-next'
 // as its own dedicated cleanup pass, just not this one.
 const config = [
   ...nextConfig,
+  // scripts/ are plain CommonJS run by `node scripts/...`, never bundled,
+  // and Next's config leaves no-undef off (it assumes TypeScript catches
+  // this). That gap let a rewrite of scan-rejection-conditions.js ship a
+  // reference to a variable it had just deleted: `node -c` passes, lint
+  // passed, and the error only surfaced as a ReferenceError inside the
+  // per-day try/catch of a 20-minute Actions job, which swallowed it into
+  // "285 days failed" and zero events. no-undef here is the cheapest
+  // possible guard against that whole class of mistake.
+  {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly', module: 'writable', process: 'readonly',
+        console: 'readonly', Buffer: 'readonly', fetch: 'readonly',
+        URL: 'readonly', __dirname: 'readonly', setTimeout: 'readonly',
+      },
+    },
+    rules: { 'no-undef': 'error' },
+  },
   {
     rules: {
       'react-hooks/set-state-in-effect': 'warn',

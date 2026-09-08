@@ -52,6 +52,12 @@ indicator("Opening Range Fade (30m)", overlay = true, max_lines_count = 500, max
 
 // ---------- inputs ----------
 
+// Flip this to compare the rule against its own opposite on your own chart.
+// In the year of data searched, fading was the best of 870 cells and following
+// was the worst - but those two numbers are one finding with the sign changed,
+// not two, so the honest thing is to let the chart argue back.
+tradeMode    = input.string("Fade the break", "Direction", options = ["Fade the break", "Follow the break"], group = "Rule",
+     tooltip = "Fade: a break UP is a sell. Follow: a break UP is a buy. Load a long 1m history and compare the tallies.")
 orMinutes    = input.int(30, "Opening range (minutes)", minval = 1, maxval = 180, group = "Rule")
 lastEntryMin = input.int(330, "Latest entry (minutes after open)", minval = 1, group = "Rule",
      tooltip = "Signals later than this are ignored so every trade has room to resolve.")
@@ -105,13 +111,20 @@ atrValue = ta.sma(ta.tr(true), atrLen)
 
 armed = inSession and minutesSinceOpen >= orMinutes and minutesSinceOpen <= lastEntryMin and not na(orHigh) and not na(orLow) and not na(atrValue)
 
-// Fade: a break UP is a sell, a break DOWN is a buy.
-shortSignal = armed and not firedUp   and close > orHigh
-longSignal  = armed and not firedDown and close < orLow
+fadeIt = tradeMode == "Fade the break"
 
-if shortSignal
+// Fading: a break UP is a sell, a break DOWN is a buy. Following inverts both.
+brokeUp   = armed and not firedUp   and close > orHigh
+brokeDown = armed and not firedDown and close < orLow
+
+shortSignal = fadeIt ? brokeUp : brokeDown
+longSignal  = fadeIt ? brokeDown : brokeUp
+
+// Track which SIDE OF THE RANGE has fired, not which direction was traded, so
+// "one per side per session" means the same thing in both modes.
+if brokeUp
     firedUp := true
-if longSignal
+if brokeDown
     firedDown := true
 
 // ---------- running tally ----------
@@ -180,8 +193,8 @@ trackSide(bool signal, int dir, float atrNow, float stopM, float tgtM, int maxHo
 plot(showRange and inSession and not na(orHigh) ? orHigh : na, "OR high", color.new(color.gray, 20), style = plot.style_linebr)
 plot(showRange and inSession and not na(orLow)  ? orLow  : na, "OR low",  color.new(color.gray, 20), style = plot.style_linebr)
 
-plotshape(longSignal,  "Long (fade the break down)", shape.triangleup,   location.belowbar, color.new(color.teal, 0),   size = size.small)
-plotshape(shortSignal, "Short (fade the break up)",  shape.triangledown, location.abovebar, color.new(color.maroon, 0), size = size.small)
+plotshape(longSignal,  "Long",  shape.triangleup,   location.belowbar, color.new(color.teal, 0),   size = size.small)
+plotshape(shortSignal, "Short", shape.triangledown, location.abovebar, color.new(color.maroon, 0), size = size.small)
 
 if showLevels and (longSignal or shortSignal)
     dir       = longSignal ? 1 : -1
@@ -202,7 +215,7 @@ if showTable and barstate.islast
     decided = wins + losses
 
     var table t = table.new(position.top_right, 2, 8, border_width = 1)
-    table.cell(t, 0, 0, "OR Fade (30m)", text_color = chart.fg_color, text_size = size.small)
+    table.cell(t, 0, 0, fadeIt ? "OR Fade (30m)" : "OR Follow (30m)", text_color = chart.fg_color, text_size = size.small)
     table.cell(t, 1, 0, timeframe.period == "1" ? "1m ok" : timeframe.period + " - WRONG TF",
          text_color = timeframe.period == "1" ? color.gray : color.red, text_size = size.small)
     table.cell(t, 0, 1, "trades", text_color = color.gray, text_size = size.small)
@@ -227,5 +240,5 @@ if showTable and barstate.islast
     table.cell(t, 1, 7, total < 100 ? "too few to read" : (points > 0 ? "positive so far" : "negative so far"),
          text_color = total < 100 ? color.orange : chart.fg_color, text_size = size.small)
 
-alertcondition(longSignal,  "OR fade long",  "Opening range broke DOWN - fade it long (enter next bar's open)")
-alertcondition(shortSignal, "OR fade short", "Opening range broke UP - fade it short (enter next bar's open)")
+alertcondition(longSignal,  "OR long",  "Opening range fade/follow: LONG signal - enter next bar's open")
+alertcondition(shortSignal, "OR short", "Opening range fade/follow: SHORT signal - enter next bar's open")

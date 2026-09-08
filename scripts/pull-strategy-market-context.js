@@ -638,6 +638,38 @@ async function main() {
         continue
       }
 
+      // The trader states every entry is the CENTRE of the 5m POC. That
+      // gives 24 known answers, so the profile's settings can be FITTED
+      // rather than guessed: compute the POC several plausible ways and
+      // see which reproduces the logged entries. A first pass matched 6
+      // trades to under a point and 11 to under five - proving the
+      // money-flow math itself is right - while missing 11 others by more
+      // than a full row height, with no constant offset (mean +2.0 pts).
+      // Bimodal error like that means a categorical difference in which
+      // BARS go into the profile, and the obvious candidate is the
+      // chart's session setting: 270 five-minute bars of regular hours
+      // spans ~3.5 sessions, 270 bars of 24-hour data spans ~1 day.
+      const inRth = (b) => {
+        const mins = ((barEpochSeconds(b) * 1000 + offsetHours * 3600000) / 60000) % 1440
+        return mins >= 9 * 60 + 30 && mins < 16 * 60
+      }
+      const rthBars = oneMinBars.filter(inRth)
+      const pocVariants = {}
+      for (const [label, src, lookback] of [
+        ['allHours_270', oneMinBars, 270],
+        ['rth_270', rthBars, 270],
+        ['allHours_360', oneMinBars, 360],
+        ['rth_360', rthBars, 360],
+        ['allHours_120', oneMinBars, 120],
+        ['rth_120', rthBars, 120],
+      ]) {
+        const agg = aggregateBars(src, PROFILE_5M.intervalMinutes).slice(-lookback)
+        const prof = volumeProfile(agg, PROFILE_ROWS)
+        pocVariants[label] = prof.poc
+          ? { center: zoneCenter(prof.poc), barsUsed: agg.length, diffToEntry: trade.entry - zoneCenter(prof.poc) }
+          : null
+      }
+
       const bars5m = aggregateBars(oneMinBars, PROFILE_5M.intervalMinutes).slice(-PROFILE_5M.lookbackBars)
       const bars15m = aggregateBars(oneMinBars, PROFILE_15M.intervalMinutes).slice(-PROFILE_15M.lookbackBars)
       const profile5m = volumeProfile(bars5m, PROFILE_ROWS)
@@ -686,6 +718,7 @@ async function main() {
         // anything derived from it.
         profile5mPoc: profile5m.poc,
         profile15mPoc: profile15m.poc,
+        pocVariants,
         distanceEntryToPoc5m: distanceToPoc(trade.entry, profile5m),
         distanceEntryToPoc15m: distanceToPoc(trade.entry, profile15m),
         // See DEBUG_TRADE_DATES's own comment - only populated for trades

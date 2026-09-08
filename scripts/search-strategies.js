@@ -578,6 +578,103 @@ function twoSidedP(z) {
   return Math.max(Number.MIN_VALUE, 1 - y)
 }
 
+// ---------- focused re-test of a single pre-registered rule ----------
+//
+// Set FOCUS_SIGNAL (plus FOCUS_WINDOW / FOCUS_STOP / FOCUS_TARGET) and the
+// grid search is skipped entirely in favour of one rule, examined two ways.
+//
+// The order matters and is the point of the mode.
+//
+// STABILITY runs first, on the exploration set only, and costs nothing. A
+// rule whose whole year came out of one quarter is not a rule, and there is
+// no reason to spend a holdout finding that out. Each sub-period gets its own
+// matched null built from its own sessions, so a quarter is judged against
+// darts thrown in that quarter - otherwise a calm stretch scored against a
+// violent year's null looks like skill.
+//
+// HOLDOUT runs second and exactly once. By the time it runs, the rule, its
+// parameters, the window and the direction are all fixed by the environment
+// this process was started with - nothing about it can be tuned in response
+// to what the holdout says, which is the only property that makes an
+// out-of-sample test worth anything. Whatever it returns is the answer,
+// including when the answer is that the exploration result was noise.
+
+function subPeriods(sessions, count) {
+  const size = Math.ceil(sessions.length / count)
+  const chunks = []
+  for (let i = 0; i < sessions.length; i += size) chunks.push(sessions.slice(i, i + size))
+  return chunks
+}
+
+function tradesFor(sessions, signalFn, window, stopMult, targetMult, atrEdges) {
+  const trades = []
+  for (const session of sessions) {
+    for (const signal of signalFn(session)) {
+      if (signal.index < window.startMinute || signal.index >= window.endMinute) continue
+      const trade = makeTrade(session, signal, stopMult, targetMult, atrEdges)
+      if (trade) trades.push(trade)
+    }
+  }
+  return trades
+}
+
+function runFocus({ exploration, holdout, atrEdges, rng, focus }) {
+  const variant = buildSignalCatalogue().find((v) => v.name === focus.signal)
+  if (!variant) throw new Error(`FOCUS_SIGNAL "${focus.signal}" is not in the catalogue`)
+  const window = WINDOWS.find((w) => w.name === focus.window)
+  if (!window) throw new Error(`FOCUS_WINDOW "${focus.window}" is not a known window`)
+
+  console.log('FOCUS_RULE:' + JSON.stringify({
+    signal: focus.signal,
+    window: focus.window,
+    stop: focus.stop,
+    target: focus.target,
+    explorationSessions: exploration.length,
+    holdoutSessions: holdout.length,
+    note: 'one pre-registered hypothesis - threshold is a plain 0.05, no correction needed',
+  }))
+
+  const wholePool = buildRandomPool(exploration, focus.stop, focus.target, rng, atrEdges)
+  const wholeTrades = tradesFor(exploration, variant.fn, window, focus.stop, focus.target, atrEdges)
+  console.log('FOCUS_EXPLORATION:' + JSON.stringify({
+    period: 'all',
+    ...evaluate(wholeTrades, wholePool, rng),
+    p: twoSidedP(evaluate(wholeTrades, wholePool, rng).z),
+  }))
+
+  const chunks = subPeriods(exploration, 4)
+  let positiveQuarters = 0
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]
+    const pool = buildRandomPool(chunk, focus.stop, focus.target, rng, atrEdges)
+    const trades = tradesFor(chunk, variant.fn, window, focus.stop, focus.target, atrEdges)
+    const evaluation = trades.length > 0 ? evaluate(trades, pool, rng) : { n: 0, expectancyPoints: null, z: null }
+    if (evaluation.expectancyPoints > 0) positiveQuarters++
+    console.log('FOCUS_STABILITY:' + JSON.stringify({
+      period: `Q${i + 1}`,
+      from: chunk[0].date,
+      to: chunk[chunk.length - 1].date,
+      ...evaluation,
+    }))
+  }
+  console.log('FOCUS_STABILITY_SUMMARY:' + JSON.stringify({
+    quarters: chunks.length,
+    positiveQuarters,
+    note: 'a rule carried by one quarter is a quarter, not a rule',
+  }))
+
+  const holdoutPool = buildRandomPool(holdout, focus.stop, focus.target, rng, atrEdges)
+  const holdoutTrades = tradesFor(holdout, variant.fn, window, focus.stop, focus.target, atrEdges)
+  const holdoutEval = holdoutTrades.length > 0 ? evaluate(holdoutTrades, holdoutPool, rng) : { n: 0 }
+  console.log('FOCUS_HOLDOUT:' + JSON.stringify({
+    from: holdout.length ? holdout[0].date : null,
+    to: holdout.length ? holdout[holdout.length - 1].date : null,
+    ...holdoutEval,
+    p: twoSidedP(holdoutEval.z ?? null),
+  }))
+}
+
+
 // ---------- main ----------
 
 async function main() {
@@ -620,6 +717,22 @@ async function main() {
   const signalsByVariant = new Map()
   for (const variant of catalogue) {
     signalsByVariant.set(variant.name, new Map(sessions.map((s) => [s.date, variant.fn(s)])))
+  }
+
+  if (process.env.FOCUS_SIGNAL) {
+    runFocus({
+      exploration,
+      holdout,
+      atrEdges,
+      rng,
+      focus: {
+        signal: process.env.FOCUS_SIGNAL,
+        window: process.env.FOCUS_WINDOW || 'allday',
+        stop: Number(process.env.FOCUS_STOP || 1.5),
+        target: Number(process.env.FOCUS_TARGET || 2),
+      },
+    })
+    return
   }
 
   const hypotheses = catalogue.length * STOP_MULTS.length * TARGET_MULTS.length * WINDOWS.length

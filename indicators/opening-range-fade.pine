@@ -1,0 +1,141 @@
+//@version=5
+// Opening Range Fade (30m) - NQ
+//
+// ---------------------------------------------------------------------------
+// STATUS: NOT VALIDATED. Do not trade this yet.
+//
+// This rule was the single best cell out of 990 tested against a year of NQ
+// 1-minute bars, and "best of 990" is a description of a search, not of an
+// edge. It did NOT clear the multiple-comparison threshold that search
+// applied (z = 3.43 against a 4.06 bar). It has passed only one gate since:
+// all four quarters of the exploration period were positive, though the first
+// was +0.6 points a trade and sat slightly BELOW its own random-entry null,
+// so that is really three quarters and a shrug.
+//
+// The out-of-sample test that would settle it has not run. It was launched and
+// died when the Databento account hit its budget, so the holdout is unspent
+// rather than passed. Until it is scored, this chart is a way to look at the
+// rule, not a reason to take it.
+// ---------------------------------------------------------------------------
+//
+// THE RULE
+//   1. Mark the high and low of the first 30 minutes after the 09:30 ET open.
+//   2. The first close ABOVE that range is a SHORT. The first close BELOW it
+//      is a LONG. It fades the break; it does not follow it.
+//   3. One signal per side per session, at most two a day.
+//   4. Stop 1.5x ATR(20), target 2x ATR(20), both measured on the 1-minute
+//      chart at the signal bar.
+//
+// Direction is the part people get backwards, so to be explicit: a break of
+// the opening range UP is a sell. In the same search, trading those breaks in
+// the obvious direction was the single WORST cell of all 870 scored, at -8.79
+// points a trade. That mirror is arithmetic rather than independent evidence -
+// it is the same trade with the sign flipped - but it does mean the rule and
+// its opposite are not both plausible. One of them is losing money.
+//
+// NOTES ON USE
+//   - Built for the 1-MINUTE chart. The ATR that sizes the stop and target is
+//     computed on whatever timeframe you load, so a 5-minute chart silently
+//     gives you a stop five times wider than the one that was tested.
+//   - The backtest entered at the OPEN OF THE BAR AFTER the signal, never at
+//     the signal bar's close. The marker prints on the signal bar; the fill it
+//     represents is the next bar's open.
+//   - Costs were charged at 1 point round trip. At a 2x ATR target on a ~15
+//     point ATR that is about 3% of the target, which is small - but it is the
+//     difference between a marginal edge and no edge, so do not net it out.
+
+indicator("Opening Range Fade (30m)", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+// ---------- inputs ----------
+
+orMinutes    = input.int(30, "Opening range (minutes)", minval = 1, maxval = 180,
+     tooltip = "Minutes after the open that define the range. 30 is the tested value.")
+sessionTz    = input.string("America/New_York", "Exchange timezone")
+openHour     = input.int(9,  "Session open hour", minval = 0, maxval = 23)
+openMinute   = input.int(30, "Session open minute", minval = 0, maxval = 59)
+sessionLen   = input.int(390, "Session length (minutes)", minval = 60,
+     tooltip = "390 = 09:30 to 16:00.")
+lastEntryMin = input.int(330, "Latest entry (minutes after open)", minval = 1,
+     tooltip = "Signals after this are ignored, so every trade has room to resolve before the close.")
+
+atrLen       = input.int(20,  "ATR length", minval = 2)
+stopMult     = input.float(1.5, "Stop (x ATR)",   minval = 0.1, step = 0.1)
+targetMult   = input.float(2.0, "Target (x ATR)", minval = 0.1, step = 0.1)
+
+showLevels   = input.bool(true, "Draw stop and target")
+showRange    = input.bool(true, "Draw the opening range")
+
+// ---------- session clock ----------
+//
+// Minutes since the open, computed from the exchange-timezone wall clock
+// rather than a session string, so the whole thing survives DST without a
+// second set of inputs.
+
+minutesSinceOpen = (hour(time, sessionTz) * 60 + minute(time, sessionTz)) - (openHour * 60 + openMinute)
+inSession        = minutesSinceOpen >= 0 and minutesSinceOpen < sessionLen
+newSession       = inSession and not inSession[1]
+inOpeningRange   = inSession and minutesSinceOpen < orMinutes
+
+var float orHigh    = na
+var float orLow     = na
+var bool  firedUp   = false
+var bool  firedDown = false
+
+if newSession
+    orHigh    := na
+    orLow     := na
+    firedUp   := false
+    firedDown := false
+
+if inOpeningRange
+    orHigh := na(orHigh) ? high : math.max(orHigh, high)
+    orLow  := na(orLow)  ? low  : math.min(orLow,  low)
+
+// ---------- signals ----------
+
+atrValue = ta.atr(atrLen)
+
+// The range must be complete, the session must still have room, and the ATR
+// must exist - on the first bars of a chart it does not.
+armed = inSession and minutesSinceOpen >= orMinutes and minutesSinceOpen <= lastEntryMin
+     and not na(orHigh) and not na(orLow) and not na(atrValue)
+
+// Fade: a break UP is a sell, a break DOWN is a buy.
+shortSignal = armed and not firedUp   and close > orHigh
+longSignal  = armed and not firedDown and close < orLow
+
+if shortSignal
+    firedUp := true
+if longSignal
+    firedDown := true
+
+// ---------- plotting ----------
+
+plot(showRange and inSession and not na(orHigh) ? orHigh : na, "OR high", color.new(color.gray, 20),
+     style = plot.style_linebr, linewidth = 1)
+plot(showRange and inSession and not na(orLow) ? orLow : na, "OR low", color.new(color.gray, 20),
+     style = plot.style_linebr, linewidth = 1)
+
+plotshape(longSignal,  "Long (fade the break down)", shape.triangleup,   location.belowbar,
+     color.new(color.teal, 0), size = size.small)
+plotshape(shortSignal, "Short (fade the break up)",  shape.triangledown, location.abovebar,
+     color.new(color.maroon, 0), size = size.small)
+
+// Stop and target are drawn from the signal bar's close as an approximation of
+// the next bar's open, which is where the tested rule actually filled. On a
+// 1-minute NQ chart the two are usually the same price; when they are not, the
+// real fill is the open.
+if showLevels and (longSignal or shortSignal)
+    dir       = longSignal ? 1 : -1
+    entryRef  = close
+    stopPrice = entryRef - dir * stopMult * atrValue
+    tgtPrice  = entryRef + dir * targetMult * atrValue
+    line.new(bar_index, stopPrice, bar_index + 30, stopPrice, color = color.new(color.red, 30), width = 1)
+    line.new(bar_index, tgtPrice,  bar_index + 30, tgtPrice,  color = color.new(color.green, 30), width = 1)
+    label.new(bar_index, tgtPrice, str.format("{0}  stop {1}  target {2}", dir == 1 ? "LONG" : "SHORT",
+         math.round(stopMult * atrValue, 2), math.round(targetMult * atrValue, 2)),
+         style = label.style_label_down, color = color.new(color.gray, 80),
+         textcolor = chart.fg_color, size = size.tiny)
+
+alertcondition(longSignal,  "OR fade long",  "Opening range broke DOWN - fade it long (enter next bar's open)")
+alertcondition(shortSignal, "OR fade short", "Opening range broke UP - fade it short (enter next bar's open)")

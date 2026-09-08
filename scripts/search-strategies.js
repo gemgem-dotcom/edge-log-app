@@ -94,6 +94,10 @@ const ATR_BINS = 5
 const MIN_TRADES = 40          // below this, no result is worth reading
 const ALPHA = 0.05
 const RNG_SEED = 20260908
+// Above this share of unfetchable sessions the run is aborted rather than
+// reported. A handful of gateway timeouts across a year is normal; a fifth of
+// the calendar missing means something systemic.
+const MAX_SESSION_FAILURE_RATE = 0.1
 
 function log(...args) {
   console.error(new Date().toISOString(), ...args)
@@ -735,6 +739,35 @@ async function main() {
   const exploration = sessions.filter((s) => s.date < holdoutStart)
   const holdout = sessions.filter((s) => s.date >= holdoutStart)
   log(`sessions built: ${sessions.length} (exploration ${exploration.length}, holdout ${holdout.length}), ${failures} unusable`)
+
+  // Refuse to analyse a badly truncated fetch.
+  //
+  // A run where Databento returned 402 for every date after April produced a
+  // complete, confident-looking stability report over a period that silently
+  // stopped five weeks early, and a "holdout" of zero sessions that printed as
+  // an empty result rather than as the failure it was. Nothing crashed, the
+  // job exited 0, and the numbers looked entirely reasonable.
+  //
+  // Partial data is not a smaller version of the same question - it is a
+  // different question, asked without noticing. So: fail loudly, name the
+  // likely cause, and make an unrunnable holdout fatal whenever one was asked
+  // for, because a pre-registered test that quietly did not happen is worse
+  // than one that failed.
+  const requestedDays = days.length
+  const failureRate = requestedDays > 0 ? failures / requestedDays : 1
+  if (failureRate > MAX_SESSION_FAILURE_RATE) {
+    throw new Error(
+      `${failures} of ${requestedDays} sessions could not be fetched (${(failureRate * 100).toFixed(0)}%). `
+      + 'Refusing to report on a truncated sample - check the Databento account balance and the log above '
+      + 'for the underlying error.'
+    )
+  }
+  if (holdoutStart <= scanEnd && holdout.length === 0) {
+    throw new Error(
+      `a holdout starting ${holdoutStart} was requested but zero sessions were built for it. `
+      + 'Refusing to run - an out-of-sample test that silently did not happen is worse than one that failed.'
+    )
+  }
 
   const catalogue = buildSignalCatalogue()
   const rng = makeRng(RNG_SEED)

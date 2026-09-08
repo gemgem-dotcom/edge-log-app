@@ -21,11 +21,26 @@
 //
 // ---------- what counts as an event ----------
 //
-// A rejection at a level: a 1-minute bar whose wick pierces into the
-// level's price zone and whose close comes back out of it, in either
-// direction (a long rejection = wicked down into the zone, closed back
-// above it; short = the mirror). Three level families are tested, all
-// computed from real Databento ohlcv-1m bars:
+// A RESTING LIMIT ORDER AT THE MIDDLE OF A LEVEL, filled the moment price
+// trades there. This is what the trader actually does ("all my limit
+// orders are set in the middle of the 5POC"), and it makes the rejection
+// an OUTCOME being bet on rather than an entry condition.
+//
+// An earlier definition required a bar to wick INTO the zone and close
+// back OUT of it, entering at that close. That is a materially different
+// and strictly worse trade - entering after the bounce is already
+// visible, further from the level, needing a wider stop. On a ~17 point
+// ATR the gap between "filled at the POC" and "filled at the close of the
+// bar that left the POC" can be most of the intended risk, so the
+// year-long null that definition produced was measuring a strategy nobody
+// trades. Whether a rejection followed is still recorded, as
+// `rejectionConfirmed`, so "wait for confirmation" is testable as a
+// filter rather than baked in as a precondition.
+//
+// Direction follows the side price approached from: arriving from above,
+// the level is support and the limit is a buy; from below, resistance and
+// a sell. Three level families are tested, all computed from real
+// Databento ohlcv-1m bars:
 //
 //   poc5      - POC of the rolling 5m/270-bar volume profile
 //   poc15     - POC of the rolling 15m/240-bar volume profile
@@ -388,6 +403,10 @@ function volumeProfile(bars, rows) {
   return { poc, zones, totalFlow, bucketSize: step }
 }
 
+function midOf(zone) {
+  return zone ? (zone.bucketStart + zone.bucketEnd) / 2 : null
+}
+
 function priceInZone(price, zone) {
   return !!zone && price >= zone.bucketStart && price < zone.bucketEnd
 }
@@ -729,7 +748,7 @@ async function main() {
       // fires, it is suppressed until that trade would actually have
       // resolved - which is also the real constraint a trader is under,
       // since they are in the position and cannot take it again.
-      const blockedUntilEpoch = { long: 0, short: 0 }
+      const blockedUntilEpoch = {}
 
       for (const bar of scanBars) {
         const nowEpoch = barEpochSeconds(bar)
@@ -755,31 +774,41 @@ async function main() {
         const profile15m = volumeProfile(
           seriesAsOf(bars15mAll, dayBars, PROFILE_15M.intervalMinutes, PROFILE_15M.lookbackBars, nowEpoch), PROFILE_ROWS)
 
-        for (const direction of ['long', 'short']) {
-          if (nowEpoch < blockedUntilEpoch[direction]) continue
-          const wickExtreme = direction === 'long' ? bar.low : bar.high
+        // A resting limit order at the MIDDLE of a level fills the moment
+        // price trades there. That is what the trader actually does - "all
+        // my limit orders are set in the middle of the 5POC" - and it makes
+        // the rejection an OUTCOME being bet on, not an entry condition.
+        //
+        // The previous definition required the bar to wick into the zone
+        // AND close back out of it, then entered at that close. That is a
+        // materially different and strictly worse trade: it enters after
+        // the bounce is already visible, further from the level, needing a
+        // wider stop. On a ~17 point ATR the gap between "filled at the
+        // POC" and "filled at the close of the bar that left the POC" can
+        // be most of the intended risk - so the year-long null it produced
+        // was measuring a strategy nobody trades.
+        //
+        // Whether a rejection actually followed is still recorded, as the
+        // feature `rejectionConfirmed`, so "wait for confirmation" can be
+        // tested as a filter rather than baked in as a precondition.
+        for (const [name, zone, share] of [
+          ['poc5', profile5m.poc, zoneShare(profile5m.poc, profile5m.totalFlow)],
+          ['poc15', profile15m.poc, zoneShare(profile15m.poc, profile15m.totalFlow)],
+          ['heatmap', isYellow(binAt(midOf(profile5m.poc), heatmap)) ? binAt(midOf(profile5m.poc), heatmap) : null, null],
+        ]) {
+          if (!zone) continue
+          const limitPrice = midOf(zone)
+          // Did this bar trade through the resting limit? If so it filled.
+          if (bar.low > limitPrice || bar.high < limitPrice) continue
 
-          // Which level families does this wick reject at? A rejection
-          // needs the wick INTO the zone and the close back OUT of it.
-          const levels = []
-          for (const [name, zone, share] of [
-            ['poc5', profile5m.poc, zoneShare(profile5m.poc, profile5m.totalFlow)],
-            ['poc15', profile15m.poc, zoneShare(profile15m.poc, profile15m.totalFlow)],
-          ]) {
-            if (!priceInZone(wickExtreme, zone)) continue
-            const closedOut = direction === 'long' ? bar.close >= zone.bucketEnd : bar.close < zone.bucketStart
-            if (closedOut) levels.push({ name, share })
-          }
-          // A heatmap level worth rejecting at is a yellow (high-density)
-          // bin - the ground the trader treats as capable of holding price.
-          const hmBin = binAt(wickExtreme, heatmap)
-          if (isYellow(hmBin)) {
-            const closedOut = direction === 'long'
-              ? bar.close >= hmBin.bucketEnd
-              : bar.close < hmBin.bucketStart
-            if (closedOut) levels.push({ name: 'heatmap', share: hmBin.densityOfMax })
-          }
-          if (levels.length === 0) continue
+          // Which way the trade is taken follows the side price approached
+          // from: arriving from above, the level is support and the limit
+          // is a buy; arriving from below it is resistance and a sell.
+          const priorClose = idxAll > 0 ? allBars[idxAll - 1].close : bar.open
+          if (priorClose === limitPrice) continue
+          const direction = priorClose > limitPrice ? 'long' : 'short'
+          const key = `${name}:${direction}`
+          if (nowEpoch < (blockedUntilEpoch[key] ?? 0)) continue
 
           const minutesSinceOpen = Math.round((nowEpoch - openEpoch) / 60)
           const recentBars = allBars.slice(Math.max(0, idxAll + 1 - ATR_1M_BARS), idxAll + 1)
@@ -790,29 +819,34 @@ async function main() {
             const t = barEpochSeconds(b)
             return t > nowEpoch && t <= nowEpoch + FORWARD_WINDOW_MINUTES * 60
           })
-          const excursion = excursionProfile(barsAfter, direction, bar.close, atr1m)
+          // Excursion is measured from the LIMIT PRICE, which is the fill,
+          // not from the bar's close.
+          const excursion = excursionProfile(barsAfter, direction, limitPrice, atr1m)
           if (!excursion) continue
           const quality = rejectionQuality(bar, direction, recentBars)
-          // Reference risk for the path corridor and the cooldown: the
-          // trader's own median stop is ~2x the old wick-plus-buffer, so
-          // this uses a wider structural stop and the excursion grid above
-          // lets the analysis re-cut it anyway.
-          const refRisk = Math.abs(bar.close - (direction === 'long' ? wickExtreme : wickExtreme)) + atr1m * STOP_BUFFER_ATR_MULT
-          // Hold this direction until a mid-grid move resolves, so the next
-          // event is a genuinely new setup rather than the same one
-          // re-firing - see blockedUntilEpoch.
-          const resolveIdx = excursion.favorable[5] ?? excursion.adverse[5] ?? FORWARD_WINDOW_MINUTES
-          blockedUntilEpoch[direction] = nowEpoch + resolveIdx * 60
+          // Did the bar that filled us go on to reject - wick through the
+          // level and close back out on the trade's side? A feature now,
+          // not a gate.
+          const rejectionConfirmed = direction === 'long'
+            ? bar.close >= zone.bucketEnd
+            : bar.close < zone.bucketStart
 
-          const path2R = pathAhead(heatmap, bar.close, direction, refRisk, 2)
-          const path3R = pathAhead(heatmap, bar.close, direction, refRisk, 3)
-          const entryBin = binAt(wickExtreme, heatmap)
+          const refRisk = Math.abs(limitPrice - (direction === 'long' ? bar.low : bar.high)) + atr1m * STOP_BUFFER_ATR_MULT
+          const resolveIdx = excursion.favorable[5] ?? excursion.adverse[5] ?? FORWARD_WINDOW_MINUTES
+          blockedUntilEpoch[key] = nowEpoch + resolveIdx * 60
+
+          const path2R = pathAhead(heatmap, limitPrice, direction, refRisk, 2)
+          const path3R = pathAhead(heatmap, limitPrice, direction, refRisk, 3)
+          const entryBin = binAt(limitPrice, heatmap)
+          const levels = [{ name, share }]
 
           console.log('EVENT:' + JSON.stringify({
             date: dateStr,
             time: new Date(nowEpoch * 1000).toISOString(),
             direction,
-            entry: bar.close,
+            entry: limitPrice,
+            levelType: name,
+            rejectionConfirmed,
             levelTypes: levels.map((l) => l.name),
             confluenceCount: levels.length,
             levelShares: Object.fromEntries(levels.map((l) => [l.name, l.share])),

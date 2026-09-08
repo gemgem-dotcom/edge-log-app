@@ -672,6 +672,7 @@ async function main() {
   const sessionBuffer = []
   let eventCount = 0
   let daysWithEvents = 0
+  const allEvents = []
 
   for (const dateStr of days) {
     try {
@@ -857,7 +858,7 @@ async function main() {
           const entryBin = binAt(limitPrice, heatmap)
           const levels = [{ name, share }]
 
-          console.log('EVENT:' + JSON.stringify({
+          const event = {
             date: dateStr,
             time: new Date(nowEpoch * 1000).toISOString(),
             direction,
@@ -934,7 +935,9 @@ async function main() {
             // target) pair is decided offline by comparing the two.
             fav: excursion.favorable,
             adv: excursion.adverse,
-          }))
+          }
+          console.log('EVENT:' + JSON.stringify(event))
+          allEvents.push(event)
           eventCount++
           dayEvents++
         }
@@ -946,6 +949,8 @@ async function main() {
 
     await sleep(150)
   }
+
+  analyseRangePosition(allEvents)
 
   console.log('SUMMARY:' + JSON.stringify({
     instrumentSymbol: symbol,
@@ -959,6 +964,222 @@ async function main() {
     excursionAtrGrid: EXCURSION_ATR_GRID,
   }))
 }
+
+// ---------- in-process condition analysis ----------
+//
+// The scan prints every event, but a year of them is thousands of JSON
+// lines and the Actions log is not reliably retrievable in bulk. So the
+// questions a run was launched to answer are computed here, in-process,
+// from the same event objects that were just printed. The per-event output
+// stays for anything unanticipated; these blocks are the answer.
+//
+// The ordering below is deliberate and is the whole methodology:
+//
+// RANGE_NULL comes first. The logged trades show longs low in the day's
+// range and shorts high, but a mechanical limit at the 5m POC may produce
+// exactly that shape on its own - price arriving from above makes the fill
+// a buy, and arriving from above tends to put the fill toward the low of
+// the move so far. If the null already separates, the pattern is an
+// artifact of how the event is constructed and there is nothing to explain.
+//
+// RANGE_BUCKETS only means anything if the null is flat. It tests ordered
+// buckets rather than the 0.63/0.43 cut points read off the trades, because
+// testing thresholds fitted on the same 24 observations that suggested them
+// is circular. A real effect should be monotonic across buckets, not a
+// single lucky cell.
+//
+// Every win rate is printed beside its random-walk baseline, stop/(stop+
+// target). That is the number to beat; a 60% win rate at 2:3 is a coin.
+
+const ANALYSIS_WINDOW_START_MIN = 9 * 60 + 35
+const ANALYSIS_WINDOW_END_MIN = 11 * 60 + 30
+const ANALYSIS_MIN_DAY_RANGE_POINTS = 10
+const ANALYSIS_PAIRS = [
+  // [stop, target] as ATR(1m) multiples, both present in EXCURSION_ATR_GRID.
+  [3, 2],
+  [3, 4],
+  [3, 6],
+  [3, 10],
+]
+
+function nyMinutesOfDay(iso) {
+  const s = new Date(iso).toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  const [hh, mm] = s.split(':').map(Number)
+  return hh * 60 + mm
+}
+
+function quantile(sortedValues, q) {
+  if (sortedValues.length === 0) return null
+  const pos = (sortedValues.length - 1) * q
+  const lo = Math.floor(pos)
+  const hi = Math.ceil(pos)
+  if (lo === hi) return sortedValues[lo]
+  return sortedValues[lo] + (sortedValues[hi] - sortedValues[lo]) * (pos - lo)
+}
+
+// Decides one (stop, target) pair from the excursion grid. Returns 'win',
+// 'loss', or null when neither rung was reached inside the forward window -
+// unfinished trades are excluded rather than scored, since calling them
+// losses would flatter a wide stop and calling them wins would flatter a
+// wide target.
+function resolvePair(event, stopMult, targetMult) {
+  const stopIndex = EXCURSION_ATR_GRID.indexOf(stopMult)
+  const targetIndex = EXCURSION_ATR_GRID.indexOf(targetMult)
+  if (stopIndex < 0 || targetIndex < 0) return null
+  const stopBar = event.adv[stopIndex]
+  const targetBar = event.fav[targetIndex]
+  const stopped = stopBar !== null && stopBar !== undefined
+  const hit = targetBar !== null && targetBar !== undefined
+  if (!stopped && !hit) return null
+  if (hit && !stopped) return 'win'
+  if (stopped && !hit) return 'loss'
+  // Both rungs were reached. Same-bar ties are unresolvable at 1m
+  // granularity, so they are dropped rather than guessed.
+  if (targetBar === stopBar) return null
+  return targetBar < stopBar ? 'win' : 'loss'
+}
+
+function scoreGroup(events, stopMult, targetMult) {
+  let wins = 0
+  let losses = 0
+  let unfinished = 0
+  for (const event of events) {
+    const result = resolvePair(event, stopMult, targetMult)
+    if (result === 'win') wins++
+    else if (result === 'loss') losses++
+    else unfinished++
+  }
+  const decided = wins + losses
+  const winRate = decided > 0 ? wins / decided : null
+  const coin = stopMult / (stopMult + targetMult)
+  const standardError = decided > 0 ? Math.sqrt((coin * (1 - coin)) / decided) : null
+  return {
+    n: events.length,
+    decided,
+    unfinished,
+    winRate,
+    coin,
+    edgePp: winRate === null ? null : (winRate - coin) * 100,
+    // How many standard errors the gap is worth. Anything under ~2 is
+    // indistinguishable from the coin no matter how good the headline
+    // percentage looks.
+    sigma: winRate === null || standardError === 0 ? null : (winRate - coin) / standardError,
+  }
+}
+
+function emit(tag, payload) {
+  console.log(`ANALYSIS:${tag}:` + JSON.stringify(payload))
+}
+
+function describeRangePosition(events, label) {
+  for (const direction of ['long', 'short']) {
+    const values = events
+      .filter((e) => e.direction === direction && e.rangePosition !== null && e.rangePosition !== undefined)
+      .map((e) => e.rangePosition)
+      .sort((a, b) => a - b)
+    emit('RANGE_NULL', {
+      set: label,
+      direction,
+      n: values.length,
+      mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : null,
+      p10: quantile(values, 0.1),
+      p25: quantile(values, 0.25),
+      p50: quantile(values, 0.5),
+      p75: quantile(values, 0.75),
+      p90: quantile(values, 0.9),
+      fractionBelowHalf: values.length ? values.filter((v) => v < 0.5).length / values.length : null,
+    })
+  }
+}
+
+function analyseRangePosition(allEvents) {
+  const poc5 = allEvents.filter((e) => e.levelType === 'poc5')
+  const inWindow = poc5.filter((e) => {
+    const minutes = nyMinutesOfDay(e.time)
+    return minutes >= ANALYSIS_WINDOW_START_MIN && minutes <= ANALYSIS_WINDOW_END_MIN
+  })
+  // A day range of a few points is a degenerate denominator - rangePosition
+  // then swings on noise and means nothing.
+  const usable = inWindow.filter(
+    (e) => e.rangePosition !== null && e.dayRangePoints >= ANALYSIS_MIN_DAY_RANGE_POINTS
+  )
+
+  emit('COUNTS', {
+    allEvents: allEvents.length,
+    poc5: poc5.length,
+    poc5InWindow: inWindow.length,
+    usable: usable.length,
+    droppedDegenerateRange: inWindow.length - usable.length,
+    windowEt: '09:35-11:30',
+  })
+
+  // 1. The null. If these two directions already separate, the pattern seen
+  //    in the logged trades is built in and the finding is dead.
+  describeRangePosition(poc5, 'poc5-all-day')
+  describeRangePosition(inWindow, 'poc5-in-window')
+
+  // 2. Ordered buckets, per direction, for each (stop, target) pair. Equal
+  //    width rather than equal count so the buckets mean the same thing in
+  //    both directions and across pairs.
+  const edges = [0, 0.2, 0.4, 0.6, 0.8, 1.0001]
+  for (const [stopMult, targetMult] of ANALYSIS_PAIRS) {
+    for (const direction of ['long', 'short']) {
+      for (let b = 0; b < edges.length - 1; b++) {
+        const bucket = usable.filter(
+          (e) => e.direction === direction && e.rangePosition >= edges[b] && e.rangePosition < edges[b + 1]
+        )
+        if (bucket.length === 0) continue
+        emit('RANGE_BUCKET', {
+          stop: stopMult,
+          target: targetMult,
+          direction,
+          bucket: `${edges[b].toFixed(1)}-${Math.min(edges[b + 1], 1).toFixed(1)}`,
+          ...scoreGroup(bucket, stopMult, targetMult),
+        })
+      }
+    }
+  }
+
+  // 3. The two other stated preconditions, each as a plain split. Both are
+  //    single booleans, so they get one line apiece rather than buckets.
+  for (const [stopMult, targetMult] of ANALYSIS_PAIRS) {
+    emit('FILTER', { stop: stopMult, target: targetMult, filter: 'baseline', value: 'all', ...scoreGroup(usable, stopMult, targetMult) })
+    for (const value of [true, false]) {
+      emit('FILTER', {
+        stop: stopMult,
+        target: targetMult,
+        filter: 'reachedPoc15',
+        value,
+        ...scoreGroup(usable.filter((e) => e.reachedPoc15 === value), stopMult, targetMult),
+      })
+    }
+    // "Fade" = the trade is against the net move off the open, which is what
+    // the logged trades did on 17 of 24.
+    for (const value of ['fade', 'follow']) {
+      emit('FILTER', {
+        stop: stopMult,
+        target: targetMult,
+        filter: 'impulse',
+        value,
+        ...scoreGroup(
+          usable.filter((e) => {
+            const fading = (e.impulseDirection === 'up' && e.direction === 'short')
+              || (e.impulseDirection === 'down' && e.direction === 'long')
+            return value === 'fade' ? fading : !fading
+          }),
+          stopMult,
+          targetMult
+        ),
+      })
+    }
+  }
+}
+
 
 main().catch((err) => {
   console.error(err)

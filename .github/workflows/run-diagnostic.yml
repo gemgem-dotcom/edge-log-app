@@ -36,6 +36,7 @@ on:
           - scripts/list-strategy-screenshots.js
           - scripts/scan-strategy-setup-days.js
           - scripts/scan-rejection-conditions.js
+          - scripts/search-strategies.js
       strategy:
         description: >-
           Strategy name (only read by pull-strategy-market-context.js /
@@ -69,7 +70,14 @@ on:
       scan_end_date:
         description: >-
           YYYY-MM-DD scan range end (read by scan-strategy-setup-days.js /
-          scan-rejection-conditions.js)
+          scan-rejection-conditions.js / search-strategies.js)
+        required: false
+        type: string
+      holdout_start_date:
+        description: >-
+          YYYY-MM-DD first day of the sealed holdout (search-strategies.js
+          only). Everything before it is searched; the rest is scored once,
+          at the end, for whatever survived.
         required: false
         type: string
 
@@ -103,4 +111,5 @@ jobs:
           DEBUG_TRADE_DATES: ${{ inputs.debug_trade_dates }}
           SCAN_START_DATE: ${{ inputs.scan_start_date }}
           SCAN_END_DATE: ${{ inputs.scan_end_date }}
+          HOLDOUT_START_DATE: ${{ inputs.holdout_start_date }}
         run: node "${{ inputs.script }}"

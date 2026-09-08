@@ -82,6 +82,17 @@ jobs:
       - name: Smoke-test the rejection scan
         run: npm run smoke:scan
 
+      # The strategy search's honesty check: run the whole search against a
+      # synthetic series that provably has no edge (a martingale, asserted as
+      # one rather than assumed) and require it to find nothing. Lookahead is
+      # invisible to lint and to unit tests, and it does not throw - it just
+      # returns a wonderful backtest. Three versions of this search reported
+      # z > 4 on pure noise before the null was matched on volatility regime,
+      # and every one of them would have read as a discovery. Verified to fail
+      # on a one-bar lookahead deliberately reintroduced.
+      - name: Control-test the strategy search
+        run: npm run control:search
+
   lint:
     runs-on: ubuntu-latest
 

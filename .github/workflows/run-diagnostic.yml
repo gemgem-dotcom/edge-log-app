@@ -73,6 +73,14 @@ on:
           scan-rejection-conditions.js / search-strategies.js)
         required: false
         type: string
+      focus:
+        description: >-
+          search-strategies.js only. Set to re-test ONE pre-registered rule
+          instead of running the grid, as signal:window:stop:target (e.g.
+          orFade30:allday:1.5:2). Reports per-quarter stability on the
+          exploration set first, then scores the holdout exactly once.
+        required: false
+        type: string
       holdout_start_date:
         description: >-
           YYYY-MM-DD first day of the sealed holdout (search-strategies.js
@@ -112,4 +120,5 @@ jobs:
           SCAN_START_DATE: ${{ inputs.scan_start_date }}
           SCAN_END_DATE: ${{ inputs.scan_end_date }}
           HOLDOUT_START_DATE: ${{ inputs.holdout_start_date }}
+          FOCUS: ${{ inputs.focus }}
         run: node "${{ inputs.script }}"

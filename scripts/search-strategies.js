@@ -618,6 +618,35 @@ function tradesFor(sessions, signalFn, window, stopMult, targetMult, atrEdges) {
   return trades
 }
 
+// Two ways in: four separate env vars, which is convenient locally, or one
+// colon-joined FOCUS string. The combined form exists because
+// workflow_dispatch allows at most ten inputs and run-diagnostic.yml is
+// already at eight - four more would not fit.
+function parseFocus() {
+  const combined = (process.env.FOCUS || '').trim()
+  if (combined) {
+    const [signal, window, stop, target] = combined.split(':')
+    if (!signal) throw new Error(`FOCUS "${combined}" has no signal name (expected signal:window:stop:target)`)
+    const focus = {
+      signal,
+      window: window || 'allday',
+      stop: Number(stop || 1.5),
+      target: Number(target || 2),
+    }
+    if (!Number.isFinite(focus.stop) || !Number.isFinite(focus.target)) {
+      throw new Error(`FOCUS "${combined}" has a non-numeric stop or target`)
+    }
+    return focus
+  }
+  if (!process.env.FOCUS_SIGNAL) return null
+  return {
+    signal: process.env.FOCUS_SIGNAL,
+    window: process.env.FOCUS_WINDOW || 'allday',
+    stop: Number(process.env.FOCUS_STOP || 1.5),
+    target: Number(process.env.FOCUS_TARGET || 2),
+  }
+}
+
 function runFocus({ exploration, holdout, atrEdges, rng, focus }) {
   const variant = buildSignalCatalogue().find((v) => v.name === focus.signal)
   if (!variant) throw new Error(`FOCUS_SIGNAL "${focus.signal}" is not in the catalogue`)
@@ -719,19 +748,9 @@ async function main() {
     signalsByVariant.set(variant.name, new Map(sessions.map((s) => [s.date, variant.fn(s)])))
   }
 
-  if (process.env.FOCUS_SIGNAL) {
-    runFocus({
-      exploration,
-      holdout,
-      atrEdges,
-      rng,
-      focus: {
-        signal: process.env.FOCUS_SIGNAL,
-        window: process.env.FOCUS_WINDOW || 'allday',
-        stop: Number(process.env.FOCUS_STOP || 1.5),
-        target: Number(process.env.FOCUS_TARGET || 2),
-      },
-    })
+  const focus = parseFocus()
+  if (focus) {
+    runFocus({ exploration, holdout, atrEdges, rng, focus })
     return
   }
 

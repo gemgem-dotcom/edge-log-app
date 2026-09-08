@@ -11,7 +11,8 @@
     "css:toc:check": "node scripts/update-css-toc.js --check",
     "test": "vitest run",
     "lint": "eslint .",
-    "lint:ci": "eslint . --max-warnings=49"
+    "lint:ci": "eslint . --max-warnings=49",
+    "smoke:scan": "bash scripts/_smoke-scan.sh"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.73.0",

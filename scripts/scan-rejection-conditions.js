@@ -882,8 +882,8 @@ async function main() {
               ? (!isBlue(entryBin) && path2R !== null && path2R.yellowWallDistanceR === null)
               : null,
             efficiencyRatio: efficiencyRatio(effBars),
-            priorRangePosition: priorRange > 0 ? (wickExtreme - priorLow) / priorRange : null,
-            insidePriorRange: wickExtreme >= priorLow && wickExtreme <= priorHigh,
+            priorRangePosition: priorRange > 0 ? (limitPrice - priorLow) / priorRange : null,
+            insidePriorRange: limitPrice >= priorLow && limitPrice <= priorHigh,
             // Null, not a number, for an event that fires before the
             // opening range has finished forming - the 30-minute range is
             // not knowable at minute 12, and quietly using it there would

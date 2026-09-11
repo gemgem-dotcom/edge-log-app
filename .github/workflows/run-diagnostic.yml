@@ -33,6 +33,7 @@ on:
         options:
           - scripts/smoke-test-databento-symbols.js
           - scripts/smoke-test-forexfactory-feed.js
+          - scripts/probe-forexfactory-sources.js
           - scripts/pull-strategy-market-context.js
           - scripts/list-strategy-screenshots.js
           - scripts/scan-strategy-setup-days.js

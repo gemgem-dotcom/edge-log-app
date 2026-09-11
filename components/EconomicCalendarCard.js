@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Filter } from 'lucide-react'
+import { supabase } from '@/lib/supabaseClient'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { fetchEconomicEvents } from '@/lib/econCalendarQuery'
 import { IMPACT_LEVELS, EVENT_TYPES, CURRENCIES, GLOBAL_CURRENCY } from '@/lib/econCalendarEvents.mjs'
@@ -28,6 +29,13 @@ const DEFAULT_FILTERS = {
   types: EVENT_TYPES,
   currencies: ['USD'],
 }
+
+// How often an open card asks the server to re-read Forex Factory, so a
+// release that prints while someone is watching appears without a reload.
+// The server applies its own shared cooldown on top of this (see
+// app/api/economic-calendar/refresh/route.js), so this interval is a
+// ceiling on how live the card is, not on how often FF gets fetched.
+const LIVE_REFRESH_MS = 60_000
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -229,6 +237,7 @@ export default function EconomicCalendarCard() {
   // Only the date range is a query input; the three filter sections narrow
   // what's already been fetched, so toggling a checkbox is instant rather
   // than a round trip.
+  //
   useEffect(() => {
     let cancelled = false
     const loadId = ++loadIdRef.current
@@ -250,6 +259,58 @@ export default function EconomicCalendarCard() {
     load()
     return () => { cancelled = true }
   }, [fromDate, toDate])
+
+  // The re-read the live refresh below uses once it knows something
+  // actually changed. Deliberately separate from the effect above rather
+  // than a shared loader with a `quiet` flag: this one never touches the
+  // loading flag, because dropping the whole card back to a skeleton every
+  // minute would be worse than the staleness it's fixing. Keeping the two
+  // apart also keeps the effect above free of a setState called
+  // synchronously through a useCallback, which React flags as a cascading
+  // render.
+  const reloadQuietly = useCallback(async () => {
+    const loadId = ++loadIdRef.current
+    const { data, error: queryError } = await fetchEconomicEvents(fromDate, toDate)
+    if (loadId !== loadIdRef.current || queryError) return
+    setEvents(data || [])
+  }, [fromDate, toDate])
+
+  // Live refresh: ask the server to re-read Forex Factory, then re-read the
+  // table. Runs on mount and every minute the card stays open, so a figure
+  // that prints while someone is watching lands without a reload.
+  //
+  // Only ever the current week's data is refreshed server-side, so this
+  // does nothing useful when the trader has paged back to an older range -
+  // and the re-read is skipped in that case rather than issuing a query
+  // whose answer cannot have changed.
+  useEffect(() => {
+    const rangeIncludesToday = fromDate <= todayStr() && todayStr() <= toDate
+    if (!rangeIncludesToday) return
+
+    let cancelled = false
+
+    async function refresh() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session || cancelled) return
+        const res = await fetch('/api/economic-calendar/refresh', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        const body = await res.json().catch(() => ({}))
+        // Only re-read when something actually changed. A cooldown hit is
+        // the common case and means the table is already current.
+        if (!cancelled && body.refreshed) await reloadQuietly()
+      } catch {
+        // A missed refresh is not worth surfacing - the card still has
+        // whatever the scheduled job last stored.
+      }
+    }
+
+    refresh()
+    const id = setInterval(refresh, LIVE_REFRESH_MS)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [fromDate, toDate, reloadQuietly])
 
   function handleFilterChange(next) {
     setFilters(next)
@@ -293,52 +354,65 @@ export default function EconomicCalendarCard() {
             : 'No events match these filters.'}
         </div>
       ) : (
-        <div className="econ-calendar-list">
-          {visible.map((e) => {
-            const at = new Date(e.event_time)
-            const dateStr = toDateStr(at)
-            return (
-              <div
-                className={`econ-calendar-row ${!isSingleDay && dateStr === today ? 'econ-calendar-row-today' : ''}`}
-                key={e.event_key}
-              >
-                <span className={`econ-impact-dot econ-impact-${e.impact}`} />
-                {!isSingleDay && <span className="econ-calendar-day">{formatDateLabel(at)}</span>}
-                {/* An all-day or tentative release is stored anchored to
-                    its day's midnight because that is the only honest
-                    thing its timestamp can say. Printing "00:00" would
-                    dress that placeholder up as a schedule, so it gets
-                    FF's own wording instead. */}
-                <span className="econ-calendar-time">
-                  {e.time_precision && e.time_precision !== 'exact'
-                    ? (e.time_precision === 'tentative' ? 'tent.' : 'all day')
-                    : formatTimeLabel(at)}
-                </span>
-                <span className="econ-calendar-currency">{e.currency}</span>
-                <span className="econ-calendar-event">{e.title}</span>
-                <span className="econ-calendar-figures">
-                  {e.actual !== null && e.actual !== undefined && (
-                    // better/worse is FF's own comparison against its
-                    // forecast, carried through rather than recomputed -
-                    // "better" is not always "higher" (an unemployment
-                    // print beats by falling), so this is a judgement only
-                    // the source can make.
-                    <span className={`econ-figure-actual${e.actual_status ? ` econ-figure-${e.actual_status}` : ''}`}>
-                      act {e.actual}
-                    </span>
-                  )}
-                  {e.forecast ? <span>fcst {e.forecast}</span> : null}
-                  {e.previous ? (
-                    <span>
-                      prev {e.previous}
-                      {e.previous_revised && <span className="econ-figure-revised" title="Revised since first published">*</span>}
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        <>
+          {/* Actual/Forecast/Previous are their own aligned columns rather
+              than labelled inline, so the three figures line up down the
+              card and can be compared at a glance. That only works with a
+              header saying which is which - without the old "act"/"fcst"
+              prefixes the numbers are ambiguous on their own. */}
+          <div className="econ-calendar-head" aria-hidden="true">
+            {!isSingleDay && <span className="econ-calendar-day">Date</span>}
+            <span className="econ-calendar-time">Time</span>
+            <span className="econ-calendar-currency">Cur</span>
+            <span className="econ-calendar-event">Event</span>
+            <span className="econ-calendar-figure">Actual</span>
+            <span className="econ-calendar-figure">Forecast</span>
+            <span className="econ-calendar-figure">Previous</span>
+          </div>
+          <div className="econ-calendar-list">
+            {visible.map((e) => {
+              const at = new Date(e.event_time)
+              const dateStr = toDateStr(at)
+              return (
+                <div
+                  className={`econ-calendar-row ${!isSingleDay && dateStr === today ? 'econ-calendar-row-today' : ''}`}
+                  key={e.event_key}
+                >
+                  <span className={`econ-impact-dot econ-impact-${e.impact}`} />
+                  {!isSingleDay && <span className="econ-calendar-day">{formatDateLabel(at)}</span>}
+                  {/* An all-day or tentative release is stored anchored to
+                      its day's midnight because that is the only honest
+                      thing its timestamp can say. Printing "00:00" would
+                      dress that placeholder up as a schedule, so it gets
+                      FF's own wording instead. */}
+                  <span className="econ-calendar-time">
+                    {e.time_precision && e.time_precision !== 'exact'
+                      ? (e.time_precision === 'tentative' ? 'tent.' : 'all day')
+                      : formatTimeLabel(at)}
+                  </span>
+                  <span className="econ-calendar-currency">{e.currency}</span>
+                  <span className="econ-calendar-event">{e.title}</span>
+                  {/* better/worse is FF's own comparison against its own
+                      forecast, carried through rather than recomputed -
+                      "better" is not always "higher" (an unemployment print
+                      beats by falling), so it's a judgement only the source
+                      can make. */}
+                  <span className={`econ-calendar-figure${e.actual ? ' econ-figure-actual' : ''}${e.actual && e.actual_status ? ` econ-figure-${e.actual_status}` : ''}`}>
+                    {/* The emphasis classes are only applied when there IS
+                        an actual - otherwise the placeholder dash renders
+                        bolder than the real figures around it. */}
+                    {e.actual ?? '–'}
+                  </span>
+                  <span className="econ-calendar-figure">{e.forecast ?? '–'}</span>
+                  <span className="econ-calendar-figure">
+                    {e.previous ?? '–'}
+                    {e.previous_revised && <span className="econ-figure-revised" title="Revised since first published">*</span>}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
     </>
   )

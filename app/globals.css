@@ -37,20 +37,20 @@
    2703  Public policy pages (Privacy, Terms)
    2722  Legal links (auth pages + account settings)
    2761  Economic calendar card (Overview pages)
-   2980  Calendar news badge (Monthly P&L day cells, mock)
-   3001  Streak badge (Overview + strategy detail pages)
-   3024  Market status pill (Overview + strategy detail pages)
-   3050  Today's brief & session stats
-   3085  Market context cards (all-instruments Overview)
-   3118  Edge Insights panel
-   3133  Unverified logged time badge
-   3150  Welcome transition (first-run)
-   3179  Zero-instrument empty state
-   3189  Tutorial overlay (first-run guided tour)
-   3281  Tutorial step 3 (guided form scroll)
-   3328  Press states, value changes, content fade-in
-   3425  Trade log column width stability
-   3450  Strategy notes panel
+   3003  Calendar news badge (Monthly P&L day cells, mock)
+   3024  Streak badge (Overview + strategy detail pages)
+   3047  Market status pill (Overview + strategy detail pages)
+   3073  Today's brief & session stats
+   3108  Market context cards (all-instruments Overview)
+   3141  Edge Insights panel
+   3156  Unverified logged time badge
+   3173  Welcome transition (first-run)
+   3202  Zero-instrument empty state
+   3212  Tutorial overlay (first-run guided tour)
+   3304  Tutorial step 3 (guided form scroll)
+   3351  Press states, value changes, content fade-in
+   3448  Trade log column width stability
+   3473  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -2958,10 +2958,33 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700;
   color:var(--muted); width:32px; flex-shrink:0;
 }
-.econ-calendar-figures{
-  display:flex; gap:12px;
+/* Actual/Forecast/Previous each get their own fixed-width, right-aligned
+   column so the three line up down the card. Fixed rather than content-
+   sized for the same reason the trade log's columns are pinned: a figure
+   appearing or changing length would otherwise shift the columns either
+   side of it on every refresh, and this card refreshes itself every
+   minute. */
+.econ-calendar-figure{
   font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);
-  white-space:nowrap; flex-shrink:0;
+  width:72px; flex-shrink:0; text-align:right; white-space:nowrap;
+}
+/* The header shares the row's exact column classes so the two can't drift
+   apart on width - it differs only in being label text rather than data.
+   padding-left covers the impact dot the rows start with and the header
+   has none of, so the two still line up.
+   Typography matches the table `th` rule this file already uses for every
+   other column header in the app (Inter 10.5px/700, uppercase, .06em,
+   muted) rather than inventing a second header style - measured against a
+   real trade-log header, not eyeballed. The child rule is what actually
+   does the work for the figure columns, which would otherwise keep
+   .econ-calendar-figure's own monospace 12px. */
+.econ-calendar-head{
+  display:flex; align-items:center; gap:12px; padding:0 10px 8px 29px;
+  border-bottom:1px solid var(--line);
+}
+.econ-calendar-head > span{
+  font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
 }
 /* The actual is the only one of the three that's a fact rather than an
    expectation, so it carries the row's text colour while forecast and

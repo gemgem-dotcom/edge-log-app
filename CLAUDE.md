@@ -76,11 +76,16 @@ lib/
   validatePassword.js         signup password rules
   greeting.js                  time-of-day-aware greeting phrases for the Overview page
   streak.js                    current win/loss streak from a list of trades
-  marketContextMock.js         placeholder volatility/key-levels/econ-event data (not live)
+  marketContextMock.js         placeholder volatility/key-levels data + the econ events
+                               the calendar news badge still uses (not live)
+  econCalendarEvents.mjs       Forex Factory event vocabulary + normalise/classify.
+                               .mjs so the CommonJS scraper can import() it too
+  econCalendarQuery.js         reads economic_events for a local-day date range
 schema.sql                    tables + row level security
 storage-setup.sql             screenshots storage bucket
 scripts/
   update-css-toc.js           regenerates globals.css's table of contents - see below
+  fetch-economic-calendar.js  hourly Forex Factory calendar fetch -> economic_events
 next.config.js                only exists for the mock-DB dev alias - see below
 vitest.config.mjs             unit test runner - `lib/*.test.js` sit next to the module
                                they cover; see NOTES.md's "Testing and error tracking"
@@ -160,10 +165,18 @@ All three (plus the optional Sentry DSN) live in `.env.local` locally and in
 Vercel's project settings. The CI build uses placeholders, since nothing during a
 build talks to the database.
 
-The Overview pages' "Economic calendar" card (`components/EconomicCalendarCard.js`)
-currently renders mock data from `lib/marketContextMock.js` — the earlier BLS/FRED/
-FOMC live-fetch version was pulled out in favor of a paid market-data provider, not
-yet wired up. Same story for the volatility and key-levels cards on those pages.
+The Overview's "Economic calendar" card (`components/EconomicCalendarCard.js`) is
+live: it reads the `economic_events` table, which
+`scripts/fetch-economic-calendar.js` refreshes hourly from Forex Factory's own
+published calendar JSON feeds (see that script's header for why it reads the feeds
+rather than scraping the calendar page, and `lib/econCalendarEvents.mjs` for the
+normalising/classifying it shares with the app).
+
+Still on mock data from `lib/marketContextMock.js`: the Monthly P&L calendar's news
+badge (`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-
+events list, and the volatility/key-levels cards. Those are the remaining callers of
+`mockEventsForDate`/`upcomingEconEvents`, and pointing them at `economic_events` is
+the natural follow-up now that the table exists.
 
 ## Local dev tooling
 

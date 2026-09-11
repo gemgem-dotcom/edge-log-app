@@ -116,16 +116,29 @@ The first three must exist locally in `.env.local` and in Vercel (Project Settin
 Environment Variables). The CI build uses harmless placeholder values, because
 nothing during a build talks to the database.
 
-The Overview pages' "Economic calendar" card, plus the two remaining "Market context"
-stats (current session's range vs. typical, volume vs. typical - shown honestly as
-"Not available yet" rather than invented numbers) currently render mock data from
-`lib/marketContextMock.js` (`components/EconomicCalendarCard.js` and the session-stats
-block in `OverviewDashboard.js` and `app/app/[instrument]/dashboard/page.js`). These
-previously ran on a live BLS/FRED/FOMC pipeline (`app/api/economic-calendar`,
-`lib/fredReleases.js`, `lib/computedReleases.js`) that was pulled out in favor of a
-paid market-data provider - not yet wired up. `lib/marketContextMock.js`'s exports
-keep the shape a real provider's data would need, so swapping it back to a live
-source shouldn't require touching the cards themselves. The other two Market context
+The Overview's "Economic calendar" card is live again, on a different source than the
+one that was pulled out. It reads the `economic_events` table, filled hourly by
+`scripts/fetch-economic-calendar.js` from Forex Factory's own published calendar JSON
+feeds (`nfs.faireconomy.media/ff_calendar_{last,this,next}week.json`) rather than by
+scraping forexfactory.com/calendar - the page itself sits behind Cloudflare, and the
+feeds are the same data published by FF for programmatic use, so the feeds are both
+the sturdier and the more honest route. `lib/econCalendarEvents.mjs` holds the one
+copy of the normalising and event-type classification, shared between the script and
+the app (it's `.mjs` so a CommonJS script can `import()` it - see its header).
+Per-event `actual` figures land within the hour of a release printing, which is what
+the hourly cadence buys; rows upsert on a day+currency+title key so a revised
+scheduled time updates the event rather than forking it.
+
+Still mock, all from `lib/marketContextMock.js`: the Monthly P&L calendar's news badge
+(`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-events
+list, and the two remaining "Market context" stats (current session's range vs.
+typical, volume vs. typical - shown honestly as "Not available yet" rather than
+invented numbers, in the session-stats block in `OverviewDashboard.js` and
+`app/app/[instrument]/dashboard/page.js`). The market-context pair previously ran on a
+live BLS/FRED/FOMC pipeline (`app/api/economic-calendar`, `lib/fredReleases.js`,
+`lib/computedReleases.js`) that was pulled out in favor of a paid market-data
+provider - not yet wired up. The two remaining econ-event callers now have a real
+table to move onto whenever that's worth doing. The other two Market context
 stats (days to contract rollover, time to next calendar event) are real, not mocked -
 see `lib/contractRollover.js` and `marketContextMock.js`'s `nextEconEvent()`. Time to
 next calendar event is per-instrument dashboard only - the all-instruments Overview

@@ -1,18 +1,22 @@
 # Hourly economic-calendar refresh
 #
 # Runs scripts/fetch-economic-calendar.js, which pulls Forex Factory's
-# published last/this/next week calendar JSON feeds and upserts them into
-# economic_events. See that script's header for why it reads the feeds
+# published this-week calendar JSON feed and upserts it into
+# economic_events. See that script's header for why it reads the feed
 # rather than scraping forexfactory.com/calendar, and schema.sql's comment
 # above `create table economic_events` for the storage side.
 #
-# Hourly, not daily, because the point isn't just the schedule - it's the
-# figures. FF fills in an event's `actual` within minutes of the release
-# printing, and every run rewrites the same row (upsert on event_key), so
-# an hourly cadence is what keeps "what did CPI actually come in at" close
-# to current without ever duplicating a row. Three small JSON requests per
-# run against a feed published for programmatic use is a modest amount of
-# traffic to ask of it.
+# One feed, not three: the lastweek/nextweek variants this was originally
+# written against both 404 (confirmed live by
+# scripts/smoke-test-forexfactory-feed.js). Rows accumulate rather than
+# being replaced, so the history behind the card still grows week by week
+# from whenever this starts running.
+#
+# Hourly, not daily, because FF revises the calendar through the week - it
+# adds speeches, reschedules releases and updates forecasts - and an
+# hourly refresh keeps that current for the cost of one small JSON request
+# against a feed published for programmatic use. Note it is NOT for
+# `actual` figures: this feed carries none (also confirmed live).
 #
 # Minute 7 rather than :00 to stay off the hour boundary every other
 # scheduled job on GitHub's shared runners piles onto - Actions' own docs
@@ -23,10 +27,9 @@
 # SUPABASE_SERVICE_ROLE_KEY and exits, so there's no commit/PR/build-gate
 # mechanic here.
 #
-# The script exits 0 when at least one of the three feeds worked (logging
-# and reporting the ones that didn't to Sentry) and non-zero only when all
-# three fail - i.e. this workflow goes red for "the feed moved or we're
-# being refused", not for one flaky request.
+# The script retries a failed fetch three times with backoff before giving
+# up, so this workflow goes red for "the feed moved or we're being
+# refused", not for one flaky request.
 #
 # Secrets needed (the same ones refresh-market-session-stats.yml already
 # documents - no new ones):

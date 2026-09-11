@@ -186,10 +186,15 @@ function CalendarFilterMenu({ filters, onChange }) {
 }
 
 // Backed by economic_events, refreshed hourly from Forex Factory's own
-// published calendar feeds (scripts/fetch-economic-calendar.js). This card
+// published calendar feed (scripts/fetch-economic-calendar.js). This card
 // used to render a hardcoded week from lib/marketContextMock.js that
-// repeated itself forever; everything on screen here is now real, including
-// each release's actual once it prints.
+// repeated itself forever; everything on screen here is now real.
+//
+// The `act` figure below renders only when a row has one, which today is
+// never: FF's published feed carries forecast and previous but no actual.
+// It's left in because the column and the parser already handle it, so if
+// FF ever does publish actuals they appear here with no code change - but
+// don't read this as a feature that currently works.
 export default function EconomicCalendarCard() {
   const [fromDate, setFromDate] = useState(weekStartStr)
   const [toDate, setToDate] = useState(weekEndStr)

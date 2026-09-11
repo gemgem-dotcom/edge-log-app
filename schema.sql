@@ -705,16 +705,22 @@ alter table strategies add column if not exists notes text;
 --
 -- event_key, not a surrogate id, as the conflict target: it's
 -- day|currency|title (see eventKey in lib/econCalendarEvents.mjs), so an
--- hourly re-fetch updates the release it already has - picking up `actual`
--- the moment it prints - instead of inserting a second copy. Keyed on the
--- calendar DAY rather than the exact timestamp on purpose: FF revises
+-- hourly re-fetch updates a release it already has - picking up a revised
+-- forecast or a moved time - instead of inserting a second copy. Keyed on
+-- the calendar DAY rather than the exact timestamp on purpose: FF revises
 -- scheduled times, and a revision should move the existing row, not fork
--- it.
+-- it. Nothing here ever deletes, so the table accumulates history one week
+-- at a time (only this week's feed is published - see the script).
 --
 -- forecast/previous/actual are text, not numeric, because the calendar's
 -- own figures are not all numbers: '0.3%', '-1.2M', '224K', '<0.1%' and
 -- plain '0' all appear, and the card displays them exactly as FF shows
 -- them. Nothing computes with these.
+--
+-- `actual` is nullable and, as things stand, always null: the published
+-- feed carries no actual field (confirmed against a real payload). The
+-- column is kept because the parser already reads it and a schema change
+-- is the expensive way to find out FF added one later.
 create table if not exists economic_events (
   event_key text primary key,
   title text not null,

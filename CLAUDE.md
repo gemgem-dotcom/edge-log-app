@@ -168,9 +168,14 @@ build talks to the database.
 The Overview's "Economic calendar" card (`components/EconomicCalendarCard.js`) is
 live: it reads the `economic_events` table, which
 `scripts/fetch-economic-calendar.js` refreshes hourly from Forex Factory's own
-published calendar JSON feeds (see that script's header for why it reads the feeds
+published calendar JSON feed (see that script's header for why it reads the feed
 rather than scraping the calendar page, and `lib/econCalendarEvents.mjs` for the
-normalising/classifying it shares with the app).
+normalising/classifying it shares with the app). Only FF's `thisweek` feed exists —
+the last/next week variants 404 — so coverage is one week at a time, accumulating in
+the table as the job runs. The feed carries **no `actual` figures**; see NOTES.md for
+the full list of what the first live run corrected. Anything about the feed's real
+shape is answerable by running `scripts/smoke-test-forexfactory-feed.js` from the
+"Run a diagnostic script" workflow — this sandbox can't reach the feed host at all.
 
 Still on mock data from `lib/marketContextMock.js`: the Monthly P&L calendar's news
 badge (`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-

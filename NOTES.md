@@ -119,15 +119,39 @@ nothing during a build talks to the database.
 The Overview's "Economic calendar" card is live again, on a different source than the
 one that was pulled out. It reads the `economic_events` table, filled hourly by
 `scripts/fetch-economic-calendar.js` from Forex Factory's own published calendar JSON
-feeds (`nfs.faireconomy.media/ff_calendar_{last,this,next}week.json`) rather than by
-scraping forexfactory.com/calendar - the page itself sits behind Cloudflare, and the
-feeds are the same data published by FF for programmatic use, so the feeds are both
-the sturdier and the more honest route. `lib/econCalendarEvents.mjs` holds the one
-copy of the normalising and event-type classification, shared between the script and
-the app (it's `.mjs` so a CommonJS script can `import()` it - see its header).
-Per-event `actual` figures land within the hour of a release printing, which is what
-the hourly cadence buys; rows upsert on a day+currency+title key so a revised
-scheduled time updates the event rather than forking it.
+feed (`nfs.faireconomy.media/ff_calendar_thisweek.json`) rather than by scraping
+forexfactory.com/calendar - the page itself sits behind Cloudflare, and the feed is
+the same data published by FF for programmatic use, so the feed is both the sturdier
+and the more honest route. `lib/econCalendarEvents.mjs` holds the one copy of the
+normalising and event-type classification, shared between the script and the app
+(it's `.mjs` so a CommonJS script can `import()` it - see its header). Rows upsert on
+a day+currency+title key, so a revised scheduled time updates the event rather than
+forking it.
+
+**Four things the first live run corrected, all found by
+`scripts/smoke-test-forexfactory-feed.js` rather than in review** - the dev sandbox
+can't reach `nfs.faireconomy.media` at all, so that diagnostic is the only way to see
+the real payload:
+
+- **Only `thisweek` is published.** `ff_calendar_lastweek.json` and
+  `ff_calendar_nextweek.json` both 404, so the original three-feed design fetched one
+  working feed and two errors. Coverage is therefore one week at a time - but nothing
+  ever deletes, so the table accumulates history from whenever the job starts running.
+  It cannot backfill the weeks before that, or see past the current one. The smoke
+  test now probes the monthly/daily/XML variants too, so if a wider feed exists it
+  shows up in one run rather than one guess per deploy.
+- **The feed carries no `actual`.** The only keys present are `country`, `date`,
+  `forecast`, `impact`, `previous`, `title`, and zero records carried an actual even
+  for releases that had already printed. The column and the card's `act` display are
+  kept (they cost nothing and work if FF ever adds one) but nothing should claim the
+  figure appears. Hourly is still the right cadence for reschedules and forecast
+  revisions, just not for the reason originally written down.
+- **FF files some events under country `All`** (OPEC, G20 - no single home currency).
+  `CURRENCIES` didn't list it, and since the card filters by exact membership, those
+  events could never match a checkbox and were invisible with nothing on screen to say
+  so. The smoke test now fails on any feed currency the filter doesn't list.
+- **The feed has no `url` field**, so `detail_url` was null on every row. It's now
+  built from the event's date in FF's own `?day=sep7.2026` form.
 
 Still mock, all from `lib/marketContextMock.js`: the Monthly P&L calendar's news badge
 (`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-events

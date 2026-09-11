@@ -23,20 +23,32 @@
 // stores FF's own detail_url so that page is one click away, rather than
 // fighting Cloudflare on an hourly schedule to mirror it.
 //
-// Three feeds are fetched per run - last week, this week, next week - so
-// the card can look back over trades already logged as well as forward.
-// They overlap at their edges by design; every row is upserted on a
-// day+currency+title key (see eventKey in lib/econCalendarEvents.mjs), so
-// re-fetching the same event updates it instead of duplicating it. That is
-// also what makes the hourly schedule useful rather than wasteful: a
-// release's `actual` lands in the feed minutes after it prints, and each
-// run rewrites the same row with it.
+// ONE feed: this week's. The lastweek/nextweek variants this originally
+// also fetched both return 404 - confirmed live by
+// scripts/smoke-test-forexfactory-feed.js, which is what that diagnostic
+// exists for. Only ff_calendar_thisweek.json is actually published.
 //
-// Failure policy: one feed failing is survivable (the other two still
-// store, the run logs it and reports to Sentry, exit 0). All three failing
-// is not - that means the feed moved, FF blocked us, or the network is
-// down, and the run exits non-zero so the workflow goes red rather than
-// quietly storing nothing every hour forever.
+// That is less of a loss than it sounds, because rows accumulate. Nothing
+// here ever deletes, and every row upserts on a day+currency+title key
+// (see eventKey in lib/econCalendarEvents.mjs), so each week's events stay
+// in the table once fetched and the history behind the card grows on its
+// own from the day this starts running. What it genuinely cannot do is
+// backfill the weeks before that, or see further ahead than the current
+// week - if FF ever publishes a monthly feed, adding it here is the fix,
+// and the smoke test probes for exactly that.
+//
+// Why still hourly, now that there's one small file to fetch: NOT for
+// `actual` figures. This feed carries none - confirmed against a real
+// payload (see normalizeFeedEvent's comment). What does change through the
+// week is the calendar itself: FF adds speeches, reschedules releases, and
+// revises forecasts, and an hourly refresh keeps all of that current for
+// one small request.
+//
+// Failure policy: with a single feed there's nothing to fall back on, so a
+// failure that survives all three retry attempts exits non-zero and the
+// workflow goes red - the right signal for "the feed moved, FF blocked us,
+// or the network is down", rather than quietly storing nothing every hour
+// forever.
 //
 // Usage: node scripts/fetch-economic-calendar.js
 // Env: SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
@@ -53,9 +65,7 @@ Sentry.init({
 })
 
 const FEEDS = [
-  { name: 'lastweek', url: 'https://nfs.faireconomy.media/ff_calendar_lastweek.json' },
   { name: 'thisweek', url: 'https://nfs.faireconomy.media/ff_calendar_thisweek.json' },
-  { name: 'nextweek', url: 'https://nfs.faireconomy.media/ff_calendar_nextweek.json' },
 ]
 
 // Identifies this app rather than pretending to be a browser. A feed
@@ -167,7 +177,7 @@ async function main() {
   }
 
   if (succeeded === 0) {
-    throw new Error('Every economic calendar feed failed - see the per-feed errors above')
+    throw new Error(`No economic calendar feed succeeded (${FEEDS.length} attempted) - see the errors above`)
   }
 
   log(`Done. ${succeeded}/${FEEDS.length} feed(s) OK, ${totalStored} event row(s) written.`)

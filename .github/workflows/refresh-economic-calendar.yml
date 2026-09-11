@@ -1,22 +1,25 @@
 # Hourly economic-calendar refresh
 #
-# Runs scripts/fetch-economic-calendar.js, which pulls Forex Factory's
-# published this-week calendar JSON feed and upserts it into
-# economic_events. See that script's header for why it reads the feed
-# rather than scraping forexfactory.com/calendar, and schema.sql's comment
-# above `create table economic_events` for the storage side.
+# Runs scripts/fetch-economic-calendar.js against forexfactory.com's own
+# calendar HTML and upserts into economic_events. See that script's header
+# for the source and access reasoning, and schema.sql's comment above
+# `create table economic_events` for the storage side.
 #
-# One feed, not three: the lastweek/nextweek variants this was originally
-# written against both 404 (confirmed live by
-# scripts/smoke-test-forexfactory-feed.js). Rows accumulate rather than
-# being replaced, so the history behind the card still grows week by week
-# from whenever this starts running.
+# Two schedules, one script:
 #
-# Hourly, not daily, because FF revises the calendar through the week - it
-# adds speeches, reschedules releases and updates forecasts - and an
-# hourly refresh keeps that current for the cost of one small JSON request
-# against a feed published for programmatic use. Note it is NOT for
-# `actual` figures: this feed carries none (also confirmed live).
+#   hourly  - this week only, one ~400KB page. This is the one that keeps
+#             `actual` figures current: FF fills them in within minutes of
+#             a release printing, and each run upserts the same rows.
+#   daily   - last month through next month, as month pages. This is the
+#             backward and forward fill: it keeps roughly a quarter of
+#             calendar either side of today complete, catches late
+#             revisions, and picks up events added weeks ahead.
+#
+# A wider one-off backfill is the same script with
+# CALENDAR_MONTHS_BACK set higher - run it from "Run a diagnostic script"
+# rather than adding another schedule.
+#
+# Nothing here ever deletes, so coverage only ever grows.
 #
 # Minute 7 rather than :00 to stay off the hour boundary every other
 # scheduled job on GitHub's shared runners piles onto - Actions' own docs
@@ -42,8 +45,24 @@ name: Refresh economic calendar
 
 on:
   schedule:
+    # Hourly at :07 - off the top of the hour, where Actions' own docs warn
+    # scheduled jobs bunch up and get delayed.
     - cron: '7 * * * *'
-  workflow_dispatch: {}
+    # Daily at 04:17 UTC, the quiet end of the calendar's day, for the
+    # wider month sweep.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      months_back:
+        description: How many months back to fetch (0 = this week only)
+        required: false
+        default: '0'
+        type: string
+      months_forward:
+        description: How many months forward to fetch
+        required: false
+        default: '0'
+        type: string
 
 jobs:
   fetch:
@@ -63,9 +82,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # The daily cron gets the month sweep; the hourly one and a bare
+      # manual run get this week. github.event.schedule is the only thing
+      # that distinguishes two crons on one workflow, so the scope is
+      # derived from it here rather than by splitting this into two nearly
+      # identical files.
       - name: Fetch and store the economic calendar
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          CALENDAR_MONTHS_BACK: ${{ github.event.schedule == '17 4 * * *' && '1' || inputs.months_back || '0' }}
+          CALENDAR_MONTHS_FORWARD: ${{ github.event.schedule == '17 4 * * *' && '1' || inputs.months_forward || '0' }}
         run: node scripts/fetch-economic-calendar.js

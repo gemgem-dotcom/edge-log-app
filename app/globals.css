@@ -37,20 +37,20 @@
    2703  Public policy pages (Privacy, Terms)
    2722  Legal links (auth pages + account settings)
    2761  Economic calendar card (Overview pages)
-   2970  Calendar news badge (Monthly P&L day cells, mock)
-   2991  Streak badge (Overview + strategy detail pages)
-   3014  Market status pill (Overview + strategy detail pages)
-   3040  Today's brief & session stats
-   3075  Market context cards (all-instruments Overview)
-   3108  Edge Insights panel
-   3123  Unverified logged time badge
-   3140  Welcome transition (first-run)
-   3169  Zero-instrument empty state
-   3179  Tutorial overlay (first-run guided tour)
-   3271  Tutorial step 3 (guided form scroll)
-   3318  Press states, value changes, content fade-in
-   3415  Trade log column width stability
-   3440  Strategy notes panel
+   2980  Calendar news badge (Monthly P&L day cells, mock)
+   3001  Streak badge (Overview + strategy detail pages)
+   3024  Market status pill (Overview + strategy detail pages)
+   3050  Today's brief & session stats
+   3085  Market context cards (all-instruments Overview)
+   3118  Edge Insights panel
+   3133  Unverified logged time badge
+   3150  Welcome transition (first-run)
+   3179  Zero-instrument empty state
+   3189  Tutorial overlay (first-run guided tour)
+   3281  Tutorial step 3 (guided form scroll)
+   3328  Press states, value changes, content fade-in
+   3425  Trade log column width stability
+   3450  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -2967,6 +2967,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    expectation, so it carries the row's text colour while forecast and
    previous stay muted around it. */
 .econ-figure-actual{color:var(--text); font-weight:600;}
+/* Forex Factory's own beat/miss marking, carried through from its markup
+   rather than recomputed here - "better" isn't always "higher" (an
+   unemployment print beats by falling), so it's a call only the source
+   can make. Same win/loss greens and reds the rest of the app uses. */
+.econ-figure-better{color:var(--win);}
+.econ-figure-worse{color:var(--loss);}
+/* Marks a previous figure FF has since restated. Deliberately a quiet
+   asterisk rather than a badge - it qualifies a number the trader is
+   glancing past, it isn't news in itself. */
+.econ-figure-revised{color:var(--be); margin-left:2px;}
 /* ---------- Calendar news badge (Monthly P&L day cells, mock) ---------- */
 .calendar-news-badge-wrap{position:absolute; top:5px; right:5px;}
 .calendar-news-badge{

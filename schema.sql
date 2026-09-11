@@ -717,10 +717,11 @@ alter table strategies add column if not exists notes text;
 -- plain '0' all appear, and the card displays them exactly as FF shows
 -- them. Nothing computes with these.
 --
--- `actual` is nullable and, as things stand, always null: the published
--- feed carries no actual field (confirmed against a real payload). The
--- column is kept because the parser already reads it and a schema change
--- is the expensive way to find out FF added one later.
+-- `actual` is nullable because a release that hasn't happened yet has no
+-- actual, not because the figure is unavailable - it is populated from
+-- forexfactory.com/calendar's own HTML (lib/econCalendarHtml.mjs), which
+-- carries it. The published JSON feed does NOT, which is why that feed is
+-- only a fallback now; see scripts/fetch-economic-calendar.js's header.
 create table if not exists economic_events (
   event_key text primary key,
   title text not null,
@@ -749,3 +750,30 @@ drop policy if exists "Anyone signed in can read economic events" on economic_ev
 create policy "Anyone signed in can read economic events"
   on economic_events for select
   using (auth.role() = 'authenticated');
+
+-- Columns that only exist because the calendar is now read from
+-- forexfactory.com/calendar's own HTML rather than its published JSON feed
+-- (see scripts/fetch-economic-calendar.js's header for why the source
+-- changed). Added separately from the create table above, additive and
+-- re-runnable, so an existing economic_events picks them up in place.
+--
+-- ff_event_id      FF's own identifier for the release. Not the key here -
+--                  event_key (day|currency|title) stays that, so rows
+--                  already stored from the JSON feed keep updating in
+--                  place rather than forking - but it is the sturdier
+--                  identity if that ever needs revisiting, and it is free
+--                  to keep now that the markup carries it.
+-- actual_status    FF's own beat/miss marking on the actual: 'better',
+--                  'worse', or null when it matched forecast or has not
+--                  printed. The colour on FF's own calendar, kept as
+--                  meaning rather than thrown away with the markup.
+-- previous_revised true when FF flags the previous figure as restated
+--                  since it was first published.
+-- time_precision   'exact' for a clock time, 'all_day' or 'tentative' for
+--                  the rows FF gives no time at all. Those are anchored to
+--                  the day's own midnight, so this is what stops the UI
+--                  presenting a placeholder midnight as a real schedule.
+alter table economic_events add column if not exists ff_event_id text;
+alter table economic_events add column if not exists actual_status text;
+alter table economic_events add column if not exists previous_revised boolean;
+alter table economic_events add column if not exists time_precision text;

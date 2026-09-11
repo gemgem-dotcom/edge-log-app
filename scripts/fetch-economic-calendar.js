@@ -1,85 +1,70 @@
 #!/usr/bin/env node
 
-// Fetches Forex Factory's economic calendar and stores it in
-// economic_events - see .github/workflows/refresh-economic-calendar.yml
-// (the schedule this runs under) and the comment above `create table
-// economic_events` in schema.sql.
+// Fetches Forex Factory's economic calendar into economic_events - see
+// .github/workflows/refresh-economic-calendar.yml (the hourly schedule)
+// and schema.sql's comment above `create table economic_events`.
 //
-// Reads FF's own published JSON feeds rather than scraping the calendar
-// page's HTML. This is deliberate and worth stating plainly, because
-// "scrape Forex Factory" usually means the HTML route:
-//   - forexfactory.com/calendar sits behind Cloudflare, which serves an
-//     interstitial to anything that doesn't look like a real browser. The
-//     usual way around that is a headless browser plus fingerprint
-//     evasion, which is both fragile (it breaks whenever the challenge
-//     changes) and a deliberate circumvention of an access control.
-//   - These feeds are the same calendar data, published by FF itself for
-//     exactly this purpose, in a stable documented shape, with no
-//     challenge to get around. They carry every column the calendar's own
-//     list view shows: event, currency, impact, scheduled time, forecast,
-//     previous, and actual once a release is out.
-// The one thing the HTML has that the feed doesn't is the per-event detail
-// popup (source, "measures", "usual effect", revision history). Each row
-// stores FF's own detail_url so that page is one click away, rather than
-// fighting Cloudflare on an hourly schedule to mirror it.
+// SOURCE: forexfactory.com/calendar's own HTML, parsed by
+// lib/econCalendarHtml.mjs. This used to read FF's published JSON feed
+// instead; that feed is still used as a fallback below, but it cannot be
+// the primary source because it carries exactly one week and no `actual`
+// column at all - both confirmed live. The page carries any week or month,
+// actual values, FF's own beat/miss marking, revised-previous flags, and
+// FF's own event ids.
 //
-// ONE feed: this week's. The lastweek/nextweek variants this originally
-// also fetched both return 404 - confirmed live by
-// scripts/smoke-test-forexfactory-feed.js, which is what that diagnostic
-// exists for. Only ff_calendar_thisweek.json is actually published.
+// ON ACCESS, stated plainly because "scrape Forex Factory" usually means
+// something worse: the page is served to this script's honest,
+// self-identifying User-Agent. A stock browser User-Agent is what gets a
+// Cloudflare challenge - verified in both directions by
+// scripts/probe-forexfactory-sources.js. So nothing here circumvents an
+// access control, and nothing here pretends to be a browser, solves a
+// challenge, or evades a bot check. If the honest request ever stops being
+// served, the fix is a different source, not a sneakier request.
 //
-// That is less of a loss than it sounds, because rows accumulate. Nothing
-// here ever deletes, and every row upserts on a day+currency+title key
-// (see eventKey in lib/econCalendarEvents.mjs), so each week's events stay
-// in the table once fetched and the history behind the card grows on its
-// own from the day this starts running. What it genuinely cannot do is
-// backfill the weeks before that, or see further ahead than the current
-// week - if FF ever publishes a monthly feed, adding it here is the fix,
-// and the smoke test probes for exactly that.
+// TIMEZONE: never assumed. FF prints wall-clock times in its own display
+// timezone, but each day's first row carries data-day-dateline, the Unix
+// epoch of midnight in that timezone. Midnight plus the row's clock time
+// is the exact instant, so a change to FF's display timezone (or a DST
+// boundary) cannot silently shift every stored timestamp.
 //
-// Why still hourly, now that there's one small file to fetch: NOT for
-// `actual` figures. This feed carries none - confirmed against a real
-// payload (see normalizeFeedEvent's comment). What does change through the
-// week is the calendar itself: FF adds speeches, reschedules releases, and
-// revises forecasts, and an hourly refresh keeps all of that current for
-// one small request.
+// SCOPE, chosen by env so one script serves all three jobs:
+//   - default (both vars unset): this week only. One ~400KB page, which is
+//     what the hourly schedule runs - enough to pick up actuals as they
+//     print and any reschedule within the week.
+//   - CALENDAR_MONTHS_BACK / CALENDAR_MONTHS_FORWARD: month pages across
+//     that span instead. A month page is ~1.6MB and covers 4-5 weeks, so
+//     it is the cheaper unit per event for anything wider than a week.
+//     Used by the daily forward-fill and by a manual backfill.
 //
-// Failure policy: with a single feed there's nothing to fall back on, so a
-// failure that survives all three retry attempts exits non-zero and the
-// workflow goes red - the right signal for "the feed moved, FF blocked us,
-// or the network is down", rather than quietly storing nothing every hour
-// forever.
+// Nothing here ever deletes. Rows upsert on event_key (day|currency|title),
+// so a re-fetch updates the release it already has - filling in an actual,
+// moving a rescheduled time - rather than inserting a second copy.
 //
-// Usage: node scripts/fetch-economic-calendar.js
+// Usage:
+//   node scripts/fetch-economic-calendar.js
+//   CALENDAR_MONTHS_BACK=6 node scripts/fetch-economic-calendar.js
 // Env: SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
 const { createClient } = require('@supabase/supabase-js')
 const Sentry = require('@sentry/node')
 
-// Same "one env var, read server-side too" convention as
-// fetch-daily-market-stats.js - no-ops if the secret isn't set.
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   tracesSampleRate: 0,
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
 })
 
-const FEEDS = [
-  { name: 'thisweek', url: 'https://nfs.faireconomy.media/ff_calendar_thisweek.json' },
-]
-
-// Identifies this app rather than pretending to be a browser. A feed
-// that's published for programmatic use has no reason to want a spoofed
-// UA, and if it ever does start refusing us, a truthful one is what makes
-// that a conversation rather than an arms race.
+// Identifies this app rather than pretending to be a browser - see the
+// header. This is the User-Agent that actually gets served.
 const USER_AGENT = 'EdgeLog/1.0 (trading journal; +https://github.com/gemgem-dotcom/edge-log-app)'
-const FETCH_TIMEOUT_MS = 20000
+const JSON_FEED = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json'
+const FETCH_TIMEOUT_MS = 30000
 const FETCH_ATTEMPTS = 3
-// Supabase rejects an over-large single request body; a week of FF's
-// calendar is only a few hundred rows, so this only ever splits the batch
-// on an unusually busy stretch, but it keeps the request size bounded
-// regardless of what the feed returns.
 const UPSERT_CHUNK = 200
+// Spacing between page fetches. A backfill walks a lot of months, and
+// there is no reason for it to look like a burst against someone else's
+// site; nothing downstream cares whether a backfill takes a few minutes.
+const PAGE_GAP_MS = 1500
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args)
@@ -89,35 +74,27 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Retries on network errors and 5xx, not on a 4xx - a 403/404 means the
-// feed moved or we're being refused, and hammering it three times over
-// doesn't change that answer.
-async function fetchFeed(feed) {
+// Retries network errors and 5xx, never a 4xx - a 403 means we are being
+// refused, and asking three times over neither changes that answer nor is
+// a polite thing to do with it.
+async function fetchPage(url, accept) {
   let lastError = null
   for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
     try {
-      const res = await fetch(feed.url, {
-        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      const res = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT, Accept: accept },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       })
       if (res.status >= 400 && res.status < 500) {
-        throw new Error(`${feed.url} returned ${res.status} (not retried)`)
+        throw new Error(`${url} returned ${res.status} (not retried)`)
       }
-      if (!res.ok) throw new Error(`${feed.url} returned ${res.status}`)
-      // Parsed from text rather than res.json() so a non-JSON body (a
-      // Cloudflare challenge page, say) reports what actually came back
-      // instead of an opaque "Unexpected token <".
-      const body = await res.text()
-      try {
-        return JSON.parse(body)
-      } catch {
-        throw new Error(`${feed.url} returned a non-JSON body (starts with: ${body.slice(0, 60).replace(/\s+/g, ' ')})`)
-      }
+      if (!res.ok) throw new Error(`${url} returned ${res.status}`)
+      return await res.text()
     } catch (err) {
       lastError = err
       if (/not retried/.test(err.message) || attempt === FETCH_ATTEMPTS) break
       const backoffMs = 1000 * 2 ** (attempt - 1)
-      log(`${feed.name}: attempt ${attempt} failed (${err.message}) - retrying in ${backoffMs}ms`)
+      log(`  attempt ${attempt} failed (${err.message}) - retrying in ${backoffMs}ms`)
       await sleep(backoffMs)
     }
   }
@@ -137,54 +114,100 @@ async function storeEvents(admin, events) {
   return stored
 }
 
+function monthsAround(back, forward) {
+  const out = []
+  const now = new Date()
+  for (let offset = -back; offset <= forward; offset++) {
+    out.push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1, 12)))
+  }
+  return out
+}
+
+// The JSON feed, used only when the HTML yielded nothing for the current
+// week. It has no actuals and only ever covers this week, so it is a floor
+// rather than a source: if FF's markup changes under us, the card keeps
+// showing a current, correct schedule while the parser is fixed, instead
+// of silently going stale.
+async function fallbackToJsonFeed(admin, normalizeFeed) {
+  log('HTML yielded no events - falling back to the JSON feed for this week')
+  const body = await fetchPage(JSON_FEED, 'application/json')
+  const { events, skipped } = normalizeFeed(JSON.parse(body))
+  if (skipped > 0) log(`  json feed: skipped ${skipped} unusable record(s)`)
+  if (events.length === 0) throw new Error('JSON feed fallback also produced no events')
+  const stored = await storeEvents(admin, events)
+  log(`  json feed: stored ${stored} event(s)`)
+  return stored
+}
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supabaseUrl || !serviceKey) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set')
   const admin = createClient(supabaseUrl, serviceKey)
 
-  // The one module shared with the app itself - see its own header for why
-  // it's .mjs and why this has to be a dynamic import from a CommonJS
-  // script.
+  // Dynamic import: these are .mjs so a CommonJS script can read them -
+  // see lib/econCalendarEvents.mjs's own header for why they are shared
+  // rather than duplicated.
+  const { parseCalendarHtml, weekUrl, monthUrl } = await import('../lib/econCalendarHtml.mjs')
   const { normalizeFeed } = await import('../lib/econCalendarEvents.mjs')
 
-  let succeeded = 0
-  let totalStored = 0
+  const monthsBack = Number(process.env.CALENDAR_MONTHS_BACK || 0)
+  const monthsForward = Number(process.env.CALENDAR_MONTHS_FORWARD || 0)
+  if (!Number.isFinite(monthsBack) || !Number.isFinite(monthsForward) || monthsBack < 0 || monthsForward < 0) {
+    throw new Error('CALENDAR_MONTHS_BACK / CALENDAR_MONTHS_FORWARD must be non-negative numbers')
+  }
 
-  // Sequential, not Promise.all - three small requests, and one at a time
-  // is the politer shape of traffic against someone else's free feed.
-  for (const feed of FEEDS) {
+  const wide = monthsBack > 0 || monthsForward > 0
+  const targets = wide
+    ? monthsAround(monthsBack, monthsForward).map((d) => ({ label: `month ${d.toISOString().slice(0, 7)}`, url: monthUrl(d) }))
+    : [{ label: 'this week', url: weekUrl(new Date()) }]
+
+  log(`Fetching ${targets.length} page(s): ${wide ? `months -${monthsBack}..+${monthsForward}` : 'this week'}`)
+
+  let totalStored = 0
+  let totalEvents = 0
+  let failures = 0
+
+  for (const [i, target] of targets.entries()) {
+    if (i > 0) await sleep(PAGE_GAP_MS)
     try {
-      const raw = await fetchFeed(feed)
-      const { events, skipped } = normalizeFeed(raw)
-      if (skipped > 0) log(`${feed.name}: skipped ${skipped} unusable record(s)`)
+      const html = await fetchPage(target.url, 'text/html')
+      const { events, skipped, days } = parseCalendarHtml(html)
+      if (skipped > 0) log(`  ${target.label}: skipped ${skipped} unusable row(s)`)
       if (events.length === 0) {
-        // Not an error in itself - a quiet holiday week really can come
-        // back near-empty - but worth saying out loud, since it's also
-        // what a silently-changed feed shape looks like.
-        log(`${feed.name}: no usable events in the payload`)
-        succeeded++
+        // A real calendar page always has events. Zero means the markup
+        // moved, so say so loudly rather than reporting a clean run that
+        // stored nothing.
+        log(`  ${target.label}: NO EVENTS PARSED (${html.length}b fetched) - markup may have changed`)
+        Sentry.captureMessage(`Economic calendar: ${target.label} parsed 0 events from ${html.length}b`, 'warning')
+        failures++
         continue
       }
       const stored = await storeEvents(admin, events)
       totalStored += stored
-      succeeded++
-      log(`${feed.name}: stored ${stored} event(s)`)
+      totalEvents += events.length
+      log(`  ${target.label}: ${events.length} event(s) across ${days} day(s), stored ${stored}`)
     } catch (err) {
-      Sentry.captureMessage(`Economic calendar feed ${feed.name} failed: ${err.message}`, 'warning')
-      log(`${feed.name}: FAILED - ${err.message}`)
+      Sentry.captureMessage(`Economic calendar ${target.label} failed: ${err.message}`, 'warning')
+      log(`  ${target.label}: FAILED - ${err.message}`)
+      failures++
     }
   }
 
-  if (succeeded === 0) {
-    throw new Error(`No economic calendar feed succeeded (${FEEDS.length} attempted) - see the errors above`)
+  if (totalEvents === 0) {
+    // Nothing at all came through the HTML path. For the narrow (hourly)
+    // scope there is a floor to fall back to; for a wide backfill there
+    // isn't one, and the run should fail so the workflow goes red.
+    if (!wide) {
+      totalStored += await fallbackToJsonFeed(admin, normalizeFeed)
+    } else {
+      throw new Error(`No events parsed from any of ${targets.length} page(s) - see the errors above`)
+    }
   }
 
-  log(`Done. ${succeeded}/${FEEDS.length} feed(s) OK, ${totalStored} event row(s) written.`)
+  log(`Done. ${targets.length - failures}/${targets.length} page(s) OK, ${totalStored} row(s) written.`)
 }
 
-// Same flush-before-exit reasoning as fetch-daily-market-stats.js: a short
-// script can exit before Sentry's async transport has sent anything.
 main()
   .then(() => Sentry.flush(2000))
   .catch(async (err) => {

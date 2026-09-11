@@ -185,16 +185,12 @@ function CalendarFilterMenu({ filters, onChange }) {
   )
 }
 
-// Backed by economic_events, refreshed hourly from Forex Factory's own
-// published calendar feed (scripts/fetch-economic-calendar.js). This card
-// used to render a hardcoded week from lib/marketContextMock.js that
-// repeated itself forever; everything on screen here is now real.
-//
-// The `act` figure below renders only when a row has one, which today is
-// never: FF's published feed carries forecast and previous but no actual.
-// It's left in because the column and the parser already handle it, so if
-// FF ever does publish actuals they appear here with no code change - but
-// don't read this as a feature that currently works.
+// Backed by economic_events, refreshed hourly by
+// scripts/fetch-economic-calendar.js from forexfactory.com/calendar's own
+// HTML. This card used to render a hardcoded week from
+// lib/marketContextMock.js that repeated itself forever; everything on
+// screen here is now real, including each release's actual once it prints
+// and FF's own marking of whether that beat or missed forecast.
 export default function EconomicCalendarCard() {
   const [fromDate, setFromDate] = useState(weekStartStr)
   const [toDate, setToDate] = useState(weekEndStr)
@@ -308,15 +304,36 @@ export default function EconomicCalendarCard() {
               >
                 <span className={`econ-impact-dot econ-impact-${e.impact}`} />
                 {!isSingleDay && <span className="econ-calendar-day">{formatDateLabel(at)}</span>}
-                <span className="econ-calendar-time">{formatTimeLabel(at)}</span>
+                {/* An all-day or tentative release is stored anchored to
+                    its day's midnight because that is the only honest
+                    thing its timestamp can say. Printing "00:00" would
+                    dress that placeholder up as a schedule, so it gets
+                    FF's own wording instead. */}
+                <span className="econ-calendar-time">
+                  {e.time_precision && e.time_precision !== 'exact'
+                    ? (e.time_precision === 'tentative' ? 'tent.' : 'all day')
+                    : formatTimeLabel(at)}
+                </span>
                 <span className="econ-calendar-currency">{e.currency}</span>
                 <span className="econ-calendar-event">{e.title}</span>
                 <span className="econ-calendar-figures">
                   {e.actual !== null && e.actual !== undefined && (
-                    <span className="econ-figure-actual">act {e.actual}</span>
+                    // better/worse is FF's own comparison against its
+                    // forecast, carried through rather than recomputed -
+                    // "better" is not always "higher" (an unemployment
+                    // print beats by falling), so this is a judgement only
+                    // the source can make.
+                    <span className={`econ-figure-actual${e.actual_status ? ` econ-figure-${e.actual_status}` : ''}`}>
+                      act {e.actual}
+                    </span>
                   )}
                   {e.forecast ? <span>fcst {e.forecast}</span> : null}
-                  {e.previous ? <span>prev {e.previous}</span> : null}
+                  {e.previous ? (
+                    <span>
+                      prev {e.previous}
+                      {e.previous_revised && <span className="econ-figure-revised" title="Revised since first published">*</span>}
+                    </span>
+                  ) : null}
                 </span>
               </div>
             )

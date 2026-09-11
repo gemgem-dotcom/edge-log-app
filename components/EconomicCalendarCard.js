@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Filter } from 'lucide-react'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { fetchEconomicEvents } from '@/lib/econCalendarQuery'
-import { IMPACT_LEVELS, EVENT_TYPES, CURRENCIES } from '@/lib/econCalendarEvents.mjs'
+import { IMPACT_LEVELS, EVENT_TYPES, CURRENCIES, GLOBAL_CURRENCY } from '@/lib/econCalendarEvents.mjs'
 import DateRangePicker from '@/components/DateRangePicker'
 
 // One filter setting for "the economic calendar", shared by every instance
@@ -266,7 +266,11 @@ export default function EconomicCalendarCard() {
   const visible = events.filter((e) => (
     filters.impacts.includes(e.impact)
     && filters.types.includes(e.event_type)
-    && filters.currencies.includes(e.currency)
+    // A GLOBAL_CURRENCY event (OPEC, G20) has no currency checkbox of its
+    // own and isn't filtered by currency at all - it isn't any one
+    // country's news, so unticking EUR shouldn't hide it. Impact and event
+    // type still apply, so it's filterable, just not by currency.
+    && (e.currency === GLOBAL_CURRENCY || filters.currencies.includes(e.currency))
   ))
 
   return (

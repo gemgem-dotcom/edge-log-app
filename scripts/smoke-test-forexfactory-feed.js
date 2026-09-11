@@ -76,7 +76,7 @@ function asArray(body) {
 }
 
 async function analysePrimary(mod) {
-  const { normalizeFeed, EVENT_TYPES, CURRENCIES } = mod
+  const { normalizeFeed, EVENT_TYPES, CURRENCIES, GLOBAL_CURRENCY } = mod
   console.log(`\n${'='.repeat(64)}\nPRIMARY  ${PRIMARY.name}  ${PRIMARY.url}\n${'='.repeat(64)}`)
 
   let problems = 0
@@ -110,7 +110,12 @@ async function analysePrimary(mod) {
   // A currency the feed ships that the filter doesn't list is an event no
   // checkbox can match - invisible in the UI, with nothing on screen to
   // say so. This is exactly how the "All" value was found.
-  const unlistedCurrencies = [...new Set(events.map((e) => e.currency))].filter((c) => !CURRENCIES.includes(c))
+  //
+  // GLOBAL_CURRENCY is the one deliberate exception: it has no checkbox on
+  // purpose, and the card shows those events regardless of the currency
+  // filter rather than hiding them.
+  const unlistedCurrencies = [...new Set(events.map((e) => e.currency))]
+    .filter((c) => c !== GLOBAL_CURRENCY && !CURRENCIES.includes(c))
   if (unlistedCurrencies.length) {
     console.log(`\nPROBLEM: currencies in the feed that CURRENCIES does not list (their events can never be shown): ${unlistedCurrencies.join(', ')}`)
     problems++

@@ -159,10 +159,79 @@ async function probeHtml() {
   }
 }
 
+// Dumps enough of the real markup to write a parser against, instead of
+// against a guess. A past week is used on purpose: its releases have
+// already printed, so if actual values exist anywhere they exist there.
+//
+// The first probe run proved the page is reachable but left the actual
+// question open, because the crude regex used to sample it captured tag
+// fragments ("Actual<", "<") rather than cell text. Hence this: print the
+// rows verbatim and read them.
+async function dumpMarkup() {
+  console.log(`\n${'='.repeat(66)}\n3. MARKUP SAMPLE (a past week - releases already printed)\n${'='.repeat(66)}`)
+  const url = `https://www.forexfactory.com/calendar?week=${ffDateParam(weeksFromNow(-2))}`
+  console.log(`url: ${url}\n`)
+
+  let res
+  try {
+    res = await get(url, HONEST_UA)
+  } catch (err) {
+    console.log(`FAILED: ${err.message}`)
+    return
+  }
+  if (res.status !== 200) {
+    console.log(`HTTP ${res.status} - cannot sample`)
+    return
+  }
+
+  const body = res.body
+
+  // What timezone is FF rendering these times in? Everything downstream
+  // depends on the answer, and guessing it puts every backfilled event
+  // hours out. Print any hint the page carries about it.
+  console.log('--- timezone hints ---')
+  const tzPatterns = [
+    /timezone[^,;<>{}]{0,80}/gi,
+    /"tz[A-Za-z]*"\s*:\s*"[^"]{1,40}"/gi,
+    /GMT\s*[+-]\s*\d{1,2}/gi,
+    /\b(EST|EDT|UTC|GMT)\b[^<]{0,40}/g,
+  ]
+  const hints = new Set()
+  for (const p of tzPatterns) {
+    for (const m of body.match(p) || []) hints.add(m.replace(/\s+/g, ' ').trim())
+  }
+  const hintList = [...hints].slice(0, 25)
+  console.log(hintList.length ? hintList.map((h) => `  ${h}`).join('\n') : '  (none found)')
+
+  // Verbatim rows. Each calendar__row is one event (or a day separator);
+  // 8 of them is plenty to see the shape, including how a day-breaker and
+  // a blank-time continuation row differ from a full one.
+  console.log('\n--- first 8 calendar__row blocks, verbatim ---')
+  const rows = body.match(/<tr[^>]*class="[^"]*calendar__row[^"]*"[\s\S]*?<\/tr>/gi) || []
+  console.log(`(total calendar__row matches in page: ${rows.length})\n`)
+  for (const [i, row] of rows.slice(0, 8).entries()) {
+    console.log(`ROW ${i} ${'-'.repeat(56)}`)
+    console.log(row.length > 2600 ? `${row.slice(0, 2600)}\n  ...[truncated ${row.length - 2600}b]` : row)
+    console.log('')
+  }
+
+  // And a row that definitely has an actual, if one exists at all - found
+  // by looking for a calendar__actual cell with something between the tags.
+  console.log('--- a row whose actual cell is non-empty (if any) ---')
+  const withActual = rows.find((r) => {
+    const cell = r.match(/calendar__actual[^>]*>([\s\S]*?)<\/td>/i)
+    if (!cell) return false
+    const text = cell[1].replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+    return text.length > 0
+  })
+  console.log(withActual ? (withActual.length > 2600 ? `${withActual.slice(0, 2600)}...` : withActual) : '  NONE FOUND - no row in this week carries an actual value')
+}
+
 async function main() {
   console.log(`probe run at ${new Date().toISOString()}`)
   await probeFeeds()
   await probeHtml()
+  await dumpMarkup()
   console.log(`
 ${'='.repeat(66)}
 HOW TO READ THIS

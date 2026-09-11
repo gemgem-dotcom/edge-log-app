@@ -690,3 +690,56 @@ and (volatility_regime is not null or volume_regime is not null);
 -- autosaved on blur. Nullable, no default: most existing strategies have
 -- none yet.
 alter table strategies add column if not exists notes text;
+
+-- Forex Factory's economic calendar, refreshed hourly by
+-- scripts/fetch-economic-calendar.js (see that file's header for why it
+-- reads FF's published JSON feeds rather than scraping the calendar page).
+-- Backs the Economic calendar card on the Overview dashboards, which until
+-- now rendered a hardcoded week from lib/marketContextMock.js.
+--
+-- Shared reference data, not anyone's rows - same shape of table as
+-- market_session_stats above, and the same RLS treatment for the same
+-- reason: no user_id means no ownership policy makes sense, so RLS is on
+-- with a read-only policy for signed-in users, and the only writer is the
+-- scheduled script holding SUPABASE_SERVICE_ROLE_KEY (which bypasses RLS).
+--
+-- event_key, not a surrogate id, as the conflict target: it's
+-- day|currency|title (see eventKey in lib/econCalendarEvents.mjs), so an
+-- hourly re-fetch updates the release it already has - picking up `actual`
+-- the moment it prints - instead of inserting a second copy. Keyed on the
+-- calendar DAY rather than the exact timestamp on purpose: FF revises
+-- scheduled times, and a revision should move the existing row, not fork
+-- it.
+--
+-- forecast/previous/actual are text, not numeric, because the calendar's
+-- own figures are not all numbers: '0.3%', '-1.2M', '224K', '<0.1%' and
+-- plain '0' all appear, and the card displays them exactly as FF shows
+-- them. Nothing computes with these.
+create table if not exists economic_events (
+  event_key text primary key,
+  title text not null,
+  currency text not null,
+  event_time timestamptz not null,
+  impact text not null,
+  event_type text not null,
+  forecast text,
+  previous text,
+  actual text,
+  detail_url text,
+  fetched_at timestamptz default now(),
+  created_at timestamptz default now()
+);
+
+-- Every read this table gets is "the events between these two instants,
+-- soonest first" (lib/econCalendarQuery.js); the filters the card applies
+-- on top are low-cardinality and ride along on the same rows.
+create index if not exists economic_events_time_idx on economic_events(event_time);
+
+alter table economic_events enable row level security;
+-- drop-then-create rather than a bare create, same as the policy on
+-- market_session_stats above: Postgres has no "create policy if not
+-- exists" and this file is meant to run top to bottom repeatedly.
+drop policy if exists "Anyone signed in can read economic events" on economic_events;
+create policy "Anyone signed in can read economic events"
+  on economic_events for select
+  using (auth.role() = 'authenticated');

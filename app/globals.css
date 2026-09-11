@@ -36,21 +36,21 @@
    2675  Toast notifications
    2703  Public policy pages (Privacy, Terms)
    2722  Legal links (auth pages + account settings)
-   2761  Economic calendar card (mock - Overview pages)
-   2875  Calendar news badge (Monthly P&L day cells, mock)
-   2896  Streak badge (Overview + strategy detail pages)
-   2919  Market status pill (Overview + strategy detail pages)
-   2945  Today's brief & session stats
-   2980  Market context cards (all-instruments Overview)
-   3013  Edge Insights panel
-   3028  Unverified logged time badge
-   3045  Welcome transition (first-run)
-   3074  Zero-instrument empty state
-   3084  Tutorial overlay (first-run guided tour)
-   3176  Tutorial step 3 (guided form scroll)
-   3223  Press states, value changes, content fade-in
-   3320  Trade log column width stability
-   3345  Strategy notes panel
+   2761  Economic calendar card (Overview pages)
+   2970  Calendar news badge (Monthly P&L day cells, mock)
+   2991  Streak badge (Overview + strategy detail pages)
+   3014  Market status pill (Overview + strategy detail pages)
+   3040  Today's brief & session stats
+   3075  Market context cards (all-instruments Overview)
+   3108  Edge Insights panel
+   3123  Unverified logged time badge
+   3140  Welcome transition (first-run)
+   3169  Zero-instrument empty state
+   3179  Tutorial overlay (first-run guided tour)
+   3271  Tutorial step 3 (guided form scroll)
+   3318  Press states, value changes, content fade-in
+   3415  Trade log column width stability
+   3440  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -191,7 +191,7 @@
    visually: the track is transparent, so on a page short enough not to
    scroll there is no thumb and nothing painted in the reserved gutter -
    it stays invisible instead of showing an empty groove on every page.
-   Thin + --line thumb is the same treatment .econ-calendar-mock-list
+   Thin + --line thumb is the same treatment .econ-calendar-list
    already uses, which is where this pattern comes from. The standard
    properties cover Firefox and current Chrome/Safari; ::-webkit-scrollbar
    covers older WebKit, which ignores them. The two never both apply -
@@ -2758,16 +2758,24 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    closing footer rather than a stray line of text. */
 .policy-footer{margin-top:32px; padding-top:24px; border-top:1px solid var(--line); text-align:center;}
 
-/* ---------- Economic calendar card (mock - Overview pages) ---------- */
+/* ---------- Economic calendar card (Overview pages) ---------- */
+/* Four impact levels in Forex Factory's own colour order - red, orange,
+   yellow, grey - so a trader reading this card recognises the same coding
+   they already know from the source. The orange is a literal rather than a
+   token because it exists only here: --loss/--be already carry the red and
+   yellow, and the palette has no orange of its own to reuse. Grey is the
+   non-economic level (bank holidays and the like), where the point is
+   precisely that it recedes. */
 .econ-impact-dot{width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0;}
 .econ-impact-high{background:var(--loss);}
-.econ-impact-medium{background:var(--be);}
-.econ-impact-low{background:var(--muted);}
+.econ-impact-medium{background:#e0873a;}
+.econ-impact-low{background:var(--be);}
+.econ-impact-holiday{background:var(--muted);}
 
-/* Impact checklist - independent High/Medium/Low checkboxes. Absolute
-   (not .col-filter-menu's own fixed) since this sits in a toolbar above
-   the event list, not inside a horizontally-scrolling ancestor that would
-   clip a fixed-position menu differently than an absolute one anyway. */
+/* Filter popover - absolute (not .col-filter-menu's own fixed) since this
+   sits in a toolbar above the event list, not inside a horizontally-
+   scrolling ancestor that would clip a fixed-position menu differently
+   than an absolute one anyway. */
 .econ-impact-filter{position:relative;}
 /* Overrides .calendar-strategy-filter's 34px right padding, sized for a
    native <select>'s chevron background-image - this is a flex button with
@@ -2775,7 +2783,78 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 /* No :hover of its own - .calendar-strategy-filter:hover (the other class
    combined on this element) already covers it. */
 .econ-impact-filter-btn{display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px;}
-.econ-impact-filter-menu{position:absolute; top:calc(100% + 6px); left:0; z-index:60;}
+.econ-impact-filter-btn svg{width:14px; height:14px; flex-shrink:0;}
+/* How many of the three sections are narrowed, not how many values are
+   picked - "Filter 2" means two dimensions are doing something, which is
+   the useful glance. */
+.econ-filter-count{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:16px; height:16px; padding:0 4px; border-radius:99px;
+  background:var(--accent); color:#04121f; font-size:10.5px; font-weight:700;
+}
+
+/* Two columns: Expected Impact and Event Types stack on the left, the nine
+   currencies run down the right - the same arrangement Forex Factory's own
+   filter panel uses, which is what the trader is already used to reading.
+   Collapses to one column on a narrow viewport via the breakpoint below. */
+.econ-filter-panel{
+  position:absolute; top:calc(100% + 6px); left:0; z-index:60;
+  display:flex; gap:22px; padding:16px 18px;
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45); animation:dropdown-in .15s ease;
+  /* Caps the panel on a short viewport rather than letting it run off the
+     bottom of the screen; the scroll-to-dismiss handler deliberately
+     ignores scrolling that starts inside here. */
+  max-height:min(420px, 70vh); overflow-y:auto;
+}
+/* flex-shrink:0 + width:max-content on both columns: without it the two
+   columns shrink below their own content and the checkbox labels overlap
+   each other. The panel sizes itself to what's in it rather than to the
+   toolbar button it hangs off. */
+.econ-filter-col{display:flex; flex-direction:column; gap:18px; flex-shrink:0; width:max-content;}
+.econ-filter-section-head{
+  display:flex; align-items:baseline; gap:6px; margin-bottom:10px; white-space:nowrap;
+}
+.econ-filter-section-title{font-size:12px; font-weight:700; color:var(--text);}
+.econ-filter-section-links{font-size:11.5px; color:var(--muted);}
+/* Plain text links, not buttons - these are shortcuts beside a heading,
+   and boxing them would give them more weight than the checkboxes they
+   act on. Needs the explicit reset because they are real <button>s (so
+   they are keyboard-reachable), which would otherwise inherit this
+   file's global primary-CTA button styling. */
+.econ-filter-link{
+  background:none; border:none; border-radius:0; box-shadow:none; padding:0;
+  font-family:inherit; font-size:11.5px; font-weight:600;
+  color:var(--accent); cursor:pointer; text-decoration:none;
+}
+.econ-filter-link:hover{text-decoration:underline; filter:none; transform:none; box-shadow:none;}
+.econ-filter-options{display:flex; flex-direction:column; gap:9px;}
+/* max-content, not 1fr: the ten event-type names vary a lot in length
+   ("Bonds" against "Consumer Surveys"), and equal fr tracks size both
+   columns to the widest name in the whole set, leaving a gap the width of
+   "Consumer Surveys" after "Bonds". */
+.econ-filter-options-2col{
+  display:grid; grid-template-columns:repeat(2, max-content);
+  gap:9px 20px;
+}
+.econ-filter-option{
+  display:flex; align-items:center; gap:8px;
+  font-size:12.5px; color:var(--text); cursor:pointer; white-space:nowrap;
+  /* Overrides the uppercase muted styling the base `label` rule gives
+     every other label in the app - these are checkbox captions, not field
+     labels above an input. */
+  text-transform:none; letter-spacing:normal;
+}
+.econ-filter-option input[type="checkbox"]{width:auto; margin:0; flex-shrink:0; cursor:pointer;}
+/* Square, not the round dot used in the list rows - matches the shape FF
+   puts beside each impact level in its own filter, and reads as a legend
+   swatch rather than as a status dot. */
+.econ-impact-swatch{
+  width:13px; height:13px; border-radius:3px; display:inline-block; flex-shrink:0;
+}
+@media (max-width:640px){
+  .econ-filter-panel{flex-direction:column; gap:18px;}
+}
 
 /* Impact checklist + date range picker toolbar reuses .calendar-toolbar
    (defined under Monthly P&L) rather than a bespoke header, so this card's
@@ -2829,49 +2908,65 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    instead of growing arbitrarily tall for a busy week. Scrolls internally
    past 5 rather than pushing the rest of the page down. overflow-x:hidden
    since the vertical scrollbar itself narrows the available row width by
-   its own width - without min-width:0 on .econ-calendar-mock-event below,
+   its own width - without min-width:0 on .econ-calendar-event below,
    that's just enough to force the row wider than the list and produce an
    unwanted second, horizontal scrollbar along the bottom of the card.
    padding-right is a gutter between the rightmost column (figures) and
    the scrollbar track, so a full-width OS scrollbar doesn't read as
    sitting right on top of that text; the thin custom scrollbar below
    also narrows the track itself so there's less of it to crowd in. */
-.econ-calendar-mock-list{
+.econ-calendar-list{
   display:flex; flex-direction:column; max-height:180px; overflow-y:auto; overflow-x:hidden;
   padding-right:10px; scrollbar-width:thin; scrollbar-color:var(--line) transparent;
 }
-.econ-calendar-mock-list::-webkit-scrollbar{width:6px;}
-.econ-calendar-mock-list::-webkit-scrollbar-track{background:transparent;}
-.econ-calendar-mock-list::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
-.econ-calendar-mock-list::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
+.econ-calendar-list::-webkit-scrollbar{width:6px;}
+.econ-calendar-list::-webkit-scrollbar-track{background:transparent;}
+.econ-calendar-list::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+.econ-calendar-list::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
 /* Left/right padding, not just top/bottom - every row carries this, not
    only the highlighted one below, so every impact dot lines up at the same
    x-position regardless of which row (if any) is highlighted. */
-.econ-calendar-mock-row{
+.econ-calendar-row{
   display:flex; align-items:center; gap:12px; padding:10px;
   border-bottom:1px solid var(--line); font-size:13px;
 }
-.econ-calendar-mock-row:last-child{border-bottom:none; padding-bottom:0;}
+.econ-calendar-row:last-child{border-bottom:none; padding-bottom:0;}
 /* Only applied when the visible range is more than a single day (see
    isSingleDay in EconomicCalendarCard) - viewing just today alone has
    nothing to contrast it against, so the highlight would be meaningless. */
-.econ-calendar-mock-row-today{background:rgba(59,167,255,.08); border-radius:8px;}
-.econ-calendar-mock-day{
+.econ-calendar-row-today{background:rgba(59,167,255,.08); border-radius:8px;}
+.econ-calendar-day{
   font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
   width:46px; flex-shrink:0;
 }
-.econ-calendar-mock-time{font-family:'JetBrains Mono',monospace; color:var(--muted); width:44px; flex-shrink:0;}
+.econ-calendar-time{font-family:'JetBrains Mono',monospace; color:var(--muted); width:44px; flex-shrink:0;}
 /* min-width:0 overrides the flex item default of min-width:auto (= its
    own content's intrinsic width), which otherwise refuses to let this
    shrink below that no matter how little room flex:1 actually leaves it -
    exactly what was forcing the row (and the whole list) wider than the
    panel once the vertical scrollbar took a few px off the available
    width. */
-.econ-calendar-mock-event{flex:1; min-width:0; font-weight:600;}
-.econ-calendar-mock-figures{
+.econ-calendar-event{flex:1; min-width:0; font-weight:600;}
+/* text-overflow rather than letting a long FF title ("ECB President
+   Lagarde Speaks at the Annual Meeting of...") push the figures column
+   off the right edge - min-width:0 above is what lets this actually take
+   effect inside a flex row. */
+.econ-calendar-event{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+/* Fixed width so every row's title starts at the same x regardless of
+   whether the code is three letters or the column is empty. */
+.econ-calendar-currency{
+  font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700;
+  color:var(--muted); width:32px; flex-shrink:0;
+}
+.econ-calendar-figures{
+  display:flex; gap:12px;
   font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);
   white-space:nowrap; flex-shrink:0;
 }
+/* The actual is the only one of the three that's a fact rather than an
+   expectation, so it carries the row's text colour while forecast and
+   previous stay muted around it. */
+.econ-figure-actual{color:var(--text); font-weight:600;}
 /* ---------- Calendar news badge (Monthly P&L day cells, mock) ---------- */
 .calendar-news-badge-wrap{position:absolute; top:5px; right:5px;}
 .calendar-news-badge{

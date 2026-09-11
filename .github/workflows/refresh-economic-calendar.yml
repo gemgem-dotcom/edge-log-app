@@ -1,0 +1,68 @@
+# Hourly economic-calendar refresh
+#
+# Runs scripts/fetch-economic-calendar.js, which pulls Forex Factory's
+# published last/this/next week calendar JSON feeds and upserts them into
+# economic_events. See that script's header for why it reads the feeds
+# rather than scraping forexfactory.com/calendar, and schema.sql's comment
+# above `create table economic_events` for the storage side.
+#
+# Hourly, not daily, because the point isn't just the schedule - it's the
+# figures. FF fills in an event's `actual` within minutes of the release
+# printing, and every run rewrites the same row (upsert on event_key), so
+# an hourly cadence is what keeps "what did CPI actually come in at" close
+# to current without ever duplicating a row. Three small JSON requests per
+# run against a feed published for programmatic use is a modest amount of
+# traffic to ask of it.
+#
+# Minute 7 rather than :00 to stay off the hour boundary every other
+# scheduled job on GitHub's shared runners piles onto - Actions' own docs
+# warn that cron at the top of the hour is the most likely to be delayed.
+#
+# Like refresh-market-session-stats.yml (and unlike refresh-cme-holidays.yml)
+# this never touches a committed file: it writes straight to Supabase with
+# SUPABASE_SERVICE_ROLE_KEY and exits, so there's no commit/PR/build-gate
+# mechanic here.
+#
+# The script exits 0 when at least one of the three feeds worked (logging
+# and reporting the ones that didn't to Sentry) and non-zero only when all
+# three fail - i.e. this workflow goes red for "the feed moved or we're
+# being refused", not for one flaky request.
+#
+# Secrets needed (the same ones refresh-market-session-stats.yml already
+# documents - no new ones):
+#   SUPABASE_SERVICE_ROLE_KEY
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SENTRY_DSN     optional; the script's Sentry.init no-ops
+#                              without it
+
+name: Refresh economic calendar
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # 22 for the same reason the other scheduled workflows pin it -
+          # see refresh-market-session-stats.yml's own note on
+          # @supabase/supabase-js needing native WebSocket support.
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Fetch and store the economic calendar
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+        run: node scripts/fetch-economic-calendar.js

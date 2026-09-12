@@ -117,16 +117,37 @@ Environment Variables). The CI build uses harmless placeholder values, because
 nothing during a build talks to the database.
 
 The Overview's "Economic calendar" card is live again, on a different source than the
-one that was pulled out. It reads the `economic_events` table, filled hourly by
-`scripts/fetch-economic-calendar.js` from Forex Factory's own published calendar JSON
-feed (`nfs.faireconomy.media/ff_calendar_thisweek.json`) rather than by scraping
-forexfactory.com/calendar - the page itself sits behind Cloudflare, and the feed is
-the same data published by FF for programmatic use, so the feed is both the sturdier
-and the more honest route. `lib/econCalendarEvents.mjs` holds the one copy of the
-normalising and event-type classification, shared between the script and the app
-(it's `.mjs` so a CommonJS script can `import()` it - see its header). Rows upsert on
-a day+currency+title key, so a revised scheduled time updates the event rather than
-forking it.
+one that was pulled out. It reads the `economic_events` table, filled by
+`scripts/fetch-economic-calendar.js` from **forexfactory.com/calendar's own HTML**,
+parsed by `lib/econCalendarHtml.mjs`.
+
+**This started on FF's published JSON feed and moved off it**, so the reasoning that
+used to sit here is now inverted and worth stating plainly rather than deleting. The
+feed was chosen as the sturdier and more honest route on the assumption that the page
+sat behind Cloudflare for everyone. It doesn't: probed with
+`scripts/probe-forexfactory-sources.js`, the page is served to this app's honest,
+self-identifying User-Agent, and it is the *stock browser* User-Agent that gets
+challenged. So the page is no less legitimate a source than the feed, and it carries
+what the feed structurally cannot - any week or month, `actual` figures, FF's own
+beat/miss marking, revised-previous flags and FF's own event ids. Nothing anywhere
+pretends to be a browser, solves a challenge or evades a bot check, and nothing that
+does should be added: if the honest request stops being served, the answer is a
+different source.
+
+The feed remains as a fallback for the hourly run only, and it omits the columns it
+cannot speak to so a fallback can never blank a stored actual.
+
+`lib/econCalendarEvents.mjs` holds the one copy of the vocabulary, classification and
+day/key helpers, shared between the scripts and the app (both it and the HTML parser
+are `.mjs` so a CommonJS script can `import()` them - see their headers). Rows upsert
+on a day+currency+title key, where the day is **FF's own**, not UTC: FF files an
+evening release under the day the page lists it on, and keying on the UTC day made a
+Thursday-evening speech and a Friday-morning one by the same speaker collide.
+
+Times carry the same care. Each day's first row has `data-day-dateline`, the epoch of
+midnight in FF's display timezone; the parser checks that really is local midnight
+before using the zone to resolve the row's clock time, which is what keeps the two DST
+changeover days right instead of an hour out in each direction.
 
 **Four things the first live run corrected, all found by
 `scripts/smoke-test-forexfactory-feed.js` rather than in review** - the dev sandbox
@@ -135,23 +156,38 @@ the real payload:
 
 - **Only `thisweek` is published.** `ff_calendar_lastweek.json` and
   `ff_calendar_nextweek.json` both 404, so the original three-feed design fetched one
-  working feed and two errors. Coverage is therefore one week at a time - but nothing
-  ever deletes, so the table accumulates history from whenever the job starts running.
-  It cannot backfill the weeks before that, or see past the current one. The smoke
-  test now probes the monthly/daily/XML variants too, so if a wider feed exists it
-  shows up in one run rather than one guess per deploy.
+  working feed and two errors. This one-week ceiling is the reason the feed could not
+  stay the primary source, and it no longer limits the card: the HTML path takes
+  `?week=` and `?month=` for any date, so coverage is now months -1..+1 daily plus a
+  manual backfill over any span.
 - **The feed carries no `actual`.** The only keys present are `country`, `date`,
   `forecast`, `impact`, `previous`, `title`, and zero records carried an actual even
-  for releases that had already printed. The column and the card's `act` display are
-  kept (they cost nothing and work if FF ever adds one) but nothing should claim the
-  figure appears. Hourly is still the right cadence for reschedules and forecast
-  revisions, just not for the reason originally written down.
+  for releases that had already printed. This was the other reason the feed could not
+  remain primary. Actuals now come from the page and the card gives them their own
+  column, colour-coded by FF's own beat/miss marking. The consequence to remember is
+  in the fallback: because feed rows have no actual, upserting them would write null
+  over a stored figure, so the fallback strips those columns entirely.
 - **FF files some events under country `All`** (OPEC, G20 - no single home currency).
   `CURRENCIES` didn't list it, and since the card filters by exact membership, those
   events could never match a checkbox and were invisible with nothing on screen to say
   so. The smoke test now fails on any feed currency the filter doesn't list.
 - **The feed has no `url` field**, so `detail_url` was null on every row. It's now
-  built from the event's date in FF's own `?day=sep7.2026` form.
+  built from the event's FF day in FF's own `?day=sep7.2026` form. A url that *is*
+  supplied is accepted only if it is https on forexfactory.com - nothing renders the
+  column as a link today, and that is exactly when to put the guard in rather than
+  after someone does.
+
+**Four columns and one table were added for all of this** (`ff_event_id`,
+`actual_status`, `previous_revised`, `time_precision`, and the single-row
+`econ_refresh_lock`). Per the Non-negotiables, none of it is live until the SQL is
+run by hand in Supabase - and the fetch script's own failure mode makes that worth
+checking rather than assuming, since a missing column fails the write, not the parse.
+
+**The card also refreshes on demand**, via `app/api/economic-calendar/refresh`, so a
+figure that prints while someone is watching lands without a reload. Fetches are
+rate-limited by *claiming* `econ_refresh_lock` with one conditional UPDATE before
+going to FF, not by reading a timestamp and then going - the latter is check-then-act,
+and every request arriving during the fetch passed it.
 
 Still mock, all from `lib/marketContextMock.js`: the Monthly P&L calendar's news badge
 (`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-events

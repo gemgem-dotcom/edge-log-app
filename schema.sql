@@ -709,18 +709,22 @@ alter table strategies add column if not exists notes text;
 -- forecast or a moved time - instead of inserting a second copy. Keyed on
 -- the calendar DAY rather than the exact timestamp on purpose: FF revises
 -- scheduled times, and a revision should move the existing row, not fork
--- it. Nothing here ever deletes, so the table accumulates history one week
--- at a time (only this week's feed is published - see the script).
+-- it. That day is FF's own display day, not the UTC one - an evening
+-- release is already tomorrow in UTC, and keying it that way collided two
+-- genuinely different events. Nothing here ever deletes; the table is
+-- filled from month pages across a configurable span, so it holds past and
+-- future events, not just the weeks the job happened to be running for.
 --
 -- forecast/previous/actual are text, not numeric, because the calendar's
 -- own figures are not all numbers: '0.3%', '-1.2M', '224K', '<0.1%' and
 -- plain '0' all appear, and the card displays them exactly as FF shows
 -- them. Nothing computes with these.
 --
--- `actual` is nullable and, as things stand, always null: the published
--- feed carries no actual field (confirmed against a real payload). The
--- column is kept because the parser already reads it and a schema change
--- is the expensive way to find out FF added one later.
+-- `actual` is nullable because a release that hasn't happened yet has no
+-- actual, not because the figure is unavailable - it is populated from
+-- forexfactory.com/calendar's own HTML (lib/econCalendarHtml.mjs), which
+-- carries it. The published JSON feed does NOT, which is why that feed is
+-- only a fallback now; see scripts/fetch-economic-calendar.js's header.
 create table if not exists economic_events (
   event_key text primary key,
   title text not null,
@@ -749,3 +753,64 @@ drop policy if exists "Anyone signed in can read economic events" on economic_ev
 create policy "Anyone signed in can read economic events"
   on economic_events for select
   using (auth.role() = 'authenticated');
+
+-- Columns that only exist because the calendar is now read from
+-- forexfactory.com/calendar's own HTML rather than its published JSON feed
+-- (see scripts/fetch-economic-calendar.js's header for why the source
+-- changed). Added separately from the create table above, additive and
+-- re-runnable, so an existing economic_events picks them up in place.
+--
+-- ff_event_id      FF's own identifier for the release. Not the key here -
+--                  event_key (day|currency|title) stays that, so rows
+--                  already stored from the JSON feed keep updating in
+--                  place rather than forking - but it is the sturdier
+--                  identity if that ever needs revisiting, and it is free
+--                  to keep now that the markup carries it.
+-- actual_status    FF's own beat/miss marking on the actual: 'better',
+--                  'worse', or null when it matched forecast or has not
+--                  printed. The colour on FF's own calendar, kept as
+--                  meaning rather than thrown away with the markup.
+-- previous_revised true when FF flags the previous figure as restated
+--                  since it was first published.
+-- time_precision   'exact' for a clock time, 'all_day' or 'tentative' for
+--                  the rows FF gives no time at all. Those are anchored to
+--                  the day's own midnight, so this is what stops the UI
+--                  presenting a placeholder midnight as a real schedule.
+alter table economic_events add column if not exists ff_event_id text;
+alter table economic_events add column if not exists actual_status text;
+alter table economic_events add column if not exists previous_revised boolean;
+alter table economic_events add column if not exists time_precision text;
+
+-- The on-demand calendar refresh (app/api/economic-calendar/refresh) needs
+-- somewhere to CLAIM the right to fetch, not merely to check whether
+-- someone fetched recently. Reading the freshest fetched_at and then going
+-- to Forex Factory is a check-then-act race: every request that arrives
+-- during the fetch (up to 15s) passes the same check, so N open dashboards
+-- produced N fetches of a ~1MB page rather than one, and one signed-in
+-- account could fan that out deliberately. Worse, fetched_at only advances
+-- on a SUCCESSFUL write, so while FF was refusing us nothing recorded the
+-- attempt and every card retried every minute - hammering it hardest
+-- exactly when it was saying no.
+--
+-- A single-row table fixes both. The claim is one conditional UPDATE:
+--
+--   update econ_refresh_lock set claimed_at = now()
+--    where id = 1 and claimed_at < now() - interval '60 seconds'
+--
+-- Concurrent updaters block on the row lock and then re-check the WHERE
+-- against the committed row, so exactly one wins and the losers get zero
+-- rows back. The claim is taken BEFORE the fetch and is not rolled back if
+-- the fetch fails, which is what turns a failure into a real 60s backoff.
+create table if not exists econ_refresh_lock (
+  id int primary key,
+  claimed_at timestamptz not null default to_timestamp(0),
+  constraint econ_refresh_lock_single_row check (id = 1)
+);
+insert into econ_refresh_lock (id, claimed_at)
+  values (1, to_timestamp(0))
+  on conflict (id) do nothing;
+
+-- No policies, deliberately: only the service role touches this, and with
+-- row level security on and nothing granted, a signed-in client cannot
+-- read or move the lock.
+alter table econ_refresh_lock enable row level security;

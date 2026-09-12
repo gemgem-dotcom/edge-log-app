@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Filter } from 'lucide-react'
+import { supabase } from '@/lib/supabaseClient'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { fetchEconomicEvents } from '@/lib/econCalendarQuery'
-import { IMPACT_LEVELS, EVENT_TYPES, CURRENCIES, GLOBAL_CURRENCY } from '@/lib/econCalendarEvents.mjs'
+import { IMPACT_LEVELS, EVENT_TYPES, CURRENCIES } from '@/lib/econCalendarEvents.mjs'
 import DateRangePicker from '@/components/DateRangePicker'
 
 // One filter setting for "the economic calendar", shared by every instance
@@ -28,6 +29,13 @@ const DEFAULT_FILTERS = {
   types: EVENT_TYPES,
   currencies: ['USD'],
 }
+
+// How often an open card asks the server to re-read Forex Factory, so a
+// release that prints while someone is watching appears without a reload.
+// The server applies its own shared cooldown on top of this (see
+// app/api/economic-calendar/refresh/route.js), so this interval is a
+// ceiling on how live the card is, not on how often FF gets fetched.
+const LIVE_REFRESH_MS = 60_000
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -60,16 +68,31 @@ function formatTimeLabel(date) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-// How many of the three sections are narrowed at all. The button reads
-// "Filter" on its own when nothing is, and carries a count when something
-// is - the same "show that a filter is on without spelling out all of it"
-// job the old impact-only label did, but the old approach of naming every
-// selected value doesn't survive three sections and nine currencies.
+// How many of the three sections are hiding something. The button carries
+// that count beside the word "Filter" - the same "show that a filter is on
+// without spelling out all of it" job the old impact-only label did, since
+// naming every selected value doesn't survive three sections and nine
+// currencies.
+// Membership, not length. A stored value whose arrays are the right SIZE
+// but hold names that aren't options any more - an older version's event
+// types, a hand-edited key - counted as "nothing narrowed", so the button
+// read a bare "Filter" while the card below it said "No events match these
+// filters". Asking whether every option is actually selected can't be
+// fooled that way.
+function isNarrowed(selected, allOptions) {
+  return !allOptions.every((option) => selected.includes(option))
+}
+
+// Note this counts against the FULL option list, not against
+// DEFAULT_FILTERS, so a fresh install opens showing 2 - impacts exclude
+// the grey holiday level and currencies start at USD alone. That is the
+// truth the badge is for: two sections really are hiding events, and the
+// trader has no other way to know it before opening the panel.
 function activeSectionCount(filters) {
   let n = 0
-  if (filters.impacts.length !== IMPACT_LEVELS.length) n++
-  if (filters.types.length !== EVENT_TYPES.length) n++
-  if (filters.currencies.length !== CURRENCIES.length) n++
+  if (isNarrowed(filters.impacts, IMPACT_LEVELS.map((i) => i.value))) n++
+  if (isNarrowed(filters.types, EVENT_TYPES)) n++
+  if (isNarrowed(filters.currencies, CURRENCIES)) n++
   return n
 }
 
@@ -185,16 +208,12 @@ function CalendarFilterMenu({ filters, onChange }) {
   )
 }
 
-// Backed by economic_events, refreshed hourly from Forex Factory's own
-// published calendar feed (scripts/fetch-economic-calendar.js). This card
-// used to render a hardcoded week from lib/marketContextMock.js that
-// repeated itself forever; everything on screen here is now real.
-//
-// The `act` figure below renders only when a row has one, which today is
-// never: FF's published feed carries forecast and previous but no actual.
-// It's left in because the column and the parser already handle it, so if
-// FF ever does publish actuals they appear here with no code change - but
-// don't read this as a feature that currently works.
+// Backed by economic_events, refreshed hourly by
+// scripts/fetch-economic-calendar.js from forexfactory.com/calendar's own
+// HTML. This card used to render a hardcoded week from
+// lib/marketContextMock.js that repeated itself forever; everything on
+// screen here is now real, including each release's actual once it prints
+// and FF's own marking of whether that beat or missed forecast.
 export default function EconomicCalendarCard() {
   const [fromDate, setFromDate] = useState(weekStartStr)
   const [toDate, setToDate] = useState(weekEndStr)
@@ -240,6 +259,11 @@ export default function EconomicCalendarCard() {
     async function load() {
       setLoading(true)
       const { data, error: queryError } = await fetchEconomicEvents(fromDate, toDate)
+      // Only a newer RANGE can make this result stale, and that also sets
+      // `cancelled`. The quiet reload below no longer bumps the counter,
+      // so it can't invalidate this load - which is what stops the card
+      // both from wedging on the skeleton and from flashing an empty
+      // state: whichever of the two lands, the range on screen gets rows.
       if (cancelled || loadId !== loadIdRef.current) return
       if (queryError) {
         setError("Couldn't load the economic calendar.")
@@ -255,6 +279,74 @@ export default function EconomicCalendarCard() {
     return () => { cancelled = true }
   }, [fromDate, toDate])
 
+  // The re-read the live refresh below uses. Deliberately separate from
+  // the effect above rather than a shared loader with a `quiet` flag: this
+  // one never touches the loading flag, because dropping the whole card
+  // back to a skeleton every minute would be worse than the staleness it's
+  // fixing. Keeping the two apart also keeps the effect above free of a
+  // setState called synchronously through a useCallback, which React flags
+  // as a cascading render.
+  //
+  // It OBSERVES the load counter without bumping it. Bumping made this
+  // invalidate the initial load, which then finished without rendering
+  // anything - so the card cleared its skeleton onto "No events in this
+  // range." until this request came back. Both requests ask for the same
+  // range, so neither is stale next to the other; the counter is only
+  // there to stop a reply for a range the trader has already moved off.
+  const reloadQuietly = useCallback(async () => {
+    const loadId = loadIdRef.current
+    const { data, error: queryError } = await fetchEconomicEvents(fromDate, toDate)
+    if (loadId !== loadIdRef.current || queryError) return
+    // Clears a stale error too: the render order puts `error` ahead of the
+    // rows, so without this one failed load left the card apologising
+    // forever while every refresh since had quietly succeeded.
+    setError(null)
+    setEvents(data || [])
+  }, [fromDate, toDate])
+
+  // Live refresh: ask the server to re-read Forex Factory, then re-read the
+  // table. Runs on mount and every minute the card stays open, so a figure
+  // that prints while someone is watching lands without a reload.
+  //
+  // Only ever the current week's data is refreshed server-side, so this
+  // does nothing useful when the trader has paged back to an older range -
+  // and the re-read is skipped in that case rather than issuing a query
+  // whose answer cannot have changed.
+  useEffect(() => {
+    const rangeIncludesToday = fromDate <= todayStr() && todayStr() <= toDate
+    if (!rangeIncludesToday) return
+
+    let cancelled = false
+
+    async function refresh() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session || cancelled) return
+        const res = await fetch('/api/economic-calendar/refresh', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        await res.json().catch(() => ({}))
+        // Re-read whatever the answer was. Gating this on `refreshed` was
+        // wrong in the one case it was meant to optimise: a cooldown means
+        // somebody ELSE just refreshed - the hourly job, or another trader
+        // with the dashboard open - so the table has moved and this card's
+        // copy of it hasn't. Skipping the re-read meant the second viewer
+        // never saw a new actual for as long as the card stayed open. The
+        // re-read is one indexed range query; the fetch it might have
+        // avoided is the expensive half, and the server already refused it.
+        if (!cancelled) await reloadQuietly()
+      } catch {
+        // A missed refresh is not worth surfacing - the card still has
+        // whatever the scheduled job last stored.
+      }
+    }
+
+    refresh()
+    const id = setInterval(refresh, LIVE_REFRESH_MS)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [fromDate, toDate, reloadQuietly])
+
   function handleFilterChange(next) {
     setFilters(next)
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(next))
@@ -266,11 +358,15 @@ export default function EconomicCalendarCard() {
   const visible = events.filter((e) => (
     filters.impacts.includes(e.impact)
     && filters.types.includes(e.event_type)
-    // A GLOBAL_CURRENCY event (OPEC, G20) has no currency checkbox of its
-    // own and isn't filtered by currency at all - it isn't any one
-    // country's news, so unticking EUR shouldn't hide it. Impact and event
-    // type still apply, so it's filterable, just not by currency.
-    && (e.currency === GLOBAL_CURRENCY || filters.currencies.includes(e.currency))
+    // Only currencies that HAVE a checkbox are filtered by currency. Two
+    // kinds of row don't: a GLOBAL_CURRENCY event (OPEC, G20), which isn't
+    // any one country's news so unticking EUR shouldn't hide it, and a
+    // currency outside CURRENCIES entirely - a tenth code FF adds, or a
+    // feed record with the field missing. Filtering those by a checkbox
+    // that doesn't exist made them permanently invisible with nothing on
+    // screen to say so; showing them is the failure a trader can actually
+    // see and report. Impact and event type still apply to both.
+    && (!CURRENCIES.includes(e.currency) || filters.currencies.includes(e.currency))
   ))
 
   return (
@@ -297,31 +393,79 @@ export default function EconomicCalendarCard() {
             : 'No events match these filters.'}
         </div>
       ) : (
-        <div className="econ-calendar-list">
-          {visible.map((e) => {
-            const at = new Date(e.event_time)
-            const dateStr = toDateStr(at)
-            return (
-              <div
-                className={`econ-calendar-row ${!isSingleDay && dateStr === today ? 'econ-calendar-row-today' : ''}`}
-                key={e.event_key}
-              >
-                <span className={`econ-impact-dot econ-impact-${e.impact}`} />
-                {!isSingleDay && <span className="econ-calendar-day">{formatDateLabel(at)}</span>}
-                <span className="econ-calendar-time">{formatTimeLabel(at)}</span>
-                <span className="econ-calendar-currency">{e.currency}</span>
-                <span className="econ-calendar-event">{e.title}</span>
-                <span className="econ-calendar-figures">
-                  {e.actual !== null && e.actual !== undefined && (
-                    <span className="econ-figure-actual">act {e.actual}</span>
-                  )}
-                  {e.forecast ? <span>fcst {e.forecast}</span> : null}
-                  {e.previous ? <span>prev {e.previous}</span> : null}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        <>
+          {/* Actual/Forecast/Previous are their own aligned columns rather
+              than labelled inline, so the three figures line up down the
+              card and can be compared at a glance. That only works with a
+              header saying which is which - without the old "act"/"fcst"
+              prefixes the numbers are ambiguous on their own. */}
+          <div className="econ-calendar-list">
+            {/* Inside the scrolling list, not above it. As a sibling its
+                right edge was the panel's, while every row's was the
+                panel's minus the list's padding and minus the scrollbar -
+                so the three figure columns sat 10px (16px once a scrollbar
+                appeared) to the left of the headings naming them. Sharing
+                one scroll box makes that arithmetic identical for both by
+                construction, and sticky keeps the headings in view in a
+                list only five rows tall.
+
+                Not aria-hidden. It was, back when each row still carried
+                its own "act"/"fcst"/"prev" prefixes and this was pure
+                duplication; removing those prefixes made this the only
+                thing naming the three figures, so hiding it left a screen
+                reader reading out three bare numbers per row. */}
+            <div className="econ-calendar-head">
+              {!isSingleDay && <span className="econ-calendar-day">Date</span>}
+              <span className="econ-calendar-time">Time</span>
+              <span className="econ-calendar-currency">Cur</span>
+              <span className="econ-calendar-event">Event</span>
+              <span className="econ-calendar-figure">Actual</span>
+              <span className="econ-calendar-figure">Forecast</span>
+              <span className="econ-calendar-figure">Previous</span>
+            </div>
+            {visible.map((e) => {
+              const at = new Date(e.event_time)
+              const dateStr = toDateStr(at)
+              return (
+                <div
+                  className={`econ-calendar-row ${!isSingleDay && dateStr === today ? 'econ-calendar-row-today' : ''}`}
+                  key={e.event_key}
+                >
+                  <span className={`econ-impact-dot econ-impact-${e.impact}`} />
+                  {!isSingleDay && <span className="econ-calendar-day">{formatDateLabel(at)}</span>}
+                  {/* An all-day or tentative release is stored anchored to
+                      its day's midnight because that is the only honest
+                      thing its timestamp can say. Printing "00:00" would
+                      dress that placeholder up as a schedule, so it gets
+                      FF's own wording instead. */}
+                  <span className="econ-calendar-time">
+                    {e.time_precision && e.time_precision !== 'exact'
+                      ? (e.time_precision === 'tentative' ? 'tent.' : 'all day')
+                      : formatTimeLabel(at)}
+                  </span>
+                  <span className="econ-calendar-currency">{e.currency}</span>
+                  <span className="econ-calendar-event">{e.title}</span>
+                  {/* better/worse is FF's own comparison against its own
+                      forecast, carried through rather than recomputed -
+                      "better" is not always "higher" (an unemployment print
+                      beats by falling), so it's a judgement only the source
+                      can make. */}
+                  <span className={`econ-calendar-figure${e.actual ? ' econ-figure-actual' : ''}${e.actual && e.actual_status ? ` econ-figure-${e.actual_status}` : ''}`}>
+                    {/* The emphasis classes are only applied when there IS
+                        an actual - otherwise the placeholder dash renders
+                        bolder than the real figures around it. */}
+                    {e.actual ?? '–'}
+                  </span>
+                  <span className="econ-calendar-figure">{e.forecast ?? '–'}</span>
+                  <span className="econ-calendar-figure">
+                    {e.previous ?? '–'}
+                    {e.previous_revised && <span className="econ-figure-revised" title="Revised since first published">*</span>}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
     </>
   )

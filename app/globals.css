@@ -37,20 +37,20 @@
    2703  Public policy pages (Privacy, Terms)
    2722  Legal links (auth pages + account settings)
    2761  Economic calendar card (Overview pages)
-   2970  Calendar news badge (Monthly P&L day cells, mock)
-   2991  Streak badge (Overview + strategy detail pages)
-   3014  Market status pill (Overview + strategy detail pages)
-   3040  Today's brief & session stats
-   3075  Market context cards (all-instruments Overview)
-   3108  Edge Insights panel
-   3123  Unverified logged time badge
-   3140  Welcome transition (first-run)
-   3169  Zero-instrument empty state
-   3179  Tutorial overlay (first-run guided tour)
-   3271  Tutorial step 3 (guided form scroll)
-   3318  Press states, value changes, content fade-in
-   3415  Trade log column width stability
-   3440  Strategy notes panel
+   3016  Calendar news badge (Monthly P&L day cells, mock)
+   3037  Streak badge (Overview + strategy detail pages)
+   3060  Market status pill (Overview + strategy detail pages)
+   3086  Today's brief & session stats
+   3121  Market context cards (all-instruments Overview)
+   3154  Edge Insights panel
+   3169  Unverified logged time badge
+   3186  Welcome transition (first-run)
+   3215  Zero-instrument empty state
+   3225  Tutorial overlay (first-run guided tour)
+   3317  Tutorial step 3 (guided form scroll)
+   3364  Press states, value changes, content fade-in
+   3461  Trade log column width stability
+   3486  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -2916,7 +2916,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    sitting right on top of that text; the thin custom scrollbar below
    also narrows the track itself so there's less of it to crowd in. */
 .econ-calendar-list{
-  display:flex; flex-direction:column; max-height:180px; overflow-y:auto; overflow-x:hidden;
+  /* 180px of rows plus the sticky header the list now carries, so the
+     same five rows are visible as before the header moved inside. */
+  display:flex; flex-direction:column; max-height:207px; overflow-y:auto; overflow-x:hidden;
   padding-right:10px; scrollbar-width:thin; scrollbar-color:var(--line) transparent;
 }
 .econ-calendar-list::-webkit-scrollbar{width:6px;}
@@ -2931,6 +2933,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   border-bottom:1px solid var(--line); font-size:13px;
 }
 .econ-calendar-row:last-child{border-bottom:none; padding-bottom:0;}
+/* The shared .skel-line carries a 10px bottom margin, which made each
+   skeleton row 41.5px against a real row's 36px - so the card jumped ~22px
+   the moment the load resolved, which is the one thing a skeleton exists
+   to stop. The row already supplies its own spacing. */
+.econ-calendar-row .skel-line{height:15px; margin-bottom:0;}
 /* Only applied when the visible range is more than a single day (see
    isSingleDay in EconomicCalendarCard) - viewing just today alone has
    nothing to contrast it against, so the highlight would be meaningless. */
@@ -2958,15 +2965,54 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700;
   color:var(--muted); width:32px; flex-shrink:0;
 }
-.econ-calendar-figures{
-  display:flex; gap:12px;
+/* Actual/Forecast/Previous each get their own fixed-width, right-aligned
+   column so the three line up down the card. Fixed rather than content-
+   sized for the same reason the trade log's columns are pinned: a figure
+   appearing or changing length would otherwise shift the columns either
+   side of it on every refresh, and this card refreshes itself every
+   minute. */
+.econ-calendar-figure{
   font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);
-  white-space:nowrap; flex-shrink:0;
+  width:72px; flex-shrink:0; text-align:right; white-space:nowrap;
+}
+/* The header shares the row's exact column classes so the two can't drift
+   apart on width - it differs only in being label text rather than data.
+   padding-left covers the impact dot the rows start with and the header
+   has none of, so the two still line up.
+   Typography matches the table `th` rule this file already uses for every
+   other column header in the app (Inter 10.5px/700, uppercase, .06em,
+   muted) rather than inventing a second header style - measured against a
+   real trade-log header, not eyeballed. The child rule is what actually
+   does the work for the figure columns, which would otherwise keep
+   .econ-calendar-figure's own monospace 12px. */
+/* Sticky first child of .econ-calendar-list, not a sibling above it - see
+   EconomicCalendarCard's own comment. The horizontal padding is a row's
+   own 10px, and the 29px on the left clears the impact dot (10px row
+   padding + the 7px dot + the 12px gap), so every heading sits over its
+   column. A solid background because rows scroll underneath it. */
+.econ-calendar-head{
+  position:sticky; top:0; z-index:1; background:var(--panel);
+  display:flex; align-items:center; gap:12px; padding:0 10px 8px 29px;
+  border-bottom:1px solid var(--line);
+}
+.econ-calendar-head > span{
+  font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
 }
 /* The actual is the only one of the three that's a fact rather than an
    expectation, so it carries the row's text colour while forecast and
    previous stay muted around it. */
 .econ-figure-actual{color:var(--text); font-weight:600;}
+/* Forex Factory's own beat/miss marking, carried through from its markup
+   rather than recomputed here - "better" isn't always "higher" (an
+   unemployment print beats by falling), so it's a call only the source
+   can make. Same win/loss greens and reds the rest of the app uses. */
+.econ-figure-better{color:var(--win);}
+.econ-figure-worse{color:var(--loss);}
+/* Marks a previous figure FF has since restated. Deliberately a quiet
+   asterisk rather than a badge - it qualifies a number the trader is
+   glancing past, it isn't news in itself. */
+.econ-figure-revised{color:var(--be); margin-left:2px;}
 /* ---------- Calendar news badge (Monthly P&L day cells, mock) ---------- */
 .calendar-news-badge-wrap{position:absolute; top:5px; right:5px;}
 .calendar-news-badge{

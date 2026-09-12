@@ -34,6 +34,7 @@ on:
           - scripts/smoke-test-databento-symbols.js
           - scripts/smoke-test-forexfactory-feed.js
           - scripts/probe-forexfactory-sources.js
+          - scripts/inspect-economic-calendar.js
           - scripts/pull-strategy-market-context.js
           - scripts/list-strategy-screenshots.js
           - scripts/scan-strategy-setup-days.js
@@ -98,6 +99,11 @@ jobs:
           DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          # Only inspect-economic-calendar.js reads this, and only to probe
+          # what a signed-out visitor is allowed to do. Safe to expose (see
+          # CLAUDE.md's Environment section); the script says so and skips
+          # that one check if the secret is not set.
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           STRATEGY_NAME: ${{ inputs.strategy }}
           INSTRUMENT_SYMBOL: ${{ inputs.instrument }}

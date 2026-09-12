@@ -96,6 +96,10 @@ scripts/
                               env: this week (hourly), months -1..+1 (daily), or a
                               manual backfill reaching ~2 months back (FF 403s
                               month pages older than that)
+  inspect-economic-calendar.js   read-only health report on economic_events:
+                              coverage, what share of past releases carry an
+                              actual, event_key/timezone invariants, the
+                              refresh lock, and an anon-key RLS probe
   probe-forexfactory-sources.js  read-only recon on FF's page + feed
   smoke-test-forexfactory-feed.js  read-only health check on the fallback feed
 next.config.js                only exists for the mock-DB dev alias - see below

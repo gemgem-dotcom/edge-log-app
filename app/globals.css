@@ -37,20 +37,20 @@
    2703  Public policy pages (Privacy, Terms)
    2722  Legal links (auth pages + account settings)
    2761  Economic calendar card (Overview pages)
-   3003  Calendar news badge (Monthly P&L day cells, mock)
-   3024  Streak badge (Overview + strategy detail pages)
-   3047  Market status pill (Overview + strategy detail pages)
-   3073  Today's brief & session stats
-   3108  Market context cards (all-instruments Overview)
-   3141  Edge Insights panel
-   3156  Unverified logged time badge
-   3173  Welcome transition (first-run)
-   3202  Zero-instrument empty state
-   3212  Tutorial overlay (first-run guided tour)
-   3304  Tutorial step 3 (guided form scroll)
-   3351  Press states, value changes, content fade-in
-   3448  Trade log column width stability
-   3473  Strategy notes panel
+   3011  Calendar news badge (Monthly P&L day cells, mock)
+   3032  Streak badge (Overview + strategy detail pages)
+   3055  Market status pill (Overview + strategy detail pages)
+   3081  Today's brief & session stats
+   3116  Market context cards (all-instruments Overview)
+   3149  Edge Insights panel
+   3164  Unverified logged time badge
+   3181  Welcome transition (first-run)
+   3210  Zero-instrument empty state
+   3220  Tutorial overlay (first-run guided tour)
+   3312  Tutorial step 3 (guided form scroll)
+   3359  Press states, value changes, content fade-in
+   3456  Trade log column width stability
+   3481  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -2916,7 +2916,9 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    sitting right on top of that text; the thin custom scrollbar below
    also narrows the track itself so there's less of it to crowd in. */
 .econ-calendar-list{
-  display:flex; flex-direction:column; max-height:180px; overflow-y:auto; overflow-x:hidden;
+  /* 180px of rows plus the sticky header the list now carries, so the
+     same five rows are visible as before the header moved inside. */
+  display:flex; flex-direction:column; max-height:207px; overflow-y:auto; overflow-x:hidden;
   padding-right:10px; scrollbar-width:thin; scrollbar-color:var(--line) transparent;
 }
 .econ-calendar-list::-webkit-scrollbar{width:6px;}
@@ -2978,7 +2980,13 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    real trade-log header, not eyeballed. The child rule is what actually
    does the work for the figure columns, which would otherwise keep
    .econ-calendar-figure's own monospace 12px. */
+/* Sticky first child of .econ-calendar-list, not a sibling above it - see
+   EconomicCalendarCard's own comment. The horizontal padding is a row's
+   own 10px, and the 29px on the left clears the impact dot (10px row
+   padding + the 7px dot + the 12px gap), so every heading sits over its
+   column. A solid background because rows scroll underneath it. */
 .econ-calendar-head{
+  position:sticky; top:0; z-index:1; background:var(--panel);
   display:flex; align-items:center; gap:12px; padding:0 10px 8px 29px;
   border-bottom:1px solid var(--line);
 }

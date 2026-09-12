@@ -49,8 +49,11 @@ export async function POST(req) {
     return Response.json({ refreshed: false, reason: 'mock-db' })
   }
 
+  // `'Bearer ' + undefined` stringifies to the literal "undefined", which
+  // is truthy - so a caller with no session used to get past this guard
+  // and spend a Supabase round trip proving it. Rejected here instead.
   const token = (req.headers.get('authorization') || '').replace('Bearer ', '').trim()
-  if (!token) {
+  if (!token || token === 'undefined' || token === 'null') {
     return Response.json({ error: 'Not authenticated' }, { status: 401 })
   }
 

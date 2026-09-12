@@ -210,9 +210,16 @@ async function main() {
         log(`  ${target.label}: only ${days} day(s) parsed from a month page - likely truncated`)
         Sentry.captureMessage(`Economic calendar: ${target.label} parsed only ${days} day(s)`, 'warning')
       }
+      // Counted BEFORE the write, because this number decides whether the
+      // JSON fallback runs and that decision is about the PARSER, not the
+      // database. Counting after storeEvents meant a failed upsert - the
+      // four new columns not yet added by hand, say - logged "HTML yielded
+      // no events", blamed the parser, and fell back to the JSON feed,
+      // which omits exactly those columns and therefore succeeded. A green
+      // run, a correct-looking schedule, and no actuals, forever.
+      totalEvents += events.length
       const stored = await storeEvents(admin, events)
       totalStored += stored
-      totalEvents += events.length
       log(`  ${target.label}: ${events.length} event(s) across ${days} day(s), stored ${stored}`)
     } catch (err) {
       Sentry.captureMessage(`Economic calendar ${target.label} failed: ${err.message}`, 'warning')

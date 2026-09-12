@@ -709,8 +709,11 @@ alter table strategies add column if not exists notes text;
 -- forecast or a moved time - instead of inserting a second copy. Keyed on
 -- the calendar DAY rather than the exact timestamp on purpose: FF revises
 -- scheduled times, and a revision should move the existing row, not fork
--- it. Nothing here ever deletes, so the table accumulates history one week
--- at a time (only this week's feed is published - see the script).
+-- it. That day is FF's own display day, not the UTC one - an evening
+-- release is already tomorrow in UTC, and keying it that way collided two
+-- genuinely different events. Nothing here ever deletes; the table is
+-- filled from month pages across a configurable span, so it holds past and
+-- future events, not just the weeks the job happened to be running for.
 --
 -- forecast/previous/actual are text, not numeric, because the calendar's
 -- own figures are not all numbers: '0.3%', '-1.2M', '224K', '<0.1%' and

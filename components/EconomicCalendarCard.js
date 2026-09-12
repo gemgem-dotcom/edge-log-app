@@ -237,7 +237,6 @@ export default function EconomicCalendarCard() {
   // Only the date range is a query input; the three filter sections narrow
   // what's already been fetched, so toggling a checkbox is instant rather
   // than a round trip.
-  //
   useEffect(() => {
     let cancelled = false
     const loadId = ++loadIdRef.current
@@ -245,13 +244,22 @@ export default function EconomicCalendarCard() {
     async function load() {
       setLoading(true)
       const { data, error: queryError } = await fetchEconomicEvents(fromDate, toDate)
-      if (cancelled || loadId !== loadIdRef.current) return
-      if (queryError) {
-        setError("Couldn't load the economic calendar.")
-        setEvents([])
-      } else {
-        setError(null)
-        setEvents(data || [])
+      // `cancelled` and the load id answer two different questions, and
+      // conflating them wedged the card on its skeleton: the live refresh
+      // below shares this ref, so a quiet reload landing first used to
+      // make this return early - skipping setLoading(false) with no later
+      // load to clear it. A superseded load must still stop the skeleton;
+      // only an unmount or a range change (which starts its own load) may
+      // leave it up.
+      if (cancelled) return
+      if (loadId === loadIdRef.current) {
+        if (queryError) {
+          setError("Couldn't load the economic calendar.")
+          setEvents([])
+        } else {
+          setError(null)
+          setEvents(data || [])
+        }
       }
       setLoading(false)
     }
@@ -297,10 +305,16 @@ export default function EconomicCalendarCard() {
           method: 'POST',
           headers: { Authorization: `Bearer ${session.access_token}` },
         })
-        const body = await res.json().catch(() => ({}))
-        // Only re-read when something actually changed. A cooldown hit is
-        // the common case and means the table is already current.
-        if (!cancelled && body.refreshed) await reloadQuietly()
+        await res.json().catch(() => ({}))
+        // Re-read whatever the answer was. Gating this on `refreshed` was
+        // wrong in the one case it was meant to optimise: a cooldown means
+        // somebody ELSE just refreshed - the hourly job, or another trader
+        // with the dashboard open - so the table has moved and this card's
+        // copy of it hasn't. Skipping the re-read meant the second viewer
+        // never saw a new actual for as long as the card stayed open. The
+        // re-read is one indexed range query; the fetch it might have
+        // avoided is the expensive half, and the server already refused it.
+        if (!cancelled) await reloadQuietly()
       } catch {
         // A missed refresh is not worth surfacing - the card still has
         // whatever the scheduled job last stored.
@@ -360,16 +374,30 @@ export default function EconomicCalendarCard() {
               card and can be compared at a glance. That only works with a
               header saying which is which - without the old "act"/"fcst"
               prefixes the numbers are ambiguous on their own. */}
-          <div className="econ-calendar-head" aria-hidden="true">
-            {!isSingleDay && <span className="econ-calendar-day">Date</span>}
-            <span className="econ-calendar-time">Time</span>
-            <span className="econ-calendar-currency">Cur</span>
-            <span className="econ-calendar-event">Event</span>
-            <span className="econ-calendar-figure">Actual</span>
-            <span className="econ-calendar-figure">Forecast</span>
-            <span className="econ-calendar-figure">Previous</span>
-          </div>
           <div className="econ-calendar-list">
+            {/* Inside the scrolling list, not above it. As a sibling its
+                right edge was the panel's, while every row's was the
+                panel's minus the list's padding and minus the scrollbar -
+                so the three figure columns sat 10px (16px once a scrollbar
+                appeared) to the left of the headings naming them. Sharing
+                one scroll box makes that arithmetic identical for both by
+                construction, and sticky keeps the headings in view in a
+                list only five rows tall.
+
+                Not aria-hidden. It was, back when each row still carried
+                its own "act"/"fcst"/"prev" prefixes and this was pure
+                duplication; removing those prefixes made this the only
+                thing naming the three figures, so hiding it left a screen
+                reader reading out three bare numbers per row. */}
+            <div className="econ-calendar-head">
+              {!isSingleDay && <span className="econ-calendar-day">Date</span>}
+              <span className="econ-calendar-time">Time</span>
+              <span className="econ-calendar-currency">Cur</span>
+              <span className="econ-calendar-event">Event</span>
+              <span className="econ-calendar-figure">Actual</span>
+              <span className="econ-calendar-figure">Forecast</span>
+              <span className="econ-calendar-figure">Previous</span>
+            </div>
             {visible.map((e) => {
               const at = new Date(e.event_time)
               const dateStr = toDateStr(at)

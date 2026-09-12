@@ -43,6 +43,8 @@ app/
   auth/callback/page.js       finishes Google sign-in (client component - see below)
   api/record-login/route.js   sign-in history (server only)
   api/delete-account/route.js deletes a user and their data (server only)
+  api/economic-calendar/refresh/route.js
+                              on-demand Forex Factory re-read (server only)
   app/page.js                 first-run instrument + strategy setup
   app/account/page.js         account settings, devices, 2FA, danger zone
   app/[instrument]/
@@ -78,14 +80,23 @@ lib/
   streak.js                    current win/loss streak from a list of trades
   marketContextMock.js         placeholder volatility/key-levels data + the econ events
                                the calendar news badge still uses (not live)
-  econCalendarEvents.mjs       Forex Factory event vocabulary + normalise/classify.
-                               .mjs so the CommonJS scraper can import() it too
+  econCalendarEvents.mjs       Forex Factory event vocabulary + normalise/classify,
+                               plus FF's display timezone and the day/key helpers
+                               both sources share. .mjs so the CommonJS scripts can
+                               import() it too
+  econCalendarHtml.mjs         parses forexfactory.com/calendar's own HTML - the
+                               primary source. Pure functions over a string, so it
+                               is tested against real captured markup
   econCalendarQuery.js         reads economic_events for a local-day date range
 schema.sql                    tables + row level security
 storage-setup.sql             screenshots storage bucket
 scripts/
   update-css-toc.js           regenerates globals.css's table of contents - see below
-  fetch-economic-calendar.js  hourly Forex Factory calendar fetch -> economic_events
+  fetch-economic-calendar.js  Forex Factory calendar -> economic_events. Scope by
+                              env: this week (hourly), months -1..+1 (daily), or any
+                              span for a manual backfill
+  probe-forexfactory-sources.js  read-only recon on FF's page + feed
+  smoke-test-forexfactory-feed.js  read-only health check on the fallback feed
 next.config.js                only exists for the mock-DB dev alias - see below
 vitest.config.mjs             unit test runner - `lib/*.test.js` sit next to the module
                                they cover; see NOTES.md's "Testing and error tracking"
@@ -157,7 +168,8 @@ and error tracking" for the full picture of both.
 
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` are safe to expose.
 `SUPABASE_SERVICE_ROLE_KEY` is **server only** — full admin access, bypasses row
-level security, used solely by the two API routes. Never import it into a page or
+level security, used only by the routes under `app/api` that need to bypass RLS.
+Never import it into a page or
 give it a `NEXT_PUBLIC_` prefix. `NEXT_PUBLIC_SENTRY_DSN` (optional) is also safe
 to expose - a DSN can only send events in, never read anything back out.
 
@@ -167,15 +179,32 @@ build talks to the database.
 
 The Overview's "Economic calendar" card (`components/EconomicCalendarCard.js`) is
 live: it reads the `economic_events` table, which
-`scripts/fetch-economic-calendar.js` refreshes hourly from Forex Factory's own
-published calendar JSON feed (see that script's header for why it reads the feed
-rather than scraping the calendar page, and `lib/econCalendarEvents.mjs` for the
-normalising/classifying it shares with the app). Only FF's `thisweek` feed exists —
-the last/next week variants 404 — so coverage is one week at a time, accumulating in
-the table as the job runs. The feed carries **no `actual` figures**; see NOTES.md for
-the full list of what the first live run corrected. Anything about the feed's real
-shape is answerable by running `scripts/smoke-test-forexfactory-feed.js` from the
-"Run a diagnostic script" workflow — this sandbox can't reach the feed host at all.
+`scripts/fetch-economic-calendar.js` fills from **forexfactory.com/calendar's own
+HTML**, parsed by `lib/econCalendarHtml.mjs` (`lib/econCalendarEvents.mjs` holds the
+vocabulary and classifying both sources share). The page is the source because FF's
+published JSON feed covers one week and carries **no `actual` column at all** — both
+confirmed live. The feed is kept only as a fallback for the hourly run, and it
+deliberately omits the columns it can't speak to so it never overwrites a stored
+actual.
+
+Three jobs run off that one script, scoped by env var
+(`.github/workflows/refresh-economic-calendar.yml`): hourly for the current week,
+daily for months −1..+1, and a manual backfill over any span via
+`CALENDAR_MONTHS_BACK`/`CALENDAR_MONTHS_FORWARD`. On top of those,
+`app/api/economic-calendar/refresh/route.js` re-reads the current week on demand so
+an actual appears while someone is watching; it is rate-limited by a claim on the
+single-row `econ_refresh_lock` table, not by a per-user cooldown.
+
+**Times are never assumed.** FF prints wall-clock times in its own display timezone,
+and each day's first row carries `data-day-dateline`, the epoch of local midnight.
+The parser verifies that dateline really is midnight in FF's zone before using the
+zone to resolve the row's clock time — which is what keeps the two DST changeover
+days right, and what makes `event_key` and `detail_url` agree with FF about which
+day an evening release belongs to.
+
+This sandbox cannot reach either FF host. Run `scripts/probe-forexfactory-sources.js`
+(the page) or `scripts/smoke-test-forexfactory-feed.js` (the fallback feed) from the
+"Run a diagnostic script" workflow to answer anything about their real shape.
 
 Still on mock data from `lib/marketContextMock.js`: the Monthly P&L calendar's news
 badge (`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-

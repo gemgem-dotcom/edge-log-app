@@ -178,6 +178,10 @@ async function reportKeyShape(rows) {
   let malformed = 0
   let dayMismatch = 0
   const examples = []
+  const direction = new Map()
+  const hours = new Map()
+  const precisions = new Map()
+  const fetched = new Map()
   for (const r of rows) {
     const parts = String(r.event_key).split('|')
     if (parts.length !== 3 || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
@@ -188,7 +192,15 @@ async function reportKeyShape(rows) {
     const expected = ffLocalDay(r.event_time)
     if (parts[0] !== expected) {
       dayMismatch++
-      if (examples.length < 5) examples.push(`day ${parts[0]} but event is on ${expected}: ${r.event_key}`)
+      const dir = parts[0] < expected ? 'key-earlier' : 'key-later'
+      direction.set(dir, (direction.get(dir) || 0) + 1)
+      const hour = r.event_time.slice(11, 13)
+      hours.set(hour, (hours.get(hour) || 0) + 1)
+      precisions.set(r.time_precision, (precisions.get(r.time_precision) || 0) + 1)
+      fetched.set(String(r.fetched_at).slice(0, 16), (fetched.get(String(r.fetched_at).slice(0, 16)) || 0) + 1)
+      if (examples.length < 8) {
+        examples.push(`key=${parts[0]} ffday=${expected} time=${r.event_time} prec=${r.time_precision} fetched=${r.fetched_at} :: ${r.event_key}`)
+      }
     }
   }
   line('well-formed day|currency|title', rows.length - malformed)
@@ -198,6 +210,12 @@ async function reportKeyShape(rows) {
     line('', 'stale rows from before the key changed, or a regression - see NOTES.md')
   }
   for (const e of examples) log(`    ${e}`)
+  if (dayMismatch > 0) {
+    log('\n  mismatch direction'); for (const [k, n] of direction) log(`    ${k.padEnd(14)} ${n}`)
+    log('  UTC hour of event_time'); for (const [k, n] of [...hours].sort()) log(`    ${k}:00  ${n}`)
+    log('  time_precision'); for (const [k, n] of precisions) log(`    ${String(k).padEnd(10)} ${n}`)
+    log('  fetched_at minute (which run wrote them)'); for (const [k, n] of [...fetched].sort()) log(`    ${k}  ${n}`)
+  }
 }
 
 function reportDistributions(rows) {

@@ -93,8 +93,9 @@ storage-setup.sql             screenshots storage bucket
 scripts/
   update-css-toc.js           regenerates globals.css's table of contents - see below
   fetch-economic-calendar.js  Forex Factory calendar -> economic_events. Scope by
-                              env: this week (hourly), months -1..+1 (daily), or any
-                              span for a manual backfill
+                              env: this week (hourly), months -1..+1 (daily), or a
+                              manual backfill reaching ~2 months back (FF 403s
+                              month pages older than that)
   probe-forexfactory-sources.js  read-only recon on FF's page + feed
   smoke-test-forexfactory-feed.js  read-only health check on the fallback feed
 next.config.js                only exists for the mock-DB dev alias - see below
@@ -189,8 +190,11 @@ actual.
 
 Three jobs run off that one script, scoped by env var
 (`.github/workflows/refresh-economic-calendar.yml`): hourly for the current week,
-daily for months −1..+1, and a manual backfill over any span via
-`CALENDAR_MONTHS_BACK`/`CALENDAR_MONTHS_FORWARD`. On top of those,
+daily for months −1..+1, and a manual backfill via
+`CALENDAR_MONTHS_BACK`/`CALENDAR_MONTHS_FORWARD`. That backfill reaches about
+**two months back** — measured, FF serves `?month=jul.2026` and newer but 403s
+`?month=jun.2026`, so a larger `CALENDAR_MONTHS_BACK` just logs failed pages
+rather than fetching more. Forward has no such limit. On top of those,
 `app/api/economic-calendar/refresh/route.js` re-reads the current week on demand so
 an actual appears while someone is watching; it is rate-limited by a claim on the
 single-row `econ_refresh_lock` table, not by a per-user cooldown.

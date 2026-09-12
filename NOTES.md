@@ -128,7 +128,7 @@ sat behind Cloudflare for everyone. It doesn't: probed with
 `scripts/probe-forexfactory-sources.js`, the page is served to this app's honest,
 self-identifying User-Agent, and it is the *stock browser* User-Agent that gets
 challenged. So the page is no less legitimate a source than the feed, and it carries
-what the feed structurally cannot - any week or month, `actual` figures, FF's own
+what the feed structurally cannot - months either side of today, `actual` figures, FF's own
 beat/miss marking, revised-previous flags and FF's own event ids. Nothing anywhere
 pretends to be a browser, solves a challenge or evades a bot check, and nothing that
 does should be added: if the honest request stops being served, the answer is a
@@ -159,7 +159,12 @@ the real payload:
   working feed and two errors. This one-week ceiling is the reason the feed could not
   stay the primary source, and it no longer limits the card: the HTML path takes
   `?week=` and `?month=` for any date, so coverage is now months -1..+1 daily plus a
-  manual backfill over any span.
+  manual backfill. That reaches about two months back and no further: measured
+  over two runs on 2026-09-12, `?month=jul.2026` and newer returned 200 while
+  `?month=jun.2026` returned 403 in under 0.1s both times, so FF serves roughly
+  the last 90 days of month pages to this User-Agent. A bigger
+  `CALENDAR_MONTHS_BACK` costs failed pages, not more history - the run logs
+  them, reports to Sentry and carries on.
 - **The feed carries no `actual`.** The only keys present are `country`, `date`,
   `forecast`, `impact`, `previous`, `title`, and zero records carried an actual even
   for releases that had already printed. This was the other reason the feed could not

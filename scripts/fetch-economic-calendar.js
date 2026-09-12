@@ -8,9 +8,9 @@
 // lib/econCalendarHtml.mjs. This used to read FF's published JSON feed
 // instead; that feed is still used as a fallback below, but it cannot be
 // the primary source because it carries exactly one week and no `actual`
-// column at all - both confirmed live. The page carries any week or month,
-// actual values, FF's own beat/miss marking, revised-previous flags, and
-// FF's own event ids.
+// column at all - both confirmed live. The page carries actual values,
+// FF's own beat/miss marking, revised-previous flags, FF's own event ids,
+// and several months either side of today rather than one week.
 //
 // ON ACCESS, stated plainly because "scrape Forex Factory" usually means
 // something worse: the page is served to this script's honest,
@@ -36,13 +36,23 @@
 //     it is the cheaper unit per event for anything wider than a week.
 //     Used by the daily forward-fill and by a manual backfill.
 //
+// HOW FAR BACK THAT ACTUALLY REACHES: about two months, not arbitrarily.
+// Measured on 2026-09-12 across two runs - ?month=jul.2026 and everything
+// newer returned 200, while ?month=jun.2026 returned 403 both times,
+// refused in under 0.1s rather than after a real fetch. So FF serves
+// roughly the last 90 days of month pages to this User-Agent and declines
+// older ones. CALENDAR_MONTHS_BACK above 2 is not an error - those pages
+// are logged as failures and the run carries on with the rest - it simply
+// fetches nothing extra. Forward fill has no such limit in practice; FF
+// publishes months ahead.
+//
 // Nothing here ever deletes. Rows upsert on event_key (day|currency|title),
 // so a re-fetch updates the release it already has - filling in an actual,
 // moving a rescheduled time - rather than inserting a second copy.
 //
 // Usage:
 //   node scripts/fetch-economic-calendar.js
-//   CALENDAR_MONTHS_BACK=6 node scripts/fetch-economic-calendar.js
+//   CALENDAR_MONTHS_BACK=2 node scripts/fetch-economic-calendar.js
 // Env: SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL
 
 const { createClient } = require('@supabase/supabase-js')
@@ -127,11 +137,6 @@ function monthsAround(back, forward) {
   return out
 }
 
-// The JSON feed, used only when the HTML yielded nothing for the current
-// week. It has no actuals and only ever covers this week, so it is a floor
-// rather than a source: if FF's markup changes under us, the card keeps
-// showing a current, correct schedule while the parser is fixed, instead
-// of silently going stale.
 // Columns the JSON feed cannot speak to. The feed carries no actual at
 // all, so normalizeFeedEvent emits actual: null for every record - and an
 // upsert writes that null over a figure the HTML path had already stored.
@@ -147,6 +152,11 @@ function withoutHtmlOnlyColumns(event) {
   return out
 }
 
+// The JSON feed, used only when the HTML yielded nothing for the current
+// week. It has no actuals and only ever covers this week, so it is a floor
+// rather than a source: if FF's markup changes under us, the card keeps
+// showing a current, correct schedule while the parser is fixed, instead
+// of silently going stale.
 async function fallbackToJsonFeed(admin, normalizeFeed) {
   log('HTML yielded no events - falling back to the JSON feed for this week')
   const body = await fetchPage(JSON_FEED, 'application/json')

@@ -37,20 +37,20 @@
    2703  Public policy pages (Privacy, Terms)
    2722  Legal links (auth pages + account settings)
    2761  Economic calendar card (Overview pages)
-   3011  Calendar news badge (Monthly P&L day cells, mock)
-   3032  Streak badge (Overview + strategy detail pages)
-   3055  Market status pill (Overview + strategy detail pages)
-   3081  Today's brief & session stats
-   3116  Market context cards (all-instruments Overview)
-   3149  Edge Insights panel
-   3164  Unverified logged time badge
-   3181  Welcome transition (first-run)
-   3210  Zero-instrument empty state
-   3220  Tutorial overlay (first-run guided tour)
-   3312  Tutorial step 3 (guided form scroll)
-   3359  Press states, value changes, content fade-in
-   3456  Trade log column width stability
-   3481  Strategy notes panel
+   3016  Calendar news badge (Monthly P&L day cells, mock)
+   3037  Streak badge (Overview + strategy detail pages)
+   3060  Market status pill (Overview + strategy detail pages)
+   3086  Today's brief & session stats
+   3121  Market context cards (all-instruments Overview)
+   3154  Edge Insights panel
+   3169  Unverified logged time badge
+   3186  Welcome transition (first-run)
+   3215  Zero-instrument empty state
+   3225  Tutorial overlay (first-run guided tour)
+   3317  Tutorial step 3 (guided form scroll)
+   3364  Press states, value changes, content fade-in
+   3461  Trade log column width stability
+   3486  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -2933,6 +2933,11 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   border-bottom:1px solid var(--line); font-size:13px;
 }
 .econ-calendar-row:last-child{border-bottom:none; padding-bottom:0;}
+/* The shared .skel-line carries a 10px bottom margin, which made each
+   skeleton row 41.5px against a real row's 36px - so the card jumped ~22px
+   the moment the load resolved, which is the one thing a skeleton exists
+   to stop. The row already supplies its own spacing. */
+.econ-calendar-row .skel-line{height:15px; margin-bottom:0;}
 /* Only applied when the visible range is more than a single day (see
    isSingleDay in EconomicCalendarCard) - viewing just today alone has
    nothing to contrast it against, so the highlight would be meaningless. */

@@ -139,7 +139,13 @@ export default function DateRangePicker({ from, to, onChange }) {
   // rangeStart day, so the trader can see what they're about to pick.
   let lo = rangeStart
   let hi = rangeEnd !== null ? rangeEnd : (hoverDate || rangeStart)
-  if (lo && hi && hi < lo) { const t = lo; hi = lo; lo = t }
+  // `hi = lo` before reading lo back out of the temp left BOTH ends equal
+  // to the old lo and threw the old hi away, so hovering backwards from
+  // the first click highlighted nothing at all - the trader picking a
+  // range right-to-left got no preview until they committed the second
+  // click. (handleDayClick's own swap above was always written correctly,
+  // which is why only the preview was affected.)
+  if (lo && hi && hi < lo) { const t = lo; lo = hi; hi = t }
 
   const cells = buildMonthCells(cursor.year, cursor.month)
   const today = todayStr()

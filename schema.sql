@@ -777,3 +777,37 @@ alter table economic_events add column if not exists ff_event_id text;
 alter table economic_events add column if not exists actual_status text;
 alter table economic_events add column if not exists previous_revised boolean;
 alter table economic_events add column if not exists time_precision text;
+
+-- The on-demand calendar refresh (app/api/economic-calendar/refresh) needs
+-- somewhere to CLAIM the right to fetch, not merely to check whether
+-- someone fetched recently. Reading the freshest fetched_at and then going
+-- to Forex Factory is a check-then-act race: every request that arrives
+-- during the fetch (up to 15s) passes the same check, so N open dashboards
+-- produced N fetches of a ~1MB page rather than one, and one signed-in
+-- account could fan that out deliberately. Worse, fetched_at only advances
+-- on a SUCCESSFUL write, so while FF was refusing us nothing recorded the
+-- attempt and every card retried every minute - hammering it hardest
+-- exactly when it was saying no.
+--
+-- A single-row table fixes both. The claim is one conditional UPDATE:
+--
+--   update econ_refresh_lock set claimed_at = now()
+--    where id = 1 and claimed_at < now() - interval '60 seconds'
+--
+-- Concurrent updaters block on the row lock and then re-check the WHERE
+-- against the committed row, so exactly one wins and the losers get zero
+-- rows back. The claim is taken BEFORE the fetch and is not rolled back if
+-- the fetch fails, which is what turns a failure into a real 60s backoff.
+create table if not exists econ_refresh_lock (
+  id int primary key,
+  claimed_at timestamptz not null default to_timestamp(0),
+  constraint econ_refresh_lock_single_row check (id = 1)
+);
+insert into econ_refresh_lock (id, claimed_at)
+  values (1, to_timestamp(0))
+  on conflict (id) do nothing;
+
+-- No policies, deliberately: only the service role touches this, and with
+-- row level security on and nothing granted, a signed-in client cannot
+-- read or move the lock.
+alter table econ_refresh_lock enable row level security;

@@ -65,6 +65,10 @@ const UPSERT_CHUNK = 200
 // there is no reason for it to look like a burst against someone else's
 // site; nothing downstream cares whether a backfill takes a few minutes.
 const PAGE_GAP_MS = 1500
+// Below this many distinct days, a month page did not really come through.
+// Even a quiet holiday month carries events on most weekdays; 20 is well
+// under any real month and well over any truncated one.
+const MIN_DAYS_PER_MONTH_PAGE = 20
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args)
@@ -128,14 +132,29 @@ function monthsAround(back, forward) {
 // rather than a source: if FF's markup changes under us, the card keeps
 // showing a current, correct schedule while the parser is fixed, instead
 // of silently going stale.
+// Columns the JSON feed cannot speak to. The feed carries no actual at
+// all, so normalizeFeedEvent emits actual: null for every record - and an
+// upsert writes that null over a figure the HTML path had already stored.
+// This path runs exactly when the HTML parser is broken, so without this
+// the fallback's first act would be to erase this week's printed actuals,
+// leaving rows rendering a beat/miss colour against a blank figure.
+// Dropping the keys entirely leaves the stored values alone.
+const HTML_ONLY_COLUMNS = ['actual', 'actual_status', 'previous_revised', 'time_precision', 'ff_event_id']
+
+function withoutHtmlOnlyColumns(event) {
+  const out = { ...event }
+  for (const column of HTML_ONLY_COLUMNS) delete out[column]
+  return out
+}
+
 async function fallbackToJsonFeed(admin, normalizeFeed) {
   log('HTML yielded no events - falling back to the JSON feed for this week')
   const body = await fetchPage(JSON_FEED, 'application/json')
   const { events, skipped } = normalizeFeed(JSON.parse(body))
   if (skipped > 0) log(`  json feed: skipped ${skipped} unusable record(s)`)
   if (events.length === 0) throw new Error('JSON feed fallback also produced no events')
-  const stored = await storeEvents(admin, events)
-  log(`  json feed: stored ${stored} event(s)`)
+  const stored = await storeEvents(admin, events.map(withoutHtmlOnlyColumns))
+  log(`  json feed: stored ${stored} event(s) (schedule only - actuals left as they were)`)
   return stored
 }
 
@@ -182,6 +201,14 @@ async function main() {
         Sentry.captureMessage(`Economic calendar: ${target.label} parsed 0 events from ${html.length}b`, 'warning')
         failures++
         continue
+      }
+      // A month page that parses to three days is a truncated response or
+      // a partial render, not a quiet month. It would store fine and
+      // report a clean run, so it is called out - the events themselves
+      // are still good, so they are kept rather than thrown away.
+      if (wide && days < MIN_DAYS_PER_MONTH_PAGE) {
+        log(`  ${target.label}: only ${days} day(s) parsed from a month page - likely truncated`)
+        Sentry.captureMessage(`Economic calendar: ${target.label} parsed only ${days} day(s)`, 'warning')
       }
       const stored = await storeEvents(admin, events)
       totalStored += stored

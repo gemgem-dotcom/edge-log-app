@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 import { parseCalendarHtml, weekUrl } from '@/lib/econCalendarHtml.mjs'
+import { isMockDbEnabled } from '@/lib/mockMode'
 
 // Refreshes the current week of economic_events on demand, so the calendar
 // card shows a release the moment it prints rather than up to an hour
@@ -15,9 +16,14 @@ import { parseCalendarHtml, weekUrl } from '@/lib/econCalendarHtml.mjs'
 // Two things keep that from turning into a stampede against someone else's
 // site:
 //
-//   1. A global cooldown, not a per-user one. The freshest fetched_at in
-//      the table is the shared clock, so ten traders with the dashboard
-//      open produce at most one fetch a minute between them, not ten.
+//   1. A global claim, not a per-user cooldown, and a claim rather than a
+//      check. econ_refresh_lock is a single row moved by one conditional
+//      UPDATE, so ten traders with the dashboard open produce at most one
+//      fetch a minute between them - and, because the claim is taken
+//      before the fetch and kept whether or not it succeeds, a spell of
+//      FF refusing us backs off instead of retrying every minute per tab.
+//      See that table's comment in schema.sql for why the read-then-fetch
+//      version this replaced was not enough.
 //   2. Signed-in callers only, same bearer-token check the other API
 //      routes here use. Otherwise this is an open proxy that will fetch a
 //      1.6MB page for anyone who curls it.
@@ -34,6 +40,15 @@ const USER_AGENT = 'EdgeLog/1.0 (trading journal; +https://github.com/gemgem-dot
 const FETCH_TIMEOUT_MS = 15000
 
 export async function POST(req) {
+  // Against the mock database there is no Supabase to authenticate with
+  // and no reason to fetch a live page - the card polls this every minute,
+  // and without this every `npm run dev:mock` session would quietly beat
+  // on forexfactory.com. Reported as a non-refresh so the card's own "only
+  // re-read when something changed" path behaves exactly as in production.
+  if (isMockDbEnabled()) {
+    return Response.json({ refreshed: false, reason: 'mock-db' })
+  }
+
   const token = (req.headers.get('authorization') || '').replace('Bearer ', '').trim()
   if (!token) {
     return Response.json({ error: 'Not authenticated' }, { status: 401 })
@@ -51,20 +66,27 @@ export async function POST(req) {
     return Response.json({ error: 'Invalid session' }, { status: 401 })
   }
 
-  // The shared cooldown clock. Ordering by fetched_at rather than tracking
-  // state anywhere else keeps this correct across serverless instances,
-  // which have no memory in common.
-  const { data: newest } = await admin
-    .from('economic_events')
-    .select('fetched_at')
-    .order('fetched_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // Claim the fetch. One conditional UPDATE, in the database, so the
+  // decision is atomic across serverless instances that share no memory:
+  // concurrent callers block on the row and then re-check the cutoff
+  // against the committed value, so exactly one gets a row back and
+  // everyone else is told to wait. Doing this BEFORE the fetch is the
+  // whole point - a check that only advanced on success let a failing
+  // fetch be retried by every open tab, every minute.
+  const cutoff = new Date(Date.now() - COOLDOWN_MS).toISOString()
+  const { data: claimed, error: claimError } = await admin
+    .from('econ_refresh_lock')
+    .update({ claimed_at: new Date().toISOString() })
+    .eq('id', 1)
+    .lt('claimed_at', cutoff)
+    .select('claimed_at')
 
-  const lastFetchedAt = newest?.fetched_at ? new Date(newest.fetched_at).getTime() : 0
-  const ageMs = Date.now() - lastFetchedAt
-  if (ageMs < COOLDOWN_MS) {
-    return Response.json({ refreshed: false, reason: 'cooldown', ageMs })
+  if (claimError) {
+    Sentry.captureException(new Error(`Economic calendar refresh could not claim: ${claimError.message}`))
+    return Response.json({ refreshed: false, reason: 'unavailable' })
+  }
+  if (!claimed || claimed.length === 0) {
+    return Response.json({ refreshed: false, reason: 'cooldown' })
   }
 
   try {

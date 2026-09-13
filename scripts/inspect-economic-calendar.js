@@ -172,11 +172,29 @@ function reportPrecision(rows) {
 // The invariant that keeps an evening release from colliding with the next
 // morning's: event_key's day half must be the event's own day in FF's
 // display timezone, not the UTC day.
+// The key's day cannot be re-derived from a stored row, because the row
+// does not record which timezone FF served the page in - and FF does not
+// always use the same one. So this reports the SHAPE of the relationship
+// between the key's day and the event's UTC date rather than asserting one
+// right answer, which is what a Chicago-shaped assumption did before, and
+// what made it both miss a real bug and stand ready to invent false ones.
+//
+// A key day within a day of the event's UTC date is normal: a release in
+// the small hours UTC belongs to the previous day on a calendar displayed
+// west of Greenwich, and to the same day east of it. Anything further
+// apart than that is not a timezone, it is corruption.
+//
+// What to watch is the distribution moving. A run where the -1 bucket
+// suddenly swells is the signature of the bug found on 2026-09-12: FF
+// served month pages from a zone ahead of UTC, the dateline landed at
+// 23:00Z on the previous UTC day, and every key on the page came out a day
+// early while event_time stayed correct - which silently duplicates a row
+// the next time the same release is fetched from a behind-UTC page.
 async function reportKeyShape(rows) {
   log('\nEVENT KEY SHAPE')
-  const { ffLocalDay } = await import('../lib/econCalendarEvents.mjs')
   let malformed = 0
-  let dayMismatch = 0
+  let impossible = 0
+  const offsets = new Map()
   const examples = []
   for (const r of rows) {
     const parts = String(r.event_key).split('|')
@@ -185,17 +203,24 @@ async function reportKeyShape(rows) {
       if (examples.length < 5) examples.push(`malformed: ${r.event_key}`)
       continue
     }
-    const expected = ffLocalDay(r.event_time)
-    if (parts[0] !== expected) {
-      dayMismatch++
-      if (examples.length < 5) examples.push(`day ${parts[0]} but event is on ${expected}: ${r.event_key}`)
+    const diffDays = Math.round(
+      (Date.parse(`${parts[0]}T00:00:00Z`) - Date.parse(`${r.event_time.slice(0, 10)}T00:00:00Z`)) / 86400000,
+    )
+    offsets.set(diffDays, (offsets.get(diffDays) || 0) + 1)
+    if (Math.abs(diffDays) > 1) {
+      impossible++
+      if (examples.length < 5) {
+        examples.push(`key day ${diffDays > 0 ? '+' : ''}${diffDays}d from event: ${r.event_key} at ${r.event_time}`)
+      }
     }
   }
   line('well-formed day|currency|title', rows.length - malformed)
   line('malformed', malformed)
-  line("key day disagrees with FF's day", dayMismatch)
-  if (dayMismatch > 0) {
-    line('', 'stale rows from before the key changed, or a regression - see NOTES.md')
+  line('further than a day from the event', impossible === 0 ? '0  (none - good)' : `${impossible}  <- CORRUPTION`)
+  log('\n  key day relative to the event\'s UTC date')
+  for (const [d, n] of [...offsets].sort((a, b) => a[0] - b[0])) {
+    const label = d === 0 ? 'same day' : `${d > 0 ? '+' : ''}${d} day`
+    log(`    ${label.padEnd(10)} ${String(n).padStart(5)}${Math.abs(d) > 1 ? '   <- impossible' : ''}`)
   }
   for (const e of examples) log(`    ${e}`)
 }

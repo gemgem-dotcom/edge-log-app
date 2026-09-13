@@ -8,6 +8,7 @@ import { invalidateInstruments } from '@/lib/referenceDataCache'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { useConfirm } from '@/lib/useConfirm'
 import { toast } from '@/lib/toast'
+import { activatable } from '@/lib/activatable'
 
 // Kebab menu next to the page title on each per-instrument page (Overview,
 // Trade Log, Strategies) - same shape as the strategy detail page's own
@@ -45,12 +46,12 @@ export default function InstrumentMenu({ instrumentId, symbol }) {
 
   return (
     <div className="strategy-menu-wrap" ref={menuRef}>
-      <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
+      <div className="strategy-menu-btn" {...activatable(() => setMenuOpen(!menuOpen))}>
         <MoreVertical size={17} />
       </div>
       {menuOpen && (
         <div className="strategy-menu-dropdown">
-          <div className="strategy-menu-item strategy-menu-item-danger" onClick={handleRemove}>
+          <div className="strategy-menu-item strategy-menu-item-danger" {...activatable(handleRemove)}>
             Remove instrument
           </div>
         </div>

@@ -25,6 +25,7 @@ import StrategyDetailSkeleton from '@/components/StrategyDetailSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 import ErrorBanner from '@/components/ErrorBanner'
+import { activatable } from '@/lib/activatable'
 
 function hasDollar(t) {
   return t.pnl !== null && t.pnl !== undefined
@@ -276,13 +277,13 @@ export default function StrategyDetailPage({ params }) {
       <div className="strategy-header-row">
         <h1 className="page-title">{strategy.name}</h1>
         <div className="strategy-menu-wrap" ref={menuRef}>
-          <div className="strategy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
+          <div className="strategy-menu-btn" {...activatable(() => setMenuOpen(!menuOpen))}>
             <MoreVertical size={17} />
           </div>
           {menuOpen && (
             <div className="strategy-menu-dropdown">
-              <div className="strategy-menu-item" onClick={openRename}>Rename strategy</div>
-              <div className="strategy-menu-item strategy-menu-item-danger" onClick={() => { setMenuOpen(false); setShowDeleteModal(true) }}>
+              <div className="strategy-menu-item" {...activatable(openRename)}>Rename strategy</div>
+              <div className="strategy-menu-item strategy-menu-item-danger" {...activatable(() => { setMenuOpen(false); setShowDeleteModal(true) })}>
                 Delete strategy
               </div>
             </div>
@@ -299,7 +300,7 @@ export default function StrategyDetailPage({ params }) {
             onChange={(e) => setRenameValue(e.target.value)}
           />
           <button type="submit" disabled={savingRename}>{savingRename ? 'Saving…' : 'Save'}</button>
-          <span className="del" onClick={() => setRenaming(false)}>Cancel</span>
+          <span className="del" {...activatable(() => setRenaming(false))}>Cancel</span>
         </form>
       )}
 

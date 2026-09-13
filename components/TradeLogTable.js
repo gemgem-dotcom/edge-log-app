@@ -14,6 +14,7 @@ import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
 import ScreenshotLightbox from './ScreenshotLightbox'
 import FieldTooltip from './FieldTooltip'
+import { activatable } from '@/lib/activatable'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
@@ -537,7 +538,7 @@ export default function TradeLogTable({
               </button>
             </span>
           ))}
-          <span className="filter-clear-all" onClick={clearAllFilters}>Clear all</span>
+          <span className="filter-clear-all" {...activatable(clearAllFilters)}>Clear all</span>
         </div>
       )}
       {showFilters && (

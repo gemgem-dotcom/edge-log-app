@@ -6,6 +6,7 @@ import { Pencil } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatInTz } from '@/lib/timezone'
 import { useConfirm } from '@/lib/useConfirm'
+import { activatable } from '@/lib/activatable'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and body — no .panel wrapper of its own.
@@ -81,8 +82,8 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
                     {editingDeviceId === ev.id ? (
                       <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
                         <input type="text" value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={ev.device || 'Unknown device'} style={{ padding: '4px 8px', fontSize: '13px', width: '140px' }} autoFocus />
-                        <span className="del save-link" onClick={() => handleSaveNickname(ev.id)}>Save</span>
-                        <span className="del" onClick={() => { setEditingDeviceId(null); setNicknameInput('') }}>Cancel</span>
+                        <span className="del save-link" {...activatable(() => handleSaveNickname(ev.id))}>Save</span>
+                        <span className="del" {...activatable(() => { setEditingDeviceId(null); setNicknameInput('') })}>Cancel</span>
                       </span>
                     ) : (
                       <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
@@ -100,7 +101,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
           </div>
           {loginEvents.length > 5 && (
             <div className="panel-link-row">
-              <span className="panel-link" style={{ cursor: 'pointer' }} onClick={() => setShowAllEvents(!showAllEvents)}>
+              <span className="panel-link" style={{ cursor: 'pointer' }} {...activatable(() => setShowAllEvents(!showAllEvents))}>
                 {showAllEvents ? 'Show fewer' : `Show all ${loginEvents.length} sign-ins`}
               </span>
             </div>

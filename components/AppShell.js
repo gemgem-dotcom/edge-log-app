@@ -7,6 +7,7 @@ import { strategyColor } from '@/lib/strategyColor'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import InstrumentNav from '@/components/InstrumentNav'
 import HeaderClock from '@/components/HeaderClock'
+import { activatable } from '@/lib/activatable'
 
 // Shell for the two pages with no single instrument in view - the
 // cross-instrument Dashboard and the all-instruments Trades page. Mirrors
@@ -77,7 +78,7 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
               Overview
             </Link>
 
-            <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
+            <div className="sidebar-section-header" {...activatable(() => setStrategiesExpanded(!strategiesExpanded))}>
               <span>Strategies</span>
               {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { activatable } from '@/lib/activatable'
 
 // Screenshot viewer shared by the Trade Log's expand row and the trade
 // form (new/edit) - both let a trader step through every screenshot on
@@ -47,7 +48,7 @@ export default function ScreenshotLightbox({ shots, index, onIndexChange, onClos
         </div>
       )}
       <div className={`modal-content${hasMultiple ? ' has-nav' : ''}`} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-close" onClick={onClose}>✕</div>
+        <div className="modal-close" {...activatable(onClose)}>✕</div>
         <img src={shots[index]} alt={`Trade screenshot ${index + 1} of ${shots.length}`} />
       </div>
       {hasMultiple && (

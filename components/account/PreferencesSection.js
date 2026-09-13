@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/lib/toast'
 import { UTC_OFFSETS, offsetLabel } from '@/lib/timezone'
 import { useConfirm } from '@/lib/useConfirm'
+import { activatable } from '@/lib/activatable'
 
 // Timezone is owned by the page rather than here, because the sign-in
 // history renders its timestamps in it and has to re-render on a change.
@@ -65,10 +66,10 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
         <div className="field wide">
           <label>Theme</label>
           <div className="dir-toggle">
-            <div className={`dir-btn ${theme === 'dark' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('dark')}>
+            <div className={`dir-btn ${theme === 'dark' ? 'active-theme' : ''}`} {...activatable(() => handleThemeChange('dark'))}>
               <Moon size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Dark
             </div>
-            <div className={`dir-btn ${theme === 'light' ? 'active-theme' : ''}`} onClick={() => handleThemeChange('light')}>
+            <div className={`dir-btn ${theme === 'light' ? 'active-theme' : ''}`} {...activatable(() => handleThemeChange('light'))}>
               <Sun size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />Light
             </div>
           </div>

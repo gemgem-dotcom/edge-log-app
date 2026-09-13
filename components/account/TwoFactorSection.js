@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useConfirm } from '@/lib/useConfirm'
+import { activatable } from '@/lib/activatable'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and body — no .panel wrapper of its own.
@@ -134,7 +135,7 @@ export default function TwoFactorSection({ initialFactors }) {
           )}
           <div className="mfa-secret-row">
             <span className="trade-id-cell">{enrollSecret}</span>
-            <span className="del" onClick={handleCopySecret}>
+            <span className="del" {...activatable(handleCopySecret)}>
               {secretCopied ? <><Check size={12} style={{ verticalAlign: '-2px' }} /> copied</> : <><Copy size={12} style={{ verticalAlign: '-2px' }} /> copy</>}
             </span>
           </div>

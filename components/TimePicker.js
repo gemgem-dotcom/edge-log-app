@@ -110,17 +110,26 @@ export default function TimePicker({ value, onChange }) {
   const wrap = (n, size) => ((n % size) + size) % size
   const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
 
+  // Each returns the segment's new two-character value. A mouse click on a
+  // chevron ignores it, but a keyboard spin needs it: the focused field is
+  // showing fieldText rather than the committed value, so without this the
+  // number under the cursor would stay put while the real value moved.
   function bumpHour(delta) {
     const currentH12 = parsed ? h12 : 12
     const currentPeriod = parsed ? period : 'AM'
     const newH12 = wrap(currentH12 - 1 + delta, 12) + 1
     commit({ ...base, h: from12Hour(newH12, currentPeriod) })
+    return pad(newH12)
   }
   function bumpMinute(delta) {
-    commit({ ...base, m: wrap((parsed ? minute : 0) + delta, 60) })
+    const newM = wrap((parsed ? minute : 0) + delta, 60)
+    commit({ ...base, m: newM })
+    return pad(newM)
   }
   function bumpSecond(delta) {
-    commit({ ...base, s: wrap((parsed ? second : 0) + delta, 60) })
+    const newS = wrap((parsed ? second : 0) + delta, 60)
+    commit({ ...base, s: newS })
+    return pad(newS)
   }
   function togglePeriod() {
     const currentPeriod = parsed ? period : 'AM'
@@ -148,6 +157,35 @@ export default function TimePicker({ value, onChange }) {
   const [fieldText, setFieldText] = useState('')
   const FIELD_SETTERS = { hour: setHourValue, minute: setMinuteValue, second: setSecondValue }
 
+  // Left/right move between segments; up/down spin the focused one. The
+  // popup's only keyboard route before this was Tab, which stops on all
+  // three of every column's elements - chevron, value, chevron - so
+  // reaching the seconds field meant seven presses, and once there the
+  // arrow keys did nothing at all. AM/PM was worse: a plain <div>, so it
+  // could not be reached or operated by keyboard in any way.
+  const SEGMENTS = ['hour', 'minute', 'second', 'period']
+  const segmentRefs = useRef({})
+
+  // Distinguishes focus arrived at by arrow key from focus arrived at by
+  // tap. They want opposite things from the field: a tap is someone about
+  // to type, so the field blanks (see startEdit); an arrow is someone
+  // moving through, so the value stays visible and is selected instead,
+  // which still lets typing replace it outright rather than append.
+  const arrivedByArrowRef = useRef(false)
+
+  function focusSegment(name) {
+    const el = segmentRefs.current[name]
+    if (!el) return
+    arrivedByArrowRef.current = true
+    el.focus()
+  }
+
+  function moveSegment(from, delta) {
+    const i = SEGMENTS.indexOf(from)
+    const next = SEGMENTS[i + delta]
+    if (next) focusSegment(next)
+  }
+
   function startEdit(field) {
     setEditingField(field)
     editingFieldRef.current = field
@@ -172,16 +210,63 @@ export default function TimePicker({ value, onChange }) {
     setFieldText('')
   }
 
-  const spinCol = (field, label, display, onUp, onDown) => (
+  const spinCol = (field, label, display, onUp, onDown, { min, max }) => (
     <div className="dt-picker-spin-col">
-      <button type="button" className="dt-picker-spin-btn" aria-label={`Increase ${label}`} onClick={onUp}><ChevronUp size={14} /></button>
+      {/* tabIndex={-1} on the chevrons: they stay clickable and keep their
+          labels for a screen reader, but they no longer each take a tab
+          stop. The field between them now does everything they do, and
+          leaving them in the tab order made getting to AM/PM an eleven-key
+          journey. */}
+      <button type="button" tabIndex={-1} className="dt-picker-spin-btn" aria-label={`Increase ${label}`} onClick={onUp}><ChevronUp size={14} /></button>
       <input
+        ref={(el) => { segmentRefs.current[field] = el }}
         type="text" inputMode="numeric" className="dt-picker-spin-value" aria-label={label}
+        role="spinbutton" aria-valuenow={Number(display)} aria-valuemin={min} aria-valuemax={max}
         value={editingField === field ? fieldText : display}
-        onFocus={() => startEdit(field)} onChange={handleFieldChange} onBlur={commitField}
-        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+        onFocus={(e) => {
+          if (arrivedByArrowRef.current) {
+            arrivedByArrowRef.current = false
+            // Keep the number on screen and select it, so the next digit
+            // typed replaces it instead of landing beside it.
+            setEditingField(field)
+            editingFieldRef.current = field
+            setFieldText(display)
+            e.target.select()
+            return
+          }
+          startEdit(field)
+        }}
+        onChange={handleFieldChange} onBlur={commitField}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.target.blur(); return }
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            // Stops the caret jumping to either end of the text, which is
+            // what an up or down arrow does in a text input otherwise.
+            e.preventDefault()
+            setFieldText(e.key === 'ArrowUp' ? onUp() : onDown())
+            return
+          }
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            // Only when the caret is already at that end, so the arrows
+            // still move within a half-typed number first - the same rule
+            // a native date input follows.
+            const el = e.target
+            // A selection counts as being at either end. Arriving by arrow
+            // selects the whole number, and without this that selection
+            // read as "caret not at the end" - so the first press after
+            // each hop only collapsed the selection and the segment took
+            // two presses to leave.
+            const hasSelection = el.selectionStart !== el.selectionEnd
+            const atStart = hasSelection || (el.selectionStart === 0 && el.selectionEnd === 0)
+            const atEnd = hasSelection || (el.selectionStart === el.value.length && el.selectionEnd === el.value.length)
+            if (e.key === 'ArrowRight' && !atEnd) return
+            if (e.key === 'ArrowLeft' && !atStart) return
+            e.preventDefault()
+            moveSegment(field, e.key === 'ArrowRight' ? 1 : -1)
+          }
+        }}
       />
-      <button type="button" className="dt-picker-spin-btn" aria-label={`Decrease ${label}`} onClick={onDown}><ChevronDown size={14} /></button>
+      <button type="button" tabIndex={-1} className="dt-picker-spin-btn" aria-label={`Decrease ${label}`} onClick={onDown}><ChevronDown size={14} /></button>
     </div>
   )
 
@@ -200,15 +285,33 @@ export default function TimePicker({ value, onChange }) {
       {open && (
         <div className="dt-picker-popup dt-picker-popup-time">
           <div className="dt-picker-time-cols">
-            {spinCol('hour', 'hour', pad(h12 ?? 12), () => bumpHour(1), () => bumpHour(-1))}
+            {spinCol('hour', 'hour', pad(h12 ?? 12), () => bumpHour(1), () => bumpHour(-1), { min: 1, max: 12 })}
             <span className="dt-picker-spin-sep">:</span>
-            {spinCol('minute', 'minute', pad(minute ?? 0), () => bumpMinute(1), () => bumpMinute(-1))}
+            {spinCol('minute', 'minute', pad(minute ?? 0), () => bumpMinute(1), () => bumpMinute(-1), { min: 0, max: 59 })}
             <span className="dt-picker-spin-sep">:</span>
-            {spinCol('second', 'second', pad(second ?? 0), () => bumpSecond(1), () => bumpSecond(-1))}
+            {spinCol('second', 'second', pad(second ?? 0), () => bumpSecond(1), () => bumpSecond(-1), { min: 0, max: 59 })}
             <div className="dt-picker-spin-col">
-              <button type="button" className="dt-picker-spin-btn" aria-label="Toggle AM/PM" onClick={togglePeriod}><ChevronUp size={14} /></button>
-              <div className="dt-picker-spin-value">{period ?? 'AM'}</div>
-              <button type="button" className="dt-picker-spin-btn" aria-label="Toggle AM/PM" onClick={togglePeriod}><ChevronDown size={14} /></button>
+              <button type="button" tabIndex={-1} className="dt-picker-spin-btn" aria-label="Toggle AM/PM" onClick={togglePeriod}><ChevronUp size={14} /></button>
+              {/* Was a plain <div>, so it could not be focused or operated
+                  by keyboard at all - the one segment of the time with no
+                  keyboard route to it. It is not an <input> because it is
+                  never typed into; two values and a toggle is what it is.
+                  Up, down and either horizontal arrow all flip it, since
+                  with only two values there is no direction to get wrong. */}
+              <div
+                ref={(el) => { segmentRefs.current.period = el }}
+                className="dt-picker-spin-value"
+                role="spinbutton" tabIndex={0} aria-label="AM/PM" aria-valuetext={period ?? 'AM'}
+                onClick={togglePeriod}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft') { e.preventDefault(); moveSegment('period', -1); return }
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    togglePeriod()
+                  }
+                }}
+              >{period ?? 'AM'}</div>
+              <button type="button" tabIndex={-1} className="dt-picker-spin-btn" aria-label="Toggle AM/PM" onClick={togglePeriod}><ChevronDown size={14} /></button>
             </div>
           </div>
         </div>

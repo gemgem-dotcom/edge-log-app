@@ -78,8 +78,9 @@ lib/
   validatePassword.js         signup password rules
   greeting.js                  time-of-day-aware greeting phrases for the Overview page
   streak.js                    current win/loss streak from a list of trades
-  marketContextMock.js         placeholder volatility/key-levels data + the econ events
-                               the calendar news badge still uses (not live)
+  marketContextMock.js         placeholder volatility/key-levels data + the econ
+                               events the per-instrument upcoming list still uses
+                               (not live)
   econCalendarEvents.mjs       Forex Factory event vocabulary + normalise/classify,
                                plus FF's display timezone and the day/key helpers
                                both sources share. .mjs so the CommonJS scripts can
@@ -219,11 +220,15 @@ This sandbox cannot reach either FF host. Run `scripts/probe-forexfactory-source
 (the page) or `scripts/smoke-test-forexfactory-feed.js` (the fallback feed) from the
 "Run a diagnostic script" workflow to answer anything about their real shape.
 
-Still on mock data from `lib/marketContextMock.js`: the Monthly P&L calendar's news
-badge (`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-
-events list, and the volatility/key-levels cards. Those are the remaining callers of
-`mockEventsForDate`/`upcomingEconEvents`, and pointing them at `economic_events` is
-the natural follow-up now that the table exists.
+The **Monthly P&L calendar's news badge** (`components/CalendarNewsBadge.js`) is live
+too: `lib/useCalendarNewsByDay.js` fetches the visible month once and hands each day
+cell its own events, rather than the badge querying per cell. It shows high and
+medium impact only — the table holds roughly fourteen releases a day, and a badge on
+every weekday says nothing, which was the real fault of the mock week it replaced.
+
+Still on mock data from `lib/marketContextMock.js`: the per-instrument dashboard's
+upcoming-events list (`upcomingEconEvents`) and the volatility/key-levels cards.
+Pointing the upcoming list at `economic_events` is the natural next step.
 
 ## Local dev tooling
 

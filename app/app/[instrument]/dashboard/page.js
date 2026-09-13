@@ -24,6 +24,7 @@ import EquityCurveChart from '@/components/EquityCurveChart'
 import FlippingStatChips from '@/components/FlippingStatChips'
 import TableHeaderTooltip from '@/components/TableHeaderTooltip'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
+import { useCalendarNewsByDay } from '@/lib/useCalendarNewsByDay'
 import StreakBadge from '@/components/StreakBadge'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
@@ -272,6 +273,10 @@ export default function DashboardPage({ params }) {
   const [tradesByStrategy, setTradesByStrategy] = useState({})
   const [allTrades, setAllTrades] = useState([])
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
+
+  // Above the loading early-return below, because hooks have to run on
+  // every render.
+  const newsByDay = useCalendarNewsByDay(calCursor.year, calCursor.month)
   const [calStrategy, setCalStrategy] = useState('all')
   const [perfStrategy, setPerfStrategy] = useState('all')
   const [equityGroup, setEquityGroup] = useState('day')
@@ -759,7 +764,7 @@ winRate={monthStats.winRate}
 className={`calendar-cell ${cell.outside ? 'calendar-cell-outside' : ''} ${cell.count > 0 ? 'calendar-cell-has-trades' : ''} ${toneClass(cell.hasD ? cell.sumD : cell.sumR, cell.count)} ${selectedDate === cell.dateStr ? 'calendar-cell-selected' : ''}`}
 onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ? null : cell.dateStr)}
 >
-<CalendarNewsBadge dateStr={cell.dateStr} />
+<CalendarNewsBadge events={newsByDay[cell.dateStr]} />
 <div className={`calendar-date-num ${cell.dateStr === todayStr ? 'calendar-date-num-today' : ''}`}>{String(cell.dayNum).padStart(2, '0')}</div>
 {cell.count > 0 && (
   <>

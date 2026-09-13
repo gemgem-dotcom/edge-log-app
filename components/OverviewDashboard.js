@@ -19,6 +19,7 @@ import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import WinRateGauge from '@/components/WinRateGauge'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
+import { useCalendarNewsByDay } from '@/lib/useCalendarNewsByDay'
 import StreakBadge from '@/components/StreakBadge'
 import TableHeaderTooltip from '@/components/TableHeaderTooltip'
 import TradeLogTable from '@/components/TradeLogTable'
@@ -229,6 +230,10 @@ export default function OverviewDashboard({ instruments, strategies }) {
   const [perfInstrument, setPerfInstrument] = useState('all')
   const [calInstrument, setCalInstrument] = useState('all')
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
+
+  // Above the loading early-return below, because hooks have to run on
+  // every render.
+  const newsByDay = useCalendarNewsByDay(calCursor.year, calCursor.month)
   const [selectedDate, setSelectedDate] = useState(null)
 
   const instrumentIds = instruments.map((i) => i.id).join(',')
@@ -657,7 +662,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
                       className={`calendar-cell ${cell.outside ? 'calendar-cell-outside' : ''} ${cell.count > 0 ? 'calendar-cell-has-trades' : ''} ${toneClass(cell.hasD ? cell.sumD : cell.sumR, cell.count)} ${selectedDate === cell.dateStr ? 'calendar-cell-selected' : ''}`}
                       onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ? null : cell.dateStr)}
                     >
-                      <CalendarNewsBadge dateStr={cell.dateStr} />
+                      <CalendarNewsBadge events={newsByDay[cell.dateStr]} />
                       <div className={`calendar-date-num ${cell.dateStr === todayStr ? 'calendar-date-num-today' : ''}`}>{String(cell.dayNum).padStart(2, '0')}</div>
                       {cell.count > 0 && (
                         <>

@@ -16,6 +16,7 @@ import { friendlyStrategyError } from '@/lib/supabaseErrors'
 import InstrumentNav from '@/components/InstrumentNav'
 import HeaderClock from '@/components/HeaderClock'
 import TutorialOverlay from '@/components/TutorialOverlay'
+import { activatable } from '@/lib/activatable'
 
 export default function InstrumentLayout({ children, params }) {
   const router = useRouter()
@@ -256,7 +257,7 @@ export default function InstrumentLayout({ children, params }) {
               Overview
             </Link>
 
-            <div className="sidebar-section-header" onClick={() => setStrategiesExpanded(!strategiesExpanded)}>
+            <div className="sidebar-section-header" {...activatable(() => setStrategiesExpanded(!strategiesExpanded))}>
               <span>Strategies</span>
               {strategiesExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </div>
@@ -286,7 +287,7 @@ export default function InstrumentLayout({ children, params }) {
                       onChange={(e) => setNewStrategyName(e.target.value)}
                     />
                     <div className="sidebar-strategy-add-actions">
-                      <span className="del" onClick={cancelAddStrategy}>Cancel</span>
+                      <span className="del" {...activatable(cancelAddStrategy)}>Cancel</span>
                       <button type="submit">Add</button>
                     </div>
                   </form>
@@ -295,7 +296,7 @@ export default function InstrumentLayout({ children, params }) {
                   )}
                 </>
               ) : (
-                <div className="sidebar-substrategy sidebar-strategy-add" data-tutorial-target="add-strategy" onClick={() => setAddingStrategy(true)}>
+                <div className="sidebar-substrategy sidebar-strategy-add" data-tutorial-target="add-strategy" {...activatable(() => setAddingStrategy(true))}>
                   <Plus size={14} /> Add new
                 </div>
               )}

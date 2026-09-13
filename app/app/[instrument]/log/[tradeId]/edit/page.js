@@ -17,6 +17,7 @@ import TradeForm from '@/components/TradeForm'
 import PageLoading from '@/components/PageLoading'
 import PageError from '@/components/PageError'
 import ErrorBanner from '@/components/ErrorBanner'
+import { activatable } from '@/lib/activatable'
 
 export default function EditTradePage({ params }) {
   usePageTitle('Edit Trade')
@@ -216,7 +217,7 @@ export default function EditTradePage({ params }) {
         allowDiscard
         onCancel={() => router.back()}
         footerLeft={
-          <span className="del" style={{ fontSize: '13px', alignSelf: 'center' }} onClick={handleDelete}>
+          <span className="del" style={{ fontSize: '13px', alignSelf: 'center' }} {...activatable(handleDelete)}>
             Delete this trade
           </span>
         }

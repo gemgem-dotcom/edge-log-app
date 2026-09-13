@@ -94,8 +94,7 @@ scripts/
   update-css-toc.js           regenerates globals.css's table of contents - see below
   fetch-economic-calendar.js  Forex Factory calendar -> economic_events. Scope by
                               env: this week (hourly), months -1..+1 (daily), or a
-                              manual backfill reaching ~2 months back (FF 403s
-                              month pages older than that)
+                              manual backfill over a chosen span
   inspect-economic-calendar.js   read-only health report on economic_events:
                               coverage, what share of past releases carry an
                               actual, event_key/timezone invariants, the
@@ -195,13 +194,19 @@ actual.
 Three jobs run off that one script, scoped by env var
 (`.github/workflows/refresh-economic-calendar.yml`): hourly for the current week,
 daily for months −1..+1, and a manual backfill via
-`CALENDAR_MONTHS_BACK`/`CALENDAR_MONTHS_FORWARD`. That backfill reaches about
-**two months back** — measured, FF serves `?month=jul.2026` and newer but 403s
-`?month=jun.2026`, so a larger `CALENDAR_MONTHS_BACK` just logs failed pages
-rather than fetching more. Forward has no such limit. On top of those,
+`CALENDAR_MONTHS_BACK`/`CALENDAR_MONTHS_FORWARD`. How far back that reaches is **not currently known**: a "two months" limit was
+recorded here on 2026-09-12 and was wrong — the 403s it rested on were
+cold-connection rejections of whichever page led each run, not an archive
+horizon (see `fetchPage`'s comment). Don't restate a limit until one is measured
+with the retry in place. On top of those,
 `app/api/economic-calendar/refresh/route.js` re-reads the current week on demand so
-an actual appears while someone is watching; it is rate-limited by a claim on the
-single-row `econ_refresh_lock` table, not by a per-user cooldown.
+an actual appears while someone is watching, within about **ten minutes** rather
+than instantly. It is rate-limited by a claim on the single-row
+`econ_refresh_lock` table, not by a per-user cooldown. That ten minutes is
+deliberate restraint, not caution: at the original 60s one open dashboard asked
+FF for the same page sixty times an hour, and FF started returning 403 for the
+pages we requested most. Nothing here retries a 403 or disguises a request, and
+nothing that does should be added.
 
 **Times are never assumed.** FF prints wall-clock times in its own display timezone,
 and each day's first row carries `data-day-dateline`, the epoch of local midnight.

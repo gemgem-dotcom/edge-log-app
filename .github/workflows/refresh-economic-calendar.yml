@@ -17,10 +17,10 @@
 #
 # A wider one-off backfill is the same script with CALENDAR_MONTHS_BACK set
 # higher - run this workflow by hand rather than adding another schedule.
-# It reaches about two months back and no further: FF serves ?month= pages
-# for roughly the last 90 days to this User-Agent and 403s older ones
-# (measured twice on 2026-09-12 - jul.2026 served, jun.2026 refused). A
-# bigger number logs failed pages, it does not fetch more history.
+# How far back it reaches is not currently known - a "two months" limit
+# noted here on 2026-09-12 turned out to be cold-connection 403s hitting
+# whichever page led the run, not an archive horizon. See the script's
+# fetchPage comment.
 #
 # Nothing here ever deletes, so coverage only ever grows.
 #

@@ -35,7 +35,13 @@ const DEFAULT_FILTERS = {
 // The server applies its own shared cooldown on top of this (see
 // app/api/economic-calendar/refresh/route.js), so this interval is a
 // ceiling on how live the card is, not on how often FF gets fetched.
-const LIVE_REFRESH_MS = 60_000
+//
+// Polling faster than that cooldown buys only the tail end of it - how
+// soon after the cooldown lapses the next fetch goes out - so at a ten
+// minute cooldown, a minute of polling spent fifty-nine requests an hour
+// on our own API to save at most sixty seconds of staleness. Two minutes
+// keeps the same practical freshness for a thirtieth of the traffic.
+const LIVE_REFRESH_MS = 2 * 60_000
 
 function pad(n) {
   return String(n).padStart(2, '0')

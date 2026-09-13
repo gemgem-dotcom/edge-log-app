@@ -200,8 +200,13 @@ daily for months −1..+1, and a manual backfill via
 `?month=jun.2026`, so a larger `CALENDAR_MONTHS_BACK` just logs failed pages
 rather than fetching more. Forward has no such limit. On top of those,
 `app/api/economic-calendar/refresh/route.js` re-reads the current week on demand so
-an actual appears while someone is watching; it is rate-limited by a claim on the
-single-row `econ_refresh_lock` table, not by a per-user cooldown.
+an actual appears while someone is watching, within about **ten minutes** rather
+than instantly. It is rate-limited by a claim on the single-row
+`econ_refresh_lock` table, not by a per-user cooldown. That ten minutes is
+deliberate restraint, not caution: at the original 60s one open dashboard asked
+FF for the same page sixty times an hour, and FF started returning 403 for the
+pages we requested most. Nothing here retries a 403 or disguises a request, and
+nothing that does should be added.
 
 **Times are never assumed.** FF prints wall-clock times in its own display timezone,
 and each day's first row carries `data-day-dateline`, the epoch of local midnight.

@@ -238,18 +238,29 @@ async function main() {
     }
   }
 
-  if (totalEvents === 0) {
-    // Nothing at all came through the HTML path. For the narrow (hourly)
-    // scope there is a floor to fall back to; for a wide backfill there
-    // isn't one, and the run should fail so the workflow goes red.
-    if (!wide) {
-      totalStored += await fallbackToJsonFeed(admin, normalizeFeed)
-    } else {
-      throw new Error(`No events parsed from any of ${targets.length} page(s) - see the errors above`)
-    }
+  if (totalEvents === 0 && !wide) {
+    // A floor, not a rescue: the feed keeps the schedule current while the
+    // page is unavailable, but it carries no actuals, so the run is still
+    // a failure of the thing this job exists to do.
+    totalStored += await fallbackToJsonFeed(admin, normalizeFeed)
   }
 
-  log(`Done. ${targets.length - failures}/${targets.length} page(s) OK, ${totalStored} row(s) written.`)
+  const pagesOk = targets.length - failures
+  log(`Done. ${pagesOk}/${targets.length} page(s) OK, ${totalStored} row(s) written.`)
+
+  // Red when the page gave us nothing at all, whatever the fallback then
+  // salvaged. This used to exit 0 in that case and the workflow went green
+  // while actuals quietly stopped arriving - which is exactly how a source
+  // going away stays unnoticed for a week. A partial wide run is NOT a
+  // failure: FF declines month pages beyond about two months back, so a
+  // backfill is expected to lose its oldest page and still be a good run.
+  if (pagesOk === 0) {
+    throw new Error(
+      `No events parsed from any of ${targets.length} page(s)`
+      + `${totalStored > 0 ? ` - the JSON feed floor stored ${totalStored} row(s), so the schedule is current but no actuals arrived` : ''}`
+      + ' - see the errors above',
+    )
+  }
 }
 
 main()

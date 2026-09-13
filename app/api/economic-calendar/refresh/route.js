@@ -4,14 +4,15 @@ import { parseCalendarHtml, weekUrl } from '@/lib/econCalendarHtml.mjs'
 import { isMockDbEnabled } from '@/lib/mockMode'
 
 // Refreshes the current week of economic_events on demand, so the calendar
-// card shows a release the moment it prints rather than up to an hour
-// later.
+// card shows a release within minutes of it printing rather than waiting
+// on the next scheduled run.
 //
 // This exists alongside the scheduled job rather than replacing it. The
 // hourly/daily workflow is the baseline that keeps the table complete even
 // when nobody is looking; this is what makes it live for someone who IS
-// looking - the card calls it on mount and every minute it stays open, so
-// an actual landing mid-session appears without a reload.
+// looking - the card calls it on mount and every couple of minutes it
+// stays open, so an actual landing mid-session appears without a reload,
+// within about ten minutes rather than instantly (see COOLDOWN_MS).
 //
 // Two things keep that from turning into a stampede against someone else's
 // site:
@@ -19,9 +20,9 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 //   1. A global claim, not a per-user cooldown, and a claim rather than a
 //      check. econ_refresh_lock is a single row moved by one conditional
 //      UPDATE, so ten traders with the dashboard open produce at most one
-//      fetch a minute between them - and, because the claim is taken
+//      fetch per COOLDOWN_MS between them - and, because the claim is taken
 //      before the fetch and kept whether or not it succeeds, a spell of
-//      FF refusing us backs off instead of retrying every minute per tab.
+//      FF refusing us backs off instead of being retried per tab.
 //      See that table's comment in schema.sql for why the read-then-fetch
 //      version this replaced was not enough.
 //   2. Signed-in callers only, same bearer-token check the other API
@@ -32,16 +33,29 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 // table's RLS allows reads to any signed-in user and writes to nobody, so
 // the write side has to come from the service role.
 
-// How stale the table may be before a caller triggers a real fetch. Short
-// enough that "as soon as it's out" is true in practice, long enough that
-// a busy dashboard can't ask FF for the same page more than once a minute.
-const COOLDOWN_MS = 60_000
+// How stale the table may be before a caller triggers a real fetch.
+//
+// This was 60s, which was too eager. One dashboard left open asked Forex
+// Factory for the current week sixty times an hour on its own, and on
+// 2026-09-12 - after a morning of that plus a dozen manual backfill runs -
+// FF began answering 403 to whichever pages we had been asking for most,
+// the current week among them. Causation isn't proven, but the reading is
+// obvious enough to act on, and the right answer to being refused by
+// someone else's site is to ask less rather than to ask harder. Nothing
+// here retries a 403, spoofs a User-Agent or works around a block, and
+// nothing that does should be added.
+//
+// Ten minutes cuts that same dashboard to six fetches an hour while
+// costing very little of what the feature is for: FF fills an actual in
+// within minutes of a release printing, so the figure still lands while
+// the trader is watching, just not within the same minute.
+const COOLDOWN_MS = 10 * 60_000
 const USER_AGENT = 'EdgeLog/1.0 (trading journal; +https://github.com/gemgem-dotcom/edge-log-app)'
 const FETCH_TIMEOUT_MS = 15000
 
 export async function POST(req) {
   // Against the mock database there is no Supabase to authenticate with
-  // and no reason to fetch a live page - the card polls this every minute,
+  // and no reason to fetch a live page - the card polls this on a timer,
   // and without this every `npm run dev:mock` session would quietly beat
   // on forexfactory.com. Reported as a non-refresh so the card's own "only
   // re-read when something changed" path behaves exactly as in production.
@@ -75,7 +89,7 @@ export async function POST(req) {
   // against the committed value, so exactly one gets a row back and
   // everyone else is told to wait. Doing this BEFORE the fetch is the
   // whole point - a check that only advanced on success let a failing
-  // fetch be retried by every open tab, every minute.
+  // fetch be retried by every open tab on every poll.
   const cutoff = new Date(Date.now() - COOLDOWN_MS).toISOString()
   const { data: claimed, error: claimError } = await admin
     .from('econ_refresh_lock')

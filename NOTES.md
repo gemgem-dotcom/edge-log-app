@@ -189,7 +189,8 @@ run by hand in Supabase - and the fetch script's own failure mode makes that wor
 checking rather than assuming, since a missing column fails the write, not the parse.
 
 **The card also refreshes on demand**, via `app/api/economic-calendar/refresh`, so a
-figure that prints while someone is watching lands without a reload. Fetches are
+figure that prints while someone is watching lands without a reload, within about
+ten minutes of FF publishing it. Fetches are
 rate-limited by *claiming* `econ_refresh_lock` with one conditional UPDATE before
 going to FF, not by reading a timestamp and then going - the latter is check-then-act,
 and every request arriving during the fetch passed it.

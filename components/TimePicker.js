@@ -180,6 +180,36 @@ export default function TimePicker({ value, onChange }) {
     el.focus()
   }
 
+  // AM/PM is a <div>, so it cannot do what the other three do on arrival -
+  // an <input> highlights itself with select(). Left alone it instead drew
+  // the app-wide [tabindex]:focus-visible ring, which put a box around
+  // AM/PM while its neighbours showed a filled highlight: two different
+  // answers to "this segment is focused", side by side.
+  //
+  // Selecting its text with a real Range rather than colouring a
+  // background in CSS, because then it is the browser's own selection -
+  // the identical colour to the one h/m/s gets, on every platform,
+  // without a value here to drift from it.
+  function selectPeriodText() {
+    const el = segmentRefs.current.period
+    if (!el || typeof window.getSelection !== 'function') return
+    const selection = window.getSelection()
+    if (!selection) return
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    selection.removeAllRanges()
+    selection.addRange(range)
+  }
+
+  function clearPeriodSelection() {
+    const selection = typeof window.getSelection === 'function' ? window.getSelection() : null
+    // Only clear a selection that is actually ours - collapsing whatever
+    // the user had selected elsewhere on the page would be rude.
+    if (selection && segmentRefs.current.period?.contains(selection.anchorNode)) {
+      selection.removeAllRanges()
+    }
+  }
+
   function moveSegment(from, delta) {
     const i = SEGMENTS.indexOf(from)
     const next = SEGMENTS[i + delta]
@@ -303,11 +333,17 @@ export default function TimePicker({ value, onChange }) {
                 className="dt-picker-spin-value"
                 role="spinbutton" tabIndex={0} aria-label="AM/PM" aria-valuetext={period ?? 'AM'}
                 onClick={togglePeriod}
+                onFocus={selectPeriodText}
+                onBlur={clearPeriodSelection}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowLeft') { e.preventDefault(); moveSegment('period', -1); return }
                   if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     togglePeriod()
+                    // The toggle replaces the text node the range pointed
+                    // at, so the highlight has to be put back on the new
+                    // one or it vanishes after the first press.
+                    requestAnimationFrame(selectPeriodText)
                   }
                 }}
               >{period ?? 'AM'}</div>

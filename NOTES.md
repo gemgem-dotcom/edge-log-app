@@ -159,12 +159,17 @@ the real payload:
   working feed and two errors. This one-week ceiling is the reason the feed could not
   stay the primary source, and it no longer limits the card: the HTML path takes
   `?week=` and `?month=` for any date, so coverage is now months -1..+1 daily plus a
-  manual backfill. That reaches about two months back and no further: measured
-  over two runs on 2026-09-12, `?month=jul.2026` and newer returned 200 while
-  `?month=jun.2026` returned 403 in under 0.1s both times, so FF serves roughly
-  the last 90 days of month pages to this User-Agent. A bigger
-  `CALENDAR_MONTHS_BACK` costs failed pages, not more history - the run logs
-  them, reports to Sentry and carries on.
+  manual backfill over a chosen span.
+
+  **A "two months back" limit was recorded here on 2026-09-12 and was wrong**,
+  and the way it was wrong is worth keeping. `?month=jun.2026` returned 403 on
+  two runs while newer months returned 200, which read convincingly as an
+  archive horizon. It wasn't: June led both runs, and across seven runs the
+  FIRST request of every process 403s while every later one succeeds. The same
+  artifact was later misread a second time, as FF rate-limiting us for asking
+  too often. Two confident explanations, both wrong, from a pattern nobody had
+  tabulated by position-within-run. `fetchPage` now retries a 403 once; no real
+  horizon has been measured since.
 - **The feed carries no `actual`.** The only keys present are `country`, `date`,
   `forecast`, `impact`, `previous`, `title`, and zero records carried an actual even
   for releases that had already printed. This was the other reason the feed could not

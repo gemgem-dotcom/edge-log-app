@@ -36,15 +36,13 @@
 //     it is the cheaper unit per event for anything wider than a week.
 //     Used by the daily forward-fill and by a manual backfill.
 //
-// HOW FAR BACK THAT ACTUALLY REACHES: about two months, not arbitrarily.
-// Measured on 2026-09-12 across two runs - ?month=jul.2026 and everything
-// newer returned 200, while ?month=jun.2026 returned 403 both times,
-// refused in under 0.1s rather than after a real fetch. So FF serves
-// roughly the last 90 days of month pages to this User-Agent and declines
-// older ones. CALENDAR_MONTHS_BACK above 2 is not an error - those pages
-// are logged as failures and the run carries on with the rest - it simply
-// fetches nothing extra. Forward fill has no such limit in practice; FF
-// publishes months ahead.
+// HOW FAR BACK IT REACHES: not yet known, and NOT the "about two months"
+// this comment claimed between 2026-09-12 and 2026-09-13. That figure came
+// from ?month=jun.2026 returning 403 on two runs while newer months
+// returned 200 - which looked like an archive horizon and was not one.
+// June had simply led both runs, and the first request of a run is the one
+// that gets a cold-connection 403 (see fetchPage). With that retried, no
+// horizon has actually been measured. Do not restate one until it has.
 //
 // Nothing here ever deletes. Rows upsert on event_key (day|currency|title),
 // so a re-fetch updates the release it already has - filling in an actual,
@@ -88,17 +86,55 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Retries network errors and 5xx, never a 4xx - a 403 means we are being
-// refused, and asking three times over neither changes that answer nor is
-// a polite thing to do with it.
+// Retries network errors and 5xx, and a 403 exactly once. Never any other
+// 4xx.
+//
+// The 403 exception is narrow and is there because of what seven runs on
+// 2026-09-12/13 actually showed: the FIRST request of every run came back
+// 403, and every later request in the same process came back 200. Not a
+// particular URL - whichever page happened to be asked for first. June
+// 403'd when it led a backfill, then August did, then September, then the
+// current week. It read like "FF declines months older than two" and like
+// "FF is rate-limiting us", and it was neither; both of those readings are
+// now corrected in the docs.
+//
+// So this is not a considered refusal being argued with. FF serves this
+// app's honest User-Agent perfectly well - it does so on the second
+// request, every time - and the first-request 403 is an artifact of a cold
+// connection at their edge. Asking a second time is what a normal HTTP
+// client does with a transient rejection, and the comment that used to sit
+// here ("asking three times over neither changes that answer") was simply
+// wrong on the facts: it demonstrably does.
+//
+// What has NOT changed, and must not: nothing here varies the User-Agent,
+// pretends to be a browser, solves a challenge, or routes around a block.
+// One polite retry, then we take no for an answer - and every other 4xx is
+// still taken at face value on the first try. If FF ever starts refusing
+// the second request too, that is a real no, and the answer is a different
+// source rather than a third attempt.
+//
+// This matters most for the single-page callers - the hourly week fetch
+// and the on-demand refresh route - whose one and only request was always
+// the first one, and so always the one that got refused. That is why the
+// live path had never once succeeded.
+const FORBIDDEN_RETRIES = 1
+const FORBIDDEN_RETRY_DELAY_MS = 2000
+
 async function fetchPage(url, accept) {
   let lastError = null
+  let forbiddenRetriesLeft = FORBIDDEN_RETRIES
   for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
     try {
       const res = await fetch(url, {
         headers: { 'User-Agent': USER_AGENT, Accept: accept },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       })
+      if (res.status === 403 && forbiddenRetriesLeft > 0) {
+        forbiddenRetriesLeft--
+        log(`  ${url} returned 403 on a cold connection - retrying once in ${FORBIDDEN_RETRY_DELAY_MS}ms`)
+        await sleep(FORBIDDEN_RETRY_DELAY_MS)
+        continue
+      }
       if (res.status >= 400 && res.status < 500) {
         throw new Error(`${url} returned ${res.status} (not retried)`)
       }

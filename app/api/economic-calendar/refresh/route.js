@@ -52,6 +52,28 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 const COOLDOWN_MS = 10 * 60_000
 const USER_AGENT = 'EdgeLog/1.0 (trading journal; +https://github.com/gemgem-dotcom/edge-log-app)'
 const FETCH_TIMEOUT_MS = 15000
+const FORBIDDEN_RETRY_DELAY_MS = 2000
+
+// One retry, and only on a 403. Across seven runs on 2026-09-12/13 the
+// FIRST request of every process came back 403 and every later one came
+// back 200 - whichever page happened to lead. This route asks for exactly
+// one page, so its single request was always that first one, which is why
+// it claimed the lock every poll and then never wrote a row.
+//
+// See scripts/fetch-economic-calendar.js's fetchPage for the full evidence
+// and for the line this does not cross: no User-Agent games, no pretending
+// to be a browser, no solving a challenge. One polite second ask, then we
+// take no for an answer.
+async function fetchWeekPage() {
+  const request = () => fetch(weekUrl(new Date()), {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
+  const first = await request()
+  if (first.status !== 403) return first
+  await new Promise((resolve) => setTimeout(resolve, FORBIDDEN_RETRY_DELAY_MS))
+  return request()
+}
 
 export async function POST(req) {
   // Against the mock database there is no Supabase to authenticate with
@@ -107,10 +129,7 @@ export async function POST(req) {
   }
 
   try {
-    const res = await fetch(weekUrl(new Date()), {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    })
+    const res = await fetchWeekPage()
     if (!res.ok) throw new Error(`forexfactory returned ${res.status}`)
 
     const { events } = parseCalendarHtml(await res.text())

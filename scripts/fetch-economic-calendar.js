@@ -185,20 +185,36 @@ async function storeEvents(admin, events) {
 // lists carries a fetched_at at or after it; anything older in the same
 // range was not on the page. Passing it in rather than reading the clock
 // here keeps a slow store from making its own rows look stale.
-async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, coveredTo, since }) {
+async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, coveredTo, coveredDays, since }) {
   if (!coveredFrom || !coveredTo) return 0
 
   // Read first, decide, then delete. A conditional delete would be one
   // round trip, but it would also be unbounded: there would be no count to
   // check against the threshold until after the rows were gone.
-  const { data: inRange, error: readErr } = await admin
-    .from('economic_events')
-    .select('event_key, title, currency, event_time, fetched_at')
-    .gte('event_time', coveredFrom)
-    .lt('event_time', coveredTo)
-  if (readErr) throw new Error(`removal scan failed: ${readErr.message}`)
+  // Paged. PostgREST caps an unbounded select at 1000 rows and returns
+  // that first page with no error and no flag - the trap lib/fetchAllRows
+  // exists for. A busy month's range is near that cap, and a silently
+  // truncated scan would make the denominator the whole threshold rests on
+  // quietly wrong, over an arbitrary unordered subset.
+  const inRange = []
+  const SCAN_PAGE = 1000
+  for (let page = 0; page < 50; page++) {
+    const from = page * SCAN_PAGE
+    const { data, error: readErr } = await admin
+      .from('economic_events')
+      .select('event_key, title, currency, event_time, fetched_at')
+      .gte('event_time', coveredFrom)
+      .lt('event_time', coveredTo)
+      .order('event_time', { ascending: true })
+      .order('event_key', { ascending: true })
+      .range(from, from + SCAN_PAGE - 1)
+    if (readErr) throw new Error(`removal scan failed: ${readErr.message}`)
+    const rows = data || []
+    inRange.push(...rows)
+    if (rows.length < SCAN_PAGE) break
+  }
 
-  const { vanished, allowance, inRangeCount, allowed } = planRemoval(inRange, since)
+  const { vanished, allowance, inRangeCount, allowed } = planRemoval(inRange, since, coveredDays)
   if (vanished.length === 0) return 0
 
   if (!allowed) {
@@ -214,7 +230,17 @@ async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, co
   }
 
   const keys = vanished.map((r) => r.event_key)
-  const { error: delErr } = await admin.from('economic_events').delete().in('event_key', keys)
+  // Conditioned on fetched_at as well as the key. Between the scan and
+  // this delete another writer can legitimately refresh one of these rows -
+  // the on-demand refresh route upserts the current week whenever a
+  // dashboard mounts - and an unconditional delete would remove a row that
+  // had just been confirmed present on FF. The predicate costs nothing and
+  // makes the delete self-verifying.
+  const { error: delErr } = await admin
+    .from('economic_events')
+    .delete()
+    .in('event_key', keys)
+    .lt('fetched_at', since)
   if (delErr) throw new Error(`removal failed: ${delErr.message}`)
 
   // Named, not just counted. A removal is the one thing here that destroys
@@ -303,7 +329,7 @@ async function main() {
     if (i > 0) await sleep(PAGE_GAP_MS)
     try {
       const html = await fetchPage(target.url, 'text/html')
-      const { events, skipped, days, dstDays, oddDatelines, coveredFrom, coveredTo } = parseCalendarHtml(html)
+      const { events, skipped, days, dstDays, oddDatelines, coveredFrom, coveredTo, coveredDays } = parseCalendarHtml(html)
       if (skipped > 0) log(`  ${target.label}: skipped ${skipped} unusable row(s)`)
       // The parser corrects a clock-change day using the page's own day
       // lengths. Saying so is the point: the previous implementation
@@ -354,16 +380,22 @@ async function main() {
       // is NOT on it. A month page that came back thin already warned above;
       // letting it also delete would turn a truncated response into data
       // loss, which is the one outcome worth more than the staleness.
-      const trustedForRemoval = !wide || days >= MIN_DAYS_PER_MONTH_PAGE
+      // `skipped` counts rows the parser SAW and could not use, and those
+      // are exactly the rows that will look vanished: they are in range,
+      // they exist from earlier runs, and this run will not refresh them.
+      // The relationship is one for one, so the clearest signal that the
+      // parser is dropping real rows has to gate the destructive step.
+      const trustedForRemoval = skipped === 0 && (!wide || days >= MIN_DAYS_PER_MONTH_PAGE)
       if (trustedForRemoval) {
         totalRemoved += await removeVanishedEvents(admin, planRemoval, {
           label: target.label,
           coveredFrom,
           coveredTo,
+          coveredDays,
           since: storeStartedAt,
         })
       } else {
-        log(`  ${target.label}: not removing anything - the page is too thin to trust for absence`)
+        log(`  ${target.label}: not removing anything - ${skipped > 0 ? `${skipped} row(s) were skipped` : 'the page is too thin'}, so it cannot be trusted for absence`)
       }
     } catch (err) {
       Sentry.captureMessage(`Economic calendar ${target.label} failed: ${err.message}`, 'warning')

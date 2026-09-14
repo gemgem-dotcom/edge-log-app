@@ -6,29 +6,13 @@ import { supabase } from '@/lib/supabaseClient'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { fetchEconomicEvents } from '@/lib/econCalendarQuery'
 import { IMPACT_LEVELS, EVENT_TYPES, CURRENCIES } from '@/lib/econCalendarEvents.mjs'
+import {
+  DEFAULT_FILTERS,
+  readStoredFilters,
+  writeStoredFilters,
+  activeSectionCount,
+} from '@/lib/econCalendarFilters'
 import DateRangePicker from '@/components/DateRangePicker'
-
-// One filter setting for "the economic calendar", shared by every instance
-// of this card rather than one per page it appears on. Versioned in the key
-// name because the stored shape changed from a bare array of impacts to an
-// object covering all three sections - an older value under the old key is
-// simply ignored rather than needing a migration path.
-const FILTER_STORAGE_KEY = 'econCalendarFilters.v2'
-
-// Impacts default to everything except the grey non-economic level, which
-// is bank holidays and other "nothing is released here" entries - useful to
-// be able to see, noise to have on by default.
-//
-// Currencies default to USD alone, matching what this app is for: every
-// instrument in lib/instrumentCatalog.js is a US futures contract, so a
-// default of all nine would bury the releases that actually move them
-// under eight other countries' calendars. Every currency is one checkbox
-// away for anyone trading the correlations.
-const DEFAULT_FILTERS = {
-  impacts: ['high', 'medium', 'low'],
-  types: EVENT_TYPES,
-  currencies: ['USD'],
-}
 
 // How often an open card asks the server to re-read Forex Factory, so a
 // release that prints while someone is watching appears without a reload.
@@ -72,34 +56,6 @@ function formatDateLabel(date) {
 }
 function formatTimeLabel(date) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
-// How many of the three sections are hiding something. The button carries
-// that count beside the word "Filter" - the same "show that a filter is on
-// without spelling out all of it" job the old impact-only label did, since
-// naming every selected value doesn't survive three sections and nine
-// currencies.
-// Membership, not length. A stored value whose arrays are the right SIZE
-// but hold names that aren't options any more - an older version's event
-// types, a hand-edited key - counted as "nothing narrowed", so the button
-// read a bare "Filter" while the card below it said "No events match these
-// filters". Asking whether every option is actually selected can't be
-// fooled that way.
-function isNarrowed(selected, allOptions) {
-  return !allOptions.every((option) => selected.includes(option))
-}
-
-// Note this counts against the FULL option list, not against
-// DEFAULT_FILTERS, so a fresh install opens showing 2 - impacts exclude
-// the grey holiday level and currencies start at USD alone. That is the
-// truth the badge is for: two sections really are hiding events, and the
-// trader has no other way to know it before opening the panel.
-function activeSectionCount(filters) {
-  let n = 0
-  if (isNarrowed(filters.impacts, IMPACT_LEVELS.map((i) => i.value))) n++
-  if (isNarrowed(filters.types, EVENT_TYPES)) n++
-  if (isNarrowed(filters.currencies, CURRENCIES)) n++
-  return n
 }
 
 // One checkbox group inside the filter panel, with FF's own "(all, none)"
@@ -238,21 +194,7 @@ export default function EconomicCalendarCard() {
   // client-side (the dashboard gates it behind its own loading state), so
   // there's no SSR/hydration mismatch to defer around.
   useEffect(() => {
-    const saved = localStorage.getItem(FILTER_STORAGE_KEY)
-    if (!saved) return
-    try {
-      const parsed = JSON.parse(saved)
-      // Field by field, not a wholesale replace: a stored value written by
-      // an older version of this card (or hand-edited) shouldn't be able
-      // to leave a section undefined and crash every .includes() below.
-      setFilters({
-        impacts: Array.isArray(parsed?.impacts) ? parsed.impacts : DEFAULT_FILTERS.impacts,
-        types: Array.isArray(parsed?.types) ? parsed.types : DEFAULT_FILTERS.types,
-        currencies: Array.isArray(parsed?.currencies) ? parsed.currencies : DEFAULT_FILTERS.currencies,
-      })
-    } catch {
-      // Malformed value - fall back to the defaults already set above.
-    }
+    setFilters(readStoredFilters())
   }, [])
 
   // Only the date range is a query input; the three filter sections narrow
@@ -353,9 +295,12 @@ export default function EconomicCalendarCard() {
     return () => { cancelled = true; clearInterval(id) }
   }, [fromDate, toDate, reloadQuietly])
 
+  // The panel always reflects the change; persisting it is best-effort, so
+  // a browser that blocks site data costs the trader the setting between
+  // visits rather than the ability to filter at all.
   function handleFilterChange(next) {
     setFilters(next)
-    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(next))
+    writeStoredFilters(next)
   }
 
   const isSingleDay = fromDate === toDate

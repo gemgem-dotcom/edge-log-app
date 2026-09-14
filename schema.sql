@@ -783,6 +783,38 @@ alter table economic_events add column if not exists actual_status text;
 alter table economic_events add column if not exists previous_revised boolean;
 alter table economic_events add column if not exists time_precision text;
 
+-- ff_event_id is the row's IDENTITY now, not just a stored field.
+--
+-- event_key used to be `day|currency|title`. Forex Factory picks its
+-- display timezone from the CALLER'S IP, and the runners that fetch the
+-- calendar do not always land in the same region - so one release near
+-- local midnight has no single correct day:
+--
+--   one instant, 2026-08-03T06:00:00Z, German Retail Sales m/m
+--     FF served Mountain (UTC-6)   local 00:00  -> Aug 3
+--     FF served Pacific  (UTC-7)   local 23:00  -> Aug 2
+--
+-- Both are what FF showed that caller, so neither can be called wrong, and
+-- the next run INSERTED rather than updated. Measured in production before
+-- this: 174 releases stored twice and climbing by roughly sixteen per
+-- fetch. event_key is now 'ff|' || ff_event_id for every row that has one.
+--
+-- This index makes a regression loud. Duplicating was silent for weeks
+-- precisely because nothing refused it; with this in place a second copy
+-- fails the write instead of quietly landing.
+--
+-- Partial so the JSON fallback feed's rows, which carry no event id and
+-- keep a day-based key, are unaffected. (A plain unique index would also
+-- permit many NULLs, but saying so explicitly is clearer than relying on
+-- it.)
+--
+-- NOT SAFE TO RUN ALONE on a table that still holds duplicates - it will
+-- fail on the first collision. The one-off migration that collapses them
+-- and rewrites the keys has to run first; it ends by creating this index.
+create unique index if not exists economic_events_ff_event_id_key
+  on economic_events (ff_event_id)
+  where ff_event_id is not null;
+
 -- The on-demand calendar refresh (app/api/economic-calendar/refresh) needs
 -- somewhere to CLAIM the right to fetch, not merely to check whether
 -- someone fetched recently. Reading the freshest fetched_at and then going

@@ -27,10 +27,10 @@
 //   PRECISION    how many rows have a null time_precision. Those predate
 //                the column and will render a clock time they cannot
 //                justify (see the column's comment in schema.sql).
-//   KEY SHAPE    every event_key's day must equal the event's own day in
-//                FF's display timezone. That invariant is what stopped an
-//                evening release colliding with the next morning's, and a
-//                regression in it would be invisible in the card.
+//   KEY SHAPE    event_key should be FF's own event id. Day-based keys
+//                are the JSON fallback's alone now; a pile of them means
+//                the migration has not run or the feed has been carrying
+//                the table. Those that exist still get the old day check.
 //   DUPLICATES   the same release stored twice under two keys. Shape
 //                alone cannot see this, and it is the actual damage the
 //                2026-09-12 mis-keying did.
@@ -197,25 +197,42 @@ function reportPrecision(rows) {
 // the next time the same release is fetched from a behind-UTC page.
 async function reportKeyShape(rows) {
   log('\nEVENT KEY SHAPE')
+  let idKeys = 0
+  let dayKeys = 0
   let malformed = 0
   let impossible = 0
   const offsets = new Map()
   const examples = []
-  let sequenced = 0
   for (const r of rows) {
-    const parts = String(r.event_key).split('|')
-    // day|currency|title, optionally followed by |#N. The suffix marks the
-    // second and later occurrences of one title on one day - FF lists a
-    // speaker twice in a day routinely - and is a well-formed key, not a
-    // broken one. Without this the whole sequenced population would read
-    // as corruption.
-    const hasSeq = parts.length === 4 && /^#\d+$/.test(parts[3])
-    if (hasSeq) sequenced++
-    if ((parts.length !== 3 && !hasSeq) || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
-      malformed++
-      if (examples.length < 5) examples.push(`malformed: ${r.event_key}`)
+    const key = String(r.event_key)
+
+    // The expected form: FF's own event id. It is the only identity on the
+    // page that survives FF serving a different timezone to a different
+    // caller, which is what duplicated 174 releases under day-based keys.
+    if (/^ff\|\d+$/.test(key)) {
+      idKeys++
+      // The id in the key and the id in the column must be the same, or an
+      // upsert would update a row that is not the one it matched.
+      if (r.ff_event_id && key !== `ff|${r.ff_event_id}`) {
+        malformed++
+        if (examples.length < 5) examples.push(`key/column id disagree: ${key} vs ${r.ff_event_id}`)
+      }
       continue
     }
+
+    // day|currency|title, optionally |#N for the second and later
+    // occurrences of one title in a day. Written only by the JSON fallback
+    // feed now, which carries no event id - so a large count here means
+    // either the migration has not been run or the feed has been carrying
+    // the table, and both are worth knowing.
+    const parts = key.split('|')
+    const hasSeq = parts.length === 4 && /^#\d+$/.test(parts[3])
+    if ((parts.length !== 3 && !hasSeq) || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
+      malformed++
+      if (examples.length < 5) examples.push(`malformed: ${key}`)
+      continue
+    }
+    dayKeys++
     const diffDays = Math.round(
       (Date.parse(`${parts[0]}T00:00:00Z`) - Date.parse(`${r.event_time.slice(0, 10)}T00:00:00Z`)) / 86400000,
     )
@@ -223,18 +240,20 @@ async function reportKeyShape(rows) {
     if (Math.abs(diffDays) > 1) {
       impossible++
       if (examples.length < 5) {
-        examples.push(`key day ${diffDays > 0 ? '+' : ''}${diffDays}d from event: ${r.event_key} at ${r.event_time}`)
+        examples.push(`key day ${diffDays > 0 ? '+' : ''}${diffDays}d from event: ${key} at ${r.event_time}`)
       }
     }
   }
-  line('well-formed day|currency|title', rows.length - malformed)
-  line('  of those, same-day repeats', sequenced)
+  line('keyed on FF event id', idKeys)
+  line('keyed on day|currency|title', dayKeys === 0 ? '0  (none - good)' : `${dayKeys}  <- feed-written or un-migrated`)
   line('malformed', malformed)
   line('further than a day from the event', impossible === 0 ? '0  (none - good)' : `${impossible}  <- CORRUPTION`)
-  log('\n  key day relative to the event\'s UTC date')
-  for (const [d, n] of [...offsets].sort((a, b) => a[0] - b[0])) {
-    const label = d === 0 ? 'same day' : `${d > 0 ? '+' : ''}${d} day`
-    log(`    ${label.padEnd(10)} ${String(n).padStart(5)}${Math.abs(d) > 1 ? '   <- impossible' : ''}`)
+  if (offsets.size > 0) {
+    log('\n  day-keyed rows: key day relative to the event\'s UTC date')
+    for (const [d, n] of [...offsets].sort((a, b) => a[0] - b[0])) {
+      const label = d === 0 ? 'same day' : `${d > 0 ? '+' : ''}${d} day`
+      log(`    ${label.padEnd(10)} ${String(n).padStart(5)}${Math.abs(d) > 1 ? '   <- impossible' : ''}`)
+    }
   }
   for (const e of examples) log(`    ${e}`)
   return malformed + impossible

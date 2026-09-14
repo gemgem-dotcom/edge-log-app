@@ -31,8 +31,13 @@
 //                FF's display timezone. That invariant is what stopped an
 //                evening release colliding with the next morning's, and a
 //                regression in it would be invisible in the card.
-//   LOCK         econ_refresh_lock exists, holds exactly one row, and is
-//                movable - the on-demand refresh is a no-op without it.
+//   DUPLICATES   the same release stored twice under two keys. Shape
+//                alone cannot see this, and it is the actual damage the
+//                2026-09-12 mis-keying did.
+//   LOCK         econ_refresh_lock exists and holds exactly one row, with
+//                a claim that is not stamped in the future - the on-demand
+//                refresh is a no-op without it. Read only: it does not
+//                prove the row is movable.
 //   RLS          that row level security is really enabled in production.
 //                Supabase grants anon and authenticated full table rights
 //                by default, so RLS with no policies is the only thing
@@ -196,9 +201,17 @@ async function reportKeyShape(rows) {
   let impossible = 0
   const offsets = new Map()
   const examples = []
+  let sequenced = 0
   for (const r of rows) {
     const parts = String(r.event_key).split('|')
-    if (parts.length !== 3 || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
+    // day|currency|title, optionally followed by |#N. The suffix marks the
+    // second and later occurrences of one title on one day - FF lists a
+    // speaker twice in a day routinely - and is a well-formed key, not a
+    // broken one. Without this the whole sequenced population would read
+    // as corruption.
+    const hasSeq = parts.length === 4 && /^#\d+$/.test(parts[3])
+    if (hasSeq) sequenced++
+    if ((parts.length !== 3 && !hasSeq) || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
       malformed++
       if (examples.length < 5) examples.push(`malformed: ${r.event_key}`)
       continue
@@ -215,6 +228,7 @@ async function reportKeyShape(rows) {
     }
   }
   line('well-formed day|currency|title', rows.length - malformed)
+  line('  of those, same-day repeats', sequenced)
   line('malformed', malformed)
   line('further than a day from the event', impossible === 0 ? '0  (none - good)' : `${impossible}  <- CORRUPTION`)
   log('\n  key day relative to the event\'s UTC date')
@@ -223,6 +237,52 @@ async function reportKeyShape(rows) {
     log(`    ${label.padEnd(10)} ${String(n).padStart(5)}${Math.abs(d) > 1 ? '   <- impossible' : ''}`)
   }
   for (const e of examples) log(`    ${e}`)
+  return malformed + impossible
+}
+
+// The failure the key-shape check exists to prevent, checked directly.
+//
+// Shape tells you a key is well-formed; it cannot tell you the same
+// release is sitting in the table twice under two different keys. That is
+// what actually happened when month pages were served from a zone on the
+// other side of UTC: the day half moved, so a refetch INSERTED rather than
+// updated. 181 rows were mis-keyed that way, and a report that only
+// checked shape called the table healthy throughout.
+//
+// Two independent tests, because each catches what the other cannot:
+//   - FF's own event id appearing under more than one key. Decisive when
+//     present, but it is null on rows the JSON fallback wrote and on
+//     anything stored before the column existed.
+//   - the same (title, currency, instant) under more than one key. Works
+//     on every row, including those.
+function reportDuplicates(rows) {
+  log('\nDUPLICATES')
+
+  const byFfId = new Map()
+  for (const r of rows) {
+    if (!r.ff_event_id) continue
+    if (!byFfId.has(r.ff_event_id)) byFfId.set(r.ff_event_id, new Set())
+    byFfId.get(r.ff_event_id).add(r.event_key)
+  }
+  const idDupes = [...byFfId.entries()].filter(([, keys]) => keys.size > 1)
+
+  const byIdentity = new Map()
+  for (const r of rows) {
+    const id = `${r.event_time}|${r.currency}|${r.title}`
+    if (!byIdentity.has(id)) byIdentity.set(id, new Set())
+    byIdentity.get(id).add(r.event_key)
+  }
+  const identityDupes = [...byIdentity.entries()].filter(([, keys]) => keys.size > 1)
+
+  const withoutFfId = rows.filter((r) => !r.ff_event_id).length
+  line('rows carrying FF\'s event id', `${rows.length - withoutFfId} of ${rows.length}`)
+  line('one FF id under several keys', idDupes.length === 0 ? '0  (none - good)' : `${idDupes.length}  <- DUPLICATED`)
+  line('same time+currency+title, 2 keys', identityDupes.length === 0 ? '0  (none - good)' : `${identityDupes.length}  <- DUPLICATED`)
+
+  for (const [id, keys] of idDupes.slice(0, 5)) log(`    ff_event_id ${id}: ${[...keys].join('  ')}`)
+  for (const [id, keys] of identityDupes.slice(0, 5)) log(`    ${id}\n      ${[...keys].join('\n      ')}`)
+
+  return idDupes.length + identityDupes.length
 }
 
 function reportDistributions(rows) {
@@ -240,14 +300,23 @@ async function reportLock(admin) {
   if (error) {
     line('econ_refresh_lock', `UNREADABLE - ${error.message}`)
     line('', 'the on-demand refresh cannot claim, so it never fetches')
-    return
+    return 1
   }
   line('rows', data.length)
   if (data.length !== 1) {
     line('', 'expected exactly one row (id = 1) - the claim matches on id')
-    return
+    line('', 'with no seed row the claim matches nothing, so every refresh')
+    line('', "reports a cooldown it is not in and FF is never fetched")
+    return 1
   }
   line('claimed_at', `${data[0].claimed_at} (${ago(data[0].claimed_at)})`)
+  // A claim stamped in the future never expires, so on-demand refresh
+  // would be wedged until the clock caught up.
+  if (Date.parse(data[0].claimed_at) > Date.now() + 60_000) {
+    line('', 'claimed_at is in the FUTURE - on-demand refresh is wedged until it passes')
+    return 1
+  }
+  return 0
 }
 
 // Supabase grants anon and authenticated every table privilege by default,
@@ -267,13 +336,17 @@ async function reportRls(url, anonKey, adminRowCount) {
   log('\nROW LEVEL SECURITY (probed with the anon key)')
   if (!anonKey) {
     line('skipped', 'NEXT_PUBLIC_SUPABASE_ANON_KEY is not set for this job')
-    line('', 'add it to run-diagnostic.yml\'s env to enable this check')
-    return
+    // The workflow already passes this through; what is missing is the
+    // repository secret behind it, so GitHub substitutes an empty string.
+    // The old wording sent the reader to a file where the work was done.
+    line('', 'add the repository secret (Settings -> Secrets and variables')
+    line('', '-> Actions) - run-diagnostic.yml already passes it through')
+    return 0
   }
   if (adminRowCount === 0) {
     line('skipped', 'economic_events is empty, so a blocked read and an')
     line('', 'empty table would look identical')
-    return
+    return 0
   }
   const anon = createClient(url, anonKey)
   let failures = 0
@@ -307,6 +380,7 @@ async function reportRls(url, anonKey, adminRowCount) {
   }
 
   line('verdict', failures === 0 ? 'both tables correctly closed to signed-out callers' : `${failures} PROBLEM(S) ABOVE`)
+  return failures
 }
 
 async function main() {
@@ -321,16 +395,33 @@ async function main() {
   log(`generated ${new Date().toISOString()}`)
 
   const rows = await fetchAll(admin)
+  let problems = 0
   reportCoverage(rows)
-  if (rows.length > 0) {
+  if (rows.length === 0) {
+    // An empty table is not a healthy one, whatever else reads clean.
+    problems++
+  } else {
     reportActuals(rows)
     reportPrecision(rows)
-    await reportKeyShape(rows)
+    problems += await reportKeyShape(rows)
+    problems += reportDuplicates(rows)
     reportDistributions(rows)
   }
-  await reportLock(admin)
-  await reportRls(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, rows.length)
+  problems += await reportLock(admin)
+  problems += await reportRls(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, rows.length)
+
   log('')
+  log(problems === 0
+    ? 'OK - no problems found'
+    : `${problems} PROBLEM(S) FOUND - see the sections above`)
+  log('')
+  // Exit code, not just ink. This used to print "<- CORRUPTION" and
+  // "row level security is OFF" and still exit 0, so a green "Run a
+  // diagnostic script" job meant only that the script ran - which is
+  // exactly how someone glancing at the Actions list reads it as "healthy".
+  // scripts/smoke-test-forexfactory-feed.js already ends this way; this is
+  // the same pattern, applied.
+  process.exitCode = problems === 0 ? 0 : 1
 }
 
 main().catch((err) => {

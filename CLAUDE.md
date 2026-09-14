@@ -209,12 +209,34 @@ FF for the same page sixty times an hour, and FF started returning 403 for the
 pages we requested most. Nothing here retries a 403 or disguises a request, and
 nothing that does should be added.
 
-**Times are never assumed.** FF prints wall-clock times in its own display timezone,
-and each day's first row carries `data-day-dateline`, the epoch of local midnight.
-The parser verifies that dateline really is midnight in FF's zone before using the
-zone to resolve the row's clock time — which is what keeps the two DST changeover
-days right, and what makes `event_key` and `detail_url` agree with FF about which
-day an evening release belongs to.
+**Times are never assumed, and FF's timezone is never named.** FF prints wall-clock
+times in its own display timezone, and each day's first row carries
+`data-day-dateline`, the epoch of local midnight. Midnight plus the row's
+wall-clock minutes is the exact instant on any ordinary day, in any zone, with
+nothing assumed — and `dayFor` reads FF's calendar day off the dateline without a
+zone either, which is what makes `event_key` and `detail_url` agree with FF about
+which day an evening release belongs to.
+
+**Don't reintroduce a named zone.** `FF_DISPLAY_TIMEZONE` used to be
+`'America/Chicago'`, with a guard that fell back when a page's dateline wasn't
+midnight in it. The guard worked; the constant didn't. **FF picks its display zone
+from the client's IP** — a GitHub runner in Azure `westcentralus` (Wyoming) is served
+`America/Denver`, confirmed live on 2026-09-14 — so no fixed name can be right for
+every caller, and the DST correction the guard protected never ran anywhere. The two
+changeover days a year were an hour out, silently, despite a comment claiming the
+caller was told. The correction now comes from the page's own shape: consecutive
+datelines are 86400s apart on an ordinary day and 82800/90000 across a changeover, so
+the day's own length *is* the offset shift. The only remaining assumption is that the
+change happens at 02:00 local, and that is stated at `instantFor` rather than buried.
+
+**`event_key` is `day|currency|title`, optionally `|#N`.** FF lists one title twice
+in a day routinely — the same official speaking morning and evening — and the bare
+key gave both the same identity, so the second silently overwrote the first. The
+first occurrence keeps the bare key (so nothing already stored needs re-keying) and
+later ones take `|#1`, `|#2`. Both sources run the same `sequenceEventKeys` pass, and
+the feed derives its day from the offset its own timestamp carries rather than from a
+named zone — when those two disagreed about the day, the same release came back as a
+second row.
 
 This sandbox cannot reach either FF host. Run `scripts/probe-forexfactory-sources.js`
 (the page) or `scripts/smoke-test-forexfactory-feed.js` (the fallback feed) from the

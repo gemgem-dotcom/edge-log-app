@@ -692,8 +692,10 @@ and (volatility_regime is not null or volume_regime is not null);
 alter table strategies add column if not exists notes text;
 
 -- Forex Factory's economic calendar, refreshed hourly by
--- scripts/fetch-economic-calendar.js (see that file's header for why it
--- reads FF's published JSON feeds rather than scraping the calendar page).
+-- scripts/fetch-economic-calendar.js, which reads forexfactory.com's own
+-- calendar PAGE (see that file's header, and CLAUDE.md: the published JSON
+-- feed covers one week and carries no actual column at all, so it is kept
+-- only as a fallback floor for the hourly run).
 -- Backs the Economic calendar card on the Overview dashboards, which until
 -- now rendered a hardcoded week from lib/marketContextMock.js.
 --
@@ -795,12 +797,20 @@ alter table economic_events add column if not exists time_precision text;
 -- A single-row table fixes both. The claim is one conditional UPDATE:
 --
 --   update econ_refresh_lock set claimed_at = now()
---    where id = 1 and claimed_at < now() - interval '60 seconds'
+--    where id = 1 and claimed_at < now() - interval '10 minutes'
 --
 -- Concurrent updaters block on the row lock and then re-check the WHERE
 -- against the committed row, so exactly one wins and the losers get zero
 -- rows back. The claim is taken BEFORE the fetch and is not rolled back if
--- the fetch fails, which is what turns a failure into a real 60s backoff.
+-- the fetch fails, which is what turns a failure into a real backoff.
+--
+-- The interval above must match COOLDOWN_MS in
+-- app/api/economic-calendar/refresh/route.js, which is where it is actually
+-- enforced - this block is documentation. It said 60 seconds long after the
+-- code moved to ten minutes, and this is the text a person pastes into
+-- Supabase by hand. Ten minutes is deliberate restraint: at 60s one open
+-- dashboard asked FF for the same page sixty times an hour, and FF started
+-- refusing the pages we requested most.
 create table if not exists econ_refresh_lock (
   id int primary key,
   claimed_at timestamptz not null default to_timestamp(0),

@@ -237,8 +237,21 @@ async function main() {
     if (i > 0) await sleep(PAGE_GAP_MS)
     try {
       const html = await fetchPage(target.url, 'text/html')
-      const { events, skipped, days } = parseCalendarHtml(html)
+      const { events, skipped, days, dstDays, oddDatelines } = parseCalendarHtml(html)
       if (skipped > 0) log(`  ${target.label}: skipped ${skipped} unusable row(s)`)
+      // The parser corrects a clock-change day using the page's own day
+      // lengths. Saying so is the point: the previous implementation
+      // claimed to tell the caller when it could not correct one, and then
+      // returned nothing to say it with, so a silent hour of drift twice a
+      // year had no signal anywhere at all.
+      if (dstDays > 0) log(`  ${target.label}: ${dstDays} clock-change day(s) corrected`)
+      if (oddDatelines > 0) {
+        // A dateline is midnight somewhere, so it is always a whole number
+        // of minutes from a UTC day. Anything else means the attribute
+        // changed format, and every instant on the page is then suspect.
+        log(`  ${target.label}: ${oddDatelines} dateline(s) are not a whole minute - format may have changed`)
+        Sentry.captureMessage(`Economic calendar: ${target.label} had ${oddDatelines} odd dateline(s)`, 'warning')
+      }
       if (events.length === 0) {
         // A real calendar page always has events. Zero means the markup
         // moved, so say so loudly rather than reporting a clean run that
@@ -287,14 +300,27 @@ async function main() {
   // Red when the page gave us nothing at all, whatever the fallback then
   // salvaged. This used to exit 0 in that case and the workflow went green
   // while actuals quietly stopped arriving - which is exactly how a source
-  // going away stays unnoticed for a week. A partial wide run is NOT a
-  // failure: FF declines month pages beyond about two months back, so a
-  // backfill is expected to lose its oldest page and still be a good run.
+  // going away stays unnoticed for a week.
   if (pagesOk === 0) {
     throw new Error(
       `No events parsed from any of ${targets.length} page(s)`
       + `${totalStored > 0 ? ` - the JSON feed floor stored ${totalStored} row(s), so the schedule is current but no actuals arrived` : ''}`
       + ' - see the errors above',
+    )
+  }
+
+  // Red when ANY page was lost, too. This used to pass a partial wide run,
+  // on the reasoning that "FF declines month pages beyond about two months
+  // back, so a backfill is expected to lose its oldest page" - a claim this
+  // file's own header, CLAUDE.md and NOTES.md all record as WRONG and
+  // retracted. The 403s it rested on were cold-connection rejections of
+  // whichever page led the run, and fetchPage retries those now. So a lost
+  // page is a real loss, and the daily sweep losing two of its three months
+  // should not be a green check.
+  if (failures > 0) {
+    throw new Error(
+      `${failures} of ${targets.length} page(s) failed - ${pagesOk} stored `
+      + `${totalStored} row(s), but the rest of the range was not refreshed`,
     )
   }
 }

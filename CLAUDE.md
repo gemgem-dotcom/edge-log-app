@@ -229,14 +229,26 @@ datelines are 86400s apart on an ordinary day and 82800/90000 across a changeove
 the day's own length *is* the offset shift. The only remaining assumption is that the
 change happens at 02:00 local, and that is stated at `instantFor` rather than buried.
 
-**`event_key` is `day|currency|title`, optionally `|#N`.** FF lists one title twice
-in a day routinely — the same official speaking morning and evening — and the bare
-key gave both the same identity, so the second silently overwrote the first. The
-first occurrence keeps the bare key (so nothing already stored needs re-keying) and
-later ones take `|#1`, `|#2`. Both sources run the same `sequenceEventKeys` pass, and
-the feed derives its day from the offset its own timestamp carries rather than from a
-named zone — when those two disagreed about the day, the same release came back as a
-second row.
+**`event_key` is `ff|<FF's event id>`, and the day is not an identity.** This is the
+second thing FF's IP-derived timezone broke, and the more expensive one. A release
+near local midnight has *no single correct day*: 2026-08-03T06:00:00Z is Aug 3 for a
+runner served Mountain time and Aug 2 for one served Pacific, and FF showed each
+caller exactly that. Both are right. So a `day|currency|title` key had two answers and
+stored two rows — **174 duplicated releases in production, climbing by ~16 per
+fetch**, with a `+1 day` bucket appearing in the diagnostic the first time a run came
+from a region east of Greenwich. `ff_event_id` doesn't move, every page row carries
+one, and a partial unique index on it now makes a regression fail the write instead of
+silently adding a row.
+
+Don't try to fix this by deriving the day more cleverly — that was the instinct, and
+it cannot work, because neither day is wrong.
+
+The old `day|currency|title` form (optionally `|#N` for the same title twice in a day,
+which FF does whenever an official speaks morning and evening) survives for the JSON
+fallback feed alone, since the feed carries no event id. A feed row written during an
+HTML outage can therefore be orphaned when the page recovers under a different key —
+bounded, rare, and visible in the diagnostic as a non-zero `keyed on
+day|currency|title` count.
 
 This sandbox cannot reach either FF host. Run `scripts/probe-forexfactory-sources.js`
 (the page) or `scripts/smoke-test-forexfactory-feed.js` (the fallback feed) from the

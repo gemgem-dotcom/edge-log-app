@@ -44,9 +44,17 @@
 // that gets a cold-connection 403 (see fetchPage). With that retried, no
 // horizon has actually been measured. Do not restate one until it has.
 //
-// Nothing here ever deletes. Rows upsert on event_key (day|currency|title),
-// so a re-fetch updates the release it already has - filling in an actual,
-// moving a rescheduled time - rather than inserting a second copy.
+// Rows upsert on event_key (FF's own event id), so a re-fetch updates the
+// release it already has - filling in an actual, moving a rescheduled time -
+// rather than inserting a second copy.
+//
+// It DOES delete, in one narrow case: an event that has disappeared from a
+// page which spoke for its day. FF withdraws releases and cancels speeches,
+// and an upsert-only pipeline kept those on the card forever. The rails
+// that keep this from becoming data loss are in
+// lib/econCalendarRemoval.mjs and at the call site - a page that failed its
+// own sanity checks never gets to speak for what is absent, and the JSON
+// fallback never does either.
 //
 // Usage:
 //   node scripts/fetch-economic-calendar.js
@@ -77,6 +85,11 @@ const PAGE_GAP_MS = 1500
 // Even a quiet holiday month carries events on most weekdays; 20 is well
 // under any real month and well over any truncated one.
 const MIN_DAYS_PER_MONTH_PAGE = 20
+
+// Removing events FF has removed. The decision - which rows count as
+// vanished, and how many is too many to be believable - lives in
+// lib/econCalendarRemoval.mjs so it can be tested directly; this file owns
+// the range, the read and the delete. See that module's header.
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args)
@@ -164,6 +177,57 @@ async function storeEvents(admin, events) {
   return stored
 }
 
+// Drop the rows FF has stopped listing inside a range it just spoke for.
+// See MAX_REMOVAL_FRACTION's comment for why this exists and what stops it
+// running away.
+//
+// `since` is the instant the page's own upsert began. Every row FF still
+// lists carries a fetched_at at or after it; anything older in the same
+// range was not on the page. Passing it in rather than reading the clock
+// here keeps a slow store from making its own rows look stale.
+async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, coveredTo, since }) {
+  if (!coveredFrom || !coveredTo) return 0
+
+  // Read first, decide, then delete. A conditional delete would be one
+  // round trip, but it would also be unbounded: there would be no count to
+  // check against the threshold until after the rows were gone.
+  const { data: inRange, error: readErr } = await admin
+    .from('economic_events')
+    .select('event_key, title, currency, event_time, fetched_at')
+    .gte('event_time', coveredFrom)
+    .lt('event_time', coveredTo)
+  if (readErr) throw new Error(`removal scan failed: ${readErr.message}`)
+
+  const { vanished, allowance, inRangeCount, allowed } = planRemoval(inRange, since)
+  if (vanished.length === 0) return 0
+
+  if (!allowed) {
+    // Refuse, loudly, and keep the rows. Deleting this many means the page
+    // did not say what we think it said - and a table missing a third of
+    // its events is a far worse outcome than one holding a few stale ones.
+    log(`  ${label}: REFUSING to remove ${vanished.length} of ${inRangeCount} row(s) - over the ${allowance} allowed`)
+    Sentry.captureMessage(
+      `Economic calendar: ${label} would have removed ${vanished.length}/${inRangeCount} rows - refused`,
+      'warning',
+    )
+    return 0
+  }
+
+  const keys = vanished.map((r) => r.event_key)
+  const { error: delErr } = await admin.from('economic_events').delete().in('event_key', keys)
+  if (delErr) throw new Error(`removal failed: ${delErr.message}`)
+
+  // Named, not just counted. A removal is the one thing here that destroys
+  // data, so the log has to be enough to tell a cancelled speech from a
+  // parser that started missing a row type.
+  log(`  ${label}: removed ${vanished.length} event(s) FF no longer lists`)
+  for (const r of vanished.slice(0, 10)) {
+    log(`      ${r.event_time}  ${r.currency}  ${r.title}`)
+  }
+  if (vanished.length > 10) log(`      ...and ${vanished.length - 10} more`)
+  return vanished.length
+}
+
 function monthsAround(back, forward) {
   const out = []
   const now = new Date()
@@ -215,6 +279,7 @@ async function main() {
   // rather than duplicated.
   const { parseCalendarHtml, weekUrl, monthUrl } = await import('../lib/econCalendarHtml.mjs')
   const { normalizeFeed } = await import('../lib/econCalendarEvents.mjs')
+  const { planRemoval } = await import('../lib/econCalendarRemoval.mjs')
 
   const monthsBack = Number(process.env.CALENDAR_MONTHS_BACK || 0)
   const monthsForward = Number(process.env.CALENDAR_MONTHS_FORWARD || 0)
@@ -231,13 +296,14 @@ async function main() {
 
   let totalStored = 0
   let totalEvents = 0
+  let totalRemoved = 0
   let failures = 0
 
   for (const [i, target] of targets.entries()) {
     if (i > 0) await sleep(PAGE_GAP_MS)
     try {
       const html = await fetchPage(target.url, 'text/html')
-      const { events, skipped, days, dstDays, oddDatelines } = parseCalendarHtml(html)
+      const { events, skipped, days, dstDays, oddDatelines, coveredFrom, coveredTo } = parseCalendarHtml(html)
       if (skipped > 0) log(`  ${target.label}: skipped ${skipped} unusable row(s)`)
       // The parser corrects a clock-change day using the page's own day
       // lengths. Saying so is the point: the previous implementation
@@ -277,9 +343,28 @@ async function main() {
       // which omits exactly those columns and therefore succeeded. A green
       // run, a correct-looking schedule, and no actuals, forever.
       totalEvents += events.length
+      // Stamped before the write, so a slow store cannot make its own rows
+      // look older than the run that wrote them.
+      const storeStartedAt = new Date().toISOString()
       const stored = await storeEvents(admin, events)
       totalStored += stored
       log(`  ${target.label}: ${events.length} event(s) across ${days} day(s), stored ${stored}`)
+
+      // Only a page that passed its own checks is allowed to speak for what
+      // is NOT on it. A month page that came back thin already warned above;
+      // letting it also delete would turn a truncated response into data
+      // loss, which is the one outcome worth more than the staleness.
+      const trustedForRemoval = !wide || days >= MIN_DAYS_PER_MONTH_PAGE
+      if (trustedForRemoval) {
+        totalRemoved += await removeVanishedEvents(admin, planRemoval, {
+          label: target.label,
+          coveredFrom,
+          coveredTo,
+          since: storeStartedAt,
+        })
+      } else {
+        log(`  ${target.label}: not removing anything - the page is too thin to trust for absence`)
+      }
     } catch (err) {
       Sentry.captureMessage(`Economic calendar ${target.label} failed: ${err.message}`, 'warning')
       log(`  ${target.label}: FAILED - ${err.message}`)
@@ -295,7 +380,8 @@ async function main() {
   }
 
   const pagesOk = targets.length - failures
-  log(`Done. ${pagesOk}/${targets.length} page(s) OK, ${totalStored} row(s) written.`)
+  log(`Done. ${pagesOk}/${targets.length} page(s) OK, ${totalStored} row(s) written`
+    + `${totalRemoved > 0 ? `, ${totalRemoved} removed` : ''}.`)
 
   // Red when the page gave us nothing at all, whatever the fallback then
   // salvaged. This used to exit 0 in that case and the workflow went green

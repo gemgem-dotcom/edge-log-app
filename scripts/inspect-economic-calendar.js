@@ -34,6 +34,9 @@
 //   DUPLICATES   the same release stored twice under two keys. Shape
 //                alone cannot see this, and it is the actual damage the
 //                2026-09-12 mis-keying did.
+//   STALENESS    rows inside the daily sweep's own window that the sweep
+//                did not refresh - i.e. events FF has stopped listing.
+//                The number that says whether removal handling works.
 //   LOCK         econ_refresh_lock exists and holds exactly one row, with
 //                a claim that is not stamped in the future - the on-demand
 //                refresh is a no-op without it. Read only: it does not
@@ -304,6 +307,56 @@ function reportDuplicates(rows) {
   return idDupes.length + identityDupes.length
 }
 
+// Rows the sweeps should have touched and did not.
+//
+// The daily job re-fetches months -1..+1 every day, so every row in that
+// window should carry a fetched_at from the last day or so. One that does
+// not is a row Forex Factory has stopped listing - a cancelled speech, a
+// withdrawn release, something moved to another week - which an
+// upsert-only pipeline had no way to drop.
+//
+// This is the number that says whether removal handling is working. Before
+// it existed these accumulated forever with no signal anywhere; afterwards
+// it should sit near zero, and a climbing count means the removal pass is
+// refusing (see its threshold) or the sweep is not running.
+function reportStaleness(rows) {
+  log('\nSTALENESS (rows the daily sweep should have refreshed)')
+  const now = Date.now()
+  const DAY = 86400000
+
+  // The window the daily job actually covers: the first of last month to
+  // the end of next month.
+  const d = new Date()
+  const from = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString()
+  const to = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 2, 1)).toISOString()
+  const swept = rows.filter((r) => r.event_time >= from && r.event_time < to)
+
+  line('rows in the swept window', swept.length)
+  if (swept.length === 0) return 0
+
+  const ageDays = (r) => (r.fetched_at ? (now - Date.parse(r.fetched_at)) / DAY : Infinity)
+  const buckets = [
+    ['refreshed < 1d ago', swept.filter((r) => ageDays(r) < 1).length],
+    ['1-2d', swept.filter((r) => ageDays(r) >= 1 && ageDays(r) < 2).length],
+    ['2-7d', swept.filter((r) => ageDays(r) >= 2 && ageDays(r) < 7).length],
+    ['over 7d', swept.filter((r) => ageDays(r) >= 7).length],
+  ]
+  for (const [label, n] of buckets) log(`  ${label.padEnd(34)}${n}`)
+
+  // Two days of slack: the daily job runs once a day, and a run can be
+  // delayed. Past that, FF has almost certainly stopped listing the row.
+  const stale = swept.filter((r) => ageDays(r) >= 2)
+  line('likely removed by FF', stale.length === 0 ? '0  (none - good)' : `${stale.length}  <- STALE`)
+  for (const r of stale.slice(0, 8)) {
+    log(`    ${r.event_time}  ${r.currency}  ${(r.title || '').slice(0, 44).padEnd(44)} fetched ${ago(r.fetched_at)}`)
+  }
+  if (stale.length > 8) log(`    ...and ${stale.length - 8} more`)
+
+  // Reported, not failed. A handful is normal between sweeps, and this
+  // number is most useful as a trend - the removal pass is what acts on it.
+  return 0
+}
+
 function reportDistributions(rows) {
   log('\nDISTRIBUTIONS')
   for (const field of ['impact', 'event_type', 'currency']) {
@@ -424,6 +477,7 @@ async function main() {
     reportPrecision(rows)
     problems += await reportKeyShape(rows)
     problems += reportDuplicates(rows)
+    problems += reportStaleness(rows)
     reportDistributions(rows)
   }
   problems += await reportLock(admin)

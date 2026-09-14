@@ -193,9 +193,18 @@ deliberately omits the columns it can't speak to so it never overwrites a stored
 actual.
 
 Three jobs run off that one script, scoped by env var
-(`.github/workflows/refresh-economic-calendar.yml`): hourly for the current week,
-daily for months −1..+1, and a manual backfill via
-`CALENDAR_MONTHS_BACK`/`CALENDAR_MONTHS_FORWARD`. How far back that reaches is **not currently known**: a "two months" limit was
+(`.github/workflows/refresh-economic-calendar.yml`): the current week on the
+hourly cron, months −1..+1 on the daily one, and a manual backfill via
+`CALENDAR_MONTHS_BACK`/`CALENDAR_MONTHS_FORWARD`.
+
+**"Hourly" is what the cron asks for, not what happens.** Measured 2026-09-14
+over the preceding 67 hours: 19 scheduled runs, one every **3.7 hours** on
+average, gaps from 2.1h to 5.9h, and not one of them at `:07`. GitHub delays and
+drops scheduled workflows under load, and this repo gets roughly a quarter of
+what it asks for. Don't quote "hourly" as a freshness guarantee — the floor for a
+release printing while nobody has the dashboard open is several hours, not one.
+What actually keeps the card fresh for someone watching is the on-demand refresh
+below, which is not on the cron at all. How far back that reaches is **not currently known**: a "two months" limit was
 recorded here on 2026-09-12 and was wrong — the 403s it rested on were
 cold-connection rejections of whichever page led each run, not an archive
 horizon (see `fetchPage`'s comment). Don't restate a limit until one is measured

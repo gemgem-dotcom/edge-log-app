@@ -13,7 +13,7 @@ import {
   activeSectionCount,
   currencyAllows,
 } from '@/lib/econCalendarFilters'
-import { displayDayFor, eventInRange, isAllDay } from '@/lib/econCalendarDay'
+import { displayDayFor, eventInRange, isAllDay, compareForDisplay } from '@/lib/econCalendarDay'
 import { msUntilNextLocalMidnight } from '@/lib/useCalendarNewsByDay'
 import DateRangePicker from '@/components/DateRangePicker'
 
@@ -357,7 +357,11 @@ export default function EconomicCalendarCard() {
     && filters.impacts.includes(e.impact)
     && filters.types.includes(e.event_type)
     && currencyAllows(filters.currencies, e.currency)
-  ))
+  // Sorted by the same function that labels each row's Date. The query
+  // returns rows by instant, and for any viewer west of FF that disagrees
+  // with the day an all-day row is filed under - so the Date column ran
+  // backwards. See compareForDisplay.
+  )).sort(compareForDisplay)
 
   return (
     <>

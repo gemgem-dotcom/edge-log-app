@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { activatable } from '@/lib/activatable'
 
 // Tutorial step 3 (tutorial_step === 2) - shown on the Log New Trade page
 // itself, once the user has added an instrument and a strategy. Spotlights
@@ -135,7 +136,7 @@ export default function TutorialScrollGuide({ onComplete }) {
       <div ref={dimRef} className="tutorial-panel-dim tutorial-follow-scroll" />
       <div ref={ringRef} className="tutorial-spotlight-ring tutorial-follow-scroll" />
       {!ready && (
-        <div ref={chevronsRef} className="tutorial-scroll-chevrons" onClick={handleChevronsClick}>
+        <div ref={chevronsRef} className="tutorial-scroll-chevrons" {...activatable(handleChevronsClick)}>
           <ChevronDown size={22} />
           <ChevronDown size={22} />
           <ChevronDown size={22} />
@@ -150,7 +151,7 @@ export default function TutorialScrollGuide({ onComplete }) {
               refuses to insert while this step is active, since this
               catcher only stops pointer events, not a native Enter-key
               form submission. */}
-          <div className="tutorial-tap-catcher" onClick={onComplete} />
+          <div className="tutorial-tap-catcher" {...activatable(onComplete)} />
         </>
       )}
     </>

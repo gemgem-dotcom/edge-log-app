@@ -17,6 +17,7 @@ import ErrorBanner from './ErrorBanner'
 import DatePicker from './DatePicker'
 import TimePicker from './TimePicker'
 import ScreenshotLightbox from './ScreenshotLightbox'
+import { activatable } from '@/lib/activatable'
 
 const DISTANCE_HINT = 'This is the figure shown on your position/long-short tool — the raw point distance from entry, not ticks or dollars.'
 
@@ -915,12 +916,12 @@ export default function TradeForm({
                   value={newStrategyName} onChange={(e) => setNewStrategyName(e.target.value)}
                 />
                 <div className="instrument-add-form-actions">
-                  <span className="del" onClick={() => { setAddingStrategy(false); setNewStrategyName('') }}>Cancel</span>
+                  <span className="del" {...activatable(() => { setAddingStrategy(false); setNewStrategyName('') })}>Cancel</span>
                   <button type="button" onClick={handleAddStrategy}>Add</button>
                 </div>
               </div>
             ) : (
-              <span className="del" style={{ color: 'var(--accent)' }} onClick={() => setAddingStrategy(true)}>
+              <span className="del" style={{ color: 'var(--accent)' }} {...activatable(() => setAddingStrategy(true))}>
                 + Add new strategy
               </span>
             )}
@@ -952,8 +953,8 @@ export default function TradeForm({
           <div className="field wide">
             <label>Direction</label>
             <div className="dir-toggle dir-toggle-square">
-              <div className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`} onClick={() => handleDirectionChange('long')}>Long</div>
-              <div className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`} onClick={() => handleDirectionChange('short')}>Short</div>
+              <div className={`dir-btn ${direction === 'long' ? 'active-long' : ''}`} {...activatable(() => handleDirectionChange('long'))}>Long</div>
+              <div className={`dir-btn ${direction === 'short' ? 'active-short' : ''}`} {...activatable(() => handleDirectionChange('short'))}>Short</div>
             </div>
             {errors.direction && <span className="field-error">{errors.direction}</span>}
           </div>
@@ -1028,7 +1029,7 @@ export default function TradeForm({
               {renderExitFields(0)}
               {isCustomOutcome && (
                 <div className="field full">
-                  <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                  <span className="del exit-add" style={{ color: 'var(--accent)' }} {...activatable(handleAddAnotherExit)}>
                     + Add another exit
                   </span>
                 </div>
@@ -1046,13 +1047,13 @@ export default function TradeForm({
                     {renderLegRBadge(row.exit_price)}
                     <div className="exit-row-fields">{renderExitFields(i + 1)}</div>
                     {i === additionalExits.length - 1 && (
-                      <span className="del exit-remove" onClick={() => handleRemoveAdditionalExit(i)}>Remove this exit</span>
+                      <span className="del exit-remove" {...activatable(() => handleRemoveAdditionalExit(i))}>Remove this exit</span>
                     )}
                   </li>
                 ))}
               </ol>
               {isCustomOutcome && (
-                <span className="del exit-add" style={{ color: 'var(--accent)' }} onClick={handleAddAnotherExit}>
+                <span className="del exit-add" style={{ color: 'var(--accent)' }} {...activatable(handleAddAnotherExit)}>
                   + Add another exit
                 </span>
               )}
@@ -1116,18 +1117,18 @@ export default function TradeForm({
                       onFocus={() => setShowSuggestions(true)}
                       onKeyDown={handleTagKeyDown}
                     />
-                    <span className="del" style={{ color: 'var(--accent)' }} onClick={() => handleAddTag()}>Add</span>
+                    <span className="del" style={{ color: 'var(--accent)' }} {...activatable(() => handleAddTag())}>Add</span>
                   </span>
                   {showSuggestions && tagSuggestions.length > 0 && (
                     <div className="tag-suggestions">
                       {tagSuggestions.map((t) => (
-                        <div key={t} className="tag-suggestion-item" onClick={() => handleAddTag(t)}>{t}</div>
+                        <div key={t} className="tag-suggestion-item" {...activatable(() => handleAddTag(t))}>{t}</div>
                       ))}
                     </div>
                   )}
                 </span>
               ) : (
-                <span className="del" style={{ color: 'var(--accent)' }} onClick={() => { setAddingTag(true); setShowSuggestions(true) }}>
+                <span className="del" style={{ color: 'var(--accent)' }} {...activatable(() => { setAddingTag(true); setShowSuggestions(true) })}>
                   + Add tag
                 </span>
               )}
@@ -1159,7 +1160,7 @@ export default function TradeForm({
                   </span>
                 ))}
                 <span className="discipline-menu-wrap" ref={disciplineMenuRef}>
-                  <span className="del" style={{ color: 'var(--loss)' }} onClick={() => setShowDisciplineMenu((v) => !v)}>
+                  <span className="del" style={{ color: 'var(--loss)' }} {...activatable(() => setShowDisciplineMenu((v) => !v))}>
                     + Add issue
                   </span>
                   {showDisciplineMenu && (

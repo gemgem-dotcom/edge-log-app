@@ -200,15 +200,14 @@ rate-limited by *claiming* `econ_refresh_lock` with one conditional UPDATE befor
 going to FF, not by reading a timestamp and then going - the latter is check-then-act,
 and every request arriving during the fetch passed it.
 
-Still mock, all from `lib/marketContextMock.js`: the Monthly P&L calendar's news badge
-(`components/CalendarNewsBadge.js`), the per-instrument dashboard's upcoming-events
-list, and the two remaining "Market context" stats (current session's range vs.
+Still mock, all from `lib/marketContextMock.js`: the per-instrument dashboard's
+upcoming-events list, and the two remaining "Market context" stats (current session's range vs.
 typical, volume vs. typical - shown honestly as "Not available yet" rather than
 invented numbers, in the session-stats block in `OverviewDashboard.js` and
 `app/app/[instrument]/dashboard/page.js`). The market-context pair previously ran on a
 live BLS/FRED/FOMC pipeline (`app/api/economic-calendar`, `lib/fredReleases.js`,
 `lib/computedReleases.js`) that was pulled out in favor of a paid market-data
-provider - not yet wired up. The two remaining econ-event callers now have a real
+provider - not yet wired up. The one remaining econ-event caller now has a real
 table to move onto whenever that's worth doing. The other two Market context
 stats (days to contract rollover, time to next calendar event) are real, not mocked -
 see `lib/contractRollover.js` and `marketContextMock.js`'s `nextEconEvent()`. Time to

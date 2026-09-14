@@ -143,7 +143,12 @@ export default function InstrumentNav({ instruments, currentSymbol }) {
         ))}
       </div>
       <div className="instrument-nav-add-wrap" ref={addRef}>
-        <span ref={triggerRef} className="instrument-nav-add" data-tutorial-target="add-instrument" onClick={handleTrigger}><Plus size={13} /> Add instrument</span>
+        {/* The one site that spells these out instead of using
+            lib/activatable.js: handleTrigger reads triggerRef.current, and
+            react-hooks/refs flags a ref-reading function handed to any call
+            evaluated during render - which activatable(fn) is. Same four
+            props, same behaviour, written where no call happens. */}
+        <span ref={triggerRef} className="instrument-nav-add" data-tutorial-target="add-instrument" role="button" tabIndex={0} onClick={handleTrigger} onKeyDown={(e) => { if (e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); handleTrigger() }}><Plus size={13} /> Add instrument</span>
         {adding && pos && (
           <div className="instrument-dropdown" style={{ left: `${pos.left}px`, top: `${pos.top}px` }}>
             <form onSubmit={handleAddInstrument} className="instrument-add-form">

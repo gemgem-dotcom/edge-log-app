@@ -28,29 +28,29 @@
    1884  Trade form: sections, validation, currency, screenshots
    2122  Field tooltips
    2184  Date/time picker (adds an optional popup to a typed input)
-   2293  In-header column filters (trade log table)
-   2341  Active filter chips
-   2404  Empty states, error banners, skeleton loaders
-   2483  Cross-instrument overview dashboard (/app)
-   2662  Not found / error boundary state pages
-   2675  Toast notifications
-   2703  Public policy pages (Privacy, Terms)
-   2722  Legal links (auth pages + account settings)
-   2761  Economic calendar card (Overview pages)
-   3016  Calendar news badge (Monthly P&L day cells, mock)
-   3044  Streak badge (Overview + strategy detail pages)
-   3067  Market status pill (Overview + strategy detail pages)
-   3093  Today's brief & session stats
-   3128  Market context cards (all-instruments Overview)
-   3161  Edge Insights panel
-   3176  Unverified logged time badge
-   3193  Welcome transition (first-run)
-   3222  Zero-instrument empty state
-   3232  Tutorial overlay (first-run guided tour)
-   3324  Tutorial step 3 (guided form scroll)
-   3371  Press states, value changes, content fade-in
-   3468  Trade log column width stability
-   3493  Strategy notes panel
+   2301  In-header column filters (trade log table)
+   2349  Active filter chips
+   2412  Empty states, error banners, skeleton loaders
+   2491  Cross-instrument overview dashboard (/app)
+   2670  Not found / error boundary state pages
+   2683  Toast notifications
+   2711  Public policy pages (Privacy, Terms)
+   2730  Legal links (auth pages + account settings)
+   2769  Economic calendar card (Overview pages)
+   3024  Calendar news badge (Monthly P&L day cells)
+   3052  Streak badge (Overview + strategy detail pages)
+   3075  Market status pill (Overview + strategy detail pages)
+   3101  Today's brief & session stats
+   3136  Market context cards (all-instruments Overview)
+   3169  Edge Insights panel
+   3184  Unverified logged time badge
+   3201  Welcome transition (first-run)
+   3230  Zero-instrument empty state
+   3240  Tutorial overlay (first-run guided tour)
+   3332  Tutorial step 3 (guided form scroll)
+   3379  Press states, value changes, content fade-in
+   3476  Trade log column width stability
+   3501  Strategy notes panel
    ============================================================ */
 
 :root{
@@ -2289,6 +2289,14 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
   font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; color:var(--text);
   background:transparent; border:none; outline:none;
 }
+/* The AM/PM segment carries a tabindex (it is a div, not an input), which
+   makes it match the app-wide [tabindex]:focus-visible ring at the top of
+   this file - and that ring beats the outline:none above on specificity.
+   It has to lose here: its three neighbours show a filled text highlight
+   when focused, and a box around this one alone read as a different kind
+   of thing. The element selects its own text instead, so both look the
+   same. Scoped to div so the h/m/s inputs are untouched. */
+div.dt-picker-spin-value:focus-visible{outline:none;}
 
 /* ---------- In-header column filters (trade log table) ---------- */
 /* A chevron beside the heading opens that column's filter. The heading text
@@ -3013,7 +3021,7 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
    asterisk rather than a badge - it qualifies a number the trader is
    glancing past, it isn't news in itself. */
 .econ-figure-revised{color:var(--be); margin-left:2px;}
-/* ---------- Calendar news badge (Monthly P&L day cells, mock) ---------- */
+/* ---------- Calendar news badge (Monthly P&L day cells) ---------- */
 .calendar-news-badge-wrap{position:absolute; top:5px; right:5px;}
 .calendar-news-badge{
   display:flex; align-items:center; justify-content:center; width:16px; height:16px;

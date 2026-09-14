@@ -11,7 +11,10 @@ import {
   readStoredFilters,
   writeStoredFilters,
   activeSectionCount,
+  currencyAllows,
 } from '@/lib/econCalendarFilters'
+import { displayDayFor, eventInRange, isAllDay } from '@/lib/econCalendarDay'
+import { msUntilNextLocalMidnight } from '@/lib/useCalendarNewsByDay'
 import DateRangePicker from '@/components/DateRangePicker'
 
 // How often an open card asks the server to re-read Forex Factory, so a
@@ -56,6 +59,15 @@ function formatDateLabel(date) {
 }
 function formatTimeLabel(date) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+// The same label from a plain YYYY-MM-DD, built without routing through a
+// local instant - which is the whole point for an all-day row, whose day
+// comes from FF rather than from its timestamp. Date.UTC + getUTCDay keeps
+// the weekday from sliding in a zone behind UTC.
+function formatDayString(ymd) {
+  const [y, m, d] = String(ymd).split('-').map(Number)
+  const at = new Date(Date.UTC(y, m - 1, d))
+  return Number.isNaN(at.getTime()) ? ymd : `${WEEKDAY_ABBR[at.getUTCDay()]} ${d}`
 }
 
 // One checkbox group inside the filter panel, with FF's own "(all, none)"
@@ -190,12 +202,43 @@ export default function EconomicCalendarCard() {
   // results could arrive last and overwrite the range actually on screen.
   const loadIdRef = useRef(0)
 
+  // Set once the trader picks a range of their own, which stops the
+  // midnight rollover below from moving it back under them.
+  const pickedOwnRangeRef = useRef(false)
+
   // Restores whatever the trader last set. This component only ever mounts
   // client-side (the dashboard gates it behind its own loading state), so
   // there's no SSR/hydration mismatch to defer around.
   useEffect(() => {
     setFilters(readStoredFilters())
   }, [])
+
+  // Roll the default week over at local midnight.
+  //
+  // fromDate/toDate were computed once at mount and never again, so a
+  // dashboard left open overnight kept showing LAST week - forever, and
+  // while still polling for a refresh, because the effect below had
+  // captured a rangeIncludesToday that was true when the tab was opened.
+  // Monday's prints never appeared, and nothing on screen said why. The
+  // news badges directly above this card already rolled over, so after
+  // midnight the two halves of the Overview disagreed with each other.
+  //
+  // A counter rather than a date, for the reason lib/useCalendarNewsByDay
+  // spells out: a timer that fires a moment early would set a date-valued
+  // state to the value it already holds, React would skip the render, and
+  // the re-arm would never run again - the rollover would silently stop
+  // after one night. A counter always changes, so it always re-arms.
+  const [dayTick, setDayTick] = useState(0)
+  useEffect(() => {
+    const id = setTimeout(() => setDayTick((n) => n + 1), msUntilNextLocalMidnight())
+    return () => clearTimeout(id)
+  }, [dayTick])
+
+  useEffect(() => {
+    if (dayTick === 0 || pickedOwnRangeRef.current) return
+    setFromDate(weekStartStr())
+    setToDate(weekEndStr())
+  }, [dayTick])
 
   // Only the date range is a query input; the three filter sections narrow
   // what's already been fetched, so toggling a checkbox is instant rather
@@ -307,24 +350,20 @@ export default function EconomicCalendarCard() {
   const today = todayStr()
 
   const visible = events.filter((e) => (
-    filters.impacts.includes(e.impact)
+    // The query is deliberately a day wider at each end (see
+    // econCalendarQuery), so the range is enforced here by DAY - which is
+    // also the only way an all-day row lands on the right one.
+    eventInRange(e, fromDate, toDate)
+    && filters.impacts.includes(e.impact)
     && filters.types.includes(e.event_type)
-    // Only currencies that HAVE a checkbox are filtered by currency. Two
-    // kinds of row don't: a GLOBAL_CURRENCY event (OPEC, G20), which isn't
-    // any one country's news so unticking EUR shouldn't hide it, and a
-    // currency outside CURRENCIES entirely - a tenth code FF adds, or a
-    // feed record with the field missing. Filtering those by a checkbox
-    // that doesn't exist made them permanently invisible with nothing on
-    // screen to say so; showing them is the failure a trader can actually
-    // see and report. Impact and event type still apply to both.
-    && (!CURRENCIES.includes(e.currency) || filters.currencies.includes(e.currency))
+    && currencyAllows(filters.currencies, e.currency)
   ))
 
   return (
     <>
       <div className="calendar-toolbar">
         <CalendarFilterMenu filters={filters} onChange={handleFilterChange} />
-        <DateRangePicker from={fromDate} to={toDate} onChange={(f, t) => { setFromDate(f); setToDate(t) }} />
+        <DateRangePicker from={fromDate} to={toDate} onChange={(f, t) => { pickedOwnRangeRef.current = true; setFromDate(f); setToDate(t) }} />
       </div>
 
       {loading ? (
@@ -376,14 +415,22 @@ export default function EconomicCalendarCard() {
             </div>
             {visible.map((e) => {
               const at = new Date(e.event_time)
-              const dateStr = toDateStr(at)
+              // The day an event belongs to is not always the day its
+              // instant falls on locally - an all-day row is anchored to
+              // midnight in FF's zone, which is the previous day for any
+              // viewer west of it. See lib/econCalendarDay.js.
+              const dateStr = displayDayFor(e)
               return (
                 <div
                   className={`econ-calendar-row ${!isSingleDay && dateStr === today ? 'econ-calendar-row-today' : ''}`}
                   key={e.event_key}
                 >
                   <span className={`econ-impact-dot econ-impact-${e.impact}`} />
-                  {!isSingleDay && <span className="econ-calendar-day">{formatDateLabel(at)}</span>}
+                  {!isSingleDay && (
+                    <span className="econ-calendar-day">
+                      {isAllDay(e) ? formatDayString(dateStr) : formatDateLabel(at)}
+                    </span>
+                  )}
                   {/* An all-day or tentative release is stored anchored to
                       its day's midnight because that is the only honest
                       thing its timestamp can say. Printing "00:00" would

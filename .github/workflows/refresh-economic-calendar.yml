@@ -48,8 +48,15 @@ name: Refresh economic calendar
 
 on:
   schedule:
-    # Hourly at :07 - off the top of the hour, where Actions' own docs warn
-    # scheduled jobs bunch up and get delayed.
+    # Asks for hourly at :07 - off the top of the hour, where Actions' own
+    # docs warn scheduled jobs bunch up and get delayed.
+    #
+    # It does not get hourly. Measured 2026-09-14 across the preceding 67
+    # hours: 19 runs, averaging one every 3.7 hours, gaps of 2.1h to 5.9h,
+    # and never once at :07. GitHub throttles scheduled workflows, and
+    # moving the minute does not buy it back. Anything that needs to be
+    # fresher than a few hours cannot rely on this cron - the on-demand
+    # refresh route is what serves a trader actually watching the card.
     - cron: '7 * * * *'
     # Daily at 04:17 UTC, the quiet end of the calendar's day, for the
     # wider month sweep.

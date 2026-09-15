@@ -78,9 +78,9 @@ lib/
   validatePassword.js         signup password rules
   greeting.js                  time-of-day-aware greeting phrases for the Overview page
   streak.js                    current win/loss streak from a list of trades
-  marketContextMock.js         placeholder volatility/key-levels data + the econ
-                               events the per-instrument upcoming list still uses
-                               (not live)
+  useUpcomingEconEvents.js     the per-instrument dashboard's "Next calendar
+                               event" card - real economic_events, USD and
+                               high/medium only, with its own ticking clock
   econCalendarEvents.mjs       Forex Factory event vocabulary + normalise/classify,
                                plus FF's display timezone and the day/key helpers
                                both sources share. .mjs so the CommonJS scripts can
@@ -269,9 +269,21 @@ cell its own events, rather than the badge querying per cell. It shows high and
 medium impact only — the table holds roughly fourteen releases a day, and a badge on
 every weekday says nothing, which was the real fault of the mock week it replaced.
 
-Still on mock data from `lib/marketContextMock.js`: the per-instrument dashboard's
-upcoming-events list (`upcomingEconEvents`) and the volatility/key-levels cards.
-Pointing the upcoming list at `economic_events` is the natural next step.
+The per-instrument dashboard's **"Next calendar event"** card is live too, via
+`lib/useUpcomingEconEvents.js`. It filters to **USD, high and medium impact** —
+every instrument in the catalog is a US-listed future, so a Swiss PPI print is not
+what moves the chart the trader is looking at, and USD matches the Economic
+calendar card's own default filter. All-day rows are listed rather than dropped (a
+US bank holiday is exactly what a futures dashboard should say) and labelled "All
+day", since there is no instant to count down to. The card owns a one-minute
+ticking clock: a countdown computed once at render stops being true the moment
+after it renders, and the day strings derived from that clock are what re-query
+across midnight.
+
+`lib/marketContextMock.js` is **gone** — nothing imported it once that card went
+live. The volatility and key-levels cards it was once documented as feeding never
+actually read from it; they render a hardcoded "Not available yet" and still do,
+pending a paid market-data source.
 
 ## Local dev tooling
 

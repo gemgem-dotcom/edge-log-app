@@ -91,8 +91,8 @@ lib/
   useClickOutside.js               close a dropdown on outside click / Escape
   greeting.js                      time-of-day-aware greeting phrases for the Overview page
   streak.js                        current win/loss streak from a list of trades
-  marketContextMock.js             placeholder key-levels/econ-event data (not live) +
-                                    nextEconEvent(), which is real math over that mock list
+  useUpcomingEconEvents.js         the per-instrument "Next calendar event" card off
+                                    economic_events - USD + high/medium, own ticking clock
   marketHours.js                   ET trading-session/open-closed logic, CME holidays layered in
   cmeHolidays.json                 static CME holiday/early-close calendar - see below
   contractRollover.js/.json        static per-underlying contract rollover/expiration dates
@@ -200,17 +200,27 @@ rate-limited by *claiming* `econ_refresh_lock` with one conditional UPDATE befor
 going to FF, not by reading a timestamp and then going - the latter is check-then-act,
 and every request arriving during the fetch passed it.
 
-Still mock, all from `lib/marketContextMock.js`: the per-instrument dashboard's
-upcoming-events list, and the two remaining "Market context" stats (current session's range vs.
+`lib/marketContextMock.js` is **deleted**. Its last caller was the per-instrument
+dashboard's upcoming-events list, which now reads `economic_events` through
+`lib/useUpcomingEconEvents.js` - USD and high/medium impact only, because every
+instrument in the catalog is a US-listed future and the table holds ~14 releases a
+day. All-day rows are listed and labelled rather than dropped; they have no instant
+to count down to, and a US bank holiday is precisely what a futures dashboard
+should be saying. The card distinguishes loading, unreachable, and genuinely-empty,
+which the mock never had to: it resolved synchronously, so "No events in the next
+24 hours" was always a claim it could make honestly.
+
+Still not live: the two remaining "Market context" stats (current session's range vs.
 typical, volume vs. typical - shown honestly as "Not available yet" rather than
 invented numbers, in the session-stats block in `OverviewDashboard.js` and
-`app/app/[instrument]/dashboard/page.js`). The market-context pair previously ran on a
+`app/app/[instrument]/dashboard/page.js`). Despite what this file and `CLAUDE.md`
+both said for months, those two never actually read from `marketContextMock` - the
+placeholder is hardcoded in the markup. The pair previously ran on a
 live BLS/FRED/FOMC pipeline (`app/api/economic-calendar`, `lib/fredReleases.js`,
 `lib/computedReleases.js`) that was pulled out in favor of a paid market-data
-provider - not yet wired up. The one remaining econ-event caller now has a real
-table to move onto whenever that's worth doing. The other two Market context
+provider - not yet wired up. The other two Market context
 stats (days to contract rollover, time to next calendar event) are real, not mocked -
-see `lib/contractRollover.js` and `marketContextMock.js`'s `nextEconEvent()`. Time to
+see `lib/contractRollover.js` and `lib/useUpcomingEconEvents.js`. Time to
 next calendar event is per-instrument dashboard only - the all-instruments Overview
 dropped it since a single shared countdown read as redundant repeated once per row.
 The overnight-gap stat and the empty "Key levels" card were dropped entirely, and days

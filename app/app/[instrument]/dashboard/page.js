@@ -14,7 +14,7 @@ import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
-import { upcomingEconEvents } from '@/lib/marketContextMock'
+import { useUpcomingEconEvents } from '@/lib/useUpcomingEconEvents'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
 import InstrumentMenu from '@/components/InstrumentMenu'
@@ -283,6 +283,16 @@ export default function DashboardPage({ params }) {
   const [selectedDate, setSelectedDate] = useState(null)
   const [regime, setRegime] = useState(null)
 
+  // Above the loading/error returns below, because it is a hook and those
+  // returns are conditional. It owns its own ticking clock so the countdown
+  // stays true while the page is open - see lib/useUpcomingEconEvents.
+  const {
+    upcoming: upcomingEvents,
+    now: econNow,
+    loading: econLoading,
+    error: econError,
+  } = useUpcomingEconEvents()
+
 // Identifies the most recent load, so a slower earlier one can never write
 // its results over a newer one's.
 //
@@ -467,7 +477,6 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime, symbol })
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
-  const upcomingEvents = upcomingEconEvents(now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
 
   // Drops a deleted trade from this page's own copy, so every figure derived
@@ -589,17 +598,27 @@ return (
 <div className="market-context-row">
   <div className="panel">
     <div className="stat-label dashboard-card-title">Next calendar event</div>
-    {upcomingEvents.length > 0 ? (
+    {/* Three outcomes, not two. "No events in the next 24 hours" is a
+        factual claim, and the mock could always make it honestly because it
+        resolved synchronously; a real query cannot make it until it has
+        come back. Loading and unreachable each say their own thing. */}
+    {econLoading ? (
+      <p className="brief-card-text stat-placeholder">Loading…</p>
+    ) : econError ? (
+      <p className="brief-card-text stat-placeholder">Calendar unavailable.</p>
+    ) : upcomingEvents.length > 0 ? (
       <div className="key-levels-list">
-        {upcomingEvents.map((e, i) => (
-          <div className="key-levels-row" key={i}>
-            <span>{e.event}</span>
-            <span>{fmtCountdown(e.timestamp - now)}</span>
+        {upcomingEvents.map(({ event, allDay, timestamp }) => (
+          <div className="key-levels-row" key={event.event_key}>
+            <span>{event.title}</span>
+            {/* An all-day row has no instant to count down to - see
+                selectUpcoming on why it is listed rather than dropped. */}
+            <span>{allDay ? 'All day' : fmtCountdown(timestamp - econNow)}</span>
           </div>
         ))}
       </div>
     ) : (
-      <p className="brief-card-text">No events in the next 24 hours.</p>
+      <p className="brief-card-text">No high or medium impact US events in the next 24 hours.</p>
     )}
   </div>
 </div>

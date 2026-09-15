@@ -17,6 +17,8 @@ import InstrumentNav from '@/components/InstrumentNav'
 import HeaderClock from '@/components/HeaderClock'
 import TutorialOverlay from '@/components/TutorialOverlay'
 import { activatable } from '@/lib/activatable'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTabBar from '@/components/mobile/MobileTabBar'
 
 export default function InstrumentLayout({ children, params }) {
   const router = useRouter()
@@ -37,6 +39,22 @@ export default function InstrumentLayout({ children, params }) {
   // waiting on loadData()'s own supabase.auth.getUser() call to resolve).
   const [tutorial, setTutorial] = useState(readCachedTutorialState)
   const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ anchored: tutorial.status === 'active' })
+  // null until the first client render - see lib/useIsMobile.js. Treated
+  // as "not mobile" for rendering decisions below, which keeps the
+  // desktop output byte-identical to what it was; the mobile chrome
+  // appears on the next tick, while these pages are still on their own
+  // loading skeletons anyway.
+  const isMobile = useIsMobile()
+
+  // The tab bar is position:fixed, so the page underneath has to reserve
+  // room for it or the last card sits beneath the bar and the page looks
+  // truncated. Done on <body> rather than a wrapper because the shell's
+  // own scroll container is the document.
+  useEffect(() => {
+    if (!isMobile) return undefined
+    document.body.classList.add('m-app')
+    return () => document.body.classList.remove('m-app')
+  }, [isMobile])
 
   useEffect(() => {
     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
@@ -235,7 +253,11 @@ export default function InstrumentLayout({ children, params }) {
 
   return (
     <>
-      <div className="shell">
+      {/* is-mobile is a hook for the mobile stylesheet only - every rule
+          keyed off it lives inside the 768px media query, so on desktop
+          the class is neither present (isMobile is false) nor meaningful
+          if it somehow were. */}
+      <div className={`shell${isMobile ? ' is-mobile' : ''}`}>
         <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${tutorial.status === 'active' ? ' topbar-anchored' : ''}`}>
           <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
 
@@ -310,6 +332,17 @@ export default function InstrumentLayout({ children, params }) {
           <main className="main-area">{children}</main>
         </div>
       </div>
+      {/* Mounted only on mobile, so there is no desktop DOM for it to be
+          hidden in. The sidebar it replaces is hidden by the mobile
+          stylesheet rather than unmounted, because it is also the
+          tutorial's step-1 target. */}
+      {isMobile ? (
+        <MobileTabBar
+          symbol={currentSymbol}
+          strategies={sortedStrategies}
+          colorIndexById={colorIndexById}
+        />
+      ) : null}
       {/* Step 1's target (the sidebar's own "+ Add new") is on every
           page under this layout, so it can render regardless of route.
           Step 2's target only exists on the dashboard page itself - once

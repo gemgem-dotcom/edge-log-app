@@ -8,6 +8,10 @@ import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { fetchTradePage, fetchDistinctTags, EMPTY_FILTERS } from '@/lib/tradeQuery'
 import TradeLogTable from '@/components/TradeLogTable'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTradeList from '@/components/mobile/MobileTradeList'
+import MobileFilterSheet, { countActiveFilters } from '@/components/mobile/MobileFilterSheet'
+import MobilePager from '@/components/mobile/MobilePager'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -33,6 +37,10 @@ export default function LogPage({ params }) {
   const [tagOptions, setTagOptions] = useState([])
   const [page, setPage] = useState(0)
   const [filters, setFilters] = useState(EMPTY_FILTERS)
+  // Mobile only. The desktop keeps its per-column header menus, which own
+  // their own open state inside TradeLogTable.
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     loadStatic()
@@ -119,6 +127,42 @@ export default function LogPage({ params }) {
       </div>
       <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>
 
+      {isMobile ? (
+        <>
+          <MobileTradeList
+            trades={trades}
+            strategyNameById={strategyName}
+            symbol={symbol}
+            totalCount={totalCount}
+            onOpenFilters={() => setFiltersOpen(true)}
+            activeFilterCount={countActiveFilters(filters)}
+            emptyState={
+              <EmptyState
+                title="No trades yet"
+                message={`No trades logged yet for ${displayName}. Log your first one to start tracking your stats.`}
+                actionHref={`/app/${symbol}/log/new`}
+                actionLabel="Log new trade"
+              />
+            }
+          />
+          <MobilePager
+            page={page}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
+          <MobileFilterSheet
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            filters={filters}
+            // Same synchronous page reset the desktop path does below, and
+            // for the same reason - see its comment there.
+            onFilterChange={(patch) => { setFilters((prev) => ({ ...prev, ...patch })); setPage(0) }}
+            strategies={strategies}
+            tagOptions={tagOptions}
+          />
+        </>
+      ) : (
       <div className="panel">
         <TradeLogTable
           trades={trades}
@@ -154,6 +198,7 @@ export default function LogPage({ params }) {
           }
         />
       </div>
+      )}
     </div>
   )
 }

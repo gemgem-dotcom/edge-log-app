@@ -60,9 +60,22 @@ function resultOf(trade) {
   return 'breakeven'
 }
 
+// The Edit link needs an instrument in its path, and the all-instruments
+// log has no page-level symbol - each row belongs to a different one. So
+// the row's own symbol wins, the page's is the fallback, and when there
+// is neither the link is not rendered at all rather than pointing at
+// /app/null/log/<id>/edit. A dead link is worse than a missing one, and
+// that exact mistake shipped once already in this work (the Strategies
+// tab, which 404'd).
+function editHrefFor(trade, symbol, instrumentSymbol) {
+  const s = instrumentSymbol || symbol
+  return s ? `/app/${s}/log/${trade.id}/edit` : null
+}
+
 function TradeCard({ trade, strategyName, symbol, instrumentSymbol }) {
   const [open, setOpen] = useState(false)
   const result = resultOf(trade)
+  const editHref = editHrefFor(trade, symbol, instrumentSymbol)
   const pnl = fmtPnl(trade.pnl)
   const r = fmtR(trade.r_multiple)
 
@@ -135,9 +148,11 @@ function TradeCard({ trade, strategyName, symbol, instrumentSymbol }) {
 
           {trade.notes ? <p className="m-trade-notes">{trade.notes}</p> : null}
 
-          <Link className="m-trade-edit" href={`/app/${symbol}/log/${trade.id}/edit`}>
-            <Pencil size={14} aria-hidden="true" /> Edit trade
-          </Link>
+          {editHref ? (
+            <Link className="m-trade-edit" href={editHref}>
+              <Pencil size={14} aria-hidden="true" /> Edit trade
+            </Link>
+          ) : null}
         </div>
       ) : null}
     </li>

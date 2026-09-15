@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { UTC_OFFSETS, browserOffsetGuess } from '@/lib/timezone'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useStickyTopbar } from '@/lib/useStickyTopbar'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTabBar from '@/components/mobile/MobileTabBar'
 import ProfileSection from '@/components/account/ProfileSection'
 import PreferencesSection from '@/components/account/PreferencesSection'
 import PasswordSection from '@/components/account/PasswordSection'
@@ -26,6 +28,13 @@ export default function AccountPage() {
   // No internal scroll pane on this page (unlike the app shell's
   // .main-area) - the window itself scrolls, so omit scrollRef.
   const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar()
+  const isMobile = useIsMobile()
+
+  useEffect(() => {
+    if (!isMobile) return undefined
+    document.body.classList.add('m-app')
+    return () => document.body.classList.remove('m-app')
+  }, [isMobile])
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -123,6 +132,11 @@ export default function AccountPage() {
           <div className="copyright-line">© 2026 EdgeLog</div>
         </div>
       </div>
+      {/* Account settings is a tab bar destination, so it has to carry
+          the tab bar itself - it sits outside the instrument layout that
+          renders it everywhere else. Without this, tapping Account was a
+          one-way trip. */}
+      {isMobile ? <MobileTabBar symbol={null} strategies={[]} /> : null}
     </div>
   )
 }

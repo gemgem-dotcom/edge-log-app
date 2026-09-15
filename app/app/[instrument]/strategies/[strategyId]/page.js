@@ -17,6 +17,8 @@ import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import TradeLogTable from '@/components/TradeLogTable'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTradeList from '@/components/mobile/MobileTradeList'
 import StreakBadge from '@/components/StreakBadge'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import WinRateGauge from '@/components/WinRateGauge'
@@ -111,6 +113,7 @@ function colorClass(val) {
 export default function StrategyDetailPage({ params }) {
   const resolvedParams = use(params)
   const symbol = resolvedParams.instrument
+  const isMobile = useIsMobile()
   const strategyId = resolvedParams.strategyId
   const router = useRouter()
 
@@ -385,6 +388,25 @@ export default function StrategyDetailPage({ params }) {
       </div>
 
       <div className="section-heading">Trade log — {strategy.name}</div>
+      {isMobile ? (
+        <MobileTradeList
+          trades={trades}
+          symbol={symbol}
+          // Every trade here is this strategy's by definition, so naming
+          // it on each card would be the same word repeated down the
+          // list - the desktop table drops the column for the same
+          // reason (showStrategyColumn={false} below).
+          strategyNameById={() => null}
+          emptyState={
+            <EmptyState
+              title="No trades yet"
+              message={`No trades have been logged against "${strategy.name}" yet.`}
+              actionHref={`/app/${symbol}/log/new?strategy=${strategyId}`}
+              actionLabel="Log new trade"
+            />
+          }
+        />
+      ) : (
       <div className="panel">
         <TradeLogTable
           trades={trades}
@@ -403,6 +425,7 @@ export default function StrategyDetailPage({ params }) {
           }
         />
       </div>
+      )}
 
       {showDeleteModal && (
         <div className="confirm-modal-overlay" onClick={() => setShowDeleteModal(false)}>

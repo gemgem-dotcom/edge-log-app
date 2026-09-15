@@ -3748,7 +3748,17 @@ button:active{
      would send a first-run mobile user into the overlay's "target not
      found" state. Hidden, it still occupies no space and takes no taps.
   */
-  .shell.is-mobile .sidebar { display: none; }
+  /* :not(.is-tutorial) on both hiding rules below is load-bearing.
+     The first-run tutorial spotlights two real elements by measuring
+     them - the sidebar's "+ Add new" (step 1) and the "Log new trade"
+     button (step 2). Hiding either gives TutorialOverlay a 0x0 rect to
+     point at, so a brand-new mobile user's onboarding highlights
+     nothing. Verified by reading both targets' bounding boxes in the
+     browser, which is how this was found.
+
+     So while the tutorial is running, mobile keeps the desktop chrome
+     it needs; the moment onboarding completes, the tab bar takes over. */
+  .shell.is-mobile:not(.is-tutorial) .sidebar { display: none; }
   .shell.is-mobile .shell-body { flex-direction: column; }
   .shell.is-mobile .main-area { padding: 16px 14px 24px; }
 
@@ -3769,7 +3779,7 @@ button:active{
   /* The desktop's "Log new trade" buttons are redundant once the tab
      bar carries that action in its centre, raised and always reachable.
      Two primary actions for one task is one too many on a phone. */
-  .shell.is-mobile .new-trade-btn { display: none; }
+  .shell.is-mobile:not(.is-tutorial) .new-trade-btn { display: none; }
 
   /* ----- Bottom sheet ----- */
   .m-sheet-backdrop {
@@ -3920,6 +3930,36 @@ button:active{
   .m-strategy-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
   .m-strategy-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .m-strategy-chevron { color: var(--muted-2); }
+
+  /* ----- Pane switcher (dashboard) ----- */
+  /* Sticky, because the panes are still tall enough to scroll and losing
+     the switcher off the top means scrolling back up to change view.
+     Sits under the topbar rather than at 0 - the topbar is the app's own
+     sticky chrome and the two would overlap. */
+  .m-panebar {
+    position: sticky; top: 0; z-index: 20;
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    gap: 4px; padding: 4px;
+    margin: 0 0 14px;
+    background: var(--panel-2);
+    border-radius: 11px;
+  }
+  .m-panebar-item {
+    min-height: 40px; padding: 0 6px;
+    border: none; border-radius: 8px; background: none;
+    color: var(--muted); font-size: 13px; font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-panebar-item.is-active { background: var(--panel-hover); color: var(--text); }
+
+  /* The dashboard's own rows stack rather than sit side by side, and the
+     stat grids go two-up. Four stat cards in a row at 390px is four
+     unreadable columns; two is legible and keeps the comparison. */
+  .shell.is-mobile .instrument-glance-row,
+  .shell.is-mobile .market-context-row { grid-template-columns: 1fr; display: grid; gap: 10px; }
+  .shell.is-mobile .stats-6 { grid-template-columns: repeat(2, 1fr); }
+  .shell.is-mobile .section-heading { margin-top: 18px; }
+  .shell.is-mobile .panel { padding: 14px; }
 
   @media (prefers-reduced-motion: reduce) {
     .m-sheet, .m-sheet-backdrop { animation: none; }

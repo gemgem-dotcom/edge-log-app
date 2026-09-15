@@ -11,6 +11,8 @@ import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
 import { totalTradeCount } from '@/lib/insightData'
 import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobilePanes from '@/components/mobile/MobilePanes'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
@@ -286,6 +288,7 @@ export default function DashboardPage({ params }) {
   // Above the loading/error returns below, because it is a hook and those
   // returns are conditional. It owns its own ticking clock so the countdown
   // stays true while the page is open - see lib/useUpcomingEconEvents.
+  const isMobile = useIsMobile()
   const {
     upcoming: upcomingEvents,
     now: econNow,
@@ -559,6 +562,11 @@ return (
   </div>
 ) : (
   <>
+<MobilePanes
+  enabled={isMobile === true}
+  ariaLabel="Dashboard sections"
+  panes={[
+    { key: 'today', label: 'Today', content: (<>
 <div className="instrument-glance-row">
   <div className="panel">
     <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
@@ -623,6 +631,8 @@ return (
   </div>
 </div>
 
+    </>) },
+    { key: 'performance', label: 'Performance', content: (<>
 <div className="section-heading">All-Time Performance</div>
   <div className="panel">
   <div className="calendar-toolbar">
@@ -710,6 +720,8 @@ return (
   <EdgeInsightsPanel scope={instrumentId ? `instrument:${instrumentId}` : null} tradeCount={totalTradeCount(allTrades)} />
 </div>
 
+    </>) },
+    { key: 'calendar', label: 'Calendar', content: (<>
 <div className="section-heading">Monthly P&L</div>
 <div className="panel">
   <div className="calendar-toolbar">
@@ -816,6 +828,9 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
   </>
 )}
 </div>
+    </>) },
+  ]}
+/>
   </>
 )}
   </div>

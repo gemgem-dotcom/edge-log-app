@@ -257,7 +257,7 @@ export default function InstrumentLayout({ children, params }) {
           keyed off it lives inside the 768px media query, so on desktop
           the class is neither present (isMobile is false) nor meaningful
           if it somehow were. */}
-      <div className={`shell${isMobile ? ' is-mobile' : ''}`}>
+      <div className={`shell${isMobile ? ' is-mobile' : ''}${tutorial.status === 'active' ? ' is-tutorial' : ''}`}>
         <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${tutorial.status === 'active' ? ' topbar-anchored' : ''}`}>
           <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
 

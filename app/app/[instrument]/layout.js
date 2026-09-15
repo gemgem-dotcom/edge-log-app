@@ -19,6 +19,7 @@ import TutorialOverlay from '@/components/TutorialOverlay'
 import { activatable } from '@/lib/activatable'
 import { useIsMobile } from '@/lib/useIsMobile'
 import MobileTabBar from '@/components/mobile/MobileTabBar'
+import MobileScopeButton from '@/components/mobile/MobileScopeButton'
 
 export default function InstrumentLayout({ children, params }) {
   const router = useRouter()
@@ -270,11 +271,24 @@ export default function InstrumentLayout({ children, params }) {
           <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
           <div className="shell-topbar-right">
-            <HeaderClock />
-            <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
-            </button>
-            <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
+            {/* Mobile gets ONE control here instead of three. The clock
+                duplicates the phone's own status bar, the theme toggle
+                duplicates Account -> Preferences, and the cog duplicates
+                the Account tab - so all three are hidden by the mobile
+                stylesheet and the scope selector takes their place.
+                Desktop is untouched: it still renders all three, and the
+                scope button never mounts there at all. */}
+            {isMobile ? (
+              <MobileScopeButton instruments={instruments} currentSymbol={currentSymbol} />
+            ) : (
+              <>
+                <HeaderClock />
+                <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                  {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
+                </button>
+                <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
+              </>
+            )}
           </div>
         </header>
         <div className="topbar-spacer" style={spacerStyle} />
@@ -342,13 +356,7 @@ export default function InstrumentLayout({ children, params }) {
           hidden in. The sidebar it replaces is hidden by the mobile
           stylesheet rather than unmounted, because it is also the
           tutorial's step-1 target. */}
-      {isMobile ? (
-        <MobileTabBar
-          symbol={currentSymbol}
-          strategies={sortedStrategies}
-          colorIndexById={colorIndexById}
-        />
-      ) : null}
+      {isMobile ? <MobileTabBar symbol={currentSymbol} /> : null}
       {/* Step 1's target (the sidebar's own "+ Add new") is on every
           page under this layout, so it can render regardless of route.
           Step 2's target only exists on the dashboard page itself - once

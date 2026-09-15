@@ -64,7 +64,6 @@ export default function MobilePanes({ enabled, panes, ariaLabel = 'Sections' }) 
           role="tabpanel"
           aria-labelledby={`m-tab-${p.key}`}
           hidden={p.key !== active}
-          className="m-pane"
         >
           {p.content}
         </div>

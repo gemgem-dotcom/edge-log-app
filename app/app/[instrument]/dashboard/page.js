@@ -833,7 +833,7 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
     asks "what did I do that day", and the answer was two columns of
     metadata with the result hidden. */}
 {isMobile ? (
-  <MobileTradeList trades={selectedTrades} strategyNameById={strategyName} symbol={symbol} />
+  <MobileTradeList trades={selectedTrades} strategyNameById={strategyName} symbol={symbol} onTradeDeleted={handleTradeDeleted} />
 ) : (
 <TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} onTradeDeleted={handleTradeDeleted} />
 )}

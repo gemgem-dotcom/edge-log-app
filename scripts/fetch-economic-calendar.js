@@ -202,7 +202,12 @@ async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, co
     const from = page * SCAN_PAGE
     const { data, error: readErr } = await admin
       .from('economic_events')
-      .select('event_key, title, currency, event_time, fetched_at')
+      // ff_event_id is read for the decision, not for display: its absence
+      // is what marks a row as JSON-feed-written, and isFeedWritten exempts
+      // those from the allowance. Leave it out of the select and every row
+      // looks feed-written, which would hand the removal pass an unlimited
+      // budget over the whole range.
+      .select('event_key, ff_event_id, title, currency, event_time, fetched_at')
       .gte('event_time', coveredFrom)
       .lt('event_time', coveredTo)
       .order('event_time', { ascending: true })
@@ -214,22 +219,34 @@ async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, co
     if (rows.length < SCAN_PAGE) break
   }
 
-  const { vanished, allowance, inRangeCount, allowed } = planRemoval(inRange, since, coveredDays)
+  const { vanished, orphans, gated, allowance, inRangeCount, allowed, removable } = planRemoval(inRange, since, coveredDays)
   if (vanished.length === 0) return 0
 
-  if (!allowed) {
-    // Refuse, loudly, and keep the rows. Deleting this many means the page
-    // did not say what we think it said - and a table missing a third of
-    // its events is a far worse outcome than one holding a few stale ones.
-    log(`  ${label}: REFUSING to remove ${vanished.length} of ${inRangeCount} row(s) - over the ${allowance} allowed`)
+  if (!allowed && gated.length > 0) {
+    // Refuse, loudly, and keep them. Deleting this many means the page did
+    // not say what we think it said - and a table missing a third of its
+    // events is a far worse outcome than one holding a few stale ones.
+    //
+    // 'error', not 'warning'. A refusal changes nothing, so the next run
+    // computes the same set and refuses again - every few hours, forever,
+    // with no escape but manual SQL. That is a wedge, not a blip, and the
+    // diagnostic's STALENESS section is where it shows as a number that
+    // stops going down.
+    log(`  ${label}: REFUSING to remove ${gated.length} of ${inRangeCount} row(s) - over the ${allowance} allowed`)
     Sentry.captureMessage(
-      `Economic calendar: ${label} would have removed ${vanished.length}/${inRangeCount} rows - refused`,
-      'warning',
+      `Economic calendar: ${label} would have removed ${gated.length}/${inRangeCount} rows - refused`,
+      'error',
     )
-    return 0
   }
 
-  const keys = vanished.map((r) => r.event_key)
+  // Feed orphans are not gated - see isFeedWritten. They go whether or not
+  // the rest was believable.
+  if (removable.length === 0) return 0
+  if (orphans.length > 0) {
+    log(`  ${label}: ${orphans.length} of these were JSON-feed rows the page has now replaced`)
+  }
+
+  const keys = removable.map((r) => r.event_key)
   // Conditioned on fetched_at as well as the key. Between the scan and
   // this delete another writer can legitimately refresh one of these rows -
   // the on-demand refresh route upserts the current week whenever a
@@ -246,12 +263,12 @@ async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, co
   // Named, not just counted. A removal is the one thing here that destroys
   // data, so the log has to be enough to tell a cancelled speech from a
   // parser that started missing a row type.
-  log(`  ${label}: removed ${vanished.length} event(s) FF no longer lists`)
-  for (const r of vanished.slice(0, 10)) {
+  log(`  ${label}: removed ${removable.length} event(s) FF no longer lists`)
+  for (const r of removable.slice(0, 10)) {
     log(`      ${r.event_time}  ${r.currency}  ${r.title}`)
   }
-  if (vanished.length > 10) log(`      ...and ${vanished.length - 10} more`)
-  return vanished.length
+  if (removable.length > 10) log(`      ...and ${removable.length - 10} more`)
+  return removable.length
 }
 
 function monthsAround(back, forward) {

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown, SlidersHorizontal, Pencil } from 'lucide-react'
+import { hasResult } from '@/lib/tradeMath'
 
 // The trade log, as a phone actually wants it.
 //
@@ -51,10 +52,18 @@ function fmtDate(dateStr) {
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
 }
 
-// win / loss / breakeven / open, matching the desktop table's own rule so
-// the two surfaces can never disagree about what a trade was.
+// win / loss / breakeven / open, keyed off the SAME thing the desktop
+// table keys off: hasResult, i.e. r_multiple being non-null.
+//
+// This was written against exit_price first, which looks equivalent and
+// is not. CLAUDE.md is explicit that r_multiple stays nullable because
+// rows predating the mandatory-exit rule may hold null - so a legacy row
+// with an exit price but no R read as 'breakeven' here and 'Open' on
+// desktop, and disagreed with the server-side filter too, which maps
+// breakeven to r_multiple = 0 (lib/tradeQuery.js). Two views of one row,
+// which is the exact class of bug this repo has been bitten by before.
 function resultOf(trade) {
-  if (trade.exit_price === null || trade.exit_price === undefined) return 'open'
+  if (!hasResult(trade)) return 'open'
   if (trade.r_multiple > 0) return 'win'
   if (trade.r_multiple < 0) return 'loss'
   return 'breakeven'
@@ -72,7 +81,7 @@ function editHrefFor(trade, symbol, instrumentSymbol) {
   return s ? `/app/${s}/log/${trade.id}/edit` : null
 }
 
-function TradeCard({ trade, strategyName, symbol, instrumentSymbol }) {
+function TradeCard({ trade, strategyName, symbol, instrumentSymbol, showStrategy }) {
   const [open, setOpen] = useState(false)
   const result = resultOf(trade)
   const editHref = editHrefFor(trade, symbol, instrumentSymbol)
@@ -101,7 +110,13 @@ function TradeCard({ trade, strategyName, symbol, instrumentSymbol }) {
           <span className="m-trade-card-toprow">
             <span className={`m-dir m-dir--${trade.direction}`}>{trade.direction === 'long' ? 'LONG' : 'SHORT'}</span>
             {instrumentSymbol ? <span className="m-trade-inst">{instrumentSymbol}</span> : null}
-            <span className="m-trade-strategy">{strategyName || 'Unassigned'}</span>
+            {/* showStrategy=false is how the per-strategy page suppresses
+                this, mirroring the desktop table's showStrategyColumn.
+                Passing a name-resolver that returns null did NOT work:
+                the fallback below turned every card on that page into
+                "Unassigned", labelling a strategy's own trades as having
+                no strategy. */}
+            {showStrategy ? <span className="m-trade-strategy">{strategyName || 'Unassigned'}</span> : null}
           </span>
           <span className="m-trade-card-date">{fmtDate(trade.trade_date)}{trade.trade_time ? ` · ${trade.trade_time.slice(0, 5)}` : ''}</span>
         </span>
@@ -113,7 +128,12 @@ function TradeCard({ trade, strategyName, symbol, instrumentSymbol }) {
           {pnl
             ? <><span className={`m-trade-pnl ${trade.pnl >= 0 ? 'is-pos' : 'is-neg'}`}>{pnl}</span>
                 {r ? <span className="m-trade-r">{r}</span> : null}</>
-            : <span className={`m-trade-pnl ${trade.r_multiple >= 0 ? 'is-pos' : 'is-neg'}`}>{r || '—'}</span>}
+            : /* No dollar figure. R moves up into the lead slot - but a
+                 row with neither gets a plain em dash and NO colour: the
+                 first version tested `trade.r_multiple >= 0`, which is
+                 true for null, so an open trade rendered a confident
+                 green dash. */
+              <span className={`m-trade-pnl ${r ? (trade.r_multiple >= 0 ? 'is-pos' : 'is-neg') : ''}`}>{r || '—'}</span>}
         </span>
         <ChevronDown className="m-trade-chevron" size={16} aria-hidden="true" />
       </button>
@@ -168,12 +188,25 @@ export default function MobileTradeList({
   onOpenFilters = null,
   activeFilterCount = 0,
   totalCount = null,
+  showStrategy = true,
 }) {
-  if (!trades.length) {
+  const count = totalCount === null ? trades.length : totalCount
+  const filtered = activeFilterCount > 0
+
+  // "No trades at all" and "no trades MATCHING" are different facts, and
+  // only the first one is the empty state.
+  //
+  // This returned the empty state for both, before the toolbar was
+  // rendered - so filtering to zero results removed the Filter button,
+  // which is the only way back to the sheet. The trader was left on a
+  // screen reading "No trades yet - log your first one" for an instrument
+  // full of trades, with no control to undo it and no way out but a
+  // reload. The desktop table has always distinguished the two
+  // (TradeLogTable only shows emptyState when nothing is filtered);
+  // this now does too, and keeps the toolbar up either way.
+  if (!trades.length && !filtered) {
     return emptyState || <p className="m-empty">No trades yet.</p>
   }
-
-  const count = totalCount === null ? trades.length : totalCount
 
   return (
     <>
@@ -188,17 +221,22 @@ export default function MobileTradeList({
         ) : null}
       </div>
 
-      <ul className="m-trade-list">
-        {trades.map((t) => (
-          <TradeCard
-            key={t.id}
-            trade={t}
-            symbol={symbol}
-            strategyName={t.strategy_id ? strategyNameById?.(t.strategy_id) : null}
-            instrumentSymbol={instrumentSymbolFor ? instrumentSymbolFor(t) : null}
-          />
-        ))}
-      </ul>
+      {trades.length ? (
+        <ul className="m-trade-list">
+          {trades.map((t) => (
+            <TradeCard
+              key={t.id}
+              trade={t}
+              symbol={symbol}
+              showStrategy={showStrategy}
+              strategyName={t.strategy_id ? strategyNameById?.(t.strategy_id) : null}
+              instrumentSymbol={instrumentSymbolFor ? instrumentSymbolFor(t) : null}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="m-empty">No trades match these filters.</p>
+      )}
     </>
   )
 }

@@ -32,6 +32,8 @@ const TAB_ICONS = {
 // Renders only on mobile - the caller gates on useIsMobile - so there is
 // no desktop markup to affect. Every class here is new and prefixed
 // `m-`, so no existing rule reaches it either.
+// `strategies` may be an array, or NULL meaning "this screen does not
+// know" - see the sheet body below for why those are different answers.
 export default function MobileTabBar({ symbol, strategies = [], colorIndexById = {} }) {
   const pathname = usePathname()
   const active = activeTabFor(pathname)
@@ -99,9 +101,31 @@ export default function MobileTabBar({ symbol, strategies = [], colorIndexById =
               </button>
             </div>
             <div className="m-sheet-body">
-              {strategies.length ? (
+              {strategies === null ? (
+                // NOT the same as "there are none". Account settings does
+                // not load strategies, and saying "No strategies yet"
+                // there would be a flat falsehood to anyone who has some.
+                // An unknown list says so and offers the way to find out.
+                <p className="m-empty">
+                  <Link href="/app" className="m-strategy-link" onClick={() => setSheetOpen(false)}>
+                    Choose an instrument to see its strategies
+                  </Link>
+                </p>
+              ) : strategies.length ? (
                 <ul className="m-strategy-list">
-                  {strategies.map((s) => (
+                  {strategies.map((s) => {
+                    // Each row resolves its OWN instrument before the
+                    // page-level one. On /app and /app/log there is no
+                    // page symbol at all, and building
+                    // `/app/${symbol}/strategies/${id}` there would
+                    // produce "/app/null/strategies/..." - a 404, which
+                    // is precisely the bug the Strategies tab already
+                    // shipped once. A row that cannot resolve an
+                    // instrument is rendered as plain text rather than a
+                    // dead link.
+                    const rowSymbol = s.symbol || symbol
+                    const href = rowSymbol ? `/app/${rowSymbol}/strategies/${s.id}` : null
+                    return (
                     <li key={s.id}>
                       {/* Closed here, on the tap, rather than in an
                           effect watching the pathname. Same result -
@@ -111,24 +135,37 @@ export default function MobileTabBar({ symbol, strategies = [], colorIndexById =
                           and reacting to the route afterwards means a
                           setState inside an effect for something the
                           click handler already knows. */}
-                      <Link
-                        href={`/app/${symbol}/strategies/${s.id}`}
-                        className="m-strategy-row"
-                        onClick={() => setSheetOpen(false)}
-                      >
-                        {/* Same colour the desktop sidebar and the
-                            dashboard's strategy table use, keyed the same
-                            way - see strategyColor's own comment on why
-                            the index must come from creation order. */}
-                        <span className="m-strategy-dot" style={{ background: strategyColor(colorIndexById[s.id]) }} />
-                        <span className="m-strategy-name">{s.name}</span>
-                        <ChevronRight size={16} className="m-strategy-chevron" />
-                      </Link>
+                      {href ? (
+                        <Link
+                          href={href}
+                          className="m-strategy-row"
+                          onClick={() => setSheetOpen(false)}
+                        >
+                          {/* Same colour the desktop sidebar and the
+                              dashboard's strategy table use, keyed the
+                              same way - see strategyColor's own comment on
+                              why the index must come from creation order. */}
+                          <span className="m-strategy-dot" style={{ background: s.color || strategyColor(colorIndexById[s.id]) }} />
+                          <span className="m-strategy-name">{s.name}</span>
+                          {s.symbol ? <span className="m-strategy-sym">{s.symbol}</span> : null}
+                          <ChevronRight size={16} className="m-strategy-chevron" />
+                        </Link>
+                      ) : (
+                        <span className="m-strategy-row is-inert">
+                          <span className="m-strategy-dot" style={{ background: s.color || strategyColor(colorIndexById[s.id]) }} />
+                          <span className="m-strategy-name">{s.name}</span>
+                        </span>
+                      )}
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
               ) : (
-                <p className="m-empty">No strategies yet. Add one from the Overview page.</p>
+                // Points at where a strategy can ACTUALLY be added on a
+                // phone. The sidebar's "+ Add new" - the desktop answer -
+                // is hidden on mobile, so the trade form's own "+ Add new
+                // strategy" is the real route.
+                <p className="m-empty">No strategies yet. You can add one while logging a trade.</p>
               )}
             </div>
           </div>

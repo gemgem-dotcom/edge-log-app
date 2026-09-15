@@ -257,7 +257,13 @@ export default function InstrumentLayout({ children, params }) {
           keyed off it lives inside the 768px media query, so on desktop
           the class is neither present (isMobile is false) nor meaningful
           if it somehow were. */}
-      <div className={`shell${isMobile ? ' is-mobile' : ''}${tutorial.status === 'active' ? ' is-tutorial' : ''}`}>
+      {/* is-tutorial is gated on isMobile as well as on the tutorial,
+          because it is only ever READ by rules inside the mobile media
+          query. Ungated it was a new, non-m- prefixed class landing in
+          desktop DOM on every first-run session - harmless in effect, but
+          it made the "nothing new reaches the desktop" guarantee false as
+          stated, and a guarantee with an exception is not one. */}
+      <div className={`shell${isMobile ? ' is-mobile' : ''}${isMobile && tutorial.status === 'active' ? ' is-tutorial' : ''}`}>
         <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${tutorial.status === 'active' ? ' topbar-anchored' : ''}`}>
           <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
 

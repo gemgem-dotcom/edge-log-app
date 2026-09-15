@@ -3788,7 +3788,19 @@ button:active{
   /* The desktop's "Log new trade" buttons are redundant once the tab
      bar carries that action in its centre, raised and always reachable.
      Two primary actions for one task is one too many on a phone. */
-  .shell.is-mobile:not(.is-tutorial) .new-trade-btn { display: none; }
+  /* Hides ONLY the two buttons explicitly marked as duplicating the tab
+     bar's own Log action - the instrument dashboard's and the instrument
+     trade log's page headers.
+     This started as a flat `.new-trade-btn`, which was far too broad:
+     that class is also on EmptyState's call-to-action and on
+     LogTradeMenu, so every mobile empty state lost its button, and on
+     /app - where LogTradeMenu is the ONLY control that starts a trade -
+     a mobile user had no way to log one at all. Narrowing it by ancestor
+     did not work either: /app's button sits in a .header-pills-row too.
+     An explicit marker class is the only honest discriminator, because
+     "is this duplicated by the tab bar" is a fact about the page, not
+     about the markup. */
+  .shell.is-mobile:not(.is-tutorial) .m-dup-of-tabbar { display: none; }
 
   /* ----- Bottom sheet ----- */
   .m-sheet-backdrop {
@@ -4036,9 +4048,21 @@ button:active{
      reverse on blur, so one tap into a price field leaves the trader on
      a permanently magnified form. Applies to every control the form
      uses, not just text inputs. */
-  .shell.is-mobile input,
-  .shell.is-mobile select,
-  .shell.is-mobile textarea { font-size: 16px; }
+  /* Keyed off body.m-app, NOT .shell.is-mobile.
+     app/app/account/page.js has no .shell wrapper at all - its root is
+     .content-fade-in - so the .shell-scoped version of this rule did not
+     reach the account form's inputs, which is where a trader types their
+     name, email and timezone. body.m-app is set by every mobile screen
+     including that one, so it is the selector that actually covers the
+     app.
+
+     16px is the smallest font iOS Safari will render in a focused input
+     without zooming the whole page to meet it - and that zoom does not
+     reverse on blur, so one tap into a field leaves the trader on a
+     permanently magnified page. */
+  body.m-app input,
+  body.m-app select,
+  body.m-app textarea { font-size: 16px; }
 
   /* Taller touch targets on the controls a trade actually needs. */
   .shell.is-mobile .trade-form input,

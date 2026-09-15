@@ -136,7 +136,9 @@ export default function AccountPage() {
           the tab bar itself - it sits outside the instrument layout that
           renders it everywhere else. Without this, tapping Account was a
           one-way trip. */}
-      {isMobile ? <MobileTabBar symbol={null} strategies={[]} /> : null}
+      {/* strategies={null}, not [] - this page never loads them, and []
+          would tell a user with strategies that they have none. */}
+      {isMobile ? <MobileTabBar symbol={null} strategies={null} /> : null}
     </div>
   )
 }

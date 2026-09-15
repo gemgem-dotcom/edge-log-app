@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { UNCLASSIFIED } from '@/lib/tradeQuery'
 
 // The trade log's filters, as a bottom sheet.
 //
@@ -165,6 +166,19 @@ export default function MobileFilterSheet({
                     {s.name}
                   </button>
                 ))}
+                {/* Unassigned is a real, filterable bucket, not a gap in
+                    the list: lib/tradeQuery's applyStrategyFilter takes
+                    this sentinel alongside real ids, and the desktop
+                    table has always offered it. Without it a trader
+                    cannot find the trades the dashboard keeps telling
+                    them are "not counted until reassigned". */}
+                <button
+                  type="button"
+                  className={`m-chip${filters.strategyKeys?.includes(UNCLASSIFIED) ? ' is-active' : ''}`}
+                  onClick={() => onFilterChange({ strategyKeys: toggle(filters.strategyKeys, UNCLASSIFIED) })}
+                >
+                  Unassigned
+                </button>
               </div>
             </section>
           ) : null}

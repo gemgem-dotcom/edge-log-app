@@ -123,7 +123,7 @@ export default function LogPage({ params }) {
     <div className="page-container content-fade-in">
       <div className="strategy-header-row">
         <h1 className="page-title">Trade log</h1>
-        <Link href={`/app/${symbol}/log/new`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
+        <Link href={`/app/${symbol}/log/new`} className="new-trade-btn m-dup-of-tabbar"><Plus size={16} /> Log new trade</Link>
       </div>
       <p className="page-subtitle">All trades logged for {displayName}, across every strategy.</p>
 

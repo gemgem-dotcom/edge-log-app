@@ -542,7 +542,7 @@ return (
       winLabel={(n) => `${n} ${symbol} win${n === 1 ? '' : 's'} in a row`}
       lossLabel={(n) => `${n} ${symbol} loss${n === 1 ? '' : 'es'} in a row`}
     />
-    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn" data-tutorial-target="log-trade"><Plus size={16} /> Log new trade</Link>
+    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn m-dup-of-tabbar" data-tutorial-target="log-trade"><Plus size={16} /> Log new trade</Link>
   </div>
 
   {unclassifiedCount > 0 && (

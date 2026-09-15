@@ -123,7 +123,22 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
 
         <main className="main-area">{children}</main>
       </div>
-      {isMobile ? <MobileTabBar symbol={null} strategies={[]} /> : null}
+      {/* The real list, each row carrying its own instrument symbol and
+          colour. It was `strategies={[]}` first, which made the sheet say
+          "No strategies yet" to users who have several - and the naive fix
+          (pass the list, keep symbol={null}) would have built
+          /app/null/strategies/<id>. The row's own symbol is what makes the
+          link resolvable here; see MobileTabBar. */}
+      {isMobile ? (
+        <MobileTabBar
+          symbol={null}
+          strategies={sortedStrategies.map((s) => ({
+            ...s,
+            symbol: instrumentById[s.instrument_id]?.symbol,
+            color: instrumentById[s.instrument_id]?.color,
+          }))}
+        />
+      ) : null}
     </div>
   )
 }

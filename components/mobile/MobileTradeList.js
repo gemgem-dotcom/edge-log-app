@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown, SlidersHorizontal, Pencil } from 'lucide-react'
-import { hasResult } from '@/lib/tradeMath'
+import { hasResult, calcRiskReward } from '@/lib/tradeMath'
 
 // The trade log, as a phone actually wants it.
 //
@@ -23,9 +23,6 @@ import { hasResult } from '@/lib/tradeMath'
 // Every class here is prefixed `m-` and every rule for them lives inside
 // the mobile media query, so none of this can reach the desktop table.
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 function fmtPnl(value) {
   if (value === null || value === undefined) return null
   const sign = value >= 0 ? '+' : '-'
@@ -42,14 +39,20 @@ function fmtR(value) {
   return `${value >= 0 ? '+' : ''}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R`
 }
 
-// "Thu 5 Feb" - the day name earns its place on mobile because the
-// desktop's separate Day column has nowhere to go, and weekday is a real
-// dimension a trader filters on.
-function fmtDate(dateStr) {
-  if (!dateStr) return '—'
+// Full weekday name, matching the desktop table's DAY column.
+const FULL_DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
+function dayNameOf(dateStr) {
+  if (!dateStr) return ''
   const d = new Date(`${dateStr}T00:00:00`)
-  if (Number.isNaN(d.getTime())) return dateStr
-  return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
+  return Number.isNaN(d.getTime()) ? '' : FULL_DAYS[d.getDay()]
+}
+
+// Planned R:R, through the one shared implementation - never recomputed
+// here. CLAUDE.md is explicit that every R figure routes through
+// lib/tradeMath so a displayed number cannot drift from the stored one.
+function fmtRR(trade) {
+  const rr = calcRiskReward(trade.target_distance, trade.stop_distance)
+  return rr === null || rr === undefined ? '—' : `${Number(rr).toFixed(2)}`
 }
 
 // win / loss / breakeven / open, keyed off the SAME thing the desktop
@@ -95,58 +98,64 @@ function TradeCard({ trade, strategyName, symbol, instrumentSymbol, showStrategy
   const multiExit = exitLegs.length > 1
   const totalContracts = exitLegs.reduce((sum, leg) => sum + (leg.contracts == null ? 0 : Number(leg.contracts)), 0)
 
+  // The desktop table's own pill classes, not lookalikes. r-pill/r-pos/
+  // r-neg/r-zero are defined once near the top of globals.css and are
+  // what the trade log has always used; reusing them is what makes this
+  // read as the same product rather than an imitation of it, and means a
+  // change to that pill lands on both surfaces at once.
+  const rClass = result === 'win' ? 'r-pos' : result === 'loss' ? 'r-neg' : 'r-zero'
+
   return (
-    <li className={`m-trade-card is-${result}`}>
-      {/* The whole header is the toggle, not a small chevron target - a
-          44px-plus tap area is the difference between a list that feels
-          native and one that feels like a website. */}
+    <li className="m-row">
       <button
         type="button"
-        className="m-trade-card-head"
+        className="m-row-head"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        <span className="m-trade-card-main">
-          <span className="m-trade-card-toprow">
-            <span className={`m-dir m-dir--${trade.direction}`}>{trade.direction === 'long' ? 'LONG' : 'SHORT'}</span>
-            {instrumentSymbol ? <span className="m-trade-inst">{instrumentSymbol}</span> : null}
-            {/* showStrategy=false is how the per-strategy page suppresses
-                this, mirroring the desktop table's showStrategyColumn.
-                Passing a name-resolver that returns null did NOT work:
-                the fallback below turned every card on that page into
-                "Unassigned", labelling a strategy's own trades as having
-                no strategy. */}
-            {showStrategy ? <span className="m-trade-strategy">{strategyName || 'Unassigned'}</span> : null}
-          </span>
-          <span className="m-trade-card-date">{fmtDate(trade.trade_date)}{trade.trade_time ? ` · ${trade.trade_time.slice(0, 5)}` : ''}</span>
+        {/* Column 1 - what the desktop puts in DATE and DAY. */}
+        <span className="m-col">
+          <span className="m-date">{trade.trade_date}</span>
+          <span className="m-sub">{dayNameOf(trade.trade_date)}{trade.trade_time ? ` · ${trade.trade_time.slice(0, 5)}` : ''}</span>
         </span>
 
-        {/* Dollars lead, R is the sub-value - the repo's own convention
-            (CLAUDE.md, UI conventions). When no dollar figure exists, R
-            moves up into the lead slot rather than leaving a dash. */}
-        <span className="m-trade-card-figures">
-          {pnl
-            ? <><span className={`m-trade-pnl ${trade.pnl >= 0 ? 'is-pos' : 'is-neg'}`}>{pnl}</span>
-                {r ? <span className="m-trade-r">{r}</span> : null}</>
-            : /* No dollar figure. R moves up into the lead slot - but a
-                 row with neither gets a plain em dash and NO colour: the
-                 first version tested `trade.r_multiple >= 0`, which is
-                 true for null, so an open trade rendered a confident
-                 green dash. */
-              <span className={`m-trade-pnl ${r ? (trade.r_multiple >= 0 ? 'is-pos' : 'is-neg') : ''}`}>{r || '—'}</span>}
+        {/* Column 2 - STRATEGY over DIRECTION, the desktop's own colours. */}
+        <span className="m-col">
+          {showStrategy ? <span className="m-strategy-cell">{strategyName || 'Unassigned'}</span> : null}
+          <span className="m-sub">
+            <span className={trade.direction === 'long' ? 'm-long' : 'm-short'}>
+              {trade.direction === 'long' ? 'LONG' : 'SHORT'}
+            </span>
+            {instrumentSymbol ? <span className="m-inst"> · {instrumentSymbol}</span> : null}
+          </span>
         </span>
-        <ChevronDown className="m-trade-chevron" size={16} aria-hidden="true" />
+
+        {/* Column 3 - RESULT over P&L, right aligned. Dollars lead and R
+            is the sub-value everywhere both are shown (CLAUDE.md), but
+            the desktop's RESULT column is the pill, so the pill keeps the
+            upper slot and the dollar figure sits under it in the same
+            colour the desktop uses. */}
+        <span className="m-col m-col-figs">
+          {result === 'open'
+            ? <span className="r-pill r-zero">Open</span>
+            : <span className={`r-pill ${rClass}`}>{r}</span>}
+          <span className={`m-sub ${trade.pnl == null ? '' : trade.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}`}>
+            {pnl || '—'}
+          </span>
+        </span>
+
+        <ChevronDown className="m-row-chevron" size={15} aria-hidden="true" />
       </button>
 
       {open ? (
-        <div className="m-trade-card-detail">
+        <div className="m-row-detail">
           <dl className="m-detail-grid">
             <div><dt>Entry</dt><dd>{fmtNum(trade.entry)}</dd></div>
             <div><dt>Exit</dt><dd>{multiExit ? `${exitLegs.length} legs` : fmtNum(trade.exit_price)}</dd></div>
             <div><dt>Stop</dt><dd>{fmtNum(trade.stop)}</dd></div>
             <div><dt>Target</dt><dd>{fmtNum(trade.target)}</dd></div>
             <div><dt>Contracts</dt><dd>{totalContracts || '—'}</dd></div>
-            <div><dt>Result</dt><dd className={`m-result m-result--${result}`}>{result}</dd></div>
+            <div><dt>R:R</dt><dd>{fmtRR(trade)}</dd></div>
           </dl>
 
           {multiExit ? (
@@ -174,7 +183,7 @@ function TradeCard({ trade, strategyName, symbol, instrumentSymbol, showStrategy
 
           {editHref ? (
             <Link className="m-trade-edit" href={editHref}>
-              <Pencil size={14} aria-hidden="true" /> Edit trade
+              <Pencil size={13} aria-hidden="true" /> Edit trade
             </Link>
           ) : null}
         </div>
@@ -214,19 +223,32 @@ export default function MobileTradeList({
 
   return (
     <>
+      {/* Filter left, count right - the order the desktop table uses. */}
       <div className="m-list-toolbar">
-        <span className="m-list-count">{count} {count === 1 ? 'trade' : 'trades'}</span>
         {onOpenFilters ? (
           <button type="button" className="m-filter-btn" onClick={onOpenFilters}>
             <SlidersHorizontal size={15} aria-hidden="true" />
             Filter
             {activeFilterCount > 0 ? <span className="m-filter-count">{activeFilterCount}</span> : null}
           </button>
-        ) : null}
+        ) : <span />}
+        <span className="m-list-count">{count} {count === 1 ? 'trade' : 'trades'}</span>
       </div>
 
       {trades.length ? (
-        <ul className="m-trade-list">
+        <>
+        {/* A real column header, the same three labels the desktop table
+            leads with. Without it the rows are a list of values with no
+            statement of what they are - which is most of what made the
+            first version read as a generic feed rather than as this
+            app's trade log. */}
+        <div className="m-rows-head" aria-hidden="true">
+          <span>Date</span>
+          <span>{showStrategy ? 'Strategy' : 'Direction'}</span>
+          <span>Result</span>
+          <span />
+        </div>
+        <ul className="m-rows">
           {trades.map((t) => (
             <TradeCard
               key={t.id}
@@ -238,6 +260,7 @@ export default function MobileTradeList({
             />
           ))}
         </ul>
+        </>
       ) : (
         <p className="m-empty">No trades match these filters.</p>
       )}

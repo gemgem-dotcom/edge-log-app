@@ -8,6 +8,8 @@ import { useStickyTopbar } from '@/lib/useStickyTopbar'
 import InstrumentNav from '@/components/InstrumentNav'
 import HeaderClock from '@/components/HeaderClock'
 import { activatable } from '@/lib/activatable'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTabBar from '@/components/mobile/MobileTabBar'
 
 // Shell for the two pages with no single instrument in view - the
 // cross-instrument Dashboard and the all-instruments Trades page. Mirrors
@@ -20,6 +22,13 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
   const [theme, setTheme] = useState('dark')
   const [strategiesExpanded, setStrategiesExpanded] = useState(true)
   const { topbarRef, mode: topbarMode, spacerStyle } = useStickyTopbar({ anchored: anchorTopbar })
+  const isMobile = useIsMobile()
+
+  useEffect(() => {
+    if (!isMobile) return undefined
+    document.body.classList.add('m-app')
+    return () => document.body.classList.remove('m-app')
+  }, [isMobile])
 
   useEffect(() => {
     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
@@ -56,8 +65,12 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
     return order !== 0 ? order : a.name.localeCompare(b.name)
   })
 
+  // These two pages have no instrument in view, and before this the
+  // mobile tab bar simply was not on them - so tapping Account from the
+  // tab bar landed the user somewhere with no way back. The tab paths
+  // degrade to their instrument-less forms; see lib/mobileTabs.js.
   return (
-    <div className="shell">
+    <div className={`shell${isMobile ? ' is-mobile' : ''}`}>
       <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${anchorTopbar ? ' topbar-anchored' : ''}`}>
         <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
         <InstrumentNav instruments={instruments} />
@@ -110,6 +123,22 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
 
         <main className="main-area">{children}</main>
       </div>
+      {/* The real list, each row carrying its own instrument symbol and
+          colour. It was `strategies={[]}` first, which made the sheet say
+          "No strategies yet" to users who have several - and the naive fix
+          (pass the list, keep symbol={null}) would have built
+          /app/null/strategies/<id>. The row's own symbol is what makes the
+          link resolvable here; see MobileTabBar. */}
+      {isMobile ? (
+        <MobileTabBar
+          symbol={null}
+          strategies={sortedStrategies.map((s) => ({
+            ...s,
+            symbol: instrumentById[s.instrument_id]?.symbol,
+            color: instrumentById[s.instrument_id]?.color,
+          }))}
+        />
+      ) : null}
     </div>
   )
 }

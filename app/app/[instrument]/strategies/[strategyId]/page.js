@@ -17,6 +17,9 @@ import { toast } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import TradeLogTable from '@/components/TradeLogTable'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTradeList from '@/components/mobile/MobileTradeList'
+import MobilePager from '@/components/mobile/MobilePager'
 import StreakBadge from '@/components/StreakBadge'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import WinRateGauge from '@/components/WinRateGauge'
@@ -108,9 +111,14 @@ function colorClass(val) {
   if (val === null || val === undefined) return 'neu'
   return val > 0 ? 'pos' : val < 0 ? 'neg' : 'neu'
 }
+// Matches the desktop table's own pageSize on this page.
+const MOBILE_PAGE_SIZE = 15
+
 export default function StrategyDetailPage({ params }) {
   const resolvedParams = use(params)
   const symbol = resolvedParams.instrument
+  const isMobile = useIsMobile()
+  const [mobilePage, setMobilePage] = useState(0)
   const strategyId = resolvedParams.strategyId
   const router = useRouter()
 
@@ -385,6 +393,46 @@ export default function StrategyDetailPage({ params }) {
       </div>
 
       <div className="section-heading">Trade log — {strategy.name}</div>
+      {isMobile ? (
+        <>
+        <MobileTradeList
+          trades={trades.slice(mobilePage * MOBILE_PAGE_SIZE, (mobilePage + 1) * MOBILE_PAGE_SIZE)}
+          totalCount={trades.length}
+          symbol={symbol}
+          // Every trade here is this strategy's by definition, so naming
+          // it on each card would be the same word repeated down the
+          // list - the desktop table drops the column for the same
+          // reason (showStrategyColumn={false} below).
+          //
+          // Done with this flag rather than a resolver returning null,
+          // which is what it was first: the card falls back to
+          // "Unassigned" when it has no name, so that version labelled
+          // every one of this strategy's own trades as having no
+          // strategy.
+          showStrategy={false}
+          emptyState={
+            <EmptyState
+              title="No trades yet"
+              message={`No trades have been logged against "${strategy.name}" yet.`}
+              actionHref={`/app/${symbol}/log/new?strategy=${strategyId}`}
+              actionLabel="Log new trade"
+            />
+          }
+        />
+        {/* Desktop paginates this list at 15 (pageSize below). The first
+            mobile version dropped that prop and rendered every trade the
+            strategy has ever had in one list - fine for the mock's
+            handful, not for a strategy with hundreds. Paged client-side
+            here because this page holds all its rows already, unlike the
+            two log pages which page server-side. */}
+        <MobilePager
+          page={mobilePage}
+          pageSize={MOBILE_PAGE_SIZE}
+          totalCount={trades.length}
+          onPageChange={setMobilePage}
+        />
+        </>
+      ) : (
       <div className="panel">
         <TradeLogTable
           trades={trades}
@@ -403,6 +451,7 @@ export default function StrategyDetailPage({ params }) {
           }
         />
       </div>
+      )}
 
       {showDeleteModal && (
         <div className="confirm-modal-overlay" onClick={() => setShowDeleteModal(false)}>

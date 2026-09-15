@@ -5,52 +5,53 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–676  Base: reset, typography, forms, tables, thumbnails,
+     1–677  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   677  Auth pages
-   743  Top nav
-   758  Instrument nav (topbar pill row)
-   835  Page layout
-   889  Tabs
-   899  Misc form helpers
-   905  Detail view
-   928  Holiday notice (site-wide, above the shell)
-   960  Shell layout (sidebar + topbar)
-   1331  Expandable trade rows
-   1397  Calendar
-   1445  Account settings page
-   1661  Light theme
-   1702  2FA
-   1717  Account fine print
-   1720  Screenshot preview (log new trade)
-   1762  Auth pages always dark
-   1797  Monthly P&L (calendar on Overview)
-   1884  Trade form: sections, validation, currency, screenshots
-   2122  Field tooltips
-   2184  Date/time picker (adds an optional popup to a typed input)
-   2301  In-header column filters (trade log table)
-   2349  Active filter chips
-   2412  Empty states, error banners, skeleton loaders
-   2491  Cross-instrument overview dashboard (/app)
-   2670  Not found / error boundary state pages
-   2683  Toast notifications
-   2711  Public policy pages (Privacy, Terms)
-   2730  Legal links (auth pages + account settings)
-   2769  Economic calendar card (Overview pages)
-   3024  Calendar news badge (Monthly P&L day cells)
-   3052  Streak badge (Overview + strategy detail pages)
-   3075  Market status pill (Overview + strategy detail pages)
-   3101  Today's brief & session stats
-   3136  Market context cards (all-instruments Overview)
-   3169  Edge Insights panel
-   3184  Unverified logged time badge
-   3201  Welcome transition (first-run)
-   3230  Zero-instrument empty state
-   3240  Tutorial overlay (first-run guided tour)
-   3332  Tutorial step 3 (guided form scroll)
-   3379  Press states, value changes, content fade-in
-   3476  Trade log column width stability
-   3501  Strategy notes panel
+   678  Auth pages
+   744  Top nav
+   759  Instrument nav (topbar pill row)
+   836  Page layout
+   890  Tabs
+   900  Misc form helpers
+   906  Detail view
+   929  Holiday notice (site-wide, above the shell)
+   961  Shell layout (sidebar + topbar)
+   1332  Expandable trade rows
+   1398  Calendar
+   1446  Account settings page
+   1662  Light theme
+   1703  2FA
+   1718  Account fine print
+   1721  Screenshot preview (log new trade)
+   1763  Auth pages always dark
+   1798  Monthly P&L (calendar on Overview)
+   1885  Trade form: sections, validation, currency, screenshots
+   2123  Field tooltips
+   2185  Date/time picker (adds an optional popup to a typed input)
+   2302  In-header column filters (trade log table)
+   2350  Active filter chips
+   2413  Empty states, error banners, skeleton loaders
+   2492  Cross-instrument overview dashboard (/app)
+   2671  Not found / error boundary state pages
+   2684  Toast notifications
+   2712  Public policy pages (Privacy, Terms)
+   2731  Legal links (auth pages + account settings)
+   2770  Economic calendar card (Overview pages)
+   3025  Calendar news badge (Monthly P&L day cells)
+   3053  Streak badge (Overview + strategy detail pages)
+   3076  Market status pill (Overview + strategy detail pages)
+   3102  Today's brief & session stats
+   3137  Market context cards (all-instruments Overview)
+   3170  Edge Insights panel
+   3185  Unverified logged time badge
+   3202  Welcome transition (first-run)
+   3231  Zero-instrument empty state
+   3241  Tutorial overlay (first-run guided tour)
+   3333  Tutorial step 3 (guided form scroll)
+   3380  Press states, value changes, content fade-in
+   3477  Trade log column width stability
+   3502  Strategy notes panel
+   3518  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3513,3 +3514,575 @@ button:active{
    the moment this is actually being typed into. */
 .strategy-notes-textarea{min-height:110px; margin:0; background:transparent; border:none;}
 .strategy-notes-textarea:focus{border-color:transparent;}
+
+/* ---------- Mobile app shell (below 768px only) ---------- */
+/*
+   Everything from this banner to the end of the file sits inside ONE
+   media query, and that is load-bearing rather than tidy. The brief was
+   a complete mobile experience that cannot touch the desktop one, and a
+   rule that only exists below 768px cannot. Above it, these declarations
+   are not overridden - they are not parsed as applicable at all, and the
+   components that use them never mount (see lib/useIsMobile.js).
+
+   768 must match MOBILE_MAX_WIDTH in lib/useIsMobile.js. The two are
+   checked against each other by a test that reads this file, because a
+   silent disagreement gives a viewport where the mobile markup renders
+   under desktop styling - a layout belonging to neither design.
+
+   The older `@media (max-width:640px)` rules further up are a different
+   thing and are left alone: they narrow the DESKTOP markup, which on
+   mobile is no longer rendered.
+*/
+@media (max-width: 768px) {
+
+  /* The tab bar's height, stated once.
+     Three things have to agree about it: the bar's own box, the body
+     padding that stops content sitting under it, and the trade form's
+     fixed action bar, which parks just above it. Hard-coding 56 in all
+     three left the action bar overlapping the tab bar by exactly 1px -
+     its own top border - which is the kind of thing that is invisible
+     in a screenshot and obvious in a measurement. */
+  :root { --m-tabbar-h: 56px; }
+
+  /* Room for the fixed tab bar, plus the home-indicator inset on
+     notched phones. Without this the last card sits under the bar and
+     looks like the page simply ends. */
+  body.m-app {
+    padding-bottom: calc(var(--m-tabbar-h) + 8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ----- Bottom tab bar ----- */
+  .m-tabbar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: stretch;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    /* The blur is what keeps content legible as it scrolls under the
+       bar; the solid fallback above it is what keeps the bar readable
+       where backdrop-filter is unsupported. */
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border, rgba(255,255,255,.08));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .m-tabbar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    /* Reset the global button styling explicitly.
+       globals.css's bare `button{}` rule paints every button as a solid
+       accent pill, and every other icon/nav control in this app resets
+       it. The Strategies tab is the one tab that is a <button> rather
+       than a <Link> (it opens a sheet), and without this it rendered as
+       a permanent blue pill that read as a second "active" tab - and on
+       a strategy detail page, where .is-active also sets color:accent,
+       the icon and label became accent-on-accent and disappeared
+       entirely. Declared here rather than relying on the reset list
+       further up, so it travels with the component. */
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    /* The tap target is the point, not the icon's own height. */
+    min-height: var(--m-tabbar-h);
+    padding: 6px 2px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .m-tabbar-item.is-active { color: var(--accent); }
+  .m-tabbar-item:active { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .m-tabbar-icon { display: flex; align-items: center; justify-content: center; }
+  /* Inline SVGs collapse to 0px without an explicit size - see the
+     .theme-toggle-btn svg precedent in this file. */
+  .m-tabbar-icon svg { width: 20px; height: 20px; }
+  .m-tabbar-label { line-height: 1; }
+
+  /* The raised primary action. One per screen, and it is the only thing
+     in this app a trader opens the phone specifically to do. */
+  .m-tabbar-item--primary .m-tabbar-icon {
+    width: 42px; height: 42px;
+    margin-top: -16px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #04121f;
+    box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  .m-tabbar-item--primary .m-tabbar-icon svg { width: 24px; height: 24px; }
+  .m-tabbar-item--primary.is-active .m-tabbar-icon { background: var(--accent-bright); }
+
+  /* ----- Trade list ----- */
+  .m-list-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 10px;
+  }
+
+  .m-list-count { font-size: 13px; color: var(--muted); font-weight: 600; }
+
+  .m-filter-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border, rgba(255,255,255,.1));
+    background: var(--panel);
+    color: var(--text);
+    font-size: 13px; font-weight: 600;
+  }
+  .m-filter-btn svg { width: 15px; height: 15px; }
+  .m-filter-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px;
+    background: var(--accent); color: #04121f;
+    font-size: 11px; font-weight: 700;
+  }
+
+  .m-trade-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+  .m-trade-card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border, rgba(255,255,255,.07));
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Result encoded as form, not only as colour - a 3px stripe down the
+     leading edge, so the win/loss shape of a scroll is readable before
+     any number is. Colour alone would carry it for most people and for
+     nobody with a red-green deficiency; the stripe's presence and the
+     sign on the figure both survive that. */
+  .m-trade-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--muted-2);
+  }
+  .m-trade-card.is-win::before { background: var(--win); }
+  .m-trade-card.is-loss::before { background: var(--loss); }
+  .m-trade-card.is-open::before { background: var(--accent); }
+
+  .m-trade-card-head {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%;
+    /* 14px left padding plus the 3px stripe. */
+    padding: 12px 12px 12px 14px;
+    min-height: 64px;
+    background: none; border: none; text-align: left;
+    color: inherit; font: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-trade-card-head:active { background: var(--panel-hover); }
+
+  .m-trade-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .m-trade-card-toprow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+
+  .m-dir {
+    flex: none;
+    font-size: 10px; font-weight: 800; letter-spacing: .06em;
+    padding: 2px 5px; border-radius: 4px;
+  }
+  .m-dir--long { color: var(--win); background: color-mix(in srgb, var(--win) 14%, transparent); }
+  .m-dir--short { color: var(--loss); background: color-mix(in srgb, var(--loss) 14%, transparent); }
+
+  .m-trade-inst {
+    flex: none; font-size: 11px; font-weight: 700; color: var(--accent);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  /* The truncation that made the desktop table useless here is fine on
+     a strategy name specifically, because the card shows it on its own
+     line with the full width available and the figures are what the eye
+     is actually scanning. */
+  .m-trade-strategy {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .m-trade-card-date { font-size: 11.5px; color: var(--muted); }
+
+  .m-trade-card-figures {
+    flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    /* Digits in a vertical stack have to line up or the column reads as
+       ragged even when every value is the same width. */
+    font-variant-numeric: tabular-nums;
+  }
+  .m-trade-pnl { font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .m-trade-pnl.is-pos { color: var(--win); }
+  .m-trade-pnl.is-neg { color: var(--loss); }
+  .m-trade-r { font-size: 11.5px; color: var(--muted); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  .m-trade-chevron { flex: none; color: var(--muted-2); transition: transform var(--transition-fast); }
+  .m-trade-card-head[aria-expanded="true"] .m-trade-chevron { transform: rotate(180deg); }
+
+  .m-trade-card-detail {
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border, rgba(255,255,255,.06));
+    margin-top: -1px;
+  }
+
+  .m-detail-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px 8px; margin: 14px 0 0;
+  }
+  .m-detail-grid dt { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 0 0 3px; }
+  .m-detail-grid dd { margin: 0; font-size: 13.5px; font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  .m-result { text-transform: capitalize; font-family: inherit !important; }
+  .m-result--win { color: var(--win); }
+  .m-result--loss { color: var(--loss); }
+  .m-result--open { color: var(--accent); }
+
+  .m-exit-legs { list-style: none; margin: 14px 0 0; padding: 10px 12px; border-radius: 9px; background: var(--panel-2); display: flex; flex-direction: column; gap: 7px; }
+  .m-exit-legs li { display: flex; justify-content: space-between; font-size: 12.5px; }
+  .m-exit-legs li span:first-child { color: var(--muted); }
+  .m-exit-legs li span:last-child { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  .m-trade-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .m-tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: var(--panel-2); color: var(--muted); }
+
+  .m-trade-notes { margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); white-space: pre-wrap; }
+
+  .m-trade-edit {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 14px; min-height: 40px; padding: 0 14px;
+    border-radius: 9px; background: var(--panel-2);
+    color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none;
+  }
+  .m-trade-edit svg { width: 14px; height: 14px; }
+
+  .m-empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 14px; }
+
+  /* ----- Desktop chrome, stood down ----- */
+  /*
+     The sidebar is HIDDEN rather than unmounted, deliberately. It carries
+     the tutorial's step-1 target ("+ Add new"), and TutorialOverlay
+     measures a real element to position itself against - unmounting it
+     would send a first-run mobile user into the overlay's "target not
+     found" state. Hidden, it still occupies no space and takes no taps.
+  */
+  /* :not(.is-tutorial) on both hiding rules below is load-bearing.
+     The first-run tutorial spotlights two real elements by measuring
+     them - the sidebar's "+ Add new" (step 1) and the "Log new trade"
+     button (step 2). Hiding either gives TutorialOverlay a 0x0 rect to
+     point at, so a brand-new mobile user's onboarding highlights
+     nothing. Verified by reading both targets' bounding boxes in the
+     browser, which is how this was found.
+
+     So while the tutorial is running, mobile keeps the desktop chrome
+     it needs; the moment onboarding completes, the tab bar takes over. */
+  .shell.is-mobile:not(.is-tutorial) .sidebar { display: none; }
+  .shell.is-mobile .shell-body { flex-direction: column; }
+  .shell.is-mobile .main-area { padding: 16px 14px 24px; }
+
+  /* The topbar keeps the logo, the clock and the two icon buttons, and
+     drops to a single compact row. The instrument pill row stays: it is
+     the one piece of desktop chrome that is genuinely per-screen on
+     mobile too, and a trader with four instruments switches between them
+     constantly. */
+  .shell.is-mobile .shell-topbar {
+    margin: 8px 10px 12px;
+    padding: 10px 12px;
+    border-radius: 18px;
+    gap: 8px;
+  }
+  .shell.is-mobile .shell-logo { font-size: 15px; }
+  .shell.is-mobile .shell-topbar-right { gap: 2px; }
+
+  /* The desktop's "Log new trade" buttons are redundant once the tab
+     bar carries that action in its centre, raised and always reachable.
+     Two primary actions for one task is one too many on a phone. */
+  /* Hides ONLY the two buttons explicitly marked as duplicating the tab
+     bar's own Log action - the instrument dashboard's and the instrument
+     trade log's page headers.
+     This started as a flat `.new-trade-btn`, which was far too broad:
+     that class is also on EmptyState's call-to-action and on
+     LogTradeMenu, so every mobile empty state lost its button, and on
+     /app - where LogTradeMenu is the ONLY control that starts a trade -
+     a mobile user had no way to log one at all. Narrowing it by ancestor
+     did not work either: /app's button sits in a .header-pills-row too.
+     An explicit marker class is the only honest discriminator, because
+     "is this duplicated by the tab bar" is a fact about the page, not
+     about the markup. */
+  .shell.is-mobile:not(.is-tutorial) .m-dup-of-tabbar { display: none; }
+
+  /* ----- Bottom sheet ----- */
+  .m-sheet-backdrop {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(0,0,0,.55);
+    display: flex; align-items: flex-end;
+    animation: m-fade-in .18s ease;
+  }
+
+  .m-sheet {
+    width: 100%;
+    /* Capped so the list behind stays partly visible - a sheet that
+       fills the screen is a page, and the trader loses the context they
+       are filtering. */
+    max-height: 85vh;
+    display: flex; flex-direction: column;
+    background: var(--panel);
+    border-radius: 18px 18px 0 0;
+    border-top: 1px solid var(--border, rgba(255,255,255,.1));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    animation: m-sheet-up .24s cubic-bezier(.22,1,.36,1);
+  }
+
+  @keyframes m-fade-in { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes m-sheet-up { from { transform: translateY(100%) } to { transform: translateY(0) } }
+
+  /* The affordance that says "this came from the bottom edge and goes
+     back there". Decorative, hence aria-hidden on the element. */
+  .m-sheet-grab {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--muted-2); opacity: .5;
+    margin: 8px auto 4px;
+  }
+
+  .m-sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 16px 12px;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,.07));
+  }
+  .m-sheet-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+  .m-sheet-head-actions { display: flex; align-items: center; gap: 4px; }
+  .m-sheet-clear {
+    background: none; border: none; color: var(--accent);
+    font-size: 13px; font-weight: 600; padding: 8px 10px; min-height: 40px;
+  }
+  .m-sheet-close {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 10px;
+    background: none; border: none; color: var(--muted);
+  }
+  .m-sheet-close svg { width: 18px; height: 18px; }
+
+  .m-sheet-body {
+    flex: 1; overflow-y: auto;
+    /* Momentum scrolling inside the sheet, not the page behind it. */
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 16px 16px;
+  }
+
+  .m-filter-group { padding: 16px 0 4px; }
+  .m-filter-group + .m-filter-group { border-top: 1px solid var(--border, rgba(255,255,255,.06)); }
+  .m-filter-group h3 {
+    margin: 0 0 10px; font-size: 11px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+  }
+
+  /* A segmented control for the dimensions that are one-of-N. Chips
+     would imply multi-select, which direction and result are not. */
+  .m-seg {
+    display: flex; gap: 4px; padding: 3px;
+    background: var(--panel-2); border-radius: 10px;
+  }
+  .m-seg-item {
+    flex: 1; min-height: 38px; padding: 0 8px;
+    border: none; border-radius: 8px; background: none;
+    color: var(--muted); font-size: 13px; font-weight: 600;
+  }
+  .m-seg-item.is-active { background: var(--panel-hover); color: var(--text); }
+
+  /* Chips for the dimensions that are many-of-N. */
+  .m-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .m-chip {
+    min-height: 38px; padding: 0 13px;
+    border-radius: 19px;
+    border: 1px solid var(--border, rgba(255,255,255,.1));
+    background: var(--panel-2); color: var(--muted);
+    font-size: 13px; font-weight: 600;
+  }
+  .m-chip.is-active {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .m-sheet-foot {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border, rgba(255,255,255,.07));
+  }
+  .m-sheet-done {
+    width: 100%; min-height: 48px;
+    border: none; border-radius: 12px;
+    background: var(--accent); color: #04121f;
+    font-size: 15px; font-weight: 700;
+  }
+
+  /* ----- Pager ----- */
+  .m-pager {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-top: 14px;
+  }
+  .m-pager-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    border: 1px solid var(--border, rgba(255,255,255,.1));
+    background: var(--panel); color: var(--text);
+  }
+  .m-pager-btn svg { width: 18px; height: 18px; }
+  .m-pager-btn:disabled { opacity: .35; }
+  .m-pager-label { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* Every inline icon in the mobile UI, in one rule.
+     CLAUDE.md's gotcha says an inline SVG needs an explicit size or it
+     collapses to 0px wide, and that is half the story: the size alone is
+     not enough. Inside a flex container the icon is a flex ITEM, and the
+     default flex-shrink:1 shrank a correctly-sized 18px chevron to 0px
+     wide while leaving it 18px tall - which is why the pager buttons
+     rendered as two empty boxes. Every existing icon rule in this file
+     pairs its width/height with flex-shrink:0 for exactly this reason.
+     Stated once here so the next mobile component added does not have to
+     rediscover it. */
+  .m-tabbar svg,
+  .m-filter-btn svg,
+  .m-trade-card svg,
+  .m-sheet svg,
+  .m-pager svg { flex-shrink: 0; }
+
+  /* ----- Strategy picker (tab bar sheet) ----- */
+  .m-strategy-list { list-style: none; margin: 8px 0 0; padding: 0; }
+  .m-strategy-row {
+    display: flex; align-items: center; gap: 11px;
+    min-height: 54px; padding: 0 4px;
+    color: var(--text); text-decoration: none; font-size: 14.5px; font-weight: 600;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,.06));
+  }
+  .m-strategy-list li:last-child .m-strategy-row { border-bottom: none; }
+  .m-strategy-row:active { background: var(--panel-hover); }
+  .m-strategy-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .m-strategy-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-strategy-chevron { color: var(--muted-2); }
+
+  /* ----- Pane switcher (dashboard) ----- */
+  /* Sticky, because the panes are still tall enough to scroll and losing
+     the switcher off the top means scrolling back up to change view.
+     Sits under the topbar rather than at 0 - the topbar is the app's own
+     sticky chrome and the two would overlap. */
+  .m-panebar {
+    position: sticky; top: 0; z-index: 20;
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    gap: 4px; padding: 4px;
+    margin: 0 0 14px;
+    background: var(--panel-2);
+    border-radius: 11px;
+  }
+  .m-panebar-item {
+    min-height: 40px; padding: 0 6px;
+    border: none; border-radius: 8px; background: none;
+    color: var(--muted); font-size: 13px; font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-panebar-item.is-active { background: var(--panel-hover); color: var(--text); }
+
+  /* The dashboard's own rows stack rather than sit side by side, and the
+     stat grids go two-up. Four stat cards in a row at 390px is four
+     unreadable columns; two is legible and keeps the comparison. */
+  .shell.is-mobile .instrument-glance-row,
+  .shell.is-mobile .market-context-row { grid-template-columns: 1fr; display: grid; gap: 10px; }
+  .shell.is-mobile .stats-6 { grid-template-columns: repeat(2, 1fr); }
+  .shell.is-mobile .section-heading { margin-top: 18px; }
+  .shell.is-mobile .panel { padding: 14px; }
+
+  /* ----- Trade form ----- */
+  /*
+     The form is ~3,400px on a phone and its submit button sat at the
+     very bottom of that, which means the primary action of the app's
+     primary task was four screenfuls below wherever the trader happened
+     to be typing. Worse, there was no way to tell whether the form was
+     submittable without scrolling to the end to find out.
+
+     Sticky, then - pinned just above the tab bar, so "Log trade" and
+     "Discard" are reachable from any field. The row keeps its own
+     background and a top border rather than being transparent: the
+     fields scrolling underneath it need a hard edge or the button
+     appears to float over the text it is covering.
+  */
+  .shell.is-mobile .trade-form .submit-row {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(var(--m-tabbar-h) + 1px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    margin: 0;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--panel) 96%, transparent);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border, rgba(255,255,255,.09));
+    gap: 10px;
+    justify-content: stretch;
+  }
+  /* Fixed, not sticky. Sticky was tried first and put the button UNDER
+     the tab bar: the row is a grid item with negative side margins, and
+     the offset it resolved against was not the one the rule asked for.
+     Fixed answers to the viewport and nothing else, which is the whole
+     point of an action bar. Verified by measuring the button's box
+     against the tab bar's, not by looking at it. */
+  .shell.is-mobile .trade-form .submit-row > div {
+    display: flex; gap: 10px; width: 100%;
+  }
+  .shell.is-mobile .trade-form .submit-row button[type="submit"] {
+    flex: 1;
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .shell.is-mobile .trade-form .submit-row .discard-btn {
+    min-height: 48px;
+    flex: none;
+    padding: 0 16px;
+  }
+  /* The fixed bar covers the end of the form, so the form has to end
+     above it - otherwise the last field (screenshots) is unreachable. */
+  .shell.is-mobile .trade-form { padding-bottom: 76px; }
+
+  /* Section headers inside the form stick too, so a trader scrolling
+     through Setup / Results / Review always knows which part they are
+     filling in. Below the pane bar's z-index, above the fields. */
+  .shell.is-mobile .trade-form .section-label {
+    position: sticky; top: 0; z-index: 10;
+    margin-left: -14px; margin-right: -14px;
+    padding: 10px 14px 8px;
+    background: var(--panel);
+  }
+
+  /* 16px is the smallest font iOS Safari will render in a focused input
+     without zooming the whole page to meet it - and that zoom does not
+     reverse on blur, so one tap into a price field leaves the trader on
+     a permanently magnified form. Applies to every control the form
+     uses, not just text inputs. */
+  /* Keyed off body.m-app, NOT .shell.is-mobile.
+     app/app/account/page.js has no .shell wrapper at all - its root is
+     .content-fade-in - so the .shell-scoped version of this rule did not
+     reach the account form's inputs, which is where a trader types their
+     name, email and timezone. body.m-app is set by every mobile screen
+     including that one, so it is the selector that actually covers the
+     app.
+
+     16px is the smallest font iOS Safari will render in a focused input
+     without zooming the whole page to meet it - and that zoom does not
+     reverse on blur, so one tap into a field leaves the trader on a
+     permanently magnified page. */
+  body.m-app input,
+  body.m-app select,
+  body.m-app textarea { font-size: 16px; }
+
+  /* Taller touch targets on the controls a trade actually needs. */
+  .shell.is-mobile .trade-form input,
+  .shell.is-mobile .trade-form select { min-height: 46px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .m-sheet, .m-sheet-backdrop { animation: none; }
+  }
+}

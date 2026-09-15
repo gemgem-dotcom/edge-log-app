@@ -7,6 +7,10 @@ import AppShell from '@/components/AppShell'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { fetchTradePage, fetchDistinctTags, EMPTY_FILTERS } from '@/lib/tradeQuery'
 import TradeLogTable from '@/components/TradeLogTable'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTradeList from '@/components/mobile/MobileTradeList'
+import MobileFilterSheet, { countActiveFilters } from '@/components/mobile/MobileFilterSheet'
+import MobilePager from '@/components/mobile/MobilePager'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
@@ -28,6 +32,8 @@ export default function AllTradesPage() {
   const [tagOptions, setTagOptions] = useState([])
   const [page, setPage] = useState(0)
   const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     loadStatic()
@@ -125,6 +131,39 @@ export default function AllTradesPage() {
         <h1 className="page-title">Trade log</h1>
         <p className="page-subtitle">Every trade you&apos;ve logged, across all instruments.</p>
 
+        {isMobile ? (
+          <>
+            <MobileTradeList
+              trades={trades}
+              strategyNameById={strategyName}
+              // No single symbol on this page - each card resolves its own
+              // instrument, and Edit links have to follow the trade rather
+              // than a page-level symbol that does not exist here.
+              symbol={null}
+              instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
+              totalCount={totalCount}
+              onOpenFilters={() => setFiltersOpen(true)}
+              activeFilterCount={countActiveFilters(filters)}
+              emptyState={
+                <EmptyState
+                  title="No trades yet"
+                  message="Log your first trade to see it here."
+                  actionHref={instruments[0] ? `/app/${instruments[0].symbol}/log/new` : '/app'}
+                  actionLabel="Log new trade"
+                />
+              }
+            />
+            <MobilePager page={page} pageSize={PAGE_SIZE} totalCount={totalCount} onPageChange={setPage} />
+            <MobileFilterSheet
+              open={filtersOpen}
+              onClose={() => setFiltersOpen(false)}
+              filters={filters}
+              onFilterChange={(patch) => { setFilters((prev) => ({ ...prev, ...patch })); setPage(0) }}
+              strategies={strategies}
+              tagOptions={tagOptions}
+            />
+          </>
+        ) : (
         <div className="panel">
           <TradeLogTable
             trades={trades}
@@ -159,6 +198,7 @@ export default function AllTradesPage() {
             }
           />
         </div>
+        )}
       </div>
     </AppShell>
   )

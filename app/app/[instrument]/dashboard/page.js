@@ -11,6 +11,9 @@ import { hasResult } from '@/lib/tradeMath'
 import { queryPerformance } from '@/lib/edgeEngine'
 import { totalTradeCount } from '@/lib/insightData'
 import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobilePanes from '@/components/mobile/MobilePanes'
+import MobileTradeList from '@/components/mobile/MobileTradeList'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
@@ -286,6 +289,7 @@ export default function DashboardPage({ params }) {
   // Above the loading/error returns below, because it is a hook and those
   // returns are conditional. It owns its own ticking clock so the countdown
   // stays true while the page is open - see lib/useUpcomingEconEvents.
+  const isMobile = useIsMobile()
   const {
     upcoming: upcomingEvents,
     now: econNow,
@@ -539,7 +543,7 @@ return (
       winLabel={(n) => `${n} ${symbol} win${n === 1 ? '' : 's'} in a row`}
       lossLabel={(n) => `${n} ${symbol} loss${n === 1 ? '' : 'es'} in a row`}
     />
-    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn" data-tutorial-target="log-trade"><Plus size={16} /> Log new trade</Link>
+    <Link href={`/app/${symbol}/log/new`} className="new-trade-btn m-dup-of-tabbar" data-tutorial-target="log-trade"><Plus size={16} /> Log new trade</Link>
   </div>
 
   {unclassifiedCount > 0 && (
@@ -559,6 +563,11 @@ return (
   </div>
 ) : (
   <>
+<MobilePanes
+  enabled={isMobile === true}
+  ariaLabel="Dashboard sections"
+  panes={[
+    { key: 'today', label: 'Today', content: (<>
 <div className="instrument-glance-row">
   <div className="panel">
     <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
@@ -623,6 +632,8 @@ return (
   </div>
 </div>
 
+    </>) },
+    { key: 'performance', label: 'Performance', content: (<>
 <div className="section-heading">All-Time Performance</div>
   <div className="panel">
   <div className="calendar-toolbar">
@@ -710,6 +721,8 @@ return (
   <EdgeInsightsPanel scope={instrumentId ? `instrument:${instrumentId}` : null} tradeCount={totalTradeCount(allTrades)} />
 </div>
 
+    </>) },
+    { key: 'calendar', label: 'Calendar', content: (<>
 <div className="section-heading">Monthly P&L</div>
 <div className="panel">
   <div className="calendar-toolbar">
@@ -812,10 +825,24 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
 {selectedDate && (
   <>
   <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
+{/* The one place the desktop table survived inside a mobile pane, and it
+    reproduced the exact failure this whole mobile pass exists to fix: at
+    390px only Date and Strategy fitted, with Direction and Result off
+    the right edge behind an #tableWrap overflow-x that shows no
+    scrollbar and no shadow hint. Tapping a calendar day is how a trader
+    asks "what did I do that day", and the answer was two columns of
+    metadata with the result hidden. */}
+{isMobile ? (
+  <MobileTradeList trades={selectedTrades} strategyNameById={strategyName} symbol={symbol} />
+) : (
 <TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} onTradeDeleted={handleTradeDeleted} />
+)}
   </>
 )}
 </div>
+    </>) },
+  ]}
+/>
   </>
 )}
   </div>

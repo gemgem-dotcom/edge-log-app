@@ -3615,7 +3615,6 @@ button:active{
     border-radius: 50%;
     background: var(--accent);
     color: #04121f;
-    box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 70%, transparent);
   }
   .m-tabbar-item--primary .m-tabbar-icon svg { width: 24px; height: 24px; }
   .m-tabbar-item--primary.is-active .m-tabbar-icon { background: var(--accent-bright); }

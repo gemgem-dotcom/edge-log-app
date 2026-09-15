@@ -3535,11 +3535,20 @@ button:active{
 */
 @media (max-width: 768px) {
 
+  /* The tab bar's height, stated once.
+     Three things have to agree about it: the bar's own box, the body
+     padding that stops content sitting under it, and the trade form's
+     fixed action bar, which parks just above it. Hard-coding 56 in all
+     three left the action bar overlapping the tab bar by exactly 1px -
+     its own top border - which is the kind of thing that is invisible
+     in a screenshot and obvious in a measurement. */
+  :root { --m-tabbar-h: 56px; }
+
   /* Room for the fixed tab bar, plus the home-indicator inset on
      notched phones. Without this the last card sits under the bar and
      looks like the page simply ends. */
   body.m-app {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--m-tabbar-h) + 8px + env(safe-area-inset-bottom, 0px));
   }
 
   /* ----- Bottom tab bar ----- */
@@ -3565,8 +3574,8 @@ button:active{
     align-items: center;
     justify-content: center;
     gap: 3px;
-    /* 56px, not the icon's own height: the tap target is the point. */
-    min-height: 56px;
+    /* The tap target is the point, not the icon's own height. */
+    min-height: var(--m-tabbar-h);
     padding: 6px 2px;
     color: var(--muted);
     text-decoration: none;
@@ -3960,6 +3969,80 @@ button:active{
   .shell.is-mobile .stats-6 { grid-template-columns: repeat(2, 1fr); }
   .shell.is-mobile .section-heading { margin-top: 18px; }
   .shell.is-mobile .panel { padding: 14px; }
+
+  /* ----- Trade form ----- */
+  /*
+     The form is ~3,400px on a phone and its submit button sat at the
+     very bottom of that, which means the primary action of the app's
+     primary task was four screenfuls below wherever the trader happened
+     to be typing. Worse, there was no way to tell whether the form was
+     submittable without scrolling to the end to find out.
+
+     Sticky, then - pinned just above the tab bar, so "Log trade" and
+     "Discard" are reachable from any field. The row keeps its own
+     background and a top border rather than being transparent: the
+     fields scrolling underneath it need a hard edge or the button
+     appears to float over the text it is covering.
+  */
+  .shell.is-mobile .trade-form .submit-row {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(var(--m-tabbar-h) + 1px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    margin: 0;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--panel) 96%, transparent);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border, rgba(255,255,255,.09));
+    gap: 10px;
+    justify-content: stretch;
+  }
+  /* Fixed, not sticky. Sticky was tried first and put the button UNDER
+     the tab bar: the row is a grid item with negative side margins, and
+     the offset it resolved against was not the one the rule asked for.
+     Fixed answers to the viewport and nothing else, which is the whole
+     point of an action bar. Verified by measuring the button's box
+     against the tab bar's, not by looking at it. */
+  .shell.is-mobile .trade-form .submit-row > div {
+    display: flex; gap: 10px; width: 100%;
+  }
+  .shell.is-mobile .trade-form .submit-row button[type="submit"] {
+    flex: 1;
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .shell.is-mobile .trade-form .submit-row .discard-btn {
+    min-height: 48px;
+    flex: none;
+    padding: 0 16px;
+  }
+  /* The fixed bar covers the end of the form, so the form has to end
+     above it - otherwise the last field (screenshots) is unreachable. */
+  .shell.is-mobile .trade-form { padding-bottom: 76px; }
+
+  /* Section headers inside the form stick too, so a trader scrolling
+     through Setup / Results / Review always knows which part they are
+     filling in. Below the pane bar's z-index, above the fields. */
+  .shell.is-mobile .trade-form .section-label {
+    position: sticky; top: 0; z-index: 10;
+    margin-left: -14px; margin-right: -14px;
+    padding: 10px 14px 8px;
+    background: var(--panel);
+  }
+
+  /* 16px is the smallest font iOS Safari will render in a focused input
+     without zooming the whole page to meet it - and that zoom does not
+     reverse on blur, so one tap into a price field leaves the trader on
+     a permanently magnified form. Applies to every control the form
+     uses, not just text inputs. */
+  .shell.is-mobile input,
+  .shell.is-mobile select,
+  .shell.is-mobile textarea { font-size: 16px; }
+
+  /* Taller touch targets on the controls a trade actually needs. */
+  .shell.is-mobile .trade-form input,
+  .shell.is-mobile .trade-form select { min-height: 46px; }
 
   @media (prefers-reduced-motion: reduce) {
     .m-sheet, .m-sheet-backdrop { animation: none; }

@@ -3761,11 +3761,17 @@ button:active{
 
   .m-row-detail { padding: 2px 2px 14px; }
 
+  /* TWO columns, not three. The expanded row carries nine fields now
+     rather than six, and several of them ("Time in drawdown", a
+     multi-leg exit list, "Available in ~7h") are far longer than the
+     three-column grid could hold at 390px without wrapping mid-value. */
   .m-detail-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 12px 8px; margin: 4px 0 0;
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 13px 10px; margin: 4px 0 0;
   }
+  .m-detail-grid > div { min-width: 0; }
   .m-detail-grid dt {
+    display: flex; align-items: center; gap: 4px;
     font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
     color: var(--muted); margin: 0 0 3px;
   }
@@ -3773,25 +3779,57 @@ button:active{
     margin: 0; font-size: 13px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
   }
+  /* The desktop's .detail-subvalue, under a value rather than beside it:
+     entry time, stop/target distance in points, duration and contracts. */
+  .m-detail-sub {
+    display: block; margin-top: 2px;
+    font-size: 11px; color: var(--muted);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .m-detail-sub .time-unverified-badge { margin-left: 5px; }
 
-  .m-exit-legs { list-style: none; margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); display: flex; flex-direction: column; gap: 7px; }
-  .m-exit-legs li { display: flex; justify-content: space-between; font-size: 12.5px; }
-  .m-exit-legs li span:first-child { color: var(--muted); }
-  .m-exit-legs li span:last-child { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  /* The multi-leg exit list, inside its own cell. The old .m-exit-legs
+     block was a separate full-width panel BELOW the grid, which put the
+     exit prices a long way from the "Exit legs" label naming them. */
+  .m-exit-list {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .m-exit-list li { font-size: 12.5px; }
 
-  .m-trade-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
-  .m-tag { font-size: 12px; padding: 3px 8px; border-radius: 6px; background: var(--panel-2); color: var(--muted); }
+  .m-detail-block { margin-top: 14px; }
+  .m-detail-label {
+    display: block; margin-bottom: 5px;
+    font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-trade-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 
-  .m-trade-notes { margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); white-space: pre-wrap; }
+  .m-trade-notes { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); white-space: pre-wrap; }
 
-  .m-trade-edit {
+  /* Screenshots, which the mobile row did not show at all before. 64px
+     rather than the desktop's 70 so four tiles fit a 390px row inside the
+     card's own padding. */
+  .m-shot-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .m-shot { border-radius: 8px; }
+
+  .m-row-actions { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+  .m-trade-edit, .m-trade-delete {
     display: inline-flex; align-items: center; gap: 6px;
-    margin-top: 14px; min-height: 38px; padding: 0 12px;
-    border-radius: 8px; background: var(--panel-2);
-    color: var(--accent); font-size: 12.5px; font-weight: 600; text-decoration: none;
+    min-height: 38px; padding: 0 12px;
+    border: none; border-radius: 8px; background: var(--panel-2);
+    box-shadow: none;
+    font-family: 'Inter',sans-serif; font-size: 12.5px; font-weight: 600;
+    text-decoration: none; cursor: pointer;
   }
-  .m-trade-edit svg { width: 13px; height: 13px; }
+  .m-trade-edit { color: var(--accent); }
+  /* Destructive, and coloured like it - the desktop's own
+     .row-action-danger treatment. */
+  .m-trade-delete { color: var(--loss); margin-left: auto; }
+  .m-trade-edit svg, .m-trade-delete svg { width: 13px; height: 13px; flex-shrink: 0; }
 
   .m-empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 14px; }
 
@@ -3817,11 +3855,14 @@ button:active{
   .shell.is-mobile .shell-body { flex-direction: column; }
   .shell.is-mobile .main-area { padding: 16px 14px 24px; }
 
-  /* The topbar keeps the logo, the clock and the two icon buttons, and
-     drops to a single compact row. The instrument pill row stays: it is
-     the one piece of desktop chrome that is genuinely per-screen on
-     mobile too, and a trader with four instruments switches between them
-     constantly. */
+  /* The topbar is ONE row: logo left, scope selector right.
+     The clock, theme toggle and cog are not rendered here at all on
+     mobile (the shells swap them for MobileScopeButton), so there is
+     nothing to hide - each duplicated something the phone or the tab bar
+     already provides: the status bar's own clock, Account ->
+     Preferences, and the Account tab.
+     The instrument pill row IS still rendered, because it carries a
+     tutorial target, so it is hidden here instead - see below. */
   .shell.is-mobile .shell-topbar {
     margin: 8px 10px 12px;
     padding: 10px 12px;
@@ -3829,7 +3870,17 @@ button:active{
     gap: 8px;
   }
   .shell.is-mobile .shell-logo { font-size: 15px; }
-  .shell.is-mobile .shell-topbar-right { gap: 2px; }
+  .shell.is-mobile .shell-topbar-right { gap: 2px; margin-left: auto; }
+
+  /* :not(.is-tutorial), for the same reason the sidebar and the log
+     button below carry it. The first-run tutorial's FIRST step spotlights
+     "+ Add instrument" inside this row (data-tutorial-target=
+     "add-instrument" in InstrumentNav.js) by MEASURING the element, so
+     hiding it outright hands TutorialOverlay a 0x0 rect and step 0 of
+     onboarding points at nothing. This exact mistake has already shipped
+     twice in this work - once for the sidebar, once for the log button -
+     which is why it is spelled out a third time rather than assumed. */
+  .shell.is-mobile:not(.is-tutorial) .instrument-nav { display: none; }
 
   /* The desktop's "Log new trade" buttons are redundant once the tab
      bar carries that action in its centre, raised and always reachable.
@@ -3984,29 +4035,12 @@ button:active{
   .m-sheet svg,
   .m-pager svg { flex-shrink: 0; }
 
-  /* ----- Strategy picker (tab bar sheet) ----- */
-  .m-strategy-list { list-style: none; margin: 8px 0 0; padding: 0; }
-  .m-strategy-row {
-    display: flex; align-items: center; gap: 11px;
-    min-height: 54px; padding: 0 4px;
-    color: var(--text); text-decoration: none; font-size: 14.5px; font-weight: 600;
-    border-bottom: 1px solid var(--border, rgba(255,255,255,.06));
-  }
-  .m-strategy-list li:last-child .m-strategy-row { border-bottom: none; }
-  .m-strategy-row:active { background: var(--panel-hover); }
-  .m-strategy-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-  .m-strategy-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .m-strategy-chevron { color: var(--muted-2); }
-  /* The instrument badge beside a strategy on the all-instruments sheet,
-     matching the desktop sidebar's own .sidebar-substrategy-tag. */
-  .m-strategy-sym {
-    flex: none;
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px; font-weight: 600;
-    color: var(--muted);
-    background: var(--panel-2);
-    padding: 2px 6px; border-radius: 5px;
-  }
+  /* The strategy PICKER SHEET's rules used to sit here. Strategies is a
+     real page now (app/app/[instrument]/strategies/page.js), so the sheet
+     and every rule for it are gone - this note is all that is left, to say
+     the deletion was deliberate rather than a rule accidentally dropped.
+     .m-strategy-link survives because the Log tab's instrument picker
+     still uses it for its empty state. */
   .m-strategy-link { color: var(--accent); text-decoration: none; font-weight: 600; }
 
   /* ----- Pane switcher (dashboard) ----- */
@@ -4128,4 +4162,191 @@ button:active{
   @media (prefers-reduced-motion: reduce) {
     .m-sheet, .m-sheet-backdrop { animation: none; }
   }
+
+  /* ----- Scope selector (topbar, mobile only) ----- */
+  /*
+     The one navigation control in the topbar, opposite the logo. It
+     replaces the instrument pill row, which ate a second topbar row and
+     - worse - reset your section on every switch, while the tab bar
+     preserved it. The two navigation systems disagreeing about that was
+     the single most confusing thing about the old mobile app.
+  */
+  .m-scope-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    max-width: 62vw;
+    padding: 6px 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter',sans-serif;
+    font-size: 13.5px;
+    /* box-shadow reset with the rest: globals.css has a blanket button{}
+       rule that paints every button an accent pill, and every icon or nav
+       control has to stand it down explicitly. */
+    box-shadow: none;
+    cursor: pointer;
+  }
+  /* A ticker, so it takes the mono face every other figure and symbol in
+     this app takes. */
+  .m-scope-sym {
+    font-family: 'JetBrains Mono',monospace;
+    font-weight: 700;
+    font-size: 13.5px;
+    letter-spacing: .01em;
+    flex-shrink: 0;
+  }
+  .m-scope-name {
+    font-size: 12.5px; font-weight: 500; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* At scope All there is no ticker, so NOTHING in the button is
+     monospaced - "All" set in the mono face read as a symbol in its own
+     right, which is exactly what it is not. */
+  .m-scope-all { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .m-scope-caret { color: var(--muted); flex-shrink: 0; }
+
+  .m-scope-list { list-style: none; margin: 0; padding: 0; }
+  .m-scope-row {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 13px 2px;
+    background: none; border: none; border-bottom: 1px solid var(--line);
+    border-radius: 0; box-shadow: none;
+    color: var(--text); font-family: 'Inter',sans-serif; font-size: 14px;
+    text-align: left; cursor: pointer;
+  }
+  .m-scope-list li:last-child .m-scope-row { border-bottom: none; }
+  .m-scope-row-sym {
+    font-family: 'JetBrains Mono',monospace; font-weight: 600; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .m-scope-row-name {
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-scope-check { color: var(--accent); flex-shrink: 0; }
+  .m-scope-add {
+    color: var(--accent); font-weight: 600; font-size: 13.5px;
+    border-top: 1px solid var(--line); border-bottom: none;
+    margin-top: 4px;
+  }
+  .m-scope-add svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .m-scope-add-form {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding-top: 12px; border-top: 1px solid var(--line); margin-top: 4px;
+  }
+  .m-scope-add-form select { flex: 1; min-width: 0; }
+  /* 16px minimum on anything focusable: iOS Safari zooms the viewport in
+     on a focused control with a smaller font and never zooms back out. */
+  .m-scope-add-form select, .m-scope-add-submit { font-size: 16px; }
+  .m-scope-add-submit { flex-shrink: 0; }
+  .m-scope-add-form .field-error { flex-basis: 100%; }
+
+  /* ----- Strategies index ----- */
+  /*
+     The page the Strategies tab now opens. Built on the trade row's own
+     measurements - 10.5px uppercase labels, mono tabular figures, 1px
+     rules - so the two list screens read as one product.
+  */
+  .m-strategy-index-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2px 8px; border-bottom: 1px solid var(--line);
+    font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-strategy-index { list-style: none; margin: 0; padding: 0; }
+  .m-strategy-index-row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 12px 2px; border-bottom: 1px solid var(--line);
+    color: var(--text); text-decoration: none;
+  }
+  .m-strategy-index li:last-child .m-strategy-index-row { border-bottom: none; }
+  .m-strategy-index-body { flex: 1; min-width: 0; }
+  .m-strategy-index-name {
+    display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-strategy-index-stats {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .m-strategy-index-stats b {
+    font-family: 'JetBrains Mono',monospace; font-variant-numeric: tabular-nums;
+    font-size: 12px; font-weight: 600; color: var(--text);
+    text-transform: none; letter-spacing: 0; margin-left: 4px;
+  }
+  /* The win/loss colours the rest of the app uses, so an expectancy that
+     is losing money reads as losing money here too. */
+  .m-strategy-index-stats b.pnl-pos { color: var(--win); }
+  .m-strategy-index-stats b.pnl-neg { color: var(--loss); }
+  .m-strategy-index-chevron { color: var(--muted-2); flex-shrink: 0; }
+  /* Only on the all-instruments list, where one screen mixes strategies
+     that belong to different instruments. */
+  .m-strategy-index-inst {
+    margin-left: 7px; padding: 1px 6px; border-radius: 5px;
+    background: var(--panel-2);
+    font-family: 'JetBrains Mono',monospace; font-size: 10.5px; font-weight: 600;
+    color: var(--muted); vertical-align: middle;
+  }
+
+  /* ----- Account, as an index ----- */
+  /*
+     The desktop stacks all seven sections on one page. At 390px that is
+     roughly a 2,000px scroll through unrelated concerns to reach the one
+     you came for, under a bespoke topbar that is this app's THIRD
+     navigation pattern. So mobile gets an index that drills into one
+     section at a time, and the topbar goes: "Back to dashboard" is the
+     Overview tab, and "Log out" moves into the page body below.
+  */
+  /* The bespoke account topbar is not rendered on mobile at all (the
+     page swaps it for the standard logo+scope row), so there is nothing
+     to hide - but the sticky spacer it used to reserve height for is
+     still in the tree, and without this the page opens on a band of
+     nothing. */
+  .m-account-topbar + .topbar-spacer { display: none; }
+  .m-account-topbar {
+    margin: 8px 10px 12px; padding: 10px 12px;
+    border-radius: 18px; gap: 8px;
+  }
+  .m-account-topbar .shell-logo { font-size: 15px; }
+  .m-account-topbar .shell-topbar-right { margin-left: auto; }
+  .account-wrap { padding: 4px 14px 24px; }
+
+  .m-account-index { padding: 0 14px; }
+  .m-account-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+    color: var(--text); text-decoration: none;
+  }
+  .m-account-index .m-account-row:last-child { border-bottom: none; }
+  .m-account-row-body { flex: 1; min-width: 0; }
+  .m-account-row-label { display: block; font-size: 14px; font-weight: 500; }
+  .m-account-row-hint { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .m-account-row-chevron { color: var(--muted-2); flex-shrink: 0; }
+  .m-account-row.is-danger .m-account-row-label { color: var(--loss); }
+
+  .m-account-back {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-bottom: 10px;
+    color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: none;
+  }
+  .m-account-back svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .m-logout {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: 16px; min-height: 46px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: none;
+    color: var(--loss); font-family: 'Inter',sans-serif; font-size: 13.5px; font-weight: 600;
+    cursor: pointer;
+  }
+  .m-logout svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .m-account-email {
+    margin: 12px 0 0; text-align: center;
+    font-size: 12px; color: var(--muted-2);
+  }
+
 }

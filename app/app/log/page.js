@@ -144,6 +144,7 @@ export default function AllTradesPage() {
               totalCount={totalCount}
               onOpenFilters={() => setFiltersOpen(true)}
               activeFilterCount={countActiveFilters(filters)}
+              onTradeDeleted={loadPage}
               emptyState={
                 <EmptyState
                   title="No trades yet"

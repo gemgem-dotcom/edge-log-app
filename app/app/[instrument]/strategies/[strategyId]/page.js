@@ -410,6 +410,7 @@ export default function StrategyDetailPage({ params }) {
           // every one of this strategy's own trades as having no
           // strategy.
           showStrategy={false}
+          onTradeDeleted={handleTradeDeleted}
           emptyState={
             <EmptyState
               title="No trades yet"

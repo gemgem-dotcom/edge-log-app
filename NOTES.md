@@ -31,8 +31,31 @@ memoization cache). `vitest.setup.js` seeds placeholder Supabase env vars before
 import runs, since some of these modules transitively import `lib/supabaseClient.js`
 (which constructs a client at module load time) even though nothing in the suite talks to
 a real database. Runs in CI (`.github/workflows/ci.yml`'s `test` job) alongside the build
-check. When touching any of these three files, add or update a test alongside the code
-change in the same PR rather than after - that's the point of having them.
+check. When touching any of these files, add or update a test alongside the code
+change in the same PR rather than after - that's the point of having them. The suite
+has since grown well past those three modules; the economic-calendar pipeline in
+particular is covered by `econCalendarHtml`, `econCalendarEvents`, `econCalendarDay`,
+`econCalendarFilters`, `econCalendarRemoval` and `useUpcomingEconEvents` test files.
+
+**A green suite is not evidence, and this repo has the scars to prove it.** Four
+separate economic-calendar bugs shipped past a fully passing suite, each for the same
+reason: **the fixture encoded the shape the code assumed rather than what production
+actually produces.**
+
+- Every HTML fixture row shared `data-event-id="1"`. Harmless while the key was
+  day-based; the moment the id became the key, every row of a page collapsed into one.
+- The mock's all-day rows were built at the *viewer's* midnight, so the mock agreed
+  with the viewer by construction and hid a bug every Pacific-coast user could see.
+- The removal fixtures spelled `since` and `fetched_at` the same way, so a comparison
+  that production would have got backwards looked fine.
+- The mock had no medium-impact USD all-day row, so neither surface that renders one
+  could exercise the path at all.
+
+Two habits that actually catch this: build fixtures from what the real source emits
+(captured markup, real PostgREST spellings) rather than from what's convenient, and
+**check that a new test fails without the fix before trusting that it passes with it**.
+Several fixes in this pipeline were mutation-checked that way, and the check is cheap:
+break the line deliberately, confirm the expected tests go red, restore.
 
 **Error tracking** (Sentry, optional - `NEXT_PUBLIC_SENTRY_DSN`) reports genuinely
 unexpected failures from the four `app/api/*` routes and the two Databento scheduled
@@ -96,8 +119,26 @@ lib/
   marketHours.js                   ET trading-session/open-closed logic, CME holidays layered in
   cmeHolidays.json                 static CME holiday/early-close calendar - see below
   contractRollover.js/.json        static per-underlying contract rollover/expiration dates
+  econCalendarEvents.mjs           FF event vocabulary, normalise/classify, key helpers -
+                                    shared by the scripts and the app, hence .mjs
+  econCalendarHtml.mjs             parses forexfactory.com/calendar's HTML (the primary
+                                    source). Pure over a string, tested against real markup
+  econCalendarDay.js               which calendar day an event belongs to - see below, this
+                                    is subtler than it sounds and has broken twice
+  econCalendarQuery.js             reads economic_events for a local-day range
+  econCalendarFilters.js           the calendar card's persisted filter state
+  econCalendarRemoval.mjs          decides which stored events FF has stopped listing.
+                                    Pure and separate because it is the one part of the
+                                    pipeline that destroys data
+  useCalendarNewsByDay.js          one fetch per visible month, grouped into the P&L
+                                    calendar's day cells for CalendarNewsBadge
 scripts/
   generate_cme_holidays.py         regenerates lib/cmeHolidays.json - see below
+  fetch-economic-calendar.js       FF calendar -> economic_events; scope set by env vars
+  inspect-economic-calendar.js     read-only health report: coverage, duplicates,
+                                    staleness, key/timezone invariants, an anon-key RLS probe
+  probe-forexfactory-sources.js    read-only recon on FF's page + feed
+  smoke-test-forexfactory-feed.js  read-only health check on the fallback feed
 jsconfig.json                      the @/ import alias
 schema.sql                         database tables + row level security
 storage-setup.sql                  screenshots storage bucket
@@ -139,15 +180,75 @@ cannot speak to so a fallback can never blank a stored actual.
 
 `lib/econCalendarEvents.mjs` holds the one copy of the vocabulary, classification and
 day/key helpers, shared between the scripts and the app (both it and the HTML parser
-are `.mjs` so a CommonJS script can `import()` them - see their headers). Rows upsert
-on a day+currency+title key, where the day is **FF's own**, not UTC: FF files an
-evening release under the day the page lists it on, and keying on the UTC day made a
-Thursday-evening speech and a Friday-morning one by the same speaker collide.
+are `.mjs` so a CommonJS script can `import()` them - see their headers).
 
-Times carry the same care. Each day's first row has `data-day-dateline`, the epoch of
-midnight in FF's display timezone; the parser checks that really is local midnight
-before using the zone to resolve the row's clock time, which is what keeps the two DST
-changeover days right instead of an hour out in each direction.
+### The one fact that broke this pipeline four times: FF's timezone comes from your IP
+
+Everything in this subsection traces to a single discovery, confirmed live on
+2026-09-14: **Forex Factory picks its display timezone from the client's IP address.**
+A GitHub runner in Azure `westcentralus` (Wyoming) is served `America/Denver`. A
+different runner, or a Vercel function in another region, is served something else.
+No fixed zone name can be right for every caller, and nothing about a page says which
+zone it was rendered in.
+
+Four separate bugs came out of that, and each one was invisible under a green test
+suite because the fixtures encoded what the code assumed rather than what production
+produces. That pattern is the real lesson here.
+
+**1. The key could not be a day.** Rows used to upsert on `day|currency|title`, where
+the day was FF's own. But a release near local midnight has *no single correct day*:
+`2026-08-03T06:00:00Z` is Aug 3 for a runner served Mountain time and Aug 2 for one
+served Pacific, and FF showed each caller exactly that. Both are right. So the key had
+two answers and stored two rows - **174 duplicated releases in production, climbing by
+~16 per fetch**. `event_key` is now `ff|<FF's own event id>`; `ff_event_id` doesn't
+move, every page row carries one (2477 of 2477 stored rows), and a partial unique index
+makes a regression fail the write rather than quietly add a row. **Do not try to fix
+this class of problem by deriving the day more cleverly** - that was the instinct, and
+it cannot work, because neither day is wrong.
+
+The old `day|currency|title` form (optionally `|#N` when FF lists the same title twice
+in a day, which it does whenever an official speaks morning and evening) survives for
+the JSON fallback feed alone, since the feed carries no event id.
+
+**2. The DST correction never ran.** `FF_DISPLAY_TIMEZONE` was `'America/Chicago'`,
+with a guard that fell back to the naive sum when a page's dateline wasn't midnight in
+that zone. The guard worked perfectly; the constant was wrong for nearly every caller,
+so the correction it protected never fired anywhere, and both changeover days a year
+were silently an hour out - despite a comment claiming the caller was told. The
+correction now comes from the page's own shape: consecutive datelines are 86400s apart
+on an ordinary day and 82800/90000 across a changeover, so **the day's own length is
+the offset shift**. The only remaining assumption is that the change happens at 02:00
+local, stated at `instantFor` rather than buried.
+
+**3. All-day rows showed a day early west of FF.** A row with no clock time is anchored
+to midnight in FF's zone - the only honest thing its timestamp can say - but midnight is
+the one instant where "the viewer's local day" and "FF's day" come apart, and they come
+apart by a whole day. Every Pacific-coast trader saw bank holidays and OPEC meetings on
+the wrong date, and a single-day range dropped them entirely, because the row's instant
+fell outside the viewer's own local-day window. `lib/econCalendarDay.js` settles it:
+timed rows bucket by the viewer's local day, all-day rows by FF's, and `compareForDisplay`
+sorts by the same function that labels each row so the two can never disagree again.
+
+This one shipped **twice**. The first fix read FF's day off the front of `event_key`;
+the `ff|<id>` change then removed the day from the key, `displayDayFor` silently fell
+back to the viewer's local day, and the bug returned live. It now derives the day from
+the row's own instant, so no key format can break it a third time.
+
+**4. The day derivation was bounded at |offset| <= 12.** Reading the UTC date of
+`dateline + 12h` gives FF's day without naming a zone, but at UTC+13/+14 local midnight
+falls on the previous UTC day and the answer comes out one early. A dateline genuinely
+cannot distinguish UTC-11 from UTC+13 - both put local midnight at the same point in
+the UTC day. The parser now reads **FF's own printed date** out of the day's rowspan'd
+date cell (`<span class="date">Fri <span>Aug 28</span></span>`), which is FF stating
+its answer directly, and matches it against the three candidate dates either side of
+the arithmetic's. A missing or unreadable label falls back to the bare arithmetic, so
+a markup change degrades to unchanged days rather than wrong ones.
+
+`lib/econCalendarDay.js`'s `ffDayFromInstant` still carries the bound, because a stored
+row has an instant and no day - there is no page to consult. Closing it means storing
+the day, a schema change for a case that cannot arise while every writer is a US-hosted
+runner. Note the bound is about where the **writer** sat, not the reader: a viewer in
+Auckland reading a row written from Wyoming is unaffected.
 
 **Four things the first live run corrected, all found by
 `scripts/smoke-test-forexfactory-feed.js` rather than in review** - the dev sandbox
@@ -199,6 +300,86 @@ ten minutes of FF publishing it. Fetches are
 rate-limited by *claiming* `econ_refresh_lock` with one conditional UPDATE before
 going to FF, not by reading a timestamp and then going - the latter is check-then-act,
 and every request arriving during the fetch passed it.
+
+### "Hourly" is what the cron asks for, not what happens
+
+Measured 2026-09-14 over the preceding 67 hours: **19 scheduled runs, one every 3.7
+hours on average**, gaps from 2.1h to 5.9h, and not one of them at the requested
+minute. GitHub delays and drops scheduled workflows under load, and this repo gets
+roughly a quarter of what it asks for. Don't quote "hourly" as a freshness guarantee -
+the floor for a release printing while nobody has the dashboard open is several hours.
+What actually keeps the card fresh for someone watching is the on-demand refresh above,
+which isn't on the cron at all.
+
+The hourly and daily jobs are ten minutes apart in cron terms, so with that much drift
+they interleave - and both write the same rows and both now delete. They're serialised
+by a `concurrency` group, with `cancel-in-progress: false`: a half-finished fetch leaves
+the range partly refreshed, and the next run's removal pass would read that as events
+vanishing.
+
+### Removing what FF removed
+
+The fetch upserts, so until this existed a row lived forever: a cancelled speech, a
+withdrawn release, an event moved to another week - all stayed on the card indefinitely
+with nothing to say they'd stopped being real. Additions and revisions propagated;
+removals never did.
+
+The rule is "absent from a page that spoke for its day". After a page parses and stores,
+every event FF still lists in that page's own day range carries the run's `fetched_at`;
+anything older in the same range wasn't on the page. The decision lives in
+`lib/econCalendarRemoval.mjs`, deliberately apart from the fetch script and pure,
+because it's the one piece of the pipeline that destroys data.
+
+Three rails, each there for a specific near-miss:
+
+- **The page must speak for the day.** "Covered days" are consecutive-dateline windows,
+  not the outer span of the page. FF omits days with no events, and a span let a page
+  speak for days it never rendered.
+- **A threshold, which is a tripwire and not a quota.** 10% of the rows in range, floored
+  at 5 so a quiet week isn't held to zero, and **capped at 15** so the proportion can't
+  grow teeth: a month page holds ~400 rows, and a parse regression that misses one impact
+  class is proportional to the range, so it could sit under the fraction and still destroy
+  forty real events per page per day, logged as legitimate removals. Over the threshold it
+  refuses outright rather than trimming - deleting "as many as are allowed" would destroy
+  data on a bad parse *and* hide the signal by never looking unusual. A refusal reports to
+  Sentry at `error`, not `warning`, because nothing changes on a refusal: the next run
+  computes the same set and refuses identically, forever, with no escape but manual SQL.
+- **JSON-feed orphans are exempt from the threshold.** The feed carries no event id, so
+  its rows keep the old day-based key and the page can never update them; when the page
+  recovers it writes `ff|<id>` and the feed's copy is orphaned. A day-long outage makes
+  ~100 of those, which would exceed any allowance and wedge the pass permanently. A feed
+  row being absent from the page is not evidence the page is wrong - it was never from
+  the page.
+
+Two bugs found in this code by review rather than in production, both worth remembering:
+
+**The two timestamp spellings.** `since` comes from JavaScript's `toISOString`
+(`...123Z`); `fetched_at` comes back from PostgREST rendered by Postgres, which uses a
+numeric offset and trims the fraction (`...123+00:00`). `'+'` is 0x2B and `'Z'` is 0x5A,
+so a string comparison called every row written in the *same millisecond* as `since`
+older than it - and `storeEvents` stamps a whole 200-row chunk in a tight map, so most
+of the first chunk lands in that millisecond. It would have either refused on every run
+forever or, when the millisecond ticked mid-chunk, deleted live events and logged them
+as FF removals. Both sides go through `Date.parse` now.
+
+**The scan must select `ff_event_id`.** It's never displayed, so it's easy to leave out
+of the select - and without it every row reads as feed-written, which hands the removal
+pass an unlimited delete budget over the whole range.
+
+### Filter state on the calendar card
+
+`lib/econCalendarFilters.js` persists the card's filters, so a choice survives a
+reload instead of resetting every visit. Before the user has ever touched them the
+default is **currency USD, impact and event type both "all"**. Reads and writes of
+stored state are guarded - a private window or cleared site data makes the accessor
+throw, and the card has to render correctly anyway.
+
+### Row level security
+
+Verified live for the first time on 2026-09-14, via `scripts/inspect-economic-calendar.js`
+run from the diagnostic workflow: both `economic_events` and `econ_refresh_lock` are
+correctly closed to signed-out callers. The probe had existed for a while but had never
+actually run with an anon key in scope - a check that has never executed is not a check.
 
 `lib/marketContextMock.js` is **deleted**. Its last caller was the per-instrument
 dashboard's upcoming-events list, which now reads `economic_events` through

@@ -51,16 +51,19 @@ export default function MobileTabBar({ symbol, strategies = [], colorIndexById =
       {/* nav + aria-label so a screen reader can jump to it, and the same
           aria-current the desktop tab strip uses. */}
       <nav className="m-tabbar" aria-label="Main">
-        {MOBILE_TABS.map(({ key, label, path, primary, sheet }) => {
+        {MOBILE_TABS.map(({ key, label, path, sheet }) => {
           const Icon = TAB_ICONS[key]
           const isActive = active === key
+          // Uniform: no tab is visually privileged. The Log tab used to
+          // be a raised accent circle, which is the most template-looking
+          // element in mobile design and made one of five equals shout.
           const inner = (
             <>
-              <span className="m-tabbar-icon"><Icon size={primary ? 24 : 20} strokeWidth={2} /></span>
+              <span className="m-tabbar-icon"><Icon size={19} strokeWidth={1.75} /></span>
               <span className="m-tabbar-label">{label}</span>
             </>
           )
-          const className = `m-tabbar-item${primary ? ' m-tabbar-item--primary' : ''}${isActive ? ' is-active' : ''}`
+          const className = `m-tabbar-item${isActive ? ' is-active' : ''}`
 
           if (sheet) {
             return (

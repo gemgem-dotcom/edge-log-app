@@ -74,6 +74,20 @@ on:
         default: '0'
         type: string
 
+# The hourly and daily crons are ten minutes apart and GitHub delays
+# scheduled runs routinely, so without this they overlap - and both write
+# the same rows and both now DELETE. A month sweep that started before the
+# week job stored a new release would see that release as absent from its
+# own page and remove it. Self-healing on the next run, but there is no
+# reason to allow it.
+#
+# cancel-in-progress stays false: a half-finished fetch that gets cancelled
+# leaves the range partly refreshed, and the next run's removal pass would
+# read that as events vanishing. Queue instead.
+concurrency:
+  group: refresh-economic-calendar
+  cancel-in-progress: false
+
 jobs:
   fetch:
     runs-on: ubuntu-latest

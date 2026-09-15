@@ -60,10 +60,13 @@ All three also need to be added in Vercel under **Project Settings → Environme
   (Historical API, `GLBX.MDP3` dataset — see `lib/databento.js` and `NOTES.md`). Only needed to run
   the daily market-session-stats job locally; the app itself works without it.
 
-The economic calendar, volatility, and key-levels cards on the Overview pages
-currently show mock/placeholder data (`lib/marketContextMock.js`) — no API key or
-setup needed for those. See `NOTES.md` for the plan to replace them with a real
-market-data provider.
+The economic calendar cards are live — they read the `economic_events` table, which
+a scheduled job fills from Forex Factory. Nothing extra to set up beyond the
+Supabase keys above.
+
+The volatility and key-levels stats on the Overview pages are not live: they show
+"Not available yet" rather than invented numbers, pending a paid market-data
+provider. See `NOTES.md`.
 
 ## 5. Run it
 

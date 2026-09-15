@@ -166,7 +166,11 @@ function TradeCard({ trade, strategyName, symbol, instrumentSymbol, showStrategy
             </div>
           ) : null}
 
-          {trade.notes ? <p className="m-trade-notes">{trade.notes}</p> : null}
+          {/* `reasoning`, not `notes`. There is no notes column - the
+              schema calls it reasoning and the desktop table reads
+              t.reasoning - so the first version of this line silently
+              rendered nothing for every trade that had one. */}
+          {trade.reasoning ? <p className="m-trade-notes">{trade.reasoning}</p> : null}
 
           {editHref ? (
             <Link className="m-trade-edit" href={editHref}>

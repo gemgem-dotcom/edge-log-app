@@ -3574,6 +3574,20 @@ button:active{
     align-items: center;
     justify-content: center;
     gap: 3px;
+    /* Reset the global button styling explicitly.
+       globals.css's bare `button{}` rule paints every button as a solid
+       accent pill, and every other icon/nav control in this app resets
+       it. The Strategies tab is the one tab that is a <button> rather
+       than a <Link> (it opens a sheet), and without this it rendered as
+       a permanent blue pill that read as a second "active" tab - and on
+       a strategy detail page, where .is-active also sets color:accent,
+       the icon and label became accent-on-accent and disappeared
+       entirely. Declared here rather than relying on the reset list
+       further up, so it travels with the component. */
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     /* The tap target is the point, not the icon's own height. */
     min-height: var(--m-tabbar-h);
     padding: 6px 2px;

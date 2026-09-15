@@ -13,6 +13,7 @@ import { totalTradeCount } from '@/lib/insightData'
 import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { useIsMobile } from '@/lib/useIsMobile'
 import MobilePanes from '@/components/mobile/MobilePanes'
+import MobileTradeList from '@/components/mobile/MobileTradeList'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
@@ -824,7 +825,18 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
 {selectedDate && (
   <>
   <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
+{/* The one place the desktop table survived inside a mobile pane, and it
+    reproduced the exact failure this whole mobile pass exists to fix: at
+    390px only Date and Strategy fitted, with Direction and Result off
+    the right edge behind an #tableWrap overflow-x that shows no
+    scrollbar and no shadow hint. Tapping a calendar day is how a trader
+    asks "what did I do that day", and the answer was two columns of
+    metadata with the result hidden. */}
+{isMobile ? (
+  <MobileTradeList trades={selectedTrades} strategyNameById={strategyName} symbol={symbol} />
+) : (
 <TradeLogTable trades={selectedTrades} strategyNameById={strategyName} showStrategyColumn={true} showDayColumn={false} showPnlColumn={false} symbol={symbol} onTradeDeleted={handleTradeDeleted} />
+)}
   </>
 )}
 </div>

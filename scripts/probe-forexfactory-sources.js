@@ -227,11 +227,97 @@ async function dumpMarkup() {
   console.log(withActual ? (withActual.length > 2600 ? `${withActual.slice(0, 2600)}...` : withActual) : '  NONE FOUND - no row in this week carries an actual value')
 }
 
+// Does FF's own printed date agree with the dateline arithmetic?
+//
+// dayFor reads FF's day from the page's date cell where it can, and falls
+// back to the UTC date of dateline+12h where it can't. The label is there
+// to resolve the one case the arithmetic cannot - a caller served UTC+13 or
+// +14, where the same epoch is midnight of two different days - and it is
+// SUPPOSED to agree with the arithmetic everywhere else.
+//
+// That "supposed to" is the thing worth measuring rather than assuming,
+// because the day feeds event_key (for feed-written rows) and detail_url
+// (for every row). If the two ever disagreed on an ordinary page, the
+// label would silently move every url on it. The unit tests check this
+// against one captured week; this checks it against whatever FF is serving
+// right now, from a runner whose IP decides the zone.
+//
+// Read the DISAGREE count. Zero is the expected answer from any US-served
+// runner. A non-zero count is not automatically a bug - it is exactly what
+// a runner served UTC+13 SHOULD report - but it means the two sources
+// genuinely differ for this caller, and the label is the one to trust.
+async function probeDayAgreement() {
+  console.log(`\n${'='.repeat(66)}\n4. DAY DERIVATION: FF'S PRINTED DATE vs THE DATELINE\n${'='.repeat(66)}`)
+  const { dayFor, parseDateLabel } = await import('../lib/econCalendarHtml.mjs')
+
+  const targets = [
+    { label: 'this week', url: 'https://www.forexfactory.com/calendar' },
+    { label: 'a month', url: `https://www.forexfactory.com/calendar?month=${MONTHS[new Date().getUTCMonth()]}.${new Date().getUTCFullYear()}` },
+  ]
+
+  let checked = 0
+  let disagreed = 0
+  let unlabelled = 0
+
+  for (const target of targets) {
+    let res
+    try {
+      res = await get(target.url, HONEST_UA)
+    } catch (err) {
+      console.log(`  ${target.label}: FAILED  ${err.message}`)
+      continue
+    }
+    if (res.status !== 200 || classify(res.body).kind !== 'CALENDAR HTML') {
+      console.log(`  ${target.label}: HTTP ${res.status} ${classify(res.body).kind} - skipped`)
+      await new Promise((r) => setTimeout(r, 1500))
+      continue
+    }
+
+    // Each day's first row carries both the dateline and the rowspan'd
+    // date cell, so one regex over that row gets the pair.
+    const rowRe = /<tr[^>]*data-day-dateline="(\d+)"[\s\S]*?<\/tr>/gi
+    const dateCellRe = /<td[^>]*class="[^"]*calendar__date[^"]*"[^>]*>([\s\S]*?)<\/td>/i
+    const seen = new Set()
+    console.log(`\n  --- ${target.label} ---`)
+
+    for (const [rowHtml, datelineStr] of res.body.matchAll(rowRe)) {
+      const dateline = Number(datelineStr)
+      if (seen.has(dateline)) continue
+      seen.add(dateline)
+
+      const rawCell = dateCellRe.exec(rowHtml)?.[1] || ''
+      const label = rawCell.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+      const fromLabel = dayFor(dateline, label)
+      const fromArithmetic = dayFor(dateline, null)
+      checked++
+
+      if (!parseDateLabel(label)) {
+        unlabelled++
+        console.log(`  ${String(dateline).padEnd(12)} NO LABEL  arithmetic=${fromArithmetic}  raw=${JSON.stringify(label.slice(0, 40))}`)
+        continue
+      }
+      if (fromLabel !== fromArithmetic) {
+        disagreed++
+        console.log(`  ${String(dateline).padEnd(12)} DISAGREE  label=${fromLabel}  arithmetic=${fromArithmetic}  raw=${JSON.stringify(label)}`)
+      }
+    }
+    console.log(`  ${seen.size} day(s) on this page`)
+    await new Promise((r) => setTimeout(r, 1500))
+  }
+
+  console.log(`\n  checked ${checked} day(s): ${disagreed} disagreed, ${unlabelled} had no readable label`)
+  console.log(`  verdict  ${disagreed === 0 && unlabelled === 0
+    ? 'every day carried a readable date and both methods agree'
+    : 'see the rows above - the printed label is the one to trust'}`)
+  return { checked, disagreed, unlabelled }
+}
+
 async function main() {
   console.log(`probe run at ${new Date().toISOString()}`)
   await probeFeeds()
   await probeHtml()
   await dumpMarkup()
+  await probeDayAgreement()
   console.log(`
 ${'='.repeat(66)}
 HOW TO READ THIS
@@ -244,6 +330,13 @@ ${'='.repeat(66)}
   fill are both addressable by week, and the actual-cell counts say whether
   the figures are in there.
 - "BOT CHECK" means stop: do not add evasion. Go to a different source.
+- Section 4's DISAGREE count should be 0 from any US-served runner. A
+  non-zero count means FF's printed date and the dateline arithmetic
+  genuinely differ for this caller - which is what a runner served UTC+13
+  or +14 is expected to report, and the label is the one to trust. NO LABEL
+  rows mean the date cell moved; dayFor falls back to the arithmetic there,
+  so the effect is unchanged days rather than wrong ones, but the parser
+  wants updating.
 `)
 }
 

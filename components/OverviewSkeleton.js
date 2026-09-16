@@ -1,3 +1,7 @@
+'use client'
+
+import { useIsMobile } from '@/lib/useIsMobile'
+
 // Shimmering placeholder for the all-instruments Overview (app/app),
 // shown instead of PageLoading while the initial fetch is in flight.
 // Only the header (greeting, subtitle, market status pill) is
@@ -13,6 +17,7 @@
 // which this is deliberately its own component rather than sharing with,
 // since the two pages' header rows and populated-content shapes differ.
 export default function OverviewSkeleton() {
+  const isMobile = useIsMobile()
   return (
     <div className="page-container">
       <div className="page-header-row">
@@ -22,10 +27,12 @@ export default function OverviewSkeleton() {
       <div className="header-pills-row">
         {/* MarketStatusPill only - StreakBadge renders nothing without an
             active 2+ streak, which is the common case, so guessing a
-            second pill here would be wrong more often than right. Third
-            pill is "Log new trade", which always renders. */}
+            second pill here would be wrong more often than right. The
+            "Log new trade" pill is desktop-only - it is hidden on mobile
+            (the tab bar carries that action), so skeletoning it there
+            promised a control that never arrived. */}
         <div className="skel skel-pill" style={{ width: '120px' }} />
-        <div className="skel skel-pill" style={{ width: '140px', marginLeft: 'auto' }} />
+        {isMobile ? null : <div className="skel skel-pill" style={{ width: '140px', marginLeft: 'auto' }} />}
       </div>
 
       <div className="content-loading">

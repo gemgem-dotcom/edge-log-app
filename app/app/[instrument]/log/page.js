@@ -129,6 +129,12 @@ export default function LogPage({ params }) {
 
       {isMobile ? (
         <>
+          {/* The same .panel the desktop table sits in. The mobile list
+              was rendered bare, so the trade log was the one page whose
+              rows floated on the page background while every other
+              surface in the app - including the panels that hold this
+              same list elsewhere - had a card behind them. */}
+          <div className="panel m-trade-panel">
           <MobileTradeList
             trades={trades}
             strategyNameById={strategyName}
@@ -146,6 +152,7 @@ export default function LogPage({ params }) {
               />
             }
           />
+          </div>
           <MobilePager
             page={page}
             pageSize={PAGE_SIZE}

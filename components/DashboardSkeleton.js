@@ -1,3 +1,7 @@
+'use client'
+
+import { useIsMobile } from '@/lib/useIsMobile'
+
 // Shimmering placeholder for the per-instrument dashboard
 // (app/[instrument]/dashboard), shown instead of PageLoading while the
 // initial fetch is in flight. Only the header (title, subtitle, market
@@ -10,6 +14,7 @@
 // right, so that part falls back to the plain animated-bars loading
 // treatment instead (see .content-loading).
 export default function DashboardSkeleton() {
+  const isMobile = useIsMobile()
   return (
     <div className="page-container">
       <div className="strategy-header-row">
@@ -19,10 +24,12 @@ export default function DashboardSkeleton() {
       <div className="header-pills-row">
         {/* MarketStatusPill only - StreakBadge renders nothing without an
             active 2+ streak, which is the common case, so guessing a
-            second pill here would be wrong more often than right. Third
-            pill is "Log new trade", which always renders. */}
+            second pill here would be wrong more often than right. The
+            "Log new trade" pill is desktop-only - it is hidden on mobile
+            (the tab bar carries that action), so skeletoning it there
+            promised a control that never arrived. */}
         <div className="skel skel-pill" style={{ width: '120px' }} />
-        <div className="skel skel-pill" style={{ width: '140px', marginLeft: 'auto' }} />
+        {isMobile ? null : <div className="skel skel-pill" style={{ width: '140px', marginLeft: 'auto' }} />}
       </div>
 
       <div className="content-loading">

@@ -320,7 +320,13 @@ export default function StrategyDetailPage({ params }) {
           winLabel={(n) => `${n}-trade win streak`}
           lossLabel={(n) => `${n} loss${n === 1 ? '' : 'es'} in a row on this strategy`}
         />
-        <Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn"><Plus size={16} /> Log new trade</Link>
+        {/* m-dup-of-tabbar: hidden on mobile like every other page-header
+            log button. This one was deliberately KEPT at first, because
+            its ?strategy= prefill does something the generic Log tab
+            cannot - but on a phone it still reads as a second primary
+            action for a job the tab bar already owns, so it goes. The
+            prefill remains reachable on desktop. */}
+        <Link href={`/app/${symbol}/log/new?strategy=${strategyId}`} className="new-trade-btn m-dup-of-tabbar"><Plus size={16} /> Log new trade</Link>
       </div>
 
       <div className="panel">
@@ -395,6 +401,7 @@ export default function StrategyDetailPage({ params }) {
       <div className="section-heading">Trade log — {strategy.name}</div>
       {isMobile ? (
         <>
+        <div className="panel m-trade-panel">
         <MobileTradeList
           trades={trades.slice(mobilePage * MOBILE_PAGE_SIZE, (mobilePage + 1) * MOBILE_PAGE_SIZE)}
           totalCount={trades.length}
@@ -420,6 +427,7 @@ export default function StrategyDetailPage({ params }) {
             />
           }
         />
+        </div>
         {/* Desktop paginates this list at 15 (pageSize below). The first
             mobile version dropped that prop and rendered every trade the
             strategy has ever had in one list - fine for the mock's

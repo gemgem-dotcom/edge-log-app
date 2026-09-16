@@ -3631,6 +3631,44 @@ button:active{
   .m-tabbar-icon svg { width: 19px; height: 19px; }
   .m-tabbar-label { line-height: 1; }
 
+  /* The Log tab's raised circle.
+     It is the one action in the bar rather than a destination, and
+     standing it slightly proud is the phone convention for exactly that.
+     Deliberately flat: a solid accent fill, no glow and no drop shadow -
+     the glow is what made the earlier version read as a template, and
+     removing it is why this came back as a plain circle.
+     overflow:visible on the bar itself is what lets it stand proud at
+     all; without it the circle is clipped to the bar's own box. */
+  .m-tabbar { overflow: visible; }
+  .m-tabbar-item.is-action {
+    /* No top rule: the circle carries the active state itself, and a 2px
+       accent line above a raised button reads as a stray tick. */
+    border-top-color: transparent !important;
+    justify-content: flex-end;
+    padding-bottom: 8px;
+  }
+  .m-tabbar-item.is-action .m-tabbar-icon {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent);
+    /* --bg, not white: the accent is light enough that a white glyph on
+       it fails contrast, and this is the same dark ink the app's own
+       accent buttons use. */
+    color: var(--bg);
+    margin-top: -18px;
+    /* A 1px ring in the bar's own fill separates the circle from the bar
+       it overlaps, without a shadow. */
+    border: 3px solid var(--panel);
+    box-sizing: content-box;
+    flex-shrink: 0;
+  }
+  .m-tabbar-item.is-action .m-tabbar-icon svg { width: 24px; height: 24px; stroke-width: 2.25; }
+  .m-tabbar-item.is-action:active .m-tabbar-icon { background: var(--accent-bright, var(--accent)); }
+  /* The label sits under the circle, and the circle's negative margin
+     already pulled the column up - so this only needs its own colour,
+     which stays muted even when the tab is current, because the filled
+     circle is the active signal. */
+  .m-tabbar-item.is-action .m-tabbar-label { margin-top: 3px; }
+
   /* ----- Trade list ----- */
   .m-list-toolbar {
     display: flex;
@@ -3684,7 +3722,15 @@ button:active{
 
   .m-rows-head {
     display: grid;
-    grid-template-columns: 1fr 1fr auto 15px;
+    /* The result column is a FIXED width, not auto.
+       Each row is its own grid, so an `auto` third column sized itself
+       to that row's own content - "Open" on one row, "+$1,520.00" on the
+       next - and since the first two columns are 1fr they absorb the
+       difference. The effect was that the strategy/direction column
+       started at a different x on every row, and the header row (its own
+       grid again) lined up with none of them. Fixed here so all of them
+       agree; 86px holds the widest realistic P&L at this font size. */
+    grid-template-columns: 1fr 1fr 86px 15px;
     gap: 10px;
     padding: 8px 2px;
     border-bottom: 1px solid var(--line);
@@ -3701,7 +3747,15 @@ button:active{
 
   .m-row-head {
     display: grid;
-    grid-template-columns: 1fr 1fr auto 15px;
+    /* The result column is a FIXED width, not auto.
+       Each row is its own grid, so an `auto` third column sized itself
+       to that row's own content - "Open" on one row, "+$1,520.00" on the
+       next - and since the first two columns are 1fr they absorb the
+       difference. The effect was that the strategy/direction column
+       started at a different x on every row, and the header row (its own
+       grid again) lined up with none of them. Fixed here so all of them
+       agree; 86px holds the widest realistic P&L at this font size. */
+    grid-template-columns: 1fr 1fr 86px 15px;
     align-items: center;
     gap: 10px;
     width: 100%;
@@ -3863,11 +3917,31 @@ button:active{
      Preferences, and the Account tab.
      The instrument pill row IS still rendered, because it carries a
      tutorial target, so it is hidden here instead - see below. */
-  .shell.is-mobile .shell-topbar {
-    margin: 8px 10px 12px;
-    padding: 10px 12px;
-    border-radius: 18px;
+  /* Same bar as the desktop's, not a mobile lookalike: the 100px pill
+     radius, the same --panel fill and --line border, and - the part that
+     was actually missing - the same .topbar-pinned frosted-glass reveal,
+     which it inherits by simply not being overridden here. Only the
+     margins, padding and gap shrink, because 24px of side margin and
+     22px of inner padding on a 390px screen leaves no room for the scope
+     button's own label. */
+  .shell.is-mobile .shell-topbar, .m-account-topbar {
+    margin: 10px 12px 14px;
+    padding: 10px 16px;
     gap: 8px;
+  }
+  /* Back to the desktop's 100px capsule.
+     The @media (max-width:640px) block above squares it off to 24px, and
+     for a good reason at the time: the instrument pill row wrapped onto a
+     second line there, and a 100px radius on a two-row block reads as a
+     stretched oval. That row is hidden on mobile now, so the bar is a
+     single row again and the pill is right again.
+     :not(.is-tutorial) because the pill row DOES come back during
+     onboarding (it carries a spotlight target), and the old reasoning
+     applies exactly as written whenever it does. */
+  .shell.is-mobile:not(.is-tutorial) .shell-topbar,
+  .m-account-topbar {
+    border-radius: 100px;
+    flex-wrap: nowrap;
   }
   .shell.is-mobile .shell-logo { font-size: 15px; }
   .shell.is-mobile .shell-topbar-right { gap: 2px; margin-left: auto; }
@@ -4075,37 +4149,26 @@ button:active{
 
   /* ----- Trade form ----- */
   /*
-     The form is ~3,400px on a phone and its submit button sat at the
-     very bottom of that, which means the primary action of the app's
-     primary task was four screenfuls below wherever the trader happened
-     to be typing. Worse, there was no way to tell whether the form was
-     submittable without scrolling to the end to find out.
+     The actions sit at the BOTTOM OF THE PANEL, in flow, as the last
+     thing inside the card.
 
-     Sticky, then - pinned just above the tab bar, so "Log trade" and
-     "Discard" are reachable from any field. The row keeps its own
-     background and a top border rather than being transparent: the
-     fields scrolling underneath it need a hard edge or the button
-     appears to float over the text it is covering.
+     They were a fixed bar floating above the tab bar. That solved a real
+     problem - the submit button was four screenfuls below wherever you
+     were typing - but it created two of its own: a permanent strip of
+     chrome over the form on every screen, and a button that belongs to
+     the card visually detached from it. Sitting at the end of the panel
+     is where a form's actions belong, and it is what the desktop does.
   */
   .shell.is-mobile .trade-form .submit-row {
-    position: fixed;
-    left: 0; right: 0;
-    bottom: calc(var(--m-tabbar-h) + 1px + env(safe-area-inset-bottom, 0px));
-    z-index: 30;
-    margin: 0;
-    padding: 10px 14px;
-    background: color-mix(in srgb, var(--panel) 96%, transparent);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid var(--border, rgba(255,255,255,.09));
+    /* Full-bleed to the panel's own edges, so the separator rule spans
+       the card rather than floating inside its padding. */
+    margin: 8px -14px 0;
+    padding: 14px 14px 0;
+    border-top: 1px solid var(--line);
     gap: 10px;
+    flex-wrap: wrap;
     justify-content: stretch;
   }
-  /* Fixed, not sticky. Sticky was tried first and put the button UNDER
-     the tab bar: the row is a grid item with negative side margins, and
-     the offset it resolved against was not the one the rule asked for.
-     Fixed answers to the viewport and nothing else, which is the whole
-     point of an action bar. Verified by measuring the button's box
-     against the tab bar's, not by looking at it. */
   .shell.is-mobile .trade-form .submit-row > div {
     display: flex; gap: 10px; width: 100%;
   }
@@ -4120,9 +4183,17 @@ button:active{
     flex: none;
     padding: 0 16px;
   }
-  /* The fixed bar covers the end of the form, so the form has to end
-     above it - otherwise the last field (screenshots) is unreachable. */
-  .shell.is-mobile .trade-form { padding-bottom: 76px; }
+  /* "Delete this trade" on the edit page - its own full-width row under
+     the Save/Cancel pair rather than squeezed beside them. `order` puts
+     it last visually while leaving it first in the DOM, which is where
+     the desktop's space-between layout needs it. */
+  .shell.is-mobile .trade-form .submit-row > .del {
+    order: 2;
+    width: 100%;
+    min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 2px;
+  }
 
   /* Section headers inside the form stick too, so a trader scrolling
      through Setup / Results / Review always knows which part they are
@@ -4214,11 +4285,20 @@ button:active{
     border-radius: 0; box-shadow: none;
     color: var(--text); font-family: 'Inter',sans-serif; font-size: 14px;
     text-align: left; cursor: pointer;
+    /* The scope sheet's rows are <button>s, but the Log tab's instrument
+       picker renders the same class as <Link> - and with no global a{}
+       reset in this file, the browser underlined the whole row. */
+    text-decoration: none;
   }
   .m-scope-list li:last-child .m-scope-row { border-bottom: none; }
   .m-scope-row-sym {
     font-family: 'JetBrains Mono',monospace; font-weight: 600; font-size: 13px;
     flex-shrink: 0;
+    /* Kept on the symbol alone: it is the thing being picked, and the
+       underline marks it as such without dragging the long instrument
+       name along with it. */
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .m-scope-row-name {
     flex: 1; min-width: 0;
@@ -4249,12 +4329,6 @@ button:active{
      measurements - 10.5px uppercase labels, mono tabular figures, 1px
      rules - so the two list screens read as one product.
   */
-  .m-strategy-index-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 2px 8px; border-bottom: 1px solid var(--line);
-    font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
-    color: var(--muted);
-  }
   .m-strategy-index { list-style: none; margin: 0; padding: 0; }
   .m-strategy-index-row {
     display: flex; align-items: center; gap: 11px;
@@ -4300,17 +4374,14 @@ button:active{
      section at a time, and the topbar goes: "Back to dashboard" is the
      Overview tab, and "Log out" moves into the page body below.
   */
-  /* The bespoke account topbar is not rendered on mobile at all (the
-     page swaps it for the standard logo+scope row), so there is nothing
-     to hide - but the sticky spacer it used to reserve height for is
-     still in the tree, and without this the page opens on a band of
-     nothing. */
-  .m-account-topbar + .topbar-spacer { display: none; }
-  .m-account-topbar {
-    margin: 8px 10px 12px; padding: 10px 12px;
-    border-radius: 18px; gap: 8px;
-  }
-  .m-account-topbar .shell-logo { font-size: 15px; }
+  /* The mobile account topbar is a real .shell-topbar now, driven by the
+     same useStickyTopbar hook as every other screen - so it docks, hides
+     and frosts identically.
+     It was a hand-rolled <header> before, and the spacer that reserves a
+     FIXED bar's height was suppressed, which is exactly why the page
+     content sat behind the bar and it never read as locked to the top:
+     .shell-topbar is position:fixed, so without the spacer the page
+     simply starts underneath it. */
   .m-account-topbar .shell-topbar-right { margin-left: auto; }
   .account-wrap { padding: 4px 14px 24px; }
 
@@ -4326,6 +4397,11 @@ button:active{
   .m-account-row-hint { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
   .m-account-row-chevron { color: var(--muted-2); flex-shrink: 0; }
   .m-account-row.is-danger .m-account-row-label { color: var(--loss); }
+
+  /* See the account page: these two sections print their own heading
+     with the same word as the screen's title. */
+  .m-section-dedupe > * > .section-heading:first-child,
+  .m-section-dedupe > .section-heading:first-child { display: none; }
 
   .m-account-back {
     display: inline-flex; align-items: center; gap: 4px;
@@ -4348,5 +4424,53 @@ button:active{
     margin: 12px 0 0; text-align: center;
     font-size: 12px; color: var(--muted-2);
   }
+
+  /* ----- Wide panel content scrolls sideways, visibly ----- */
+  /*
+     Two separate faults, same symptom - a column you cannot reach.
+
+     .econ-calendar-list is overflow-x:HIDDEN on the desktop, and
+     deliberately so: its rows can end up a pixel wider than the list and
+     produce a spurious second scrollbar (see its own comment). At 390px
+     the overflow is real - the list is 439px of content in a 332px box -
+     so Forecast and Previous were simply clipped away with nothing to
+     say they existed. Here it scrolls.
+
+     .table-scroll already scrolled, but a touch device paints no
+     scrollbar until you are already dragging, so a table that ran off
+     the edge looked like a table that ended there. Both get a thumb that
+     is always visible.
+  */
+  .econ-calendar-list { overflow-x: auto; }
+
+  .econ-calendar-list,
+  .table-scroll,
+  #tableWrap {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+    /* Room for the track, so the bottom row is not sitting under it. */
+    padding-bottom: 2px;
+  }
+  .econ-calendar-list::-webkit-scrollbar,
+  .table-scroll::-webkit-scrollbar,
+  #tableWrap::-webkit-scrollbar { width: 6px; height: 6px; }
+  .econ-calendar-list::-webkit-scrollbar-track,
+  .table-scroll::-webkit-scrollbar-track,
+  #tableWrap::-webkit-scrollbar-track { background: transparent; }
+  .econ-calendar-list::-webkit-scrollbar-thumb,
+  .table-scroll::-webkit-scrollbar-thumb,
+  #tableWrap::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; }
+
+  /* ----- Trade list, on a panel ----- */
+  /*
+     The mobile trade list sits in the same .panel the desktop table does
+     now, on all five surfaces that render it. The panel's own 20px
+     padding is too much at 390px once the rows carry their own 2px
+     gutter, so it tightens here - the card is the point, not the inset.
+  */
+  .m-trade-panel { padding: 14px 14px 6px; }
+  /* The toolbar and the column header are the panel's own top edge now,
+     so the first row does not need a rule above it. */
+  .m-trade-panel .m-list-toolbar { margin-top: 0; }
 
 }

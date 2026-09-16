@@ -146,6 +146,7 @@ function AccountPageInner() {
   // opened on a laptop renders the ordinary full page rather than a
   // fragment of it.
   const section = isMobile ? accountSectionFor(sectionKey) : null
+  const dedupeHeading = section?.key === 'profile' || section?.key === 'danger'
 
   return (
     <div className="content-fade-in">
@@ -162,7 +163,14 @@ function AccountPageInner() {
         // instrument-scoped: picking one means "go to this instrument",
         // and scopeHrefFor sends you to its Overview rather than leaving
         // you on a settings page with nothing changed.
-        <header className="shell-topbar m-account-topbar">
+        // ref + the same two state classes every other shell topbar
+        // carries. Without them this was a plain fixed bar: it never
+        // docked, never frosted, and - because .shell-topbar is
+        // position:fixed - the page content started underneath it.
+        <header
+          ref={topbarRef}
+          className={`shell-topbar m-account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}
+        >
           <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
           <div className="shell-topbar-right">
             <MobileScopeButton instruments={instruments} currentSymbol={null} />
@@ -187,10 +195,17 @@ function AccountPageInner() {
                 go back to, and a back button that does nothing is worse
                 than none. */}
             <Link href="/app/account" className="m-account-back">
-              <ChevronLeft size={16} aria-hidden="true" /> Account
+              <ChevronLeft size={16} aria-hidden="true" /> Back
             </Link>
             <h1 className="page-title">{section.label}</h1>
-            {sectionEls[section.key]}
+            {/* ProfileSection and DangerZoneSection carry their own
+                <div class="section-heading"> reading the same word as the
+                title above, so on their own screen the label printed
+                twice. The other sections' headings say something
+                different ("General", "Data") and are left alone. */}
+            <div className={dedupeHeading ? 'm-section-dedupe' : undefined}>
+              {sectionEls[section.key]}
+            </div>
           </>
         ) : isMobile ? (
           <>

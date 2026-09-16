@@ -24,6 +24,8 @@ import StreakBadge from '@/components/StreakBadge'
 import TableHeaderTooltip from '@/components/TableHeaderTooltip'
 import TradeLogTable from '@/components/TradeLogTable'
 import LogTradeMenu from '@/components/LogTradeMenu'
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTradeList from '@/components/mobile/MobileTradeList'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import OverviewSkeleton from '@/components/OverviewSkeleton'
 import EmptyState from '@/components/EmptyState'
@@ -222,6 +224,7 @@ function buildCalendarWeeks(year, month, tradesByDate) {
 }
 
 export default function OverviewDashboard({ instruments, strategies }) {
+  const isMobile = useIsMobile()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [allTrades, setAllTrades] = useState([])
@@ -691,6 +694,22 @@ export default function OverviewDashboard({ instruments, strategies }) {
             {selectedDate && (
               <>
                 <div className="section-heading" style={{ marginTop: '24px' }}>Trades on {selectedDate}</div>
+                {/* This page never got a mobile branch at all, so these
+                    two lists were still the desktop table at 390px -
+                    where it collapses to Date and Strategy and drops
+                    direction, result and P&L off the right edge behind a
+                    scroll with no visible scrollbar. That is the exact
+                    failure the mobile row list exists to fix, and it was
+                    still shipping here. */}
+                {isMobile ? (
+                  <MobileTradeList
+                    trades={selectedTrades}
+                    strategyNameById={strategyName}
+                    instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
+                    symbol={null}
+                    onTradeDeleted={handleTradeDeleted}
+                  />
+                ) : (
                 <TradeLogTable
                   trades={selectedTrades}
                   strategyNameById={strategyName}
@@ -701,12 +720,21 @@ export default function OverviewDashboard({ instruments, strategies }) {
                   instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
                   onTradeDeleted={handleTradeDeleted}
                 />
+                )}
               </>
             )}
           </div>
 
           <div className="section-heading">Recent trades</div>
-          <div className="panel">
+          <div className={`panel${isMobile ? ' m-trade-panel' : ''}`}>
+            {isMobile ? (
+              <MobileTradeList
+                trades={recentTrades}
+                strategyNameById={strategyName}
+                instrumentSymbolFor={(t) => instrumentById[t.instrument_id]?.symbol}
+                symbol={null}
+              />
+            ) : (
             <TradeLogTable
               trades={recentTrades}
               strategyNameById={strategyName}
@@ -717,6 +745,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               instrumentColorFor={(t) => instrumentById[t.instrument_id]?.color}
               showTimeInDate
             />
+            )}
             <div className="panel-link-row">
               <Link href="/app/log" className="panel-link">View all trades</Link>
             </div>

@@ -133,6 +133,9 @@ export default function AllTradesPage() {
 
         {isMobile ? (
           <>
+            {/* Same .panel the desktop table gets - see the
+                per-instrument log's copy of this. */}
+            <div className="panel m-trade-panel">
             <MobileTradeList
               trades={trades}
               strategyNameById={strategyName}
@@ -154,6 +157,7 @@ export default function AllTradesPage() {
                 />
               }
             />
+            </div>
             <MobilePager page={page} pageSize={PAGE_SIZE} totalCount={totalCount} onPageChange={setPage} />
             <MobileFilterSheet
               open={filtersOpen}

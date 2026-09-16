@@ -29,8 +29,9 @@ function displayNameFor(symbol) {
 // left "Strategies" behind a dropdown.
 //
 // This is the standard phone answer instead: a fixed bottom bar, thumb
-// reachable. Five is the most a bar this width holds without the labels
-// truncating, and these are the five the app actually has.
+// reachable, with the one action among the five - log a trade - raised
+// on its own circle. Four destinations and an action are not five equal
+// things, and the bar should say so.
 //
 // Strategies used to open a bottom sheet from here because there was no
 // strategies index route to point at; there is one now
@@ -70,7 +71,9 @@ export default function MobileTabBar({ symbol, instruments = [] }) {
               <span className="m-tabbar-label">{label}</span>
             </>
           )
-          const className = `m-tabbar-item${isActive ? ' is-active' : ''}`
+          // Log is an action, not a destination, so it gets the raised
+          // circle rather than an icon-over-label like its neighbours.
+          const className = `m-tabbar-item${isActive ? ' is-active' : ''}${key === 'new' ? ' is-action' : ''}`
 
           // "Log a trade" needs an instrument, and three screens have
           // none in view (/app, /app/log, /app/account). The tab's own

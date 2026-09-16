@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Pencil, Trash2, X, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { hasResult, calcRiskReward, calcRMultiple, tradeDurationMinutes, formatDuration, formatTime12h } from '../lib/tradeMath'
-import { formatExcursionPoints, excursionStatusMessage, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
+import { formatExcursionPoints, excursionCell, MFE_HINT, MAE_HINT } from '../lib/tradeExcursions'
 import { getScreenshotUrls, getThumbnailUrls } from '../lib/screenshots'
 import { useConfirm } from '../lib/useConfirm'
 import { invalidateTags } from '../lib/tagsCache'
@@ -13,6 +13,7 @@ import { useClickOutside } from '../lib/useClickOutside'
 import ColumnFilter from './ColumnFilter'
 import ErrorBanner from './ErrorBanner'
 import ScreenshotLightbox from './ScreenshotLightbox'
+import ScreenshotThumb from './ScreenshotThumb'
 import FieldTooltip from './FieldTooltip'
 import { activatable } from '@/lib/activatable'
 
@@ -138,19 +139,6 @@ function resultOf(trade) {
   if (trade.r_multiple > 0) return 'win'
   if (trade.r_multiple < 0) return 'loss'
   return 'breakeven'
-}
-
-// Same fallback shape as the trade detail page's own excursionCell -
-// realValue is whatever the caller already computed for 'complete', null
-// otherwise; a 'complete' trade whose fill couldn't be verified
-// (excursion_fallback) is treated as not having a real value either (see
-// lib/tradeExcursions.js's excursionStatusMessage). A null
-// market_data_status (never attempted, or not an NQ-family trade) falls
-// through to the same plain "—" every other not-yet-applicable field in
-// this row already uses.
-function excursionCell(trade, timezoneOffset, realValue) {
-  if (trade.market_data_status === 'complete' && !trade.excursion_fallback && realValue !== null && realValue !== undefined) return realValue
-  return excursionStatusMessage(trade, timezoneOffset) || '—'
 }
 
 export default function TradeLogTable({
@@ -779,18 +767,12 @@ export default function TradeLogTable({
                         {shots.length > 0 && (
                           <div className="screenshot-grid" style={{ marginTop: '20px' }}>
                             {shots.map((path, i) => (
-                              thumbUrls[i] ? (
-                                <img
-                                  key={path}
-                                  src={thumbUrls[i]}
-                                  alt={`Trade screenshot ${i + 1}`}
-                                  className="thumb"
-                                  style={{ width: '70px', height: '70px' }}
-                                  onClick={(e) => { e.stopPropagation(); openPreview(t, i) }}
-                                />
-                              ) : (
-                                <div key={path} className="skel skel-thumb" style={{ width: '70px', height: '70px' }} />
-                              )
+                              <ScreenshotThumb
+                                key={path}
+                                url={thumbUrls[i]}
+                                index={i}
+                                onOpen={() => openPreview(t, i)}
+                              />
                             ))}
                           </div>
                         )}

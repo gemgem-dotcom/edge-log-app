@@ -10,6 +10,7 @@ import HeaderClock from '@/components/HeaderClock'
 import { activatable } from '@/lib/activatable'
 import { useIsMobile } from '@/lib/useIsMobile'
 import MobileTabBar from '@/components/mobile/MobileTabBar'
+import MobileScopeButton from '@/components/mobile/MobileScopeButton'
 
 // Shell for the two pages with no single instrument in view - the
 // cross-instrument Dashboard and the all-instruments Trades page. Mirrors
@@ -75,11 +76,19 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
         <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
         <InstrumentNav instruments={instruments} />
         <div className="shell-topbar-right">
-          <HeaderClock />
-          <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-            {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
-          </button>
-          <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
+          {/* See the instrument layout's copy of this: mobile swaps the
+              clock, theme toggle and cog for the one scope control. */}
+          {isMobile ? (
+            <MobileScopeButton instruments={instruments} currentSymbol={null} />
+          ) : (
+            <>
+              <HeaderClock />
+              <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
+              </button>
+              <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
+            </>
+          )}
         </div>
       </header>
       <div className="topbar-spacer" style={spacerStyle} />
@@ -123,22 +132,10 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
 
         <main className="main-area">{children}</main>
       </div>
-      {/* The real list, each row carrying its own instrument symbol and
-          colour. It was `strategies={[]}` first, which made the sheet say
-          "No strategies yet" to users who have several - and the naive fix
-          (pass the list, keep symbol={null}) would have built
-          /app/null/strategies/<id>. The row's own symbol is what makes the
-          link resolvable here; see MobileTabBar. */}
-      {isMobile ? (
-        <MobileTabBar
-          symbol={null}
-          strategies={sortedStrategies.map((s) => ({
-            ...s,
-            symbol: instrumentById[s.instrument_id]?.symbol,
-            color: instrumentById[s.instrument_id]?.color,
-          }))}
-        />
-      ) : null}
+      {/* symbol={null} because these screens have no single instrument
+          in view; every tab degrades to its instrument-less form rather
+          than building /app/null/... See lib/mobileTabs.js. */}
+      {isMobile ? <MobileTabBar symbol={null} instruments={instruments} /> : null}
     </div>
   )
 }

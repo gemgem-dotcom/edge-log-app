@@ -32,7 +32,14 @@ export default function LogTradeMenu({ instruments }) {
   }, [open, close])
 
   return (
-    <div className="log-trade-menu-wrap" ref={menuRef}>
+    // m-dup-of-tabbar, like the two page-header "Log new trade" buttons:
+    // on mobile the Log tab now does exactly this job, opening the same
+    // instrument picker when there is no instrument in view (see
+    // MobileTabBar). The marker goes on this root rather than on a
+    // wrapper around it - an extra .log-trade-menu-wrap would be matched
+    // by `.header-pills-row > .log-trade-menu-wrap{margin-left:auto}` and
+    // shift the DESKTOP layout, which must not change.
+    <div className="log-trade-menu-wrap m-dup-of-tabbar" ref={menuRef}>
       <button type="button" className="new-trade-btn" onClick={() => setOpen((v) => !v)}>
         <Plus size={16} /> Log new trade
       </button>

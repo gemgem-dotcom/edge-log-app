@@ -55,11 +55,10 @@ export default function StrategyList({
 
   return (
     <div className="panel">
-      <div className="m-strategy-index-head" aria-hidden="true">
-        <span>Strategy</span>
-        <span>All-time</span>
-      </div>
-
+      {/* No column heading. "Strategy / All-time" labelled two things
+          that are already self-evident - a strategy name and its figures -
+          and a header row above a short list reads as a table this is
+          not. */}
       <ul className="m-strategy-index">
         {strategies.map((s) => {
           const rowSymbol = symbolFor ? symbolFor(s) : symbol

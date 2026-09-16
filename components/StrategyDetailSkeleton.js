@@ -1,8 +1,14 @@
+'use client'
+
+import { useIsMobile } from '@/lib/useIsMobile'
+import MobileTradeListSkeleton from '@/components/mobile/MobileTradeListSkeleton'
+
 // Shimmering placeholder for a single strategy's detail page, shown
 // instead of PageLoading while the strategy and its trades are still
 // loading - mimics the eventual header, stat cards + equity curve, and
 // trade table.
 export default function StrategyDetailSkeleton() {
+  const isMobile = useIsMobile()
   return (
     <div className="page-container">
       <div className="strategy-header-row">
@@ -12,10 +18,12 @@ export default function StrategyDetailSkeleton() {
       <div className="header-pills-row">
         {/* MarketStatusPill only - StreakBadge renders nothing without an
             active 2+ streak, which is the common case, so guessing a
-            second pill here would be wrong more often than right. Third
-            pill is "Log new trade", which always renders. */}
+            second pill here would be wrong more often than right. The
+            "Log new trade" pill is desktop-only: it is hidden on mobile,
+            so skeletoning it there promised a control that never
+            arrived. */}
         <div className="skel skel-pill" style={{ width: '120px' }} />
-        <div className="skel skel-pill" style={{ width: '140px', marginLeft: 'auto' }} />
+        {isMobile ? null : <div className="skel skel-pill" style={{ width: '140px', marginLeft: 'auto' }} />}
       </div>
 
       {/* Notes panel - no section-heading above it on the real page, so
@@ -58,6 +66,11 @@ export default function StrategyDetailSkeleton() {
       </div>
 
       <div className="section-heading">Trade log</div>
+      {isMobile ? (
+        <div className="panel m-trade-panel">
+          <MobileTradeListSkeleton rows={5} showToolbar={false} />
+        </div>
+      ) : (
       <div className="panel">
         <div className="table-scroll">
         <table>
@@ -82,6 +95,7 @@ export default function StrategyDetailSkeleton() {
         </table>
         </div>
       </div>
+      )}
     </div>
   )
 }

@@ -12,7 +12,6 @@ import { queryPerformance } from '@/lib/edgeEngine'
 import { totalTradeCount } from '@/lib/insightData'
 import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { useIsMobile } from '@/lib/useIsMobile'
-import MobilePanes from '@/components/mobile/MobilePanes'
 import MobileTradeList from '@/components/mobile/MobileTradeList'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
@@ -563,11 +562,6 @@ return (
   </div>
 ) : (
   <>
-<MobilePanes
-  enabled={isMobile === true}
-  ariaLabel="Dashboard sections"
-  panes={[
-    { key: 'today', label: 'Today', content: (<>
 <div className="instrument-glance-row">
   <div className="panel">
     <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
@@ -632,8 +626,6 @@ return (
   </div>
 </div>
 
-    </>) },
-    { key: 'performance', label: 'Performance', content: (<>
 <div className="section-heading">All-Time Performance</div>
   <div className="panel">
   <div className="calendar-toolbar">
@@ -721,8 +713,6 @@ return (
   <EdgeInsightsPanel scope={instrumentId ? `instrument:${instrumentId}` : null} tradeCount={totalTradeCount(allTrades)} />
 </div>
 
-    </>) },
-    { key: 'calendar', label: 'Calendar', content: (<>
 <div className="section-heading">Monthly P&L</div>
 <div className="panel">
   <div className="calendar-toolbar">
@@ -842,9 +832,6 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
   </>
 )}
 </div>
-    </>) },
-  ]}
-/>
   </>
 )}
   </div>

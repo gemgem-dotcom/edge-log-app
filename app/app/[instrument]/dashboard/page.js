@@ -13,6 +13,7 @@ import { totalTradeCount } from '@/lib/insightData'
 import EdgeInsightsPanel from '@/components/EdgeInsightsPanel'
 import { useIsMobile } from '@/lib/useIsMobile'
 import MobileTradeList from '@/components/mobile/MobileTradeList'
+import CollapsibleSection from '@/components/mobile/CollapsibleSection'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
@@ -626,7 +627,15 @@ return (
   </div>
 </div>
 
-<div className="section-heading">All-Time Performance</div>
+{/* Folded by default, at 969px the largest section on the page.
+    The argument for leaving it open is that a trader opens Overview
+    for P&L and win rate - but that glance is ALREADY served by the
+    655px above this, which never folds: today's brief, session stats
+    and the next calendar event. What is in here is the deeper dive
+    (five stats, the weekday chart, the equity curve), and it is one
+    tap away. Open it by default and the page is 1,920px; folded it is
+    under a thousand. */}
+<CollapsibleSection enabled={isMobile === true} title="All-Time Performance" defaultOpen={false}>
   <div className="panel">
   <div className="calendar-toolbar">
   <select
@@ -708,12 +717,20 @@ return (
   </div>
   </div>
 
-<div className="section-heading">Edge Insights</div>
+</CollapsibleSection>
+
+{/* 112px. Folding it would save less than the control costs, so it
+    starts open - it carries a chevron only so it does not behave
+    differently from the headings around it. */}
+<CollapsibleSection enabled={isMobile === true} title="Edge Insights" defaultOpen>
 <div className="panel">
   <EdgeInsightsPanel scope={instrumentId ? `instrument:${instrumentId}` : null} tradeCount={totalTradeCount(allTrades)} />
 </div>
+</CollapsibleSection>
 
-<div className="section-heading">Monthly P&L</div>
+{/* 836px, and something you browse rather than glance at - so this is
+    the one that starts folded. */}
+<CollapsibleSection enabled={isMobile === true} title="Monthly P&L" defaultOpen={false}>
 <div className="panel">
   <div className="calendar-toolbar">
   <select
@@ -832,6 +849,7 @@ onClick={() => cell.count > 0 && setSelectedDate(selectedDate === cell.dateStr ?
   </>
 )}
 </div>
+</CollapsibleSection>
   </>
 )}
   </div>

@@ -26,6 +26,7 @@ import TradeLogTable from '@/components/TradeLogTable'
 import LogTradeMenu from '@/components/LogTradeMenu'
 import { useIsMobile } from '@/lib/useIsMobile'
 import MobileTradeList from '@/components/mobile/MobileTradeList'
+import CollapsibleSection from '@/components/mobile/CollapsibleSection'
 import MarketStatusPill from '@/components/MarketStatusPill'
 import OverviewSkeleton from '@/components/OverviewSkeleton'
 import EmptyState from '@/components/EmptyState'
@@ -509,7 +510,11 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
           </div>
 
-          <div className="section-heading">All-Time Performance</div>
+          {/* See the per-instrument dashboard for why these fold and which
+              start open - measured, not chosen by taste. Heights here:
+              All-Time Performance 918px, Edge Insights 112px, Monthly P&L
+              751px, Recent trades 526px, on a 3,146px page. */}
+          <CollapsibleSection enabled={isMobile === true} title="All-Time Performance" defaultOpen={false}>
           <div className="panel">
             <div className="calendar-toolbar">
               <select
@@ -591,12 +596,15 @@ export default function OverviewDashboard({ instruments, strategies }) {
             </div>
           </div>
 
-          <div className="section-heading">Edge Insights</div>
+          </CollapsibleSection>
+
+          <CollapsibleSection enabled={isMobile === true} title="Edge Insights" defaultOpen>
           <div className="panel">
             <EdgeInsightsPanel scope="overall" tradeCount={totalTradeCount(allTrades)} />
           </div>
+          </CollapsibleSection>
 
-          <div className="section-heading">Monthly P&L</div>
+          <CollapsibleSection enabled={isMobile === true} title="Monthly P&L" defaultOpen={false}>
           <div className="panel">
             <div className="calendar-toolbar">
               <select
@@ -725,7 +733,11 @@ export default function OverviewDashboard({ instruments, strategies }) {
             )}
           </div>
 
-          <div className="section-heading">Recent trades</div>
+          </CollapsibleSection>
+
+          {/* 526px, and the full list is one tap away on the Trades tab -
+              so this is the other one that starts folded. */}
+          <CollapsibleSection enabled={isMobile === true} title="Recent trades" defaultOpen={false}>
           <div className={`panel${isMobile ? ' m-trade-panel' : ''}`}>
             {isMobile ? (
               <MobileTradeList
@@ -750,6 +762,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <Link href="/app/log" className="panel-link">View all trades</Link>
             </div>
           </div>
+          </CollapsibleSection>
         </>
       )}
     </div>

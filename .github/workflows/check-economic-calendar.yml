@@ -1,0 +1,78 @@
+# Daily health check on economic_events.
+#
+# scripts/inspect-economic-calendar.js has existed for a while and is
+# thorough - coverage, what share of past releases carry an actual,
+# event_key and timezone invariants, duplicates, staleness, the refresh
+# lock, and an anon-key RLS probe. Until now it only ran when a person
+# picked it out of run-diagnostic.yml, which means nothing was watching:
+# the ADP duplicate that prompted this sat in production for days, and
+# would have sat there indefinitely, because looking for it required
+# someone to already suspect it.
+#
+# The script exits 1 when it finds a problem, so a red run IS the alert -
+# GitHub emails the repo owner on a failed scheduled workflow with no
+# extra service, no new secret and no webhook to keep alive. That matches
+# how the fetch job already reports "the feed moved or we're being
+# refused".
+#
+# Deliberately NOT part of refresh-economic-calendar.yml. A failing health
+# check must not colour the fetch job red, because that job going red is
+# the signal that FETCHING broke, and conflating "we could not reach FF"
+# with "the stored data looks wrong" makes both harder to act on. Separate
+# workflow, separate failure.
+#
+# Secrets: the same two the refresh job already uses. Nothing new.
+#   SUPABASE_SERVICE_ROLE_KEY
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY  for the RLS probe, which signs nobody in
+#                                  and asserts both tables refuse to answer
+
+name: Check economic calendar health
+
+on:
+  schedule:
+    # 05:23 UTC: an hour after the daily month sweep (17 4 * * *), so the
+    # thing being inspected has settled first. The odd minute is the same
+    # reasoning the refresh job documents - off the boundary that Actions'
+    # own docs warn is the most delayed.
+    #
+    # Daily rather than hourly on purpose. Every problem this catches
+    # (duplicates, staleness, actuals not landing) takes hours to days to
+    # develop, and an hourly check would mostly generate noise - and, on a
+    # repo that already gets roughly a quarter of the scheduled runs it
+    # asks for, compete with the fetch job for them.
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+# Never at the same time as a fetch: the inspector reads the refresh lock
+# and the freshness of rows the fetch job is mid-write on, and reading a
+# table halfway through its own sweep produces findings about the sweep
+# rather than about the data.
+concurrency:
+  group: refresh-economic-calendar
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # 22, matching every other scheduled workflow here - see
+          # refresh-market-session-stats.yml on @supabase/supabase-js
+          # needing native WebSocket support.
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Inspect economic_events
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: node scripts/inspect-economic-calendar.js

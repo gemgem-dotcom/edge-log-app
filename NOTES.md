@@ -210,6 +210,25 @@ The old `day|currency|title` form (optionally `|#N` when FF lists the same title
 in a day, which it does whenever an official speaks morning and evening) survives for
 the JSON fallback feed alone, since the feed carries no event id.
 
+**The unique index does not catch every duplicate, and one got through.** It stops the
+same `ff_event_id` being stored twice. It cannot stop FF **re-listing one release under
+a NEW id** - the upsert keys on `ff|<id>`, so the table ends up holding the same release
+twice under two keys. `2026-10-06T12:15:00+00:00|USD|ADP Weekly Employment Change` did
+exactly that, sitting in production under `ff|151048` and `ff|153364` for days, and it
+was only found because somebody ran the inspector by hand.
+
+Two things now close that gap. `planIdentityDedupe` (`lib/econCalendarRemoval.mjs`) runs
+after each page's upsert, over the range that page spoke for, and drops the older-fetched
+row of any colliding pair - bounded by `MAX_IDENTITY_DUPLICATES` and refusing the whole
+set rather than trimming it, the same stance `planRemoval` takes and for the same reason.
+And `.github/workflows/check-economic-calendar.yml` runs the inspector daily, so nothing
+in it depends on somebody already suspecting a problem.
+
+Note what it keys on: the absolute `event_time`, **not** the day. Two rows only collide
+if they are the same release at the same instant, so this does not reintroduce the
+mistake above - and a test asserts exactly that, by failing when the key is truncated
+back to a date.
+
 **2. The DST correction never ran.** `FF_DISPLAY_TIMEZONE` was `'America/Chicago'`,
 with a guard that fell back to the naive sum when a page's dateline wasn't midnight in
 that zone. The guard worked perfectly; the constant was wrong for nearly every caller,

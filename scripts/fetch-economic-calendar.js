@@ -271,6 +271,76 @@ async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, co
   return removable.length
 }
 
+// Catch one release stored under two FF event ids, in the range just
+// written. See planIdentityDedupe for what this is and why it is not the
+// "day is not an identity" mistake NOTES.md warns about.
+//
+// Runs after the upsert, on the same range, so a re-listed event is caught
+// on the run that introduces it rather than after it has been compounding
+// for weeks - which is how the ADP duplicate reached production and sat
+// there.
+async function dedupeIdentityDuplicates(admin, planIdentityDedupe, { label, coveredFrom, coveredTo, cap }) {
+  if (!coveredFrom || !coveredTo) return 0
+
+  // Paged for the same reason the removal scan is: PostgREST silently caps
+  // an unbounded select at 1000 rows, and a truncated scan would simply
+  // miss collisions rather than report a problem.
+  const inRange = []
+  const SCAN_PAGE = 1000
+  for (let page = 0; page < 50; page++) {
+    const from = page * SCAN_PAGE
+    const { data, error } = await admin
+      .from('economic_events')
+      .select('event_key, title, currency, event_time, fetched_at')
+      .gte('event_time', coveredFrom)
+      .lt('event_time', coveredTo)
+      .order('event_time', { ascending: true })
+      .order('event_key', { ascending: true })
+      .range(from, from + SCAN_PAGE - 1)
+    if (error) throw new Error(`duplicate scan failed: ${error.message}`)
+    const rows = data || []
+    inRange.push(...rows)
+    if (rows.length < SCAN_PAGE) break
+  }
+
+  const { pairs, duplicateCount, allowed, removable } = planIdentityDedupe(inRange)
+  if (duplicateCount === 0) return 0
+
+  if (!allowed) {
+    // Over the bound: keep everything and go loud. Dozens of collisions at
+    // once is a parser fault, not dozens of re-listings, and deleting on
+    // that reading would destroy real events.
+    log(`  ${label}: REFUSING to de-duplicate ${duplicateCount} row(s) - over the ${cap} allowed`)
+    Sentry.captureMessage(
+      `Economic calendar: ${label} found ${duplicateCount} identity duplicates - refused to act`,
+      'error',
+    )
+    return 0
+  }
+
+  const keys = removable.map((r) => r.event_key)
+  const { error: delErr } = await admin.from('economic_events').delete().in('event_key', keys)
+  if (delErr) throw new Error(`de-duplication failed: ${delErr.message}`)
+
+  // Named, like the removal pass: this destroys data, so the log has to be
+  // enough to tell a genuine re-listing from a parser that has started
+  // collapsing distinct events onto one identity.
+  log(`  ${label}: removed ${removable.length} duplicate row(s) - one release under two FF ids`)
+  for (const p of pairs.slice(0, 10)) {
+    log(`      ${p.identity}`)
+    log(`        kept ${p.keep}, removed ${p.remove.join(', ')}`)
+  }
+  if (pairs.length > 10) log(`      ...and ${pairs.length - 10} more`)
+  // 'warning', not 'error': this is the guard working as designed. It is
+  // still reported because a healthy week produces none, so a steady trickle
+  // means FF has changed how it re-lists events.
+  Sentry.captureMessage(
+    `Economic calendar: removed ${removable.length} identity duplicate(s) in ${label}`,
+    'warning',
+  )
+  return removable.length
+}
+
 function monthsAround(back, forward) {
   const out = []
   const now = new Date()
@@ -322,7 +392,7 @@ async function main() {
   // rather than duplicated.
   const { parseCalendarHtml, weekUrl, monthUrl } = await import('../lib/econCalendarHtml.mjs')
   const { normalizeFeed } = await import('../lib/econCalendarEvents.mjs')
-  const { planRemoval } = await import('../lib/econCalendarRemoval.mjs')
+  const { planRemoval, planIdentityDedupe, MAX_IDENTITY_DUPLICATES } = await import('../lib/econCalendarRemoval.mjs')
 
   const monthsBack = Number(process.env.CALENDAR_MONTHS_BACK || 0)
   const monthsForward = Number(process.env.CALENDAR_MONTHS_FORWARD || 0)
@@ -340,6 +410,7 @@ async function main() {
   let totalStored = 0
   let totalEvents = 0
   let totalRemoved = 0
+  let totalDeduped = 0
   let failures = 0
 
   for (const [i, target] of targets.entries()) {
@@ -411,6 +482,16 @@ async function main() {
           coveredDays,
           since: storeStartedAt,
         })
+        // De-duplication runs under the same trust gate as removal. Both
+        // delete, and both read absence-or-collision off a page this run
+        // parsed - so if the parser dropped rows, neither decision is
+        // safe to act on.
+        totalDeduped += await dedupeIdentityDuplicates(admin, planIdentityDedupe, {
+          label: target.label,
+          coveredFrom,
+          coveredTo,
+          cap: MAX_IDENTITY_DUPLICATES,
+        })
       } else {
         log(`  ${target.label}: not removing anything - ${skipped > 0 ? `${skipped} row(s) were skipped` : 'the page is too thin'}, so it cannot be trusted for absence`)
       }
@@ -430,7 +511,8 @@ async function main() {
 
   const pagesOk = targets.length - failures
   log(`Done. ${pagesOk}/${targets.length} page(s) OK, ${totalStored} row(s) written`
-    + `${totalRemoved > 0 ? `, ${totalRemoved} removed` : ''}.`)
+    + `${totalRemoved > 0 ? `, ${totalRemoved} removed` : ''}`
+    + `${totalDeduped > 0 ? `, ${totalDeduped} de-duplicated` : ''}.`)
 
   // Red when the page gave us nothing at all, whatever the fallback then
   // salvaged. This used to exit 0 in that case and the workflow went green

@@ -4117,26 +4117,12 @@ button:active{
      still uses it for its empty state. */
   .m-strategy-link { color: var(--accent); text-decoration: none; font-weight: 600; }
 
-  /* ----- Pane switcher (dashboard) ----- */
-  /* Sticky, because the panes are still tall enough to scroll and losing
-     the switcher off the top means scrolling back up to change view.
-     Sits under the topbar rather than at 0 - the topbar is the app's own
-     sticky chrome and the two would overlap. */
-  .m-panebar {
-    position: sticky; top: 0; z-index: 20;
-    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-    gap: 4px; padding: 4px;
-    margin: 0 0 14px;
-    background: var(--panel-2);
-    border-radius: 11px;
-  }
-  .m-panebar-item {
-    min-height: 40px; padding: 0 6px;
-    border: none; border-radius: 8px; background: none;
-    color: var(--muted); font-size: 13px; font-weight: 600;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .m-panebar-item.is-active { background: var(--panel-hover); color: var(--text); }
+  /* The PANE SWITCHER's rules used to sit here - Today / Performance /
+     Calendar, sticky under the topbar. The mobile Overview is one page in
+     the desktop's own section order now, so the switcher and every rule
+     for it are gone. Left as a note, like the strategy sheet's above, so
+     the deletion reads as deliberate rather than as rules accidentally
+     dropped. */
 
   /* The dashboard's own rows stack rather than sit side by side, and the
      stat grids go two-up. Four stat cards in a row at 390px is four

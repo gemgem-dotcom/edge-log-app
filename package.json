@@ -15,20 +15,20 @@
     "smoke:scan": "bash scripts/_smoke-scan.sh"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.73.0",
-    "@sentry/node": "^10.73.0",
-    "@supabase/ssr": "^0.12.5",
-    "@supabase/supabase-js": "^2.45.0",
-    "lucide-react": "^1.37.0",
-    "next": "^16.3.3",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "@sentry/nextjs": "^10.75.1",
+    "@sentry/node": "^10.75.1",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
+    "lucide-react": "^1.47.0",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.3.4",
-    "vitest": "^4.1.11"
+    "eslint-config-next": "^16.3.5",
+    "vitest": "^5.0.1"
   }
 }

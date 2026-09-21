@@ -4459,4 +4459,37 @@ button:active{
      so the first row does not need a rule above it. */
   .m-trade-panel .m-list-toolbar { margin-top: 0; }
 
+  /* ----- Collapsible section headings ----- */
+  /*
+     The heading becomes the control. It keeps .section-heading's own type
+     and colour - it IS that heading, not a new thing beside it - and only
+     gains a full-width hit area and a chevron.
+
+     The usual reset for this app's global button{} rule, which otherwise
+     paints every button an accent pill. Same treatment every icon and nav
+     control here already carries.
+  */
+  .m-section-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; width: 100%;
+    /* The heading's own bottom margin stays; the padding is the tap
+       target, which a bare heading does not need to be. */
+    padding: 10px 2px;
+    background: none; border: none; border-radius: 0; box-shadow: none;
+    text-align: left; cursor: pointer;
+  }
+  .m-section-chevron {
+    flex-shrink: 0;
+    color: var(--muted);
+    /* Points down when open, right when closed - the same direction the
+       expanded trade row's chevron uses, so one gesture reads one way
+       across the app. */
+    transform: rotate(-90deg);
+    transition: transform var(--transition-fast, .15s ease);
+  }
+  .m-section-toggle.is-open .m-section-chevron { transform: rotate(0deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .m-section-chevron { transition: none; }
+  }
+
 }

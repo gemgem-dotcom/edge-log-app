@@ -5,7 +5,7 @@ import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { loadStrategyIndex, STRATEGY_INDEX_ERRORS } from '@/lib/strategyIndexData'
 import StrategyList from '@/components/StrategyList'
-import PageLoading from '@/components/PageLoading'
+import StrategyListSkeleton from '@/components/StrategyListSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 
@@ -45,7 +45,7 @@ export default function StrategiesPage({ params }) {
     return () => { cancelled = true }
   }, [symbol, attempt])
 
-  if (state.status === 'loading') return <PageLoading />
+  if (state.status === 'loading') return <StrategyListSkeleton />
   if (state.status === 'error') {
     return (
       <div className="page-container">

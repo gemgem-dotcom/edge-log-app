@@ -22,6 +22,7 @@ import SignInHistorySection from '@/components/account/SignInHistorySection'
 import DataExportSection from '@/components/account/DataExportSection'
 import DangerZoneSection from '@/components/account/DangerZoneSection'
 import PageLoading from '@/components/PageLoading'
+import AccountSkeleton from '@/components/AccountSkeleton'
 
 // Loads the account data once and hands it to the sections, each of which
 // owns the state for its own concern. Timezone is the exception: it lives
@@ -118,7 +119,11 @@ function AccountPageInner() {
     router.push('/login')
   }
 
-  if (loading) return <PageLoading />
+  // AccountSkeleton is the phone's index shape and falls back to these
+  // same bars on desktop; the Suspense fallback above stays PageLoading,
+  // since that boundary is for useSearchParams and resolves during
+  // hydration, when useIsMobile has no answer yet anyway.
+  if (loading) return <AccountSkeleton />
 
   // One <PasswordSection> etc. per key, built once so the desktop's
   // stacked list and the mobile drill-down render the SAME element rather

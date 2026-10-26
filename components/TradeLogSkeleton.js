@@ -24,7 +24,13 @@ export default function TradeLogSkeleton({
   if (isMobile) {
     return (
       <div className="page-container">
-        <div className="skel skel-title" />
+        {/* The two pages this serves put their title in different boxes,
+            which is the same thing showHeaderButton already distinguishes:
+            the per-instrument log wraps it in .strategy-header-row (where
+            the h1 rule's 4px top margin is reset to 0), the all-instrument
+            log renders a bare h1 that keeps it. Without this the
+            all-instrument log stepped 4px the moment it loaded. */}
+        <div className="skel skel-title" style={{ marginTop: showHeaderButton ? 0 : '4px' }} />
         <div className="skel skel-subtitle" />
         {/* The same .panel the real list sits in. */}
         <div className="panel m-trade-panel">
@@ -42,7 +48,9 @@ export default function TradeLogSkeleton({
           <div className="skel skel-pill" style={{ width: '150px', marginLeft: 'auto' }} />
         </div>
       ) : (
-        <div className="skel skel-title" />
+        // Bare, so the real h1 keeps the h1 rule's 4px top margin - the
+        // same distinction the mobile branch above makes.
+        <div className="skel skel-title" style={{ marginTop: '4px' }} />
       )}
       <div className="skel skel-subtitle" />
       <div className="panel">

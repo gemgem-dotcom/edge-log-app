@@ -14,7 +14,7 @@ import { toast, queueToastForReturn } from '@/lib/toast'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { useConfirm } from '@/lib/useConfirm'
 import TradeForm from '@/components/TradeForm'
-import PageLoading from '@/components/PageLoading'
+import TradeFormSkeleton from '@/components/TradeFormSkeleton'
 import PageError from '@/components/PageError'
 import ErrorBanner from '@/components/ErrorBanner'
 import { activatable } from '@/lib/activatable'
@@ -160,7 +160,7 @@ export default function EditTradePage({ params }) {
     router.push(`/app/${symbol}/log`)
   }
 
-  if (loading) return <PageLoading />
+  if (loading) return <TradeFormSkeleton />
   if (error) return <div className="page-container"><PageError message={`Couldn't load this trade — ${error}`} onRetry={() => loadAll()} /></div>
   if (!trade) return <div className="page-container"><div className="empty">Trade not found.</div></div>
 

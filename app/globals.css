@@ -5,53 +5,54 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–677  Base: reset, typography, forms, tables, thumbnails,
+     1–678  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   678  Auth pages
-   744  Top nav
-   759  Instrument nav (topbar pill row)
-   836  Page layout
-   890  Tabs
-   900  Misc form helpers
-   906  Detail view
-   929  Holiday notice (site-wide, above the shell)
-   961  Shell layout (sidebar + topbar)
-   1332  Expandable trade rows
-   1398  Calendar
-   1446  Account settings page
-   1662  Light theme
-   1703  2FA
-   1718  Account fine print
-   1721  Screenshot preview (log new trade)
-   1763  Auth pages always dark
-   1798  Monthly P&L (calendar on Overview)
-   1885  Trade form: sections, validation, currency, screenshots
-   2123  Field tooltips
-   2185  Date/time picker (adds an optional popup to a typed input)
-   2302  In-header column filters (trade log table)
-   2350  Active filter chips
-   2413  Empty states, error banners, skeleton loaders
-   2510  Cross-instrument overview dashboard (/app)
-   2689  Not found / error boundary state pages
-   2702  Toast notifications
-   2730  Public policy pages (Privacy, Terms)
-   2749  Legal links (auth pages + account settings)
-   2788  Economic calendar card (Overview pages)
-   3043  Calendar news badge (Monthly P&L day cells)
-   3071  Streak badge (Overview + strategy detail pages)
-   3094  Market status pill (Overview + strategy detail pages)
-   3120  Today's brief & session stats
-   3155  Market context cards (all-instruments Overview)
-   3188  Edge Insights panel
-   3203  Unverified logged time badge
-   3220  Welcome transition (first-run)
-   3249  Zero-instrument empty state
-   3259  Tutorial overlay (first-run guided tour)
-   3351  Tutorial step 3 (guided form scroll)
-   3398  Press states, value changes, content fade-in
-   3495  Trade log column width stability
-   3520  Strategy notes panel
-   3536  Mobile app shell (below 768px only)
+   679  Auth pages
+   745  Top nav
+   760  Instrument nav (topbar pill row)
+   837  Page layout
+   891  Tabs
+   901  Misc form helpers
+   907  Detail view
+   930  Holiday notice (site-wide, above the shell)
+   962  Shell layout (sidebar + topbar)
+   1333  Expandable trade rows
+   1399  Calendar
+   1447  Account settings page
+   1663  Light theme
+   1704  2FA
+   1719  Account fine print
+   1722  Screenshot preview (log new trade)
+   1764  Auth pages always dark
+   1799  Monthly P&L (calendar on Overview)
+   1886  Trade form: sections, validation, currency, screenshots
+   2124  Field tooltips
+   2186  Date/time picker (adds an optional popup to a typed input)
+   2303  In-header column filters (trade log table)
+   2351  Active filter chips
+   2414  Empty states, error banners, skeleton loaders
+   2511  Cross-instrument overview dashboard (/app)
+   2690  Not found / error boundary state pages
+   2703  Toast notifications
+   2731  Public policy pages (Privacy, Terms)
+   2750  Legal links (auth pages + account settings)
+   2789  Economic calendar card (Overview pages)
+   3044  Calendar news badge (Monthly P&L day cells)
+   3072  Streak badge (Overview + strategy detail pages)
+   3095  Market status pill (Overview + strategy detail pages)
+   3121  Today's brief & session stats
+   3156  Market context cards (all-instruments Overview)
+   3189  Edge Insights panel
+   3204  Unverified logged time badge
+   3221  Welcome transition (first-run)
+   3250  Zero-instrument empty state
+   3260  Tutorial overlay (first-run guided tour)
+   3352  Tutorial step 3 (guided form scroll)
+   3399  Press states, value changes, content fade-in
+   3496  Trade log column width stability
+   3521  Strategy notes panel
+   3536  Today's brief economic outlook
+   3578  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3532,6 +3533,47 @@ button:active{
    the moment this is actually being typed into. */
 .strategy-notes-textarea{min-height:110px; margin:0; background:transparent; border:none;}
 .strategy-notes-textarea:focus{border-color:transparent;}
+/* ---------- Today's brief economic outlook ---------- */
+/* The calendar half of the Overview's "Today's brief" card. Only ever
+   rendered on a day that actually has a high or medium impact USD release
+   (lib/econBriefing.js returns null otherwise), so none of this is on
+   screen on a quiet day. */
+.econ-brief{
+  margin-top:14px; padding-top:14px; border-top:1px solid var(--line);
+  display:flex; flex-direction:column; gap:14px;
+}
+.econ-brief-head{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;
+  font-weight:700; color:var(--muted);
+}
+.econ-brief-item{display:flex; flex-direction:column; gap:5px;}
+.econ-brief-item-head{display:flex; align-items:center; gap:8px;}
+/* Impact as a colour, matching the calendar card's own red/orange so the
+   two surfaces agree about what "high" looks like. Only two exist here -
+   low never reaches this card. */
+.econ-brief-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+.econ-brief-dot-high{background:var(--loss);}
+.econ-brief-dot-medium{background:#e0922f;}
+.econ-brief-title{
+  font-size:13px; font-weight:600; color:var(--text);
+  /* The title is the flexible item on this line and the time is fixed, so
+     min-width:0 is what lets a long release name ellipsize instead of
+     pushing the time off the card - the same failure the mobile calendar
+     row had before its own fix. */
+  flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.econ-brief-time{
+  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+  font-size:11.5px; color:var(--muted); flex-shrink:0;
+}
+.econ-brief-text{font-size:12.5px; line-height:1.55; color:var(--muted); margin:0;}
+/* The two-sided read sits slightly brighter than the description above it:
+   it is the part a trader is actually scanning for before the open. */
+.econ-brief-framing{color:var(--text); opacity:.82;}
+.econ-brief-actual{
+  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+  font-size:12px; color:var(--text);
+}
 
 /* ---------- Mobile app shell (below 768px only) ---------- */
 /*

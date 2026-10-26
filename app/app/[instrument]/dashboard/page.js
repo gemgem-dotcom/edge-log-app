@@ -17,6 +17,7 @@ import CollapsibleSection from '@/components/mobile/CollapsibleSection'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
+import { buildTodaysBrief } from '@/lib/econBriefing'
 import { useUpcomingEconEvents } from '@/lib/useUpcomingEconEvents'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
@@ -292,6 +293,10 @@ export default function DashboardPage({ params }) {
   const isMobile = useIsMobile()
   const {
     upcoming: upcomingEvents,
+    // The same rows the "Next calendar event" card below filters for its
+    // own 24-hour window. Today's brief needs a LOCAL DAY out of the same
+    // fetch rather than a second query, so it takes them unfiltered.
+    events: econEvents,
     now: econNow,
     loading: econLoading,
     error: econError,
@@ -479,6 +484,9 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   // lib/todaysBrief.js. The existing sentence just above stays exactly as
   // it was either way.
   const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime, symbol })
+  // Null on a day with no high or medium USD release, which is the
+  // signal for the card to say nothing about the calendar at all.
+  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow })
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
@@ -566,10 +574,57 @@ return (
 <div className="instrument-glance-row">
   <div className="panel">
     <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
+    {/* The streak sentence and the EdgeEngine clause are about the
+        trader; everything below the rule is about the day. They are kept
+        apart because one is always true and the other frequently has
+        nothing to say - running them into one paragraph meant a quiet
+        calendar day read as a truncated sentence. */}
     <p className="brief-card-text">
-      {streak ? `You're on a streak trading ${symbol}, and CPI lands at 08:30.` : `CPI lands at 08:30.`}
+      {streak ? `You're on a streak trading ${symbol}.` : `No active streak on ${symbol}.`}
       {briefClause ? ` ${briefClause}` : ''}
     </p>
+
+    {/* Nothing at all on a day with no high or medium USD release. Not a
+        "no events today" line: that is a sentence nobody needs to read
+        every day, and the card is better short. */}
+    {econBrief ? (
+      <div className="econ-brief">
+        <div className="econ-brief-head">
+          {econBrief.highCount > 0
+            ? `${econBrief.highCount} high-impact US release${econBrief.highCount === 1 ? '' : 's'} today`
+            : 'On the US calendar today'}
+        </div>
+        {econBrief.events.map(({ event, timestamp, meaning, framing }) => (
+          <div className="econ-brief-item" key={event.event_key}>
+            <div className="econ-brief-item-head">
+              <span className={`econ-brief-dot econ-brief-dot-${event.impact}`} aria-hidden="true" />
+              <span className="econ-brief-title">{event.title}</span>
+              <span className="econ-brief-time">
+                {event.event_time && new Date(timestamp).getHours() === 0 && new Date(timestamp).getMinutes() === 0
+                  ? 'All day'
+                  : new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <p className="econ-brief-text">
+              {`It is ${meaning.what}. It moves ${meaning.affects}.`}
+            </p>
+            {/* The figures and the two-sided read. Absent for a release
+                with no forecast, or one whose direction does not map onto
+                policy - see framingFor. */}
+            {framing ? <p className="econ-brief-text econ-brief-framing">{framing}</p> : null}
+            {/* Once it has printed, the actual is the only number that
+                matters, so it goes last and in its own line rather than
+                replacing the forecast above. */}
+            {event.actual ? (
+              <p className="econ-brief-text econ-brief-actual">
+                Actual {event.actual}
+                {event.forecast ? ` against a ${event.forecast} forecast.` : '.'}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    ) : null}
   </div>
   <div className="panel">
     <div className="stat-label dashboard-card-title">Session stats</div>

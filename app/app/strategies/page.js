@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { loadAllStrategies, STRATEGY_INDEX_ERRORS } from '@/lib/strategyIndexData'
 import StrategyList from '@/components/StrategyList'
-import PageLoading from '@/components/PageLoading'
+import StrategyListSkeleton from '@/components/StrategyListSkeleton'
 import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 
@@ -36,7 +36,24 @@ export default function AllStrategiesPage() {
     return () => { cancelled = true }
   }, [attempt])
 
-  if (state.status === 'loading') return <PageLoading />
+  // Inside AppShell, the same way /app/log wraps TradeLogSkeleton. Without
+  // it the skeleton rendered bare: no topbar, no tab bar, so the body sat
+  // at the top of the viewport and then dropped 96px the moment the shell
+  // arrived - measured, not supposed.
+  //
+  // Empty arrays because, unlike /app/log, this page has no separate
+  // static load to populate them from - loadAllStrategies returns
+  // instruments, strategies and trades in one call. So the switcher and
+  // the sidebar list fill in when it resolves. That is a change inside the
+  // chrome rather than a change to the page's geometry, which is the part
+  // that was actually jumping.
+  if (state.status === 'loading') {
+    return (
+      <AppShell instruments={[]} strategies={[]} active="strategies">
+        <StrategyListSkeleton showInstrument />
+      </AppShell>
+    )
+  }
   if (state.status === 'error') {
     return (
       <div className="page-container">

@@ -31,27 +31,27 @@
    2302  In-header column filters (trade log table)
    2350  Active filter chips
    2413  Empty states, error banners, skeleton loaders
-   2492  Cross-instrument overview dashboard (/app)
-   2671  Not found / error boundary state pages
-   2684  Toast notifications
-   2712  Public policy pages (Privacy, Terms)
-   2731  Legal links (auth pages + account settings)
-   2770  Economic calendar card (Overview pages)
-   3025  Calendar news badge (Monthly P&L day cells)
-   3053  Streak badge (Overview + strategy detail pages)
-   3076  Market status pill (Overview + strategy detail pages)
-   3102  Today's brief & session stats
-   3137  Market context cards (all-instruments Overview)
-   3170  Edge Insights panel
-   3185  Unverified logged time badge
-   3202  Welcome transition (first-run)
-   3231  Zero-instrument empty state
-   3241  Tutorial overlay (first-run guided tour)
-   3333  Tutorial step 3 (guided form scroll)
-   3380  Press states, value changes, content fade-in
-   3477  Trade log column width stability
-   3502  Strategy notes panel
-   3518  Mobile app shell (below 768px only)
+   2510  Cross-instrument overview dashboard (/app)
+   2689  Not found / error boundary state pages
+   2702  Toast notifications
+   2730  Public policy pages (Privacy, Terms)
+   2749  Legal links (auth pages + account settings)
+   2788  Economic calendar card (Overview pages)
+   3043  Calendar news badge (Monthly P&L day cells)
+   3071  Streak badge (Overview + strategy detail pages)
+   3094  Market status pill (Overview + strategy detail pages)
+   3120  Today's brief & session stats
+   3155  Market context cards (all-instruments Overview)
+   3188  Edge Insights panel
+   3203  Unverified logged time badge
+   3220  Welcome transition (first-run)
+   3249  Zero-instrument empty state
+   3259  Tutorial overlay (first-run guided tour)
+   3351  Tutorial step 3 (guided form scroll)
+   3398  Press states, value changes, content fade-in
+   3495  Trade log column width stability
+   3520  Strategy notes panel
+   3536  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -2437,6 +2437,15 @@ div.dt-picker-spin-value:focus-visible{outline:none;}
    data-heavy pages (dashboard, trade log) so the layout reads as "loading
    this shape" rather than a centered spinner. */
 .skel{
+  /* display:block because a placeholder's whole job is to hold a given
+     height, and an INLINE box ignores height outright. Most of these are
+     <div>s, or <span>s inside a flex parent that blockifies them anyway,
+     so this was invisible until a <span class="skel"> was first placed in
+     an ordinary block (.m-strategy-index-name): it measured 0px tall, and
+     the row came out 22px shorter than the one it was standing in for.
+     Setting it here rather than inline at each site means the primitive
+     does what all of its callers already assume. */
+  display:block;
   background:linear-gradient(90deg, var(--panel-2) 25%, var(--line) 50%, var(--panel-2) 75%);
   background-size:200% 100%; animation:skel-shimmer 2.8s ease-in-out infinite;
   border-radius:6px;
@@ -2448,7 +2457,16 @@ div.dt-picker-spin-value:focus-visible{outline:none;}
 @media (prefers-reduced-motion:reduce){
   .skel{animation:none;}
 }
-.skel-title{width:220px; height:26px; margin-bottom:20px;}
+/* 28px because that is what the <h1 class="page-title"> this stands in
+   for actually measures (26px Archivo, line-height normal); the 26px
+   assumed here before left every skeleton 2px short, so the page stepped
+   up the moment one resolved.
+   No margin-top, deliberately. The h1 rule near the top of this file
+   gives real titles 4px, but .strategy-header-row resets it to 0 and two
+   skeletons stand in for a title in that row - so the margin belongs at
+   the call site, where the caller knows which of the two it is mirroring,
+   not here where it would be right for some and 4px wrong for others. */
+.skel-title{width:220px; height:28px; margin-bottom:20px;}
 .skel-subtitle{width:320px; height:13.5px; margin-top:-14px; margin-bottom:24px;}
 .skel-line{height:10.5px; margin-bottom:10px;}
 .skel-value{width:80%; height:20px;}
@@ -4507,6 +4525,24 @@ button:active{
     padding: 10px 2px;
     background: none; border: none; border-radius: 0; box-shadow: none;
     text-align: left; cursor: pointer;
+  }
+  /* It is a heading that happens to be clickable, not a button, so it
+     must not behave like one. The base button rules give every <button>
+     a lift + shadow on :hover and scale(.97) + a shadow on :active
+     (see them near the top of this file and under "Press feedback"), so
+     tapping a section title made a box appear around the words and the
+     whole heading shrink - the chevron already says it is interactive,
+     and a pressed-button animation on a title reads as a mis-styled
+     control. The resting reset above was not enough on its own because
+     those two rules only apply in those states.
+     :focus-visible is deliberately NOT reset: the keyboard ring is the
+     one piece of button feedback this genuinely needs. */
+  .m-section-toggle:hover,
+  .m-section-toggle:active {
+    transform: none;
+    filter: none;
+    box-shadow: none;
+    background: none;
   }
   .m-section-chevron {
     flex-shrink: 0;

@@ -9,11 +9,39 @@ import ToastContainer from '@/components/ToastContainer'
 export const metadata = {
   title: 'EdgeLog',
   description: 'Discretionary trade journal',
+  // Launched from an iPhone home screen, open without Safari's chrome.
+  // `title` is the label under the icon; without it iOS falls back to the
+  // <title>, which is the same string today but would drift if that ever
+  // grew a page-name suffix.
+  //
+  // statusBarStyle 'black' and not 'black-translucent' on purpose. Translucent
+  // extends the page *under* the status bar, and .shell-topbar is
+  // position:fixed with no top inset, so the clock and battery would sit on
+  // top of it. 'default' would be worse still: a white bar above an app that
+  // defaults to the dark theme. 'black' matches that default and leaves iOS to
+  // reserve the bar, so no layout changes anywhere.
+  appleWebApp: {
+    capable: true,
+    title: 'EdgeLog',
+    statusBarStyle: 'black',
+  },
+  // This Next version emits only `mobile-web-app-capable` for the above, which
+  // iOS honours from 16.4. The legacy spelling is what everything older reads,
+  // and it is one tag - verify against metadata.js before assuming Next has
+  // started emitting it itself.
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+  },
 }
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
+  // Deliberately NOT viewportFit: 'cover'. The three env(safe-area-inset-*)
+  // calls in globals.css (the mobile tab bar and the two sheets) only ever
+  // return a non-zero value under 'cover' - without it iOS insets the web view
+  // itself and the 0px fallbacks are correct. Turning it on would hand the page
+  // the full screen, and the fixed topbar has no top inset to give back.
 }
 
 export default function RootLayout({ children }) {

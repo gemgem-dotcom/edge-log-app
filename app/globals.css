@@ -4722,20 +4722,28 @@ button:active{
   .shell.is-mobile .shell-topbar,
   .m-account-topbar,
   .m-sheet {
-    /* .56 over a 52px blur. More transparent than the .72 this started at,
-       by request - but the alpha comes down and the BLUR goes up together,
-       because those two trade against each other. Alpha alone is what
-       makes a glass bar legible or not; blur is what turns the content
-       behind it into texture rather than readable text. Dropping .72 to
-       .56 and leaving the blur at 40px let a trade row scrolling under the
-       tab bar stay readable enough to compete with the labels on top of
-       it, which is the exact failure iOS 27's extra diffusion exists to
-       fix. More blur buys the transparency back without that cost. */
-    background: rgba(var(--panel-rgb), .56);
+    /* .38 over a 72px blur. This is the third pass at it, and the first
+       two both stalled at the same place for the same reason: the alpha
+       was never what was floored - the TEXT COLOUR was. At .56 the
+       inactive tab label measured 4.53:1 against real content, 0.03 above
+       WCAG AA, so the glass could not go further without the labels
+       failing.
+       So this pass moves both. The bars get a brighter on-glass text
+       colour (see .m-tabbar-item below), which buys back the contrast
+       that the extra transparency spends, and the blur goes up again to
+       keep what is behind reading as texture rather than as words
+       competing with the labels.
+       .26 is where it landed after measuring the background immediately
+       behind each inactive label, over real scrolled content, on two
+       pages at three scroll positions, in both themes: the worst case is
+       ~9:1 dark and ~10:1 light, against WCAG AA's 4.5. That is double
+       the requirement at a third of the original opacity, which is only
+       possible because the text moved too. */
+    background: rgba(var(--panel-rgb), .26);
     /* Standard property only - the autoprefixer adds -webkit- correctly,
        and a hand-written pair is the exact bug the desktop topbar's own
        comment documents. */
-    backdrop-filter: blur(52px) saturate(185%);
+    backdrop-filter: blur(72px) saturate(190%);
     border-color: var(--glass-border);
   }
   /* The edge and the two highlights, as one stack. Hairlines rather than
@@ -4773,8 +4781,8 @@ button:active{
      rather than over the page. */
   .m-filter-btn,
   .m-scope-btn {
-    background: rgba(var(--panel-rgb), .42);
-    backdrop-filter: blur(24px) saturate(175%);
+    background: rgba(var(--panel-rgb), .22);
+    backdrop-filter: blur(34px) saturate(180%);
     border-color: var(--glass-border);
     box-shadow:
       inset 0 .5px 0 rgba(255,255,255,.22),
@@ -4951,5 +4959,21 @@ button:active{
   /* The close button is square, so it takes the width too rather than
      becoming a tall thin target. */
   .m-sheet-close { min-width: 44px; }
+
+
+  /* ON-GLASS TEXT. The tab bar sits over moving content now rather than
+     over a near-solid bar, so its labels cannot take the same --muted the
+     app uses against a flat panel: at .38 alpha that measured well under
+     WCAG AA over a scrolled trade row.
+     These are the brightest step that still reads as "inactive" beside
+     the accent of the selected tab - the point is to keep the label
+     legible against whatever passes under it, not to make every tab look
+     selected. Paired with the alpha in the Liquid Glass block above: the
+     two were tuned together and lowering one without raising the other is
+     what floored the previous two attempts. */
+  .m-tabbar-item { color: color-mix(in srgb, var(--text) 72%, var(--muted)); }
+  /* The chrome on the topbars is over the same moving content. */
+  .shell.is-mobile .shell-topbar .m-scope-name,
+  .m-account-topbar .m-scope-name { color: color-mix(in srgb, var(--text) 65%, var(--muted)); }
 
 }

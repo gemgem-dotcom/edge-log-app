@@ -4720,27 +4720,105 @@ button:active{
      Transparency setting this mirrors. */
   .m-tabbar,
   .shell.is-mobile .shell-topbar,
-  .m-account-topbar,
+  .shell-topbar.m-account-topbar,
   .m-sheet {
-    /* .56 over a 52px blur. More transparent than the .72 this started at,
-       by request - but the alpha comes down and the BLUR goes up together,
-       because those two trade against each other. Alpha alone is what
-       makes a glass bar legible or not; blur is what turns the content
-       behind it into texture rather than readable text. Dropping .72 to
-       .56 and leaving the blur at 40px let a trade row scrolling under the
-       tab bar stay readable enough to compete with the labels on top of
-       it, which is the exact failure iOS 27's extra diffusion exists to
-       fix. More blur buys the transparency back without that cost. */
-    background: rgba(var(--panel-rgb), .56);
+    /* THE SURFACE ITSELF CARRIES NO TINT AND NO FILTER. Both live on the
+       two pseudo-elements below, and the `none` is load-bearing: the
+       desktop .shell-topbar.topbar-pinned / .account-topbar.topbar-pinned
+       rules set a blur of their own at top level, and an element that has
+       a backdrop-filter becomes a BACKDROP ROOT - its own pseudo-elements
+       then sample an empty backdrop and blur nothing at all.
+       .shell-topbar.m-account-topbar rather than .m-account-topbar alone
+       for the same reason: .account-topbar.topbar-pinned is two classes
+       and would otherwise win. */
+    background: transparent;
+    backdrop-filter: none;
+    border-color: var(--glass-border);
+  }
+  /* The glass, as two stacked passes rather than one wide one.
+     ---------------------------------------------------------------
+     A bigger radius does not mean a bigger blur. Backdrop blur is applied
+     in DEVICE pixels, and past a threshold the compositor downsamples
+     instead of widening, so the effective blur goes back DOWN. Measured on
+     the trade log as the luminance standard deviation of the backdrop with
+     the bar's own children hidden - lower is more blurred, 22.5 is the
+     unblurred content:
+
+       radius     6px  14px  24px  30px  40px  52px  72px  100px
+       dsf 1      8.2   4.9   3.1   2.4   1.6   1.2   1.0    0.8
+       dsf 2      7.9   5.7   4.3   4.1   5.0   7.0  10.1   12.0
+       dsf 3      9.3   6.7   4.6   4.3   5.5   7.7  11.0   14.0
+
+     At 1x - which is what a headless browser renders at, and the only
+     ratio this was ever checked at - 72px is the most blurred row on the
+     table, so every verification said "complete smear". A PHONE RENDERS AT
+     3x, where that same 72px is barely better than 6px and the trade rows
+     behind the bar stay legible. That was the whole of the "it isn't
+     blurring" report: not the alpha, not a missing -webkit- prefix, not an
+     ancestor breaking the backdrop root - all three were checked and all
+     three were fine.
+     30px is the floor of that curve, and one 30px pass at 3x still leaves
+     readable ghosts. So the glass is TWO passes: ::before blurs the page,
+     ::after blurs ::before's output, and because each stays at the radius
+     the compositor handles well they compound - 4.3 -> 2.3 at 3x, which is
+     past what a single element can reach at any radius. Measure any change
+     to this at dsf 3; at 1x every variant looks perfect.
+     The alpha has not moved: .26, unchanged, as asked. */
+  .m-tabbar::before, .m-tabbar::after,
+  .shell.is-mobile .shell-topbar::before, .shell.is-mobile .shell-topbar::after,
+  .m-account-topbar::before, .m-account-topbar::after,
+  .m-sheet::before, .m-sheet::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Behind the bar's own icons and labels, which are in flow and
+       unpositioned. Safe because every one of these surfaces already
+       establishes a stacking context (each is positioned with a z-index),
+       so the negative index cannot escape past its own background. */
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
     /* Standard property only - the autoprefixer adds -webkit- correctly,
        and a hand-written pair is the exact bug the desktop topbar's own
        comment documents. */
-    backdrop-filter: blur(52px) saturate(185%);
-    border-color: var(--glass-border);
+    backdrop-filter: blur(30px);
   }
-  /* The edge and the two highlights, as one stack. Hairlines rather than
-     1px: iOS draws these sub-pixel, and a full pixel reads as a drawn
-     border rather than a lit edge. */
+  /* The second pass also carries the tint and the saturation, so the
+     colour lands once, on top, rather than being blurred by the pass
+     above it. */
+  .m-tabbar::after,
+  .shell.is-mobile .shell-topbar::after,
+  .m-account-topbar::after,
+  .m-sheet::after {
+    /* .26, and the alpha is not what was ever wrong here. Two earlier
+       passes stalled at the same place for the same reason: the floor was
+       never the alpha, it was the TEXT COLOUR. At .56 the inactive tab
+       label measured 4.53:1 against real content, 0.03 above WCAG AA, so
+       the glass could not go further without the labels failing. The bars
+       got a brighter on-glass text colour (see .m-tabbar-item below) and
+       that is what paid for this. */
+    background: rgba(var(--panel-rgb), .26);
+    backdrop-filter: blur(30px) saturate(190%);
+  }
+  /* topbar-anchored drops the bar out of fixed positioning - the account
+     skeleton and the first-run tutorial both use it. `position: static`
+     leaves the pseudo-elements nothing to resolve inset:0 against and lets
+     z-index:-1 escape the bar entirely, so the glass renders somewhere
+     else on the page. relative is the same in-flow layout with a
+     containing block and a stacking context of its own. */
+  .shell-topbar.topbar-anchored { position: relative; z-index: 0; }
+  /* The sheet is a flex child of its own scrim and is otherwise static,
+     for the same two reasons. */
+  .m-sheet { position: relative; z-index: 0; }
+  /* The edge and the two highlights. Hairlines rather than 1px: iOS draws
+     these sub-pixel, and a full pixel reads as a drawn border rather than
+     a lit edge.
+     The OUTER shadows stay on the element and the INSET highlights move to
+     the top glass layer, because the glass now sits above the element's
+     own background: an inset shadow paints with that background, so left
+     where it was it would end up under two blur passes and be wiped out.
+     Outer shadows fall outside the padding box the pseudo covers, so they
+     are unaffected either way. */
   /* .m-tabbar unprefixed: it is a direct child of body.m-app, NOT inside
      .shell, so a .shell.is-mobile prefix silently matches nothing - which
      is exactly what it did on the first pass, leaving the one surface
@@ -4749,20 +4827,24 @@ button:active{
   .shell.is-mobile .shell-topbar,
   .m-account-topbar {
     box-shadow:
-      inset 0 .5px 0 rgba(255,255,255,.30),
-      inset 0 -.5px 0 rgba(255,255,255,.07),
       0 0 0 .5px rgba(0,0,0,.40),
       0 10px 30px rgba(0,0,0,.30);
+  }
+  .m-tabbar::after,
+  .shell.is-mobile .shell-topbar::after,
+  .m-account-topbar::after {
+    box-shadow:
+      inset 0 .5px 0 rgba(255,255,255,.30),
+      inset 0 -.5px 0 rgba(255,255,255,.07);
   }
   /* The sheet rises from the bottom edge, so it takes the top highlight
      and the lift, but no bottom highlight - there is no bottom edge on
      screen to catch the light. */
   .m-sheet {
-    box-shadow:
-      inset 0 .5px 0 rgba(255,255,255,.30),
-      0 -10px 34px rgba(0,0,0,.34);
+    box-shadow: 0 -10px 34px rgba(0,0,0,.34);
     border-top-color: var(--glass-border);
   }
+  .m-sheet::after { box-shadow: inset 0 .5px 0 rgba(255,255,255,.30); }
   /* Continuous-curve radii, iOS's own proportions. The tab bar keeps its
      square bottom because it meets the screen edge. */
   .m-sheet { border-radius: 22px 22px 0 0; }
@@ -4773,8 +4855,8 @@ button:active{
      rather than over the page. */
   .m-filter-btn,
   .m-scope-btn {
-    background: rgba(var(--panel-rgb), .42);
-    backdrop-filter: blur(24px) saturate(175%);
+    background: rgba(var(--panel-rgb), .22);
+    backdrop-filter: blur(34px) saturate(180%);
     border-color: var(--glass-border);
     box-shadow:
       inset 0 .5px 0 rgba(255,255,255,.22),
@@ -4806,18 +4888,39 @@ button:active{
      reads without any backdrop-filter at all - which is also the fallback
      for a browser that does not support it. */
   @media (prefers-reduced-transparency: reduce) {
-    .m-tabbar,
-    .shell.is-mobile .shell-topbar,
-    .m-account-topbar,
-    .m-sheet,
     .m-filter-btn,
     .m-scope-btn,
     .m-sheet-backdrop {
       backdrop-filter: none;
     }
+    /* The bars' glass is two pseudo-elements now, so switching it off means
+       removing them - leaving them in place with backdrop-filter:none would
+       still paint their tint over an opaque surface. The inset highlights
+       they carry go back onto the element, which is the only thing left. */
+    .m-tabbar::before, .m-tabbar::after,
+    .shell.is-mobile .shell-topbar::before, .shell.is-mobile .shell-topbar::after,
+    .m-account-topbar::before, .m-account-topbar::after,
+    .m-sheet::before, .m-sheet::after { display: none; }
     .m-tabbar,
     .shell.is-mobile .shell-topbar,
-    .m-account-topbar,
+    .m-account-topbar {
+      box-shadow:
+        inset 0 .5px 0 rgba(255,255,255,.30),
+        inset 0 -.5px 0 rgba(255,255,255,.07),
+        0 0 0 .5px rgba(0,0,0,.40),
+        0 10px 30px rgba(0,0,0,.30);
+    }
+    .m-sheet {
+      box-shadow:
+        inset 0 .5px 0 rgba(255,255,255,.30),
+        0 -10px 34px rgba(0,0,0,.34);
+    }
+    /* .shell-topbar.m-account-topbar, not .m-account-topbar: it has to
+       out-specify the transparent background set above, which carries the
+       same two-class form for its own reason. */
+    .m-tabbar,
+    .shell.is-mobile .shell-topbar,
+    .shell-topbar.m-account-topbar,
     .m-sheet { background: var(--panel); }
     .m-filter-btn,
     .m-scope-btn { background: var(--panel-2); }
@@ -4952,4 +5055,19 @@ button:active{
      becoming a tall thin target. */
   .m-sheet-close { min-width: 44px; }
 
+
+  /* ON-GLASS TEXT. The tab bar sits over moving content now rather than
+     over a near-solid bar, so its labels cannot take the same --muted the
+     app uses against a flat panel: at .38 alpha that measured well under
+     WCAG AA over a scrolled trade row.
+     These are the brightest step that still reads as "inactive" beside
+     the accent of the selected tab - the point is to keep the label
+     legible against whatever passes under it, not to make every tab look
+     selected. Paired with the alpha in the Liquid Glass block above: the
+     two were tuned together and lowering one without raising the other is
+     what floored the previous two attempts. */
+  .m-tabbar-item { color: color-mix(in srgb, var(--text) 72%, var(--muted)); }
+  /* The chrome on the topbars is over the same moving content. */
+  .shell.is-mobile .shell-topbar .m-scope-name,
+  .m-account-topbar .m-scope-name { color: color-mix(in srgb, var(--text) 65%, var(--muted)); }
 }

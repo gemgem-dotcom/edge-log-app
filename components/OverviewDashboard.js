@@ -18,6 +18,9 @@ import FlippingStatChips from '@/components/FlippingStatChips'
 import AvgPnlByWeekdayChart from '@/components/AvgPnlByWeekdayChart'
 import WinRateGauge from '@/components/WinRateGauge'
 import EconomicCalendarCard from '@/components/EconomicCalendarCard'
+import EconTerminal from '@/components/EconTerminal'
+import { useUpcomingEconEvents } from '@/lib/useUpcomingEconEvents'
+import { buildTodaysBrief, nextEventSentence } from '@/lib/econBriefing'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import { useCalendarNewsByDay } from '@/lib/useCalendarNewsByDay'
 import StreakBadge from '@/components/StreakBadge'
@@ -226,6 +229,14 @@ function buildCalendarWeeks(year, month, tradesByDate) {
 
 export default function OverviewDashboard({ instruments, strategies }) {
   const isMobile = useIsMobile()
+  // Up here with the other hooks, above every conditional return below.
+  // Same rows the Economic calendar card further down already reads; this
+  // takes them unfiltered for the brief's own local-day view.
+  const {
+    events: econEvents,
+    history: econHistory,
+    now: econNow,
+  } = useUpcomingEconEvents()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [allTrades, setAllTrades] = useState([])
@@ -302,10 +313,24 @@ export default function OverviewDashboard({ instruments, strategies }) {
   }
 
   const streak = computeStreak(allTrades)
+  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow, history: econHistory })
+  const nextEvent = nextEventSentence(econEvents, econNow)
 
-  const briefText = streak
-    ? `You're ${streak.count} ${streak.isWin ? 'wins' : 'losses'} deep, and CPI drops at 08:30.`
-    : 'Markets are active today and CPI drops at 08:30 — worth keeping an eye on.'
+  // Was a hardcoded "CPI drops at 08:30" on both branches - printed every
+  // day, whether or not CPI was anywhere near the calendar. The clause now
+  // names whatever is genuinely next, and is simply absent when nothing is.
+  // Singular at a count of one - this read "You're 1 losses deep", which
+  // was already there and is visible on the single most-read line of the
+  // page the moment a streak starts.
+  const streakNoun = streak?.isWin
+    ? (streak.count === 1 ? 'win' : 'wins')
+    : (streak?.count === 1 ? 'loss' : 'losses')
+  const streakPart = streak
+    ? `You're ${streak.count} ${streakNoun} deep`
+    : 'Markets are active today'
+  // Not case-folded: a release name is a proper noun, and lowering the
+  // first letter turned "CPI m/m" into "cPI m/m".
+  const briefText = nextEvent ? `${streakPart}, and ${nextEvent}` : `${streakPart}.`
 
   const now = new Date()
 
@@ -455,6 +480,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="panel">
                 <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
                 <p className="brief-card-text">{briefText}</p>
+                <EconTerminal brief={econBrief} />
               </div>
             </div>
             <div>

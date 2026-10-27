@@ -51,8 +51,8 @@
    3399  Press states, value changes, content fade-in
    3496  Trade log column width stability
    3521  Strategy notes panel
-   3536  Today's brief economic outlook
-   3578  Mobile app shell (below 768px only)
+   3536  Today's brief economic outlook (terminal)
+   3609  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3533,46 +3533,77 @@ button:active{
    the moment this is actually being typed into. */
 .strategy-notes-textarea{min-height:110px; margin:0; background:transparent; border:none;}
 .strategy-notes-textarea:focus{border-color:transparent;}
-/* ---------- Today's brief economic outlook ---------- */
-/* The calendar half of the Overview's "Today's brief" card. Only ever
+/* ---------- Today's brief economic outlook (terminal) ---------- */
+/* A macOS terminal window inside the Overview's "Today's brief" card. Only
    rendered on a day that actually has a high or medium impact USD release
    (lib/econBriefing.js returns null otherwise), so none of this is on
-   screen on a quiet day. */
-.econ-brief{
-  margin-top:14px; padding-top:14px; border-top:1px solid var(--line);
-  display:flex; flex-direction:column; gap:14px;
+   screen on a quiet day.
+   Its own near-black ground rather than var(--panel): a terminal reads as
+   a terminal because it is darker than the surface it sits on, and that
+   has to hold in the light theme too - so these are literals, not theme
+   tokens, and the text colours below are picked against THIS ground rather
+   than inherited from the page. */
+.econ-term{
+  margin-top:14px; border-radius:10px; overflow:hidden;
+  background:#0b1017; border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 6px 20px rgba(0,0,0,.28);
 }
-.econ-brief-head{
-  font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;
-  font-weight:700; color:var(--muted);
+.econ-term-bar{
+  position:relative; display:flex; align-items:center; gap:8px;
+  padding:9px 12px; background:#1d222b;
+  border-bottom:1px solid rgba(0,0,0,.4);
 }
-.econ-brief-item{display:flex; flex-direction:column; gap:5px;}
-.econ-brief-item-head{display:flex; align-items:center; gap:8px;}
-/* Impact as a colour, matching the calendar card's own red/orange so the
-   two surfaces agree about what "high" looks like. Only two exist here -
-   low never reaches this card. */
-.econ-brief-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
-.econ-brief-dot-high{background:var(--loss);}
-.econ-brief-dot-medium{background:#e0922f;}
-.econ-brief-title{
-  font-size:13px; font-weight:600; color:var(--text);
-  /* The title is the flexible item on this line and the time is fixed, so
-     min-width:0 is what lets a long release name ellipsize instead of
-     pushing the time off the card - the same failure the mobile calendar
-     row had before its own fix. */
-  flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+.econ-term-lights{display:flex; align-items:center; gap:6px; flex-shrink:0;}
+/* The macOS traffic lights, at their real colours. Inert and aria-hidden
+   in the markup - they are the window's costume, not controls. */
+.econ-term-light{width:11px; height:11px; border-radius:50%; display:block;}
+.econ-term-light-close{background:#ff5f57;}
+.econ-term-light-min{background:#febc2e;}
+.econ-term-light-zoom{background:#28c840;}
+/* Centred on the BAR rather than in the flex line, which is where macOS
+   puts it - absolute, so the lights on the left do not push it off centre. */
+.econ-term-title{
+  position:absolute; left:0; right:0; text-align:center;
+  font-size:11.5px; font-weight:600; color:#9aa4b2;
+  pointer-events:none; padding:0 70px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.econ-brief-time{
-  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
-  font-size:11.5px; color:var(--muted); flex-shrink:0;
+.econ-term-body{
+  font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11.5px; line-height:1.6; color:#c6d0dc;
+  padding:12px 13px; display:flex; flex-direction:column; gap:14px;
+  /* Long values wrap instead of scrolling the window sideways - the figure
+     columns that need alignment are short by construction. */
+  overflow-wrap:anywhere;
 }
-.econ-brief-text{font-size:12.5px; line-height:1.55; color:var(--muted); margin:0;}
-/* The two-sided read sits slightly brighter than the description above it:
-   it is the part a trader is actually scanning for before the open. */
-.econ-brief-framing{color:var(--text); opacity:.82;}
-.econ-brief-actual{
-  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
-  font-size:12px; color:var(--text);
+.econ-term-block{display:flex; flex-direction:column; gap:2px;}
+.econ-term-cmd{color:#7f8b9a; margin-bottom:3px;}
+.econ-term-prompt{color:#28c840; font-weight:700;}
+.econ-term-headline{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+/* Impact as a tag rather than a dot: in a monospace block a coloured word
+   carries at a glance where a 7px dot does not. */
+.econ-term-impact{
+  font-size:9.5px; font-weight:700; letter-spacing:.08em;
+  padding:2px 5px; border-radius:3px; flex-shrink:0;
+}
+.econ-term-impact-high{background:rgba(255,95,87,.16); color:#ff8079;}
+.econ-term-impact-medium{background:rgba(254,188,46,.14); color:#e0a33c;}
+.econ-term-name{
+  color:#eef3f8; font-weight:600; flex:1; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.econ-term-clock{color:#7f8b9a; flex-shrink:0;}
+/* Label column fixed, value column flexible - this is the alignment the
+   monospace face is actually here for. */
+.econ-term-row{display:flex; gap:9px; align-items:baseline;}
+.econ-term-label{width:46px; flex-shrink:0; color:#5f6b7a; text-align:right;}
+.econ-term-value{flex:1; min-width:0;}
+.econ-term-row.is-emphasis .econ-term-value{color:#eef3f8;}
+.econ-term-fig{color:#8fd0ff; font-variant-numeric:tabular-nums;}
+.econ-term-dim{color:#5f6b7a;}
+.econ-term-foot{
+  color:#5f6b7a; border-top:1px solid rgba(255,255,255,.06);
+  padding-top:10px; margin-top:2px;
 }
 
 /* ---------- Mobile app shell (below 768px only) ---------- */

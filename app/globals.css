@@ -5017,6 +5017,21 @@ button:active{
     border-top-color: var(--glass-border);
   }
   .m-sheet::after { box-shadow: inset 0 .5px 0 rgba(255,255,255,.30); }
+  /* A SHEET IS CONTENT, NOT CHROME, and .26 is the wrong alpha for it.
+     Every other glass surface here floats over the page and shows a
+     blurred version of it; this one floats over its own dimming scrim
+     (.m-sheet-backdrop, 42% black). So at .26 the sheet was roughly
+     three-quarters scrim, and in LIGHT theme - where --panel-rgb is
+     255,255,255 over that black - it composited to a mid-grey slab with
+     near-black list text on it. Dark theme hid the fault entirely,
+     because there the panel colour and the scrim are both dark already.
+     The rule a dozen lines up says this in as many words: panels are not
+     glass, and making content glass is how the whole treatment ends up
+     reading as a blurry mess. A sheet full of list rows is content.
+     So it keeps the blur and the lit edge and takes a near-opaque
+     material, the way iOS's own sheets do - the scrim now dims what is
+     BEHIND the sheet rather than showing through it. */
+  .m-sheet::after { background: rgba(var(--panel-rgb), .88); }
   /* Continuous-curve radii, iOS's own proportions. The tab bar keeps its
      square bottom because it meets the screen edge. */
   .m-sheet { border-radius: 22px 22px 0 0; }

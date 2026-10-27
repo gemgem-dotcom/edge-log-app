@@ -5,54 +5,55 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–678  Base: reset, typography, forms, tables, thumbnails,
+     1–679  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   679  Auth pages
-   745  Top nav
-   760  Instrument nav (topbar pill row)
-   837  Page layout
-   891  Tabs
-   901  Misc form helpers
-   907  Detail view
-   930  Holiday notice (site-wide, above the shell)
-   962  Shell layout (sidebar + topbar)
-   1333  Expandable trade rows
-   1399  Calendar
-   1447  Account settings page
-   1671  Light theme
-   1712  2FA
-   1727  Account fine print
-   1730  Screenshot preview (log new trade)
-   1772  Auth pages always dark
-   1807  Monthly P&L (calendar on Overview)
-   1894  Trade form: sections, validation, currency, screenshots
-   2132  Field tooltips
-   2194  Date/time picker (adds an optional popup to a typed input)
-   2311  In-header column filters (trade log table)
-   2359  Active filter chips
-   2422  Empty states, error banners, skeleton loaders
-   2519  Cross-instrument overview dashboard (/app)
-   2698  Not found / error boundary state pages
-   2711  Toast notifications
-   2739  Public policy pages (Privacy, Terms)
-   2758  Legal links (auth pages + account settings)
-   2797  Economic calendar card (Overview pages)
-   3069  Calendar news badge (Monthly P&L day cells)
-   3097  Streak badge (Overview + strategy detail pages)
-   3120  Market status pill (Overview + strategy detail pages)
-   3146  Today's brief & session stats
-   3181  Market context cards (all-instruments Overview)
-   3223  Edge Insights panel
-   3238  Unverified logged time badge
-   3255  Welcome transition (first-run)
-   3284  Zero-instrument empty state
-   3294  Tutorial overlay (first-run guided tour)
-   3386  Tutorial step 3 (guided form scroll)
-   3433  Press states, value changes, content fade-in
-   3530  Trade log column width stability
-   3555  Strategy notes panel
-   3570  Today's brief economic outlook
-   3670  Mobile app shell (below 768px only)
+   680  Auth pages
+   746  Top nav
+   761  Instrument nav (topbar pill row)
+   838  Page layout
+   892  Tabs
+   902  Misc form helpers
+   908  Detail view
+   931  Holiday notice (site-wide, above the shell)
+   963  Shell layout (sidebar + topbar)
+   1334  Expandable trade rows
+   1400  Calendar
+   1448  Account settings page
+   1672  Light theme
+   1713  2FA
+   1728  Account fine print
+   1731  Screenshot preview (log new trade)
+   1773  Auth pages always dark
+   1808  Monthly P&L (calendar on Overview)
+   1895  Trade form: sections, validation, currency, screenshots
+   2133  Field tooltips
+   2195  Date/time picker (adds an optional popup to a typed input)
+   2312  In-header column filters (trade log table)
+   2360  Active filter chips
+   2423  Empty states, error banners, skeleton loaders
+   2520  Cross-instrument overview dashboard (/app)
+   2699  Not found / error boundary state pages
+   2712  Toast notifications
+   2740  Public policy pages (Privacy, Terms)
+   2759  Legal links (auth pages + account settings)
+   2798  Economic calendar card (Overview pages)
+   3070  Calendar news badge (Monthly P&L day cells)
+   3098  Streak badge (Overview + strategy detail pages)
+   3121  Market status pill (Overview + strategy detail pages)
+   3147  Today's brief & session stats
+   3182  Market context cards (all-instruments Overview)
+   3224  Edge Insights panel
+   3239  Unverified logged time badge
+   3256  Welcome transition (first-run)
+   3285  Zero-instrument empty state
+   3295  Tutorial overlay (first-run guided tour)
+   3387  Tutorial step 3 (guided form scroll)
+   3434  Press states, value changes, content fade-in
+   3531  Bottom-tab slide
+   3601  Trade log column width stability
+   3626  Strategy notes panel
+   3641  Today's brief economic outlook
+   3741  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3527,6 +3528,76 @@ button:active{
   .content-fade-in{animation:none;}
 }
 
+/* ---------- Bottom-tab slide ---------- */
+/* Moving between two of five sibling tabs is lateral travel, and the fade
+   above says "something changed" without saying where it came from. So a
+   tab to the RIGHT of the current one brings its screen in from the
+   right, and one to the left from the left - the direction the thumb just
+   moved along the bar.
+   Built on the View Transitions API through React's <ViewTransition>; the
+   wiring and the reason the chrome is left outside it are in
+   components/mobile/TabTransition.js. Everything here is gated on a
+   transition TYPE, and components/mobile/MobileTabBar.js is the only
+   place that sets one - so desktop navigation, in-page links, the
+   browser's own back button, router.refresh() and any browser without
+   the API all fall through to the plain content swap they always had.
+   Not inside the mobile block at the end of this file: ::view-transition-*
+   are pseudo-elements on the document root rather than on anything a
+   viewport query scopes, and the type gate already does that job.
+   Asymmetric on purpose. The old screen leaves fast so it stops competing
+   for attention; the new one is held back until the old one has gone, so
+   the two never overlap into a muddle. 32px is enough to read as
+   direction without asking the eye to track something across a screen. */
+::view-transition-old(.tab-forward){
+  --tab-slide:-32px;
+  animation:130ms ease-in both tab-fade reverse, 300ms ease-in-out both tab-slide reverse;
+}
+::view-transition-new(.tab-forward){
+  --tab-slide:32px;
+  animation:190ms ease-out 130ms both tab-fade, 300ms ease-in-out both tab-slide;
+}
+::view-transition-old(.tab-back){
+  --tab-slide:32px;
+  animation:130ms ease-in both tab-fade reverse, 300ms ease-in-out both tab-slide reverse;
+}
+::view-transition-new(.tab-back){
+  --tab-slide:-32px;
+  animation:190ms ease-out 130ms both tab-fade, 300ms ease-in-out both tab-slide;
+}
+@keyframes tab-fade{
+  from{opacity:0;}
+  to{opacity:1;}
+}
+@keyframes tab-slide{
+  from{translate:var(--tab-slide);}
+  to{translate:0;}
+}
+/* The whole document is snapshotted, not just the part that slides, and
+   the root pair cross-fades by default - over a slide that reads as the
+   topbar and tab bar flickering. They are live DOM underneath and want no
+   animation of their own. */
+::view-transition-old(root),
+::view-transition-new(root){animation:none;}
+/* The overlay swallows pointer events for the length of the transition,
+   and on a tab bar that is exactly where the next tap is going. */
+::view-transition{pointer-events:none;}
+/* The arriving screen fades in twice otherwise - once as the view
+   transition's own enter, once as .content-fade-in inside the snapshot.
+   Scoped to the two tab types so an ordinary arrival keeps its fade. */
+:root:active-view-transition-type(tab-forward) .content-fade-in,
+:root:active-view-transition-type(tab-back) .content-fade-in{animation:none;}
+/* A slide across the viewport is the most common trigger for motion
+   sensitivity, and this one is pure position. Zeroing the durations
+   leaves the browser's instant swap, which is the honest fallback. */
+@media (prefers-reduced-motion:reduce){
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*){
+    animation-duration:0s !important;
+    animation-delay:0s !important;
+  }
+}
+
 /* ---------- Trade log column width stability ---------- */
 /* table-layout:fixed makes column widths depend only on the inline
    percentages TradeLogTable.js computes from COLUMN_WEIGHTS (constants),
@@ -5070,4 +5141,43 @@ button:active{
   /* The chrome on the topbars is over the same moving content. */
   .shell.is-mobile .shell-topbar .m-scope-name,
   .m-account-topbar .m-scope-name { color: color-mix(in srgb, var(--text) 65%, var(--muted)); }
+
+
+  /* ----- The gap under a large title ----- */
+
+  /* THE LARGE TITLE QUIETLY DOUBLED ITS OWN BOTTOM GAP.
+     Two rules already zero that margin wherever the title sits inside a
+     header row, because inside a flex row the margin inflates the ROW
+     rather than spacing whatever follows it:
+       .page-header-row .page-title     (0,2,0)
+       .strategy-header-row h1          (0,1,1)
+     body.m-app .page-title is (0,2,1) and outscores both, so on a phone
+     the 16px came back and stacked on the row's own 20px. Measured: 36px
+     under the title on both dashboards and the trade log, against 16px on
+     Strategies and Account, whose titles are not in a row at all. That
+     inconsistency is the gap in the report.
+     Reset it at a specificity that wins, and bring the rows' own margin
+     down to the same 16px so every mobile screen agrees. The subtitle's
+     own 8px margin-top collapses into it, exactly as it already does on
+     the two pages that were right. */
+  body.m-app .page-header-row .page-title,
+  body.m-app .strategy-header-row .page-title { margin-bottom: 0; }
+  body.m-app .page-header-row,
+  body.m-app .strategy-header-row { margin-bottom: 16px; }
+
+  /* THE STRAY KEBAB. .strategy-header-row wraps at <=640px so the action
+     button can drop to its own line - and the rule that does it says, in
+     as many words, that the title and the kebab menu stay together
+     because the menu acts on the name beside it.
+     That stopped being true once the title grew. A flex item sizes to
+     max-content before it wraps, so "E-mini Nasdaq 100 Futures" claimed
+     the whole row and pushed the 26px menu onto a line of its own, where
+     it reads as a stray glyph floating in the dead space under the title.
+     flex-basis 0 makes the title take what is LEFT after the menu instead
+     and wrap internally; min-width 0 is what actually lets it, since a
+     flex item will not shrink past min-content without it. The
+     full-width .new-trade-btn still wraps below, which is the one thing
+     the wrap was for. */
+  body.m-app .strategy-header-row .page-title { flex: 1 1 0; min-width: 0; }
+  body.m-app .strategy-header-row .strategy-menu-wrap { flex: 0 0 auto; }
 }

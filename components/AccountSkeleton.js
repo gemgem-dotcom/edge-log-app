@@ -37,17 +37,27 @@ export default function AccountSkeleton() {
           fix in the first place.
           Not given the ref/state classes the real one carries: there is
           nothing to scroll yet, so it only ever needs its docked look. */}
-      <header className="shell-topbar m-account-topbar" aria-hidden="true">
+      <header className="shell-topbar m-account-topbar topbar-anchored" aria-hidden="true">
         <span className="shell-logo">Edge<span>Log</span></span>
         <div className="shell-topbar-right">
-          <span className="skel skel-pill" style={{ width: '62px', height: '32px' }} />
+          {/* 44px, matching the scope control it stands in for. That is the
+              iOS minimum tap target rather than a measured sum, so unlike
+              the spacer this replaced it does not drift: when the control
+              was 32px here and 44px on the loaded page, the bar came out
+              12px short and stepped the screen. */}
+          <span className="skel skel-pill" style={{ width: '62px', height: '44px' }} />
         </div>
       </header>
-      {/* What useStickyTopbar measures once mounted, taken from the loaded
-          page rather than assumed: this bar is 52px (logo + scope button,
-          shorter than the dashboard's 54px) plus its 10px/14px mobile
-          margins. */}
-      <div className="topbar-spacer" style={{ height: '76px' }} />
+      {/* No spacer, and no hardcoded height. topbar-anchored drops the
+          fixed positioning (the class the first-run tutorial already uses
+          for exactly this), so the bar sits in flow and occupies its own
+          real height plus margins - which is precisely what the spacer
+          reserves on the loaded page.
+          It was a literal 76px before and that number was wrong twice: the
+          bar is 52px until any control inside it grows, and raising the
+          scope button to the 44pt tap-target minimum took it to 66px,
+          stepping the whole screen 14px. A measurement that can go stale
+          beats nothing, but a layout that cannot be wrong beats both. */}
 
       <div className="account-wrap">
         <div className="skel skel-title" style={{ marginTop: '4px' }} />

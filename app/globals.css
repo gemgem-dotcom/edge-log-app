@@ -52,7 +52,7 @@
    3522  Trade log column width stability
    3547  Strategy notes panel
    3562  Today's brief economic outlook
-   3657  Mobile app shell (below 768px only)
+   3662  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3598,8 +3598,16 @@ button:active{
 /* auto-fit rather than a fixed column count: one release on a quiet day
    gets the full width, three share it, and the 330px floor is what stops a
    narrow window from slicing the prose into a column too thin to read. */
-.econ-term-body{
-  padding:4px 16px 16px;
+.econ-term-body{padding:4px 16px 16px;}
+/* auto-fit collapses the tracks it does not need, so one release on a
+   quiet day takes the full width and three share it. That only works
+   while nothing SPANS the empty tracks - the source line used to sit in
+   this grid with grid-column:1/-1, which kept all three tracks occupied
+   and left a lone release stranded in a third of the row with two thirds
+   of empty panel beside it. It is a sibling of the grid now, not a cell
+   in it. The 330px floor is what stops a narrow window slicing the prose
+   into a measure too thin to read. */
+.econ-term-grid{
   display:grid; grid-template-columns:repeat(auto-fit, minmax(330px, 1fr));
   gap:0 28px;
 }
@@ -3607,7 +3615,7 @@ button:active{
 /* The bottom rule is the separator BETWEEN stacked releases, so it is
    wrong on whichever release happens to end a grid row. Dropping it on the
    last child only is not enough once they sit side by side. */
-.econ-term-body > .econ-term-release:last-child{border-bottom:none;}
+.econ-term-grid > .econ-term-release:last-child{border-bottom:none;}
 .econ-term-head{display:flex; align-items:center; gap:9px; margin-bottom:8px;}
 /* Impact as the same small dot the rest of the app uses for a status, not
    a coloured tag - only high and medium ever reach this card. */
@@ -3646,10 +3654,7 @@ button:active{
   font-size:9.5px; text-transform:uppercase; letter-spacing:.08em;
   color:var(--accent); font-weight:700;
 }
-/* Spans every column, so the attribution sits once under the whole grid
-   rather than once per release. */
 .econ-term-source{
-  grid-column:1 / -1;
   font-size:11px; color:var(--muted-2); margin:14px 0 0;
   padding-top:12px; border-top:1px solid var(--line);
 }
@@ -4674,6 +4679,136 @@ button:active{
   .m-section-toggle.is-open .m-section-chevron { transform: rotate(0deg); }
   @media (prefers-reduced-motion: reduce) {
     .m-section-chevron { transition: none; }
+  }
+
+
+  /* ============================================================
+     iOS 27 Liquid Glass
+     ============================================================
+     The mobile chrome, in the material iOS 27 uses. Liquid Glass arrived
+     in iOS 26 as clear glass with soft edges; 27 refines the SAME
+     material rather than replacing it, and the refinements are the whole
+     reason this reads as 27 rather than 26:
+
+       - A DARKENED EDGE around every glass element. This is the headline
+         change and the one that does the most work: on a busy scroll the
+         iOS 26 treatment had no boundary of its own and dissolved into
+         whatever passed under it.
+       - BRIGHTER SPECULAR HIGHLIGHTS, and crucially STATIC ones. iOS 26's
+         highlight tracked the gyroscope; 27 drops that entirely and fixes
+         a highlight at the top and a fainter one at the bottom. So these
+         are inset box-shadows, and nothing here reacts to device motion -
+         reproducing the gyroscopic version would be reproducing the thing
+         Apple removed.
+       - MORE DIFFUSION of the content behind, for legibility: a heavier
+         blur with saturation, not a lighter tint.
+
+     Built on the --panel-rgb/--glass-border tokens the desktop topbar's
+     pinned state already uses, so both themes come for free rather than
+     being hardcoded to a dark backdrop.
+
+     prefers-reduced-transparency is honoured at the bottom: backdrop-filter
+     is exactly what that query exists for, and iOS itself has a Reduce
+     Transparency setting this mirrors. */
+  .m-tabbar,
+  .shell.is-mobile .shell-topbar,
+  .m-account-topbar,
+  .m-sheet {
+    /* .72 and a 40px blur, not a lighter tint: iOS 27's own change here
+       was MORE diffusion of complex content, not more clarity. At .68/32px
+       a trade row scrolling under the tab bar stayed legible enough to
+       compete with the tab labels sitting on top of it. */
+    background: rgba(var(--panel-rgb), .72);
+    /* Standard property only - the autoprefixer adds -webkit- correctly,
+       and a hand-written pair is the exact bug the desktop topbar's own
+       comment documents. */
+    backdrop-filter: blur(40px) saturate(180%);
+    border-color: var(--glass-border);
+  }
+  /* The edge and the two highlights, as one stack. Hairlines rather than
+     1px: iOS draws these sub-pixel, and a full pixel reads as a drawn
+     border rather than a lit edge. */
+  /* .m-tabbar unprefixed: it is a direct child of body.m-app, NOT inside
+     .shell, so a .shell.is-mobile prefix silently matches nothing - which
+     is exactly what it did on the first pass, leaving the one surface
+     most associated with iOS as the only opaque bar on screen. */
+  .m-tabbar,
+  .shell.is-mobile .shell-topbar,
+  .m-account-topbar {
+    box-shadow:
+      inset 0 .5px 0 rgba(255,255,255,.30),
+      inset 0 -.5px 0 rgba(255,255,255,.07),
+      0 0 0 .5px rgba(0,0,0,.40),
+      0 10px 30px rgba(0,0,0,.30);
+  }
+  /* The sheet rises from the bottom edge, so it takes the top highlight
+     and the lift, but no bottom highlight - there is no bottom edge on
+     screen to catch the light. */
+  .m-sheet {
+    box-shadow:
+      inset 0 .5px 0 rgba(255,255,255,.30),
+      0 -10px 34px rgba(0,0,0,.34);
+    border-top-color: var(--glass-border);
+  }
+  /* Continuous-curve radii, iOS's own proportions. The tab bar keeps its
+     square bottom because it meets the screen edge. */
+  .m-sheet { border-radius: 22px 22px 0 0; }
+  .m-tabbar { border-top: .5px solid var(--glass-border); }
+
+  /* Small floating controls get the same material, scaled down - one
+     highlight, a tighter edge, no lift, since they sit ON the glass bars
+     rather than over the page. */
+  .m-filter-btn,
+  .m-scope-btn {
+    background: rgba(var(--panel-rgb), .55);
+    backdrop-filter: blur(18px) saturate(170%);
+    border-color: var(--glass-border);
+    box-shadow:
+      inset 0 .5px 0 rgba(255,255,255,.22),
+      0 0 0 .5px rgba(0,0,0,.30);
+  }
+
+  /* Panels are NOT glass. On iOS the glass is the chrome that floats over
+     content - bars, sheets, controls - while content cards sit flat
+     beneath it. Making both glass is the single most common way a
+     Liquid Glass imitation ends up reading as a blurry mess, because
+     nothing is left for the glass to be in front of. They take only the
+     depth half of the treatment: the darkened edge and a top highlight. */
+  .shell.is-mobile .panel {
+    box-shadow:
+      inset 0 .5px 0 rgba(255,255,255,.06),
+      0 0 0 .5px rgba(0,0,0,.22),
+      0 1px 3px rgba(0,0,0,.12);
+  }
+
+  /* The sheet's scrim, slightly deeper and blurred, so the sheet's own
+     glass has something diffuse to sit against rather than a hard page. */
+  .m-sheet-backdrop {
+    background: rgba(0,0,0,.42);
+    backdrop-filter: blur(3px);
+  }
+
+  /* iOS's Reduce Transparency, mirrored. Every glass surface falls back to
+     its opaque panel colour and keeps the edge, so the layering still
+     reads without any backdrop-filter at all - which is also the fallback
+     for a browser that does not support it. */
+  @media (prefers-reduced-transparency: reduce) {
+    .m-tabbar,
+    .shell.is-mobile .shell-topbar,
+    .m-account-topbar,
+    .m-sheet,
+    .m-filter-btn,
+    .m-scope-btn,
+    .m-sheet-backdrop {
+      backdrop-filter: none;
+    }
+    .m-tabbar,
+    .shell.is-mobile .shell-topbar,
+    .m-account-topbar,
+    .m-sheet { background: var(--panel); }
+    .m-filter-btn,
+    .m-scope-btn { background: var(--panel-2); }
+    .m-sheet-backdrop { background: rgba(0,0,0,.6); }
   }
 
 }

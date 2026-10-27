@@ -35,6 +35,10 @@ export default function EconTerminal({ brief }) {
       </div>
 
       <div className="econ-term-body">
+        {/* The releases are their own grid so auto-fit can collapse the
+            tracks it does not need - see .econ-term-grid. The source line
+            below is a SIBLING of it, not a cell spanning it. */}
+        <div className="econ-term-grid">
         {brief.events.map(({ event, timestamp, meaning, framing, bias }) => (
           <div className="econ-term-release" key={event.event_key}>
             <div className="econ-term-head">
@@ -75,6 +79,7 @@ export default function EconTerminal({ brief }) {
             ) : null}
           </div>
         ))}
+        </div>
 
         {/* Says where the numbers come from, so nothing in the window reads
             as a market call. */}

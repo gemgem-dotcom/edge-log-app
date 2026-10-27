@@ -1,22 +1,20 @@
 // The US economic outlook, in a macOS window inside Today's brief.
 //
-// THE WINDOW IS THE TERMINAL REFERENCE, NOT THE CONTENTS. An earlier pass
-// styled the inside like a shell session too - `$ outlook --release "CPI
-// m/m"` above every block, every line monospace, lowercase terse labels,
-// a hardcoded near-black ground. It read as a code sample pasted into a
-// trading journal rather than part of one, and the fake prompts were the
-// worst of it: they implied a command you could type and a tool that does
-// not exist.
+// IT IS A TITLED PANEL, NOT A COSTUME. Two passes got this wrong in
+// opposite directions. The first styled the inside like a shell session -
+// `$ outlook --release "CPI m/m"` above every block, every line monospace,
+// a hardcoded near-black ground - which read as a code sample pasted into
+// a trading journal, and whose fake prompts implied a command you could
+// type against a tool that does not exist. The second kept macOS traffic
+// lights on the bar: three dots that cannot close, minimise or zoom
+// anything, which is decoration pretending to be controls.
 //
-// So the chrome stays macOS - traffic lights, centred title - and
-// everything under it uses EdgeLog's own vocabulary: body copy at the same
+// What is left is the part that was doing work: a titled strip over a
+// recessed well, in EdgeLog's own vocabulary - body copy at the same
 // 13px/1.55 as .brief-card-text, .stat-label's uppercase micro-labels over
 // the figures, JetBrains Mono on numbers ONLY (which is where the rest of
-// the app uses it), and theme tokens throughout so the window follows the
-// light theme instead of staying a black box in it.
-//
-// The chrome is inert and aria-hidden: a dot that looks like it closes
-// something and does not is worse than no dot.
+// the app uses it), and theme tokens throughout, so it follows the light
+// theme instead of staying a black box in it.
 //
 // EVERY LINE HERE IS DERIVED FROM A STORED ROW. Forecast, previous and
 // actual are columns on economic_events; the record counts actual against
@@ -33,11 +31,6 @@ export default function EconTerminal({ brief }) {
   return (
     <div className="econ-term">
       <div className="econ-term-bar">
-        <span className="econ-term-lights" aria-hidden="true">
-          <span className="econ-term-light econ-term-light-close" />
-          <span className="econ-term-light econ-term-light-min" />
-          <span className="econ-term-light econ-term-light-zoom" />
-        </span>
         <span className="econ-term-title">{title}</span>
       </div>
 

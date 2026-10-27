@@ -19,40 +19,40 @@
    1333  Expandable trade rows
    1399  Calendar
    1447  Account settings page
-   1663  Light theme
-   1704  2FA
-   1719  Account fine print
-   1722  Screenshot preview (log new trade)
-   1764  Auth pages always dark
-   1799  Monthly P&L (calendar on Overview)
-   1886  Trade form: sections, validation, currency, screenshots
-   2124  Field tooltips
-   2186  Date/time picker (adds an optional popup to a typed input)
-   2303  In-header column filters (trade log table)
-   2351  Active filter chips
-   2414  Empty states, error banners, skeleton loaders
-   2511  Cross-instrument overview dashboard (/app)
-   2690  Not found / error boundary state pages
-   2703  Toast notifications
-   2731  Public policy pages (Privacy, Terms)
-   2750  Legal links (auth pages + account settings)
-   2789  Economic calendar card (Overview pages)
-   3061  Calendar news badge (Monthly P&L day cells)
-   3089  Streak badge (Overview + strategy detail pages)
-   3112  Market status pill (Overview + strategy detail pages)
-   3138  Today's brief & session stats
-   3173  Market context cards (all-instruments Overview)
-   3215  Edge Insights panel
-   3230  Unverified logged time badge
-   3247  Welcome transition (first-run)
-   3276  Zero-instrument empty state
-   3286  Tutorial overlay (first-run guided tour)
-   3378  Tutorial step 3 (guided form scroll)
-   3425  Press states, value changes, content fade-in
-   3522  Trade log column width stability
-   3547  Strategy notes panel
-   3562  Today's brief economic outlook
-   3662  Mobile app shell (below 768px only)
+   1671  Light theme
+   1712  2FA
+   1727  Account fine print
+   1730  Screenshot preview (log new trade)
+   1772  Auth pages always dark
+   1807  Monthly P&L (calendar on Overview)
+   1894  Trade form: sections, validation, currency, screenshots
+   2132  Field tooltips
+   2194  Date/time picker (adds an optional popup to a typed input)
+   2311  In-header column filters (trade log table)
+   2359  Active filter chips
+   2422  Empty states, error banners, skeleton loaders
+   2519  Cross-instrument overview dashboard (/app)
+   2698  Not found / error boundary state pages
+   2711  Toast notifications
+   2739  Public policy pages (Privacy, Terms)
+   2758  Legal links (auth pages + account settings)
+   2797  Economic calendar card (Overview pages)
+   3069  Calendar news badge (Monthly P&L day cells)
+   3097  Streak badge (Overview + strategy detail pages)
+   3120  Market status pill (Overview + strategy detail pages)
+   3146  Today's brief & session stats
+   3181  Market context cards (all-instruments Overview)
+   3223  Edge Insights panel
+   3238  Unverified logged time badge
+   3255  Welcome transition (first-run)
+   3284  Zero-instrument empty state
+   3294  Tutorial overlay (first-run guided tour)
+   3386  Tutorial step 3 (guided form scroll)
+   3433  Press states, value changes, content fade-in
+   3530  Trade log column width stability
+   3555  Strategy notes panel
+   3570  Today's brief economic outlook
+   3670  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -1637,8 +1637,16 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
     transition:background-color .15s ease, color .15s ease;
 }
 .strategy-menu-btn:hover{background:var(--panel-2); color:var(--text);}
+/* RIGHT-anchored, not left. This is a trailing-edge "..." menu: its
+   trigger sits at the right edge of the card, so left:0 started the
+   dropdown at the button's own left edge and ran its 180px min-width off
+   the screen - measured at 390px, the menu spanned 343..523 against a
+   390px viewport, 133px of it unreachable. Anchoring to the trigger's
+   right edge opens it leftward instead, which is where a trailing-edge
+   menu belongs at any width; on desktop there was room either way, which
+   is the only reason this survived. */
 .strategy-menu-dropdown{
-    position:absolute; top:calc(100% + 6px); left:0; background:var(--panel);
+    position:absolute; top:calc(100% + 6px); right:0; left:auto; background:var(--panel);
     border:1px solid var(--line); border-radius:9px; min-width:180px; z-index:50;
     box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden; animation:dropdown-in .15s ease;
 }

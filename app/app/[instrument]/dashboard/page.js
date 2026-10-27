@@ -597,7 +597,7 @@ return (
     {/* Nothing at all on a day with no high or medium USD release. Not a
         "no events today" line: that is a sentence nobody needs to read
         every day, and the card is better short. */}
-    <EconTerminal brief={econBrief} symbol={symbol} />
+    <EconTerminal brief={econBrief} />
   </div>
   <div className="panel">
     <div className="stat-label dashboard-card-title">Session stats</div>

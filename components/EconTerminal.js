@@ -1,24 +1,29 @@
-// The US economic outlook, as a macOS terminal window inside Today's brief.
+// The US economic outlook, in a macOS window inside Today's brief.
 //
-// WHY A TERMINAL. The card's own sentence says the human thing - "you're on
-// a streak, and CPI m/m lands at 08:30". Everything underneath it is
-// reference data a trader scans rather than reads: figures that must line
-// up in columns, a record of past prints, two readings of the same
-// surprise. A terminal is the honest shape for that, and the monospace
-// column alignment is doing real work rather than being decoration.
+// THE WINDOW IS THE TERMINAL REFERENCE, NOT THE CONTENTS. An earlier pass
+// styled the inside like a shell session too - `$ outlook --release "CPI
+// m/m"` above every block, every line monospace, lowercase terse labels,
+// a hardcoded near-black ground. It read as a code sample pasted into a
+// trading journal rather than part of one, and the fake prompts were the
+// worst of it: they implied a command you could type and a tool that does
+// not exist.
 //
-// The chrome is deliberately macOS: traffic lights left, centred title.
-// It is inert - the three dots are not buttons and carry aria-hidden, since
-// a control that looks like it closes something and does nothing is worse
-// than no control.
+// So the chrome stays macOS - traffic lights, centred title - and
+// everything under it uses EdgeLog's own vocabulary: body copy at the same
+// 13px/1.55 as .brief-card-text, .stat-label's uppercase micro-labels over
+// the figures, JetBrains Mono on numbers ONLY (which is where the rest of
+// the app uses it), and theme tokens throughout so the window follows the
+// light theme instead of staying a black box in it.
 //
-// EVERY LINE HERE IS DERIVED FROM A STORED ROW. The forecast, previous and
+// The chrome is inert and aria-hidden: a dot that looks like it closes
+// something and does not is worse than no dot.
+//
+// EVERY LINE HERE IS DERIVED FROM A STORED ROW. Forecast, previous and
 // actual are columns on economic_events; the record counts actual against
-// forecast on past rows of the same release; the two-sided read is
-// generated from one template with the direction flipped. Nothing is
-// fetched from a news source and nothing is a prediction - see the header
-// of lib/econBriefing.js, and the PR, for why market sentiment is NOT here.
-export default function EconTerminal({ brief, symbol }) {
+// forecast on past rows of the same release; the read is generated from
+// one template with the direction flipped. Nothing is fetched from a news
+// source and nothing is a prediction - see lib/econBriefing.js's header.
+export default function EconTerminal({ brief }) {
   if (!brief || brief.events.length === 0) return null
 
   const title = brief.highCount > 0
@@ -38,87 +43,76 @@ export default function EconTerminal({ brief, symbol }) {
 
       <div className="econ-term-body">
         {brief.events.map(({ event, timestamp, meaning, framing, bias }) => (
-          <div className="econ-term-block" key={event.event_key}>
-            {/* The command line is a label, not a prompt the user can type
-                into - it names what the block below is, in the idiom of the
-                window it sits in. */}
-            <div className="econ-term-cmd">
-              <span className="econ-term-prompt">$</span>
-              {` outlook --release "${event.title}"`}
-            </div>
-
-            <div className="econ-term-headline">
-              <span className={`econ-term-impact econ-term-impact-${event.impact}`}>
-                {event.impact === 'high' ? 'HIGH' : 'MED'}
-              </span>
+          <div className="econ-term-release" key={event.event_key}>
+            <div className="econ-term-head">
+              <span className={`econ-term-dot econ-term-dot-${event.impact}`} aria-hidden="true" />
               <span className="econ-term-name">{event.title}</span>
               <span className="econ-term-clock">{clockFor(timestamp)}</span>
             </div>
 
-            <Row label="what">{meaning.what}</Row>
-            <Row label="moves">{meaning.affects}</Row>
+            <p className="econ-term-copy">
+              {sentence(meaning.what)} It moves {meaning.affects}.
+            </p>
 
-            {/* Figures on one line so they line up down the block - the
-                single thing monospace is actually here for. */}
-            {event.forecast || event.previous ? (
-              <Row label="fcast">
-                <span className="econ-term-fig">{event.forecast || '—'}</span>
-                <span className="econ-term-dim">{'  prev '}</span>
-                <span className="econ-term-fig">{event.previous || '—'}</span>
-              </Row>
+            {/* The three figures as a small stat row rather than a line of
+                `fcast 0.3% prev 0.2%` - same uppercase-label-over-mono-value
+                shape the Session stats card beside this one already uses. */}
+            {event.forecast || event.previous || event.actual ? (
+              <div className="econ-term-figs">
+                <Fig label="Forecast" value={event.forecast} />
+                <Fig label="Previous" value={event.previous} />
+                <Fig label="Actual" value={event.actual} highlight />
+              </div>
             ) : null}
 
             {/* The real record of this release against its own forecast.
-                Absent until there are at least three past prints to read -
-                see consensusBias. */}
+                Absent until there are three past prints to read. */}
             {bias ? (
-              <Row label="record">
-                <span className="econ-term-dim">{`last ${bias.prints}: `}</span>
-                {bias.verdict}
-              </Row>
+              <p className="econ-term-note">
+                <span className="econ-term-note-label">Record</span>
+                {`Last ${bias.prints} prints: ${bias.verdict}.`}
+              </p>
             ) : null}
 
-            {framing ? <Row label="read">{framing}</Row> : null}
-
-            {event.actual ? (
-              <Row label="actual" emphasis>
-                <span className="econ-term-fig">{event.actual}</span>
-                {event.forecast ? (
-                  <span className="econ-term-dim">{`  vs ${event.forecast} forecast`}</span>
-                ) : null}
-              </Row>
-            ) : event.forecast ? (
-              // Only a release that HAS a forecast has a figure to wait
-              // for. A speech never publishes one, so it said "awaiting
-              // release" for ever, including hours after it had finished.
-              <Row label="status"><span className="econ-term-dim">awaiting release</span></Row>
+            {framing ? (
+              <p className="econ-term-note">
+                <span className="econ-term-note-label">Read</span>
+                {framing}
+              </p>
             ) : null}
           </div>
         ))}
 
         {/* Says where the numbers come from, so nothing in the window reads
             as a market call. */}
-        <div className="econ-term-foot">
-          <span className="econ-term-prompt">$</span>
-          {` source forexfactory · figures as published${symbol ? ` · ${symbol}` : ''}`}
-        </div>
+        <p className="econ-term-source">Figures as published by Forex Factory.</p>
       </div>
     </div>
   )
 }
 
-function Row({ label, children, emphasis = false }) {
+function Fig({ label, value, highlight = false }) {
   return (
-    <div className={`econ-term-row${emphasis ? ' is-emphasis' : ''}`}>
-      <span className="econ-term-label">{label}</span>
-      <span className="econ-term-value">{children}</span>
+    <div className="econ-term-fig">
+      <span className="econ-term-fig-label">{label}</span>
+      <span className={`econ-term-fig-value${highlight && value ? ' is-actual' : ''}`}>
+        {value || '—'}
+      </span>
     </div>
   )
+}
+
+// meaningFor's `what` finishes "<Title> is ...", so it arrives lowercase.
+// Opening a paragraph with it needs the capital back.
+function sentence(text) {
+  const s = String(text || '')
+  if (!s) return ''
+  return `${s.charAt(0).toUpperCase()}${s.slice(1)}.`
 }
 
 // An all-day row arrives at local midnight and has no instant to quote.
 function clockFor(timestamp) {
   const d = new Date(timestamp)
-  if (d.getHours() === 0 && d.getMinutes() === 0) return 'all day'
+  if (d.getHours() === 0 && d.getMinutes() === 0) return 'All day'
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }

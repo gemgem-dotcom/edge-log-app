@@ -4918,4 +4918,25 @@ button:active{
      the radius iOS gives an inset group at this width. */
   .shell.is-mobile .panel { border-radius: 18px; }
 
+
+  /* 44pt inside the SHEETS. The earlier tap-target pass could not see
+     these: they only exist in the DOM while a sheet is open, so a sweep of
+     the resting page missed every one of them. Measured with each sheet
+     actually open - close 40px, scope rows 43, the add form's select and
+     submit 41, filter chips 38.
+     .m-seg-item is deliberately left at 38. A segmented control is the one
+     place iOS itself goes under 44 - UISegmentedControl is 32pt - so 38 is
+     already more generous than Apple's, and 44 would read as an oversized
+     slab rather than a segment. */
+  .m-sheet-close,
+  .m-scope-row,
+  .m-scope-add-submit,
+  .m-scope-add-form select,
+  .m-chip {
+    min-height: 44px;
+  }
+  /* The close button is square, so it takes the width too rather than
+     becoming a tall thin target. */
+  .m-sheet-close { min-width: 44px; }
+
 }

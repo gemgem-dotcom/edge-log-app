@@ -4811,4 +4811,111 @@ button:active{
     .m-sheet-backdrop { background: rgba(0,0,0,.6); }
   }
 
+
+  /* ============================================================
+     iOS: large titles, inset grouped lists, 44pt controls
+     ============================================================ */
+
+  /* LARGE TITLES. iOS sets a screen's own title at 34pt bold with tight
+     tracking, well above body scale - the size IS the navigation cue, and
+     at the desktop's 26px/500 these screens read as a web page's heading
+     rather than a view title.
+     Keyed off body.m-app rather than .shell.is-mobile because the account
+     screen sits outside .shell (see the input rule above, which had to
+     learn the same thing). */
+  body.m-app .page-title {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -.022em;
+    line-height: 1.12;
+    margin-bottom: 16px;
+  }
+  /* The skeleton stands in for that title, so it tracks the new height or
+     every mobile page steps the moment its data lands - the zero-shift
+     those skeletons were measured to is a property of these two numbers
+     agreeing, not of the skeleton alone. */
+  /* Mirrors the title above it on all three counts - height, width AND
+     margin-bottom. Height alone was not enough: the base .skel-title keeps
+     a 20px bottom margin against this title's new 16px, which stepped the
+     edit form 4px the moment it loaded. */
+  body.m-app .skel-title { height: 36px; width: 60%; margin-bottom: 16px; }
+  body.m-app .page-subtitle { font-size: 13.5px; }
+
+  /* GROUPED SECTION HEADERS. .section-heading is already uppercase/muted/
+     700, which is iOS's own grouped-list header; what it lacked was the
+     leading inset that lines it up with the card's text below rather than
+     with the card's edge. */
+  .shell.is-mobile .section-heading,
+  body.m-app .section-heading {
+    padding-left: 14px;
+    font-size: 11.5px;
+    letter-spacing: .06em;
+  }
+  /* ...except the collapsible ones, which are buttons whose own tap target
+     starts at the card edge - indenting the label would leave the chevron
+     and the text disagreeing about where the row begins. */
+  body.m-app .section-heading.m-section-toggle { padding-left: 2px; }
+
+  /* INSET SEPARATORS. An iOS grouped row's rule starts where its TEXT
+     starts, not at the card edge, so a leading dot or icon sits in clear
+     space and the eye reads one column of labels. These were full-bleed
+     borders; they are inset pseudo-elements now, which is also why the
+     row needs position:relative.
+     Right edge stays flush with the card - iOS insets the left only. */
+  .m-strategy-index-row,
+  .m-account-row,
+  .m-row-head { position: relative; }
+  .m-strategy-index-row { border-bottom: none; }
+  .m-strategy-index-row::after {
+    content: ""; position: absolute; left: 22px; right: 0; bottom: 0;
+    height: 1px; background: var(--line);
+  }
+  /* 22px = the row's own 2px padding + the 9px status dot + the 11px gap,
+     so the rule begins exactly under the strategy name. */
+  .m-strategy-index li:last-child .m-strategy-index-row::after { display: none; }
+  .m-account-row { border-bottom: none; }
+  .m-account-row::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+    height: 1px; background: var(--line);
+  }
+  /* No leading icon on an account row, so its text already starts at the
+     card's inner edge and the rule is aligned at 0. */
+  .m-account-index .m-account-row:last-child::after { display: none; }
+
+  /* 44pt CONTROLS. The iOS minimum tap target, which eight controls were
+     under - measured at 390px, the smallest phone this has to work on. */
+  .m-scope-btn,
+  .m-filter-btn,
+  .econ-date-range-trigger,
+  .econ-impact-filter-btn,
+  body.m-app .section-heading.m-section-toggle {
+    min-height: 44px;
+  }
+  /* These three are deliberately NOT grown. A 14px "?", a 26px menu
+     chevron and the wordmark are the right SIZE; what they lacked was a
+     44pt target around that size. The pseudo-element gives them one
+     without moving a pixel of what is drawn - growing them instead would
+     have redesigned three controls to fix a hit area. */
+  body.m-app .field-tooltip-btn,
+  body.m-app .strategy-menu-btn,
+  body.m-app .shell-logo { position: relative; }
+  body.m-app .field-tooltip-btn::after,
+  body.m-app .strategy-menu-btn::after,
+  body.m-app .shell-logo::after {
+    content: "";
+    position: absolute; left: 50%; top: 50%;
+    width: 44px; height: 44px;
+    transform: translate(-50%, -50%);
+    /* Behind the glyph so it never covers it, and no background, so it is
+       a target and not a shape. */
+    z-index: -1;
+  }
+  /* The wordmark is wider than 44px, so it takes height only - a 44px-wide
+     box centred on a 104px link would shrink its target, not grow it. */
+  body.m-app .shell-logo::after { width: 100%; }
+
+  /* Grouped cards sit slightly rounder than the desktop panel, matching
+     the radius iOS gives an inset group at this width. */
+  .shell.is-mobile .panel { border-radius: 18px; }
+
 }

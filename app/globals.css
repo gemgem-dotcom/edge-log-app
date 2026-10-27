@@ -50,10 +50,10 @@
    3387  Tutorial step 3 (guided form scroll)
    3434  Press states, value changes, content fade-in
    3531  Bottom-tab slide
-   3601  Trade log column width stability
-   3626  Strategy notes panel
-   3641  Today's brief economic outlook
-   3741  Mobile app shell (below 768px only)
+   3705  Trade log column width stability
+   3730  Strategy notes panel
+   3745  Today's brief economic outlook
+   3845  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3544,25 +3544,43 @@ button:active{
    Not inside the mobile block at the end of this file: ::view-transition-*
    are pseudo-elements on the document root rather than on anything a
    viewport query scopes, and the type gate already does that job.
-   Asymmetric on purpose. The old screen leaves fast so it stops competing
-   for attention; the new one is held back until the old one has gone, so
-   the two never overlap into a muddle. 32px is enough to read as
-   direction without asking the eye to track something across a screen. */
+   Asymmetric on purpose, but the two ends OVERLAP - they used not to, and
+   that was a bug rather than restraint. The first pass faded the old
+   screen out over 130ms and held the new one's fade back by exactly 130ms,
+   so there was an instant with nothing on screen at all but the page
+   background: a blank frame in the middle of a 300ms move, which is most
+   of what "glitchy" meant. The handoff now starts 60ms before the outgoing
+   screen is gone, which is short enough that two screens are never both
+   legible and long enough that there is never a hole.
+
+   The durations are the other half of "way too fast". The slide was 300ms
+   both ways, but the fades hid most of it: the arriving screen only became
+   visible 130ms in - 43% of the way through an ease-in-out, so already a
+   third of the distance home - and the leaving screen kept sliding for
+   170ms after it was invisible. Of a 32px move the eye was shown about
+   19px, over about 170ms. The travel is now 420ms on a curve that is slow
+   off the mark (cubic-bezier(.4,0,.2,1) barely moves in its first
+   quarter), and the arriving screen is visible from 100ms, so nearly all
+   of the 32px is actually watched. Same distance, two and a half times the
+   visible duration.
+
+   32px is still enough to read as direction without asking the eye to
+   track something across a screen. */
 ::view-transition-old(.tab-forward){
   --tab-slide:-32px;
-  animation:130ms ease-in both tab-fade reverse, 300ms ease-in-out both tab-slide reverse;
+  animation:160ms ease-in both tab-fade reverse, 420ms cubic-bezier(.4,0,.2,1) both tab-slide reverse;
 }
 ::view-transition-new(.tab-forward){
   --tab-slide:32px;
-  animation:190ms ease-out 130ms both tab-fade, 300ms ease-in-out both tab-slide;
+  animation:220ms ease-out 100ms both tab-fade, 420ms cubic-bezier(.4,0,.2,1) both tab-slide;
 }
 ::view-transition-old(.tab-back){
   --tab-slide:32px;
-  animation:130ms ease-in both tab-fade reverse, 300ms ease-in-out both tab-slide reverse;
+  animation:160ms ease-in both tab-fade reverse, 420ms cubic-bezier(.4,0,.2,1) both tab-slide reverse;
 }
 ::view-transition-new(.tab-back){
   --tab-slide:-32px;
-  animation:190ms ease-out 130ms both tab-fade, 300ms ease-in-out both tab-slide;
+  animation:220ms ease-out 100ms both tab-fade, 420ms cubic-bezier(.4,0,.2,1) both tab-slide;
 }
 @keyframes tab-fade{
   from{opacity:0;}
@@ -3572,15 +3590,101 @@ button:active{
   from{translate:var(--tab-slide);}
   to{translate:0;}
 }
-/* The whole document is snapshotted, not just the part that slides, and
-   the root pair cross-fades by default - over a slide that reads as the
-   topbar and tab bar flickering. They are live DOM underneath and want no
-   animation of their own. */
-::view-transition-old(root),
-::view-transition-new(root){animation:none;}
-/* The overlay swallows pointer events for the length of the transition,
-   and on a tab bar that is exactly where the next tap is going. */
-::view-transition{pointer-events:none;}
+/* THE CHROME HAS TO PAINT ABOVE THE SLIDING CONTENT, AND BY DEFAULT IT
+   DOES NOT. This is the bug that made content appear to climb over the two
+   glass bars mid-slide.
+
+   The whole document is snapshotted, not just the part that slides. The
+   bars are deliberately outside <ViewTransition> (see
+   components/mobile/TabTransition.js for why they cannot be given a
+   view-transition-name of their own), so they are captured as part of the
+   `root` group - and ::view-transition-group pseudo-elements are generated
+   in the paint order of what they captured, with the document element
+   first. `root` is therefore the BOTTOM group and the sliding .shell
+   snapshot sits on top of it, which puts the page content above the
+   topbar and the tab bar for the length of the animation. Measured at
+   dsf 3: mid-slide, trade-table rows render sharp and unblurred straight
+   across the tab bar's icons and labels, and across the pinned topbar's
+   capsule when the page is scrolled - the glass is below them, so it has
+   nothing to blur.
+
+   z-index on the group is the lever the spec gives for this. It has to
+   clear 1, not merely be set: the two content groups (the leaving screen
+   and the arriving one are separate groups, not an old/new pair - React
+   names them separately) come out of the UA at z-index 1, so
+   `z-index: 1` here only TIES with them and then loses on order, because
+   root is the first group. Measured by seeking the paused transition to
+   the same instant on each value: 1 leaves the content over the bar,
+   2, 3, 4 and 99 all put the bar back on top. 10 for headroom.
+
+   It is safe to lift because the root snapshot carries almost nothing: a
+   root element's background is propagated to the CANVAS and painted below
+   the whole view-transition overlay rather than into the root snapshot,
+   and .shell is excluded from it by its own view-transition-name. What is
+   left is the two bars, plus body's two ambient glow blobs - 7-9% alpha
+   radial gradients in opposite corners that read as nothing over a 420ms
+   slide.
+
+   The old image is dropped rather than frozen. Both root images were
+   previously pinned at full opacity with animation:none, which stacks two
+   copies of near-identical artwork inside one image-pair. The new one
+   alone is the correct picture - the bars should show the arriving tab as
+   active from the first frame, exactly as they did - and one image cannot
+   composite against itself. */
+::view-transition-group(root){z-index:10;}
+::view-transition-old(root){display:none;}
+::view-transition-new(root){animation:none; mix-blend-mode:normal;}
+/* ...AND LIFTING THE GROUP IS NOT ENOUGH ON ITS OWN, because these two
+   bars are not opaque. They are 26%-alpha glass over two stacked
+   backdrop-filter passes, and a backdrop-filter can only blur what is
+   painted BEHIND it in the same pass. The page content is exactly what it
+   normally blurs - and a view transition lifts that content out into its
+   own snapshot, so at capture time the bars have an empty backdrop. The
+   glass comes out clear instead of frosted, and the sliding content below
+   then reads straight through 74% of it: labels legible but the page
+   visibly moving through the bar. Better than content ON TOP of the
+   labels, which is what the group order gave, but still wrong.
+
+   So the bars are kept OUT of the overlay entirely for the two bands they
+   occupy. The live DOM goes on painting underneath a ::view-transition
+   (verified: clipping the overlay away over the tab bar leaves a correct,
+   properly frosted bar there), so clipping those bands out hands them back
+   to the real elements, blur and all, for the whole animation. What shows
+   through the glass in those bands is the arriving screen, swapped
+   instantly rather than slid - two 30px blur passes leave nothing of it to
+   recognise, which is why the seam does not read.
+
+   The two edges are measured and published by components/mobile/
+   MobileChrome.js rather than written here: the tab bar's rendered height
+   is its content's (67.5px against a --m-tabbar-h of 56px, before the home
+   indicator inset), and the topbar's edge has to collapse to the viewport
+   top whenever the scroll has hidden it or the tutorial has anchored it.
+   Both are a distance DOWN FROM THE TOP of the snapshot containing block,
+   the same frame getBoundingClientRect() reports in, and both default to a
+   number far outside it - so desktop, and anything that never sets them,
+   clips nothing.
+
+   polygon() rather than the inset() this obviously wants, and that is not
+   a style choice. ::view-transition computes to a 0x0 box that its groups
+   simply overflow (measured: width 0px, height 0px, while the groups paint
+   over the whole viewport), and inset() resolves against that reference
+   box - so inset(76px 0 68px 0) clipped away the entire animation and left
+   a blank screen between two correct bars. Giving the pseudo an explicit
+   width/height does not take. polygon() takes absolute lengths from the
+   box's origin, which is the one thing about it that is right: the top
+   left of the snapshot containing block. */
+::view-transition{
+  /* The overlay otherwise swallows pointer events for the length of the
+     transition, and on a tab bar that is exactly where the next tap is
+     going. */
+  pointer-events:none;
+  clip-path:polygon(
+    -9999px var(--m-vt-band-top, -9999px),
+    9999px var(--m-vt-band-top, -9999px),
+    9999px var(--m-vt-band-bottom, 9999px),
+    -9999px var(--m-vt-band-bottom, 9999px)
+  );
+}
 /* The arriving screen fades in twice otherwise - once as the view
    transition's own enter, once as .content-fade-in inside the snapshot.
    Scoped to the two tab types so an ordinary arrival keeps its fade. */

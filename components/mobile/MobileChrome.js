@@ -70,6 +70,49 @@ export default function MobileChrome({ children }) {
   const anchored = readCachedTutorialState()?.status === 'active'
   const { topbarRef, mode, spacerStyle } = useStickyTopbar({ anchored })
 
+  // The band the bottom-tab slide is allowed to paint into: from the
+  // topbar's bottom edge to the tab bar's top edge, both as a distance
+  // down from the top of the viewport, published to :root for
+  // app/globals.css's ::view-transition clip-path.
+  //
+  // See that file's "Bottom-tab slide" section for why the overlay is
+  // clipped at all. Short version: both bars are backdrop-filter glass,
+  // and a view transition lifts away the very content they exist to blur,
+  // so they have to go on painting as live DOM underneath the overlay
+  // rather than be captured into it.
+  //
+  // Measured here rather than written in CSS because neither edge is
+  // expressible there: the tab bar's height is its content's, not
+  // --m-tabbar-h, and the topbar's edge collapses to 0 whenever the scroll
+  // has hidden it or the tutorial has anchored it into the flow. Both bars
+  // are position:fixed, so they only move when `mode` or `anchored`
+  // changes - which is exactly when this re-runs - plus on a rotation.
+  useEffect(() => {
+    if (!isMobile) return undefined
+    const root = document.documentElement
+    const update = () => {
+      const bar = anchored || mode === 'hidden' ? null : document.querySelector('.m-chrome-topbar')
+      const tabs = document.querySelector('.m-tabbar')
+      // offsetTop/offsetHeight, not getBoundingClientRect: the topbar
+      // reveals itself with a transform transition, and this runs on the
+      // frame `mode` flips, while the bar is still mid-slide and its rect
+      // still off-screen. The offset pair reports the laid-out box and
+      // ignores the transform, which is the edge the bar is about to
+      // settle on - and "hidden" is read off `mode` instead of the rect.
+      const top = bar ? bar.offsetTop + bar.offsetHeight : 0
+      const bottom = tabs ? tabs.getBoundingClientRect().top : window.innerHeight
+      root.style.setProperty('--m-vt-band-top', `${Math.max(0, Math.ceil(top))}px`)
+      root.style.setProperty('--m-vt-band-bottom', `${Math.max(0, Math.floor(bottom))}px`)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      root.style.removeProperty('--m-vt-band-top')
+      root.style.removeProperty('--m-vt-band-bottom')
+    }
+  }, [isMobile, mode, anchored])
+
   useEffect(() => {
     let cancelled = false
     supabase.auth.getUser().then(({ data }) => {

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { ChevronDown, Check, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
@@ -8,6 +9,11 @@ import { INSTRUMENT_CATALOG } from '@/lib/instrumentCatalog'
 import { addOrRestoreInstrument } from '@/lib/instruments'
 import { friendlyInstrumentError } from '@/lib/supabaseErrors'
 import { scopeHrefFor } from '@/lib/mobileTabs'
+
+// A store that never changes: the subscribe callback is module scope so
+// its identity is stable across renders, which is what useSyncExternalStore
+// wants.
+const subscribeNever = () => () => {}
 
 // The mobile topbar's ONE navigation control, sitting opposite the logo.
 //
@@ -32,6 +38,13 @@ export default function MobileScopeButton({ instruments = [], currentSymbol = nu
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  // document only exists on the client, so the portal waits for mount.
+  // useSyncExternalStore rather than setState-in-an-effect: that is the
+  // cascading-render warning this repo's lint ratchet refuses to grow for,
+  // and it is the same primitive (and the same reasoning) lib/useIsMobile
+  // uses to answer a question the server cannot. Never subscribes, because
+  // "is this the client" never changes after it is true.
+  const mounted = useSyncExternalStore(subscribeNever, () => true, () => false)
   const [adding, setAdding] = useState(false)
   const [newSymbol, setNewSymbol] = useState('')
   const [addError, setAddError] = useState(null)
@@ -114,7 +127,27 @@ export default function MobileScopeButton({ instruments = [], currentSymbol = nu
         <ChevronDown size={14} className="m-scope-caret" aria-hidden="true" />
       </button>
 
-      {open ? (
+      {/* PORTALLED TO <body>, and it has to be.
+          This sheet is rendered from a button that lives inside
+          .shell-topbar, so it used to be a DOM descendant of that bar. A
+          position:fixed element resolves inset:0 against the VIEWPORT only
+          while no ancestor establishes a containing block - and a
+          backdrop-filter does establish one, exactly like a transform. The
+          moment the mobile topbar became Liquid Glass, this backdrop
+          started resolving against the bar's own 366x66 box: it rendered
+          64px tall at y=11, and the sheet inside it (bottom-aligned, 241px
+          tall) hung off the TOP of the screen at y=-166. Tapping the scope
+          button, or "Add instrument" inside it, showed a form sliced off
+          by the top edge with no sheet around it.
+          A portal fixes the cause rather than the symptom: a modal has no
+          business being a descendant of a bar, and out here it cannot be
+          caught by this or by any future ancestor filter or transform.
+          The other two sheets in the app (MobileFilterSheet, the tab bar's
+          Log picker) already render outside any filtered ancestor and
+          measure correctly, which is why only this one broke.
+          mounted gates the portal because document does not exist during
+          SSR. */}
+      {open && mounted ? createPortal((
         <div className="m-sheet-backdrop" onClick={close}>
           <div
             className="m-sheet"
@@ -178,7 +211,7 @@ export default function MobileScopeButton({ instruments = [], currentSymbol = nu
             </div>
           </div>
         </div>
-      ) : null}
+      ), document.body) : null}
     </>
   )
 }

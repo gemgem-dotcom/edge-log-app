@@ -37,22 +37,22 @@
    2731  Public policy pages (Privacy, Terms)
    2750  Legal links (auth pages + account settings)
    2789  Economic calendar card (Overview pages)
-   3044  Calendar news badge (Monthly P&L day cells)
-   3072  Streak badge (Overview + strategy detail pages)
-   3095  Market status pill (Overview + strategy detail pages)
-   3121  Today's brief & session stats
-   3156  Market context cards (all-instruments Overview)
-   3189  Edge Insights panel
-   3204  Unverified logged time badge
-   3221  Welcome transition (first-run)
-   3250  Zero-instrument empty state
-   3260  Tutorial overlay (first-run guided tour)
-   3352  Tutorial step 3 (guided form scroll)
-   3399  Press states, value changes, content fade-in
-   3496  Trade log column width stability
-   3521  Strategy notes panel
-   3536  Today's brief economic outlook (terminal)
-   3626  Mobile app shell (below 768px only)
+   3061  Calendar news badge (Monthly P&L day cells)
+   3089  Streak badge (Overview + strategy detail pages)
+   3112  Market status pill (Overview + strategy detail pages)
+   3138  Today's brief & session stats
+   3173  Market context cards (all-instruments Overview)
+   3215  Edge Insights panel
+   3230  Unverified logged time badge
+   3247  Welcome transition (first-run)
+   3276  Zero-instrument empty state
+   3286  Tutorial overlay (first-run guided tour)
+   3378  Tutorial step 3 (guided form scroll)
+   3425  Press states, value changes, content fade-in
+   3522  Trade log column width stability
+   3547  Strategy notes panel
+   3562  Today's brief economic outlook
+   3657  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -2944,6 +2944,9 @@ div.dt-picker-spin-value:focus-visible{outline:none;}
    sitting right on top of that text; the thin custom scrollbar below
    also narrows the track itself so there's less of it to crowd in. */
 .econ-calendar-list{
+  /* Horizontal scroll at every width now, not only on a phone - see
+     .econ-calendar-event below for the measurements that moved it here. */
+  overflow-x:auto;
   /* 180px of rows plus the sticky header the list now carries, so the
      same five rows are visible as before the header moved inside. */
   display:flex; flex-direction:column; max-height:207px; overflow-y:auto; overflow-x:hidden;
@@ -2981,7 +2984,21 @@ div.dt-picker-spin-value:focus-visible{outline:none;}
    exactly what was forcing the row (and the whole list) wider than the
    panel once the vertical scrollbar took a few px off the available
    width. */
-.econ-calendar-event{flex:1; min-width:0; font-weight:600;}
+/* flex-grow 1 so it takes any spare width, flex-shrink 0 so it NEVER
+   gives width back, and a 190px basis as the floor.
+   It used to be flex:1;min-width:0 - the only flexible item in a row whose
+   other columns are all fixed (46+44+32 and three figures at 72), so it
+   absorbed every shortfall alone. Measured on the Overview at 1512/1400/
+   1280/1152: the title got 268px, then 193, then 113, then 28. The mobile
+   block already fixed this below 768px; the same bug was simply running
+   its course more slowly on a desktop, and a narrower calendar column
+   finished it off. With a real floor the row overflows instead and
+   .econ-calendar-list's overflow-x does the scrolling. */
+.econ-calendar-event{flex:1 0 190px; font-weight:600;}
+/* ...and the row has to be allowed to exceed the list. As flex items of a
+   column-direction list they stretch to its width by default, which would
+   just re-crush the columns inside them. */
+.econ-calendar-row, .econ-calendar-head{min-width:max-content;}
 /* text-overflow rather than letting a long FF title ("ECB President
    Lagarde Speaks at the Annual Meeting of...") push the figures column
    off the right edge - min-width:0 above is what lets this actually take
@@ -3159,6 +3176,15 @@ div.dt-picker-spin-value:focus-visible{outline:none;}
    far more content. Same grid otherwise (15px gap, stretched to equal
    height), so it still reads as the same card family as the Equity
    curve/P&L-by-instrument row further down. */
+/* Keeps .dashboard-split's inherited align-items:stretch, deliberately.
+   The ~600px of empty panel that used to sit under this calendar's 207px
+   list was not the stretch's fault - it was the brief card being 925px
+   tall, because the outlook terminal was laying three releases out in a
+   384px column. With the terminal moved to its own full-width panel the
+   CALENDAR is the taller of the two, so it sets the row height and has no
+   slack to leave; the brief stretches to meet it and the pair line up top
+   and bottom like every other card row on the page. Measured both ways at
+   1512 and 1280: identical 1px of trailing space, so stretch is free. */
 .brief-calendar-row{grid-template-columns:1fr 2fr;}
 @media (max-width:1100px){
   .brief-calendar-row{grid-template-columns:1fr;}
@@ -3533,51 +3559,55 @@ button:active{
    the moment this is actually being typed into. */
 .strategy-notes-textarea{min-height:110px; margin:0; background:transparent; border:none;}
 .strategy-notes-textarea:focus{border-color:transparent;}
-/* ---------- Today's brief economic outlook (terminal) ---------- */
-/* A macOS window inside the Overview's "Today's brief" card. Only rendered
-   on a day that actually has a high or medium impact USD release
+/* ---------- Today's brief economic outlook ---------- */
+/* The US outlook, as a titled panel under the Overview's brief row. Only
+   rendered on a day that actually has a high or medium impact USD release
    (lib/econBriefing.js returns null otherwise).
 
-   THE WINDOW IS THE ONLY TERMINAL REFERENCE. An earlier pass styled the
-   inside like a shell session too - fake `$ outlook --release` prompts,
-   every line monospace, a hardcoded near-black ground that stayed black in
-   the light theme. It read as a code sample pasted into the app rather
-   than part of it. Everything below the title bar is now EdgeLog's own
-   vocabulary - .brief-card-text's 13px/1.55 body, .stat-label's uppercase
-   micro-labels, JetBrains Mono on figures ONLY, and theme tokens
-   throughout, so this follows the light theme like every other surface. */
+   NO TERMINAL COSTUME. Two passes got this wrong in opposite directions:
+   the first styled the inside like a shell session (fake `$ outlook`
+   prompts, every line monospace, a hardcoded near-black that stayed black
+   in the light theme); the second kept macOS traffic lights on the bar,
+   which are three dots that cannot close, minimise or zoom anything.
+   What survives is the part doing work - a titled strip over a recessed
+   well - in EdgeLog's own vocabulary: .brief-card-text's 13px/1.55 body,
+   .stat-label's uppercase micro-labels, JetBrains Mono on figures ONLY,
+   and theme tokens throughout.
+
+   FULL WIDTH, not a third of the brief row. Three releases of prose and
+   figures in a ~384px column ran 925px tall and stretched the calendar
+   card beside it to match, leaving ~600px of empty panel under a 207px
+   list. Out here the releases lay out side by side instead. */
 .econ-term{
-  margin-top:14px; border-radius:14px; overflow:hidden;
+  margin:0 0 15px; border-radius:14px; overflow:hidden;
   background:var(--panel-2); border:1px solid var(--line);
 }
 /* Bar lighter than the body in both themes - var(--panel) is #141d30 over
-   #0b1428 in dark and #ffffff over #eef0f3 in light, so the two-tone that
-   makes this read as a window holds either way round. */
+   #0b1428 in dark and #ffffff over #eef0f3 in light, so the two-tone holds
+   either way round. */
 .econ-term-bar{
-  position:relative; display:flex; align-items:center;
-  padding:9px 12px; background:var(--panel);
+  display:flex; align-items:center;
+  padding:10px 16px; background:var(--panel);
   border-bottom:1px solid var(--line);
 }
-.econ-term-lights{display:flex; align-items:center; gap:6px; flex-shrink:0;}
-/* The macOS traffic lights, at their real colours - the one place literals
-   are right here, since these are a quotation rather than a theme choice.
-   Inert and aria-hidden in the markup: costume, not controls. */
-.econ-term-light{width:11px; height:11px; border-radius:50%; display:block;}
-.econ-term-light-close{background:#ff5f57;}
-.econ-term-light-min{background:#febc2e;}
-.econ-term-light-zoom{background:#28c840;}
-/* Centred on the BAR rather than in the flex line, which is where macOS
-   puts it - absolute, so the lights on the left do not push it off centre.
-   Padded clear of them so a long title ellipsizes rather than collides. */
 .econ-term-title{
-  position:absolute; left:0; right:0; text-align:center;
-  font-size:11.5px; font-weight:600; color:var(--muted);
-  pointer-events:none; padding:0 66px;
+  font-size:10.5px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.08em;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.econ-term-body{padding:4px 16px 16px;}
+/* auto-fit rather than a fixed column count: one release on a quiet day
+   gets the full width, three share it, and the 330px floor is what stops a
+   narrow window from slicing the prose into a column too thin to read. */
+.econ-term-body{
+  padding:4px 16px 16px;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(330px, 1fr));
+  gap:0 28px;
+}
 .econ-term-release{padding:14px 0; border-bottom:1px solid var(--line);}
-.econ-term-release:last-of-type{border-bottom:none; padding-bottom:4px;}
+/* The bottom rule is the separator BETWEEN stacked releases, so it is
+   wrong on whichever release happens to end a grid row. Dropping it on the
+   last child only is not enough once they sit side by side. */
+.econ-term-body > .econ-term-release:last-child{border-bottom:none;}
 .econ-term-head{display:flex; align-items:center; gap:9px; margin-bottom:8px;}
 /* Impact as the same small dot the rest of the app uses for a status, not
    a coloured tag - only high and medium ever reach this card. */
@@ -3594,9 +3624,7 @@ button:active{
 }
 .econ-term-copy{font-size:13px; line-height:1.55; color:var(--muted); margin:0;}
 /* The figures, as the same uppercase-label-over-mono-value shape the
-   Session stats card beside this one uses. Wraps rather than scrolls -
-   three short figures fit a phone, and a horizontal scroller for them
-   would be the heavier gesture. */
+   Session stats card uses. */
 .econ-term-figs{display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:12px;}
 .econ-term-fig{display:flex; flex-direction:column; gap:3px;}
 .econ-term-fig-label{
@@ -3611,14 +3639,17 @@ button:active{
    only figure that takes the accent. */
 .econ-term-fig-value.is-actual{color:var(--accent);}
 .econ-term-note{font-size:12.5px; line-height:1.55; color:var(--muted); margin:12px 0 0;}
-/* Inline label rather than a column: these two run to several lines each,
-   and a fixed label column would leave a tall empty gutter beside them. */
+/* Inline label rather than a column: these run to several lines each, and
+   a fixed label column would leave a tall empty gutter beside them. */
 .econ-term-note-label{
   display:inline-block; margin-right:7px;
   font-size:9.5px; text-transform:uppercase; letter-spacing:.08em;
   color:var(--accent); font-weight:700;
 }
+/* Spans every column, so the attribution sits once under the whole grid
+   rather than once per release. */
 .econ-term-source{
+  grid-column:1 / -1;
   font-size:11px; color:var(--muted-2); margin:14px 0 0;
   padding-top:12px; border-top:1px solid var(--line);
 }
@@ -4547,7 +4578,6 @@ button:active{
      the edge looked like a table that ended there. Both get a thumb that
      is always visible.
   */
-  .econ-calendar-list { overflow-x: auto; }
 
   /* THE EVENT NAME, which was rendering at zero width in portrait.
      The row is a flex line of fixed columns - day 46px, time 44px,
@@ -4561,11 +4591,9 @@ button:active{
      past the panel, and the horizontal scroll enabled above is what
      reaches the figures - which is the same gesture already needed to
      reach Forecast and Previous. */
-  .econ-calendar-event { flex: 0 0 190px; }
   /* ...and the row has to be allowed to exceed the panel. As flex items
      of a column-direction list they stretch to its width by default,
      which would just re-crush the columns inside them. */
-  .econ-calendar-row, .econ-calendar-head { min-width: max-content; }
 
   .econ-calendar-list,
   .table-scroll,

@@ -480,7 +480,6 @@ export default function OverviewDashboard({ instruments, strategies }) {
               <div className="panel">
                 <div className="stat-label dashboard-card-title">Today&apos;s brief</div>
                 <p className="brief-card-text">{briefText}</p>
-                <EconTerminal brief={econBrief} />
               </div>
             </div>
             <div>
@@ -490,6 +489,14 @@ export default function OverviewDashboard({ instruments, strategies }) {
               </div>
             </div>
           </div>
+
+          {/* Full width, below the row rather than inside the brief card's
+              third of it. In that column the outlook had ~384px to lay out
+              three releases of prose and figures, which ran it 925px tall
+              and stretched the calendar card beside it to match - leaving
+              ~600px of empty panel under a 207px list. Out here it gets the
+              whole row, and lays its releases out side by side. */}
+          <EconTerminal brief={econBrief} />
 
           <div className="market-context-row">
             <div className="panel">

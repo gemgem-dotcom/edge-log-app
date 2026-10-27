@@ -593,11 +593,6 @@ return (
       {nextEvent ? `, and ${nextEvent}` : '.'}
       {briefClause ? ` ${briefClause}` : ''}
     </p>
-
-    {/* Nothing at all on a day with no high or medium USD release. Not a
-        "no events today" line: that is a sentence nobody needs to read
-        every day, and the card is better short. */}
-    <EconTerminal brief={econBrief} />
   </div>
   <div className="panel">
     <div className="stat-label dashboard-card-title">Session stats</div>
@@ -626,6 +621,12 @@ return (
     </div>
   </div>
 </div>
+
+{/* Full width, below the glance row rather than inside its first card -
+    in that half-column the outlook ran far taller than the Session stats
+    beside it and stretched the row to match. Renders nothing at all on a
+    day with no high or medium USD release. */}
+<EconTerminal brief={econBrief} />
 
 <div className="market-context-row">
   <div className="panel">

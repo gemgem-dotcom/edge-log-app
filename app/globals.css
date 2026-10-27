@@ -4147,7 +4147,7 @@ button:active{
      margins, padding and gap shrink, because 24px of side margin and
      22px of inner padding on a 390px screen leaves no room for the scope
      button's own label. */
-  .shell.is-mobile .shell-topbar, .m-account-topbar {
+  .shell-topbar.m-chrome-topbar {
     margin: 10px 12px 14px;
     padding: 10px 16px;
     gap: 8px;
@@ -4161,13 +4161,12 @@ button:active{
      :not(.is-tutorial) because the pill row DOES come back during
      onboarding (it carries a spotlight target), and the old reasoning
      applies exactly as written whenever it does. */
-  .shell.is-mobile:not(.is-tutorial) .shell-topbar,
-  .m-account-topbar {
+  .m-chrome-topbar:not(.is-tutorial) {
     border-radius: 100px;
     flex-wrap: nowrap;
   }
-  .shell.is-mobile .shell-logo { font-size: 15px; }
-  .shell.is-mobile .shell-topbar-right { gap: 2px; margin-left: auto; }
+  .m-chrome-topbar .shell-logo { font-size: 15px; }
+  .m-chrome-topbar .shell-topbar-right { gap: 2px; margin-left: auto; }
 
   /* :not(.is-tutorial), for the same reason the sidebar and the log
      button below carry it. The first-run tutorial's FIRST step spotlights
@@ -4177,7 +4176,11 @@ button:active{
      onboarding points at nothing. This exact mistake has already shipped
      twice in this work - once for the sidebar, once for the log button -
      which is why it is spelled out a third time rather than assumed. */
-  .shell.is-mobile:not(.is-tutorial) .instrument-nav { display: none; }
+  /* .m-chrome-topbar, not .shell.is-mobile: the one mobile topbar lives
+     outside .shell now (see components/mobile/MobileChrome.js), and this
+     rule silently stopped matching the nav it is here to hide when it
+     moved. The tutorial flag travels on the bar for the same reason. */
+  .m-chrome-topbar:not(.is-tutorial) .instrument-nav { display: none; }
 
   /* The desktop's "Log new trade" buttons are redundant once the tab
      bar carries that action in its centre, raised and always reachable.
@@ -4603,7 +4606,6 @@ button:active{
      content sat behind the bar and it never read as locked to the top:
      .shell-topbar is position:fixed, so without the spacer the page
      simply starts underneath it. */
-  .m-account-topbar .shell-topbar-right { margin-left: auto; }
   .account-wrap { padding: 4px 14px 24px; }
 
   .m-account-index { padding: 0 14px; }
@@ -4790,8 +4792,7 @@ button:active{
      is exactly what that query exists for, and iOS itself has a Reduce
      Transparency setting this mirrors. */
   .m-tabbar,
-  .shell.is-mobile .shell-topbar,
-  .shell-topbar.m-account-topbar,
+  .shell-topbar.m-chrome-topbar,
   .m-sheet {
     /* THE SURFACE ITSELF CARRIES NO TINT AND NO FILTER. Both live on the
        two pseudo-elements below, and the `none` is load-bearing: the
@@ -4799,9 +4800,9 @@ button:active{
        rules set a blur of their own at top level, and an element that has
        a backdrop-filter becomes a BACKDROP ROOT - its own pseudo-elements
        then sample an empty backdrop and blur nothing at all.
-       .shell-topbar.m-account-topbar rather than .m-account-topbar alone
-       for the same reason: .account-topbar.topbar-pinned is two classes
-       and would otherwise win. */
+       .shell-topbar.m-chrome-topbar rather than .m-chrome-topbar alone
+       for the same reason: .shell-topbar.topbar-pinned is two classes and
+       would otherwise win. */
     background: transparent;
     backdrop-filter: none;
     border-color: var(--glass-border);
@@ -4836,8 +4837,7 @@ button:active{
      to this at dsf 3; at 1x every variant looks perfect.
      The alpha has not moved: .26, unchanged, as asked. */
   .m-tabbar::before, .m-tabbar::after,
-  .shell.is-mobile .shell-topbar::before, .shell.is-mobile .shell-topbar::after,
-  .m-account-topbar::before, .m-account-topbar::after,
+  .m-chrome-topbar::before, .m-chrome-topbar::after,
   .m-sheet::before, .m-sheet::after {
     content: "";
     position: absolute;
@@ -4858,8 +4858,7 @@ button:active{
      colour lands once, on top, rather than being blurred by the pass
      above it. */
   .m-tabbar::after,
-  .shell.is-mobile .shell-topbar::after,
-  .m-account-topbar::after,
+  .m-chrome-topbar::after,
   .m-sheet::after {
     /* .26, and the alpha is not what was ever wrong here. Two earlier
        passes stalled at the same place for the same reason: the floor was
@@ -4895,15 +4894,13 @@ button:active{
      is exactly what it did on the first pass, leaving the one surface
      most associated with iOS as the only opaque bar on screen. */
   .m-tabbar,
-  .shell.is-mobile .shell-topbar,
-  .m-account-topbar {
+  .m-chrome-topbar {
     box-shadow:
       0 0 0 .5px rgba(0,0,0,.40),
       0 10px 30px rgba(0,0,0,.30);
   }
   .m-tabbar::after,
-  .shell.is-mobile .shell-topbar::after,
-  .m-account-topbar::after {
+  .m-chrome-topbar::after {
     box-shadow:
       inset 0 .5px 0 rgba(255,255,255,.30),
       inset 0 -.5px 0 rgba(255,255,255,.07);
@@ -4969,12 +4966,10 @@ button:active{
        still paint their tint over an opaque surface. The inset highlights
        they carry go back onto the element, which is the only thing left. */
     .m-tabbar::before, .m-tabbar::after,
-    .shell.is-mobile .shell-topbar::before, .shell.is-mobile .shell-topbar::after,
-    .m-account-topbar::before, .m-account-topbar::after,
+    .m-chrome-topbar::before, .m-chrome-topbar::after,
     .m-sheet::before, .m-sheet::after { display: none; }
     .m-tabbar,
-    .shell.is-mobile .shell-topbar,
-    .m-account-topbar {
+    .m-chrome-topbar {
       box-shadow:
         inset 0 .5px 0 rgba(255,255,255,.30),
         inset 0 -.5px 0 rgba(255,255,255,.07),
@@ -4986,12 +4981,11 @@ button:active{
         inset 0 .5px 0 rgba(255,255,255,.30),
         0 -10px 34px rgba(0,0,0,.34);
     }
-    /* .shell-topbar.m-account-topbar, not .m-account-topbar: it has to
-       out-specify the transparent background set above, which carries the
-       same two-class form for its own reason. */
+    /* .shell-topbar.m-chrome-topbar, not .m-chrome-topbar alone: it has
+       to out-specify the transparent background set above, which carries
+       the same two-class form for its own reason. */
     .m-tabbar,
-    .shell.is-mobile .shell-topbar,
-    .shell-topbar.m-account-topbar,
+    .shell-topbar.m-chrome-topbar,
     .m-sheet { background: var(--panel); }
     .m-filter-btn,
     .m-scope-btn { background: var(--panel-2); }
@@ -5078,6 +5072,11 @@ button:active{
   body.m-app .section-heading.m-section-toggle {
     min-height: 44px;
   }
+  /* The scope control sits INSIDE the topbar capsule, and an 8px-radius
+     rectangle nested in a 100px pill reads as two unrelated shapes. A
+     44px-tall control takes the full pill radius cleanly - the same
+     continuous curve the bar around it already has. */
+  .m-scope-btn { border-radius: 100px; padding-left: 14px; padding-right: 12px; }
   /* These three are deliberately NOT grown. A 14px "?", a 26px menu
      chevron and the wordmark are the right SIZE; what they lacked was a
      44pt target around that size. The pseudo-element gives them one
@@ -5139,8 +5138,7 @@ button:active{
      what floored the previous two attempts. */
   .m-tabbar-item { color: color-mix(in srgb, var(--text) 72%, var(--muted)); }
   /* The chrome on the topbars is over the same moving content. */
-  .shell.is-mobile .shell-topbar .m-scope-name,
-  .m-account-topbar .m-scope-name { color: color-mix(in srgb, var(--text) 65%, var(--muted)); }
+  .m-chrome-topbar .m-scope-name { color: color-mix(in srgb, var(--text) 65%, var(--muted)); }
 
 
   /* ----- The gap under a large title ----- */

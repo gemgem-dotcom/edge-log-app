@@ -72,26 +72,24 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
   // degrade to their instrument-less forms; see lib/mobileTabs.js.
   return (
     <div className={`shell${isMobile ? ' is-mobile' : ''}`}>
-      <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${anchorTopbar ? ' topbar-anchored' : ''}`}>
-        <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
-        <InstrumentNav instruments={instruments} />
-        <div className="shell-topbar-right">
-          {/* See the instrument layout's copy of this: mobile swaps the
-              clock, theme toggle and cog for the one scope control. */}
-          {isMobile ? (
-            <MobileScopeButton instruments={instruments} currentSymbol={null} />
-          ) : (
-            <>
+      {/* Desktop only - the mobile bar is mounted once in
+          app/app/layout.js. See components/mobile/MobileChrome.js. */}
+      {!isMobile ? (
+        <>
+          <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${anchorTopbar ? ' topbar-anchored' : ''}`}>
+            <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
+            <InstrumentNav instruments={instruments} />
+            <div className="shell-topbar-right">
               <HeaderClock />
               <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
                 {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
               </button>
               <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
-            </>
-          )}
-        </div>
-      </header>
-      <div className="topbar-spacer" style={spacerStyle} />
+            </div>
+          </header>
+          <div className="topbar-spacer" style={spacerStyle} />
+        </>
+      ) : null}
 
       <div className="shell-body">
         {!hideSidebar && (
@@ -130,16 +128,11 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
           </aside>
         )}
 
-        {/* No TabTransition here, deliberately - see its own header. This
-            shell is rendered from inside each page, so it unmounts on
-            every navigation, and a boundary that does not survive the
-            commit produces no transition at all. */}
         <main className="main-area">{children}</main>
       </div>
-      {/* symbol={null} because these screens have no single instrument
-          in view; every tab degrades to its instrument-less form rather
-          than building /app/null/... See lib/mobileTabs.js. */}
-      {isMobile ? <MobileTabBar symbol={null} instruments={instruments} /> : null}
+      {/* The tab bar used to be mounted here too - one of three copies.
+          It is in app/app/layout.js now, which is the only place that
+          survives a tab switch. See components/mobile/MobileChrome.js. */}
     </div>
   )
 }

@@ -266,33 +266,28 @@ export default function InstrumentLayout({ children, params }) {
           it made the "nothing new reaches the desktop" guarantee false as
           stated, and a guarantee with an exception is not one. */}
       <div className={`shell${isMobile ? ' is-mobile' : ''}${isMobile && tutorial.status === 'active' ? ' is-tutorial' : ''}`}>
-        <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${tutorial.status === 'active' ? ' topbar-anchored' : ''}`}>
-          <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
+        {/* Desktop only. The mobile bar - logo + scope control, nothing
+            else - is mounted once in app/app/layout.js instead, because
+            three copies of it is how the three drifted apart. See
+            components/mobile/MobileChrome.js. */}
+        {!isMobile ? (
+          <>
+            <header ref={topbarRef} className={`shell-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}${tutorial.status === 'active' ? ' topbar-anchored' : ''}`}>
+              <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
 
-          <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
+              <InstrumentNav instruments={instruments} currentSymbol={currentSymbol} />
 
-          <div className="shell-topbar-right">
-            {/* Mobile gets ONE control here instead of three. The clock
-                duplicates the phone's own status bar, the theme toggle
-                duplicates Account -> Preferences, and the cog duplicates
-                the Account tab - so all three are hidden by the mobile
-                stylesheet and the scope selector takes their place.
-                Desktop is untouched: it still renders all three, and the
-                scope button never mounts there at all. */}
-            {isMobile ? (
-              <MobileScopeButton instruments={instruments} currentSymbol={currentSymbol} />
-            ) : (
-              <>
+              <div className="shell-topbar-right">
                 <HeaderClock />
                 <button type="button" className="icon-btn theme-toggle-btn" onClick={handleThemeToggle} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
                   {theme === 'dark' ? <Moon size={19} /> : <Sun size={19} />}
                 </button>
                 <Link href="/app/account" className="icon-btn" title="Account Settings"><Settings size={19} /></Link>
-              </>
-            )}
-          </div>
-        </header>
-        <div className="topbar-spacer" style={spacerStyle} />
+              </div>
+            </header>
+            <div className="topbar-spacer" style={spacerStyle} />
+          </>
+        ) : null}
 
         <div className="shell-body">
           <aside className="sidebar">
@@ -350,16 +345,14 @@ export default function InstrumentLayout({ children, params }) {
             </Link>
           </aside>
 
-          {/* Inside .main-area, so the topbar and tab bar stay put while
-              the content slides - see TabTransition's own header. */}
-          <main className="main-area"><TabTransition>{children}</TabTransition></main>
+          <main className="main-area">{children}</main>
         </div>
       </div>
-      {/* Mounted only on mobile, so there is no desktop DOM for it to be
-          hidden in. The sidebar it replaces is hidden by the mobile
-          stylesheet rather than unmounted, because it is also the
-          tutorial's step-1 target. */}
-      {isMobile ? <MobileTabBar symbol={currentSymbol} /> : null}
+      {/* The tab bar used to be mounted here, and the slide wrapper
+          inside .main-area above. Both moved to app/app/layout.js: the
+          bar so that one instance serves every screen, the wrapper
+          because it has to persist across a navigation and this layout
+          does not survive a tap on Account. See MobileChrome. */}
       {/* Step 1's target (the sidebar's own "+ Add new") is on every
           page under this layout, so it can render regardless of route.
           Step 2's target only exists on the dashboard page itself - once

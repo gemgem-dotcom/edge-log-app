@@ -30,35 +30,17 @@ export default function AccountSkeleton() {
 
   return (
     <div>
-      {/* The real topbar, placeholdered. The page used to render no
-          topbar at all while loading, so the body started at y=0 and then
-          dropped by the spacer's height the moment data arrived - the
-          same content jump the mobile topbar was added to this page to
-          fix in the first place.
-          Not given the ref/state classes the real one carries: there is
-          nothing to scroll yet, so it only ever needs its docked look. */}
-      <header className="shell-topbar m-account-topbar topbar-anchored" aria-hidden="true">
-        <span className="shell-logo">Edge<span>Log</span></span>
-        <div className="shell-topbar-right">
-          {/* 44px, matching the scope control it stands in for. That is the
-              iOS minimum tap target rather than a measured sum, so unlike
-              the spacer this replaced it does not drift: when the control
-              was 32px here and 44px on the loaded page, the bar came out
-              12px short and stepped the screen. */}
-          <span className="skel skel-pill" style={{ width: '62px', height: '44px' }} />
-        </div>
-      </header>
-      {/* No spacer, and no hardcoded height. topbar-anchored drops the
-          fixed positioning (the class the first-run tutorial already uses
-          for exactly this), so the bar sits in flow and occupies its own
-          real height plus margins - which is precisely what the spacer
-          reserves on the loaded page.
-          It was a literal 76px before and that number was wrong twice: the
-          bar is 52px until any control inside it grows, and raising the
-          scope button to the 44pt tap-target minimum took it to 66px,
-          stepping the whole screen 14px. A measurement that can go stale
-          beats nothing, but a layout that cannot be wrong beats both. */}
-
+      {/* No topbar placeholder here any more, and no spacer either.
+          This used to render a whole stand-in bar, because the page had
+          none while loading and the body jumped down by the spacer's
+          height the moment data arrived. The real bar is mounted in
+          app/app/layout.js now and is already on screen before this
+          renders, so there is nothing left to stand in for - and with it
+          went the one number in this file that kept going stale (the
+          spacer height, wrong twice).
+          It also took with it a real inconsistency: the stand-in logo had
+          no icon, so arriving at Account showed a bare "EdgeLog" that
+          grew a mark the moment the page loaded. */}
       <div className="account-wrap">
         <div className="skel skel-title" style={{ marginTop: '4px' }} />
         <div className="skel skel-subtitle" />
@@ -87,13 +69,10 @@ export default function AccountSkeleton() {
         <span className="skel skel-pill" style={{ display: 'block', width: '100%', height: '40px', marginTop: '14px' }} />
         <span className="skel skel-cell" style={{ display: 'block', width: '180px', height: '10px', margin: '14px auto 0' }} />
       </div>
-      {/* The real one, not a placeholder. Account sits outside the
-          instrument layout that renders the tab bar everywhere else, so
-          the page renders its own - and while loading there was none,
-          meaning it popped in at the end and there was no way off this
-          screen until the fetch resolved. symbol={null} and the default
-          empty instruments are exactly what the loaded page passes it. */}
-      <MobileTabBar symbol={null} />
+      {/* The tab bar came from here too, for the same reason: this screen
+          sat outside the layout that rendered it everywhere else, so
+          while loading there was none and no way off the screen until the
+          fetch resolved. It is mounted above this now and never unmounts. */}
     </div>
   )
 }

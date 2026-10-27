@@ -155,42 +155,24 @@ function AccountPageInner() {
 
   return (
     <div className="content-fade-in">
-      {/* Desktop keeps its bespoke topbar untouched. Mobile swaps it for
-          the standard chrome: "Back to dashboard" is the Overview tab,
-          and "Log out" moves into the page body. */}
-      {isMobile ? (
-        // The same one-row chrome every other mobile screen has: logo
-        // left, scope right. Without it this page was the only one that
-        // opened with no topbar, so the content jumped up the screen on
-        // every tab switch to Account.
-        //
-        // Scope is not meaningless here even though Account is not
-        // instrument-scoped: picking one means "go to this instrument",
-        // and scopeHrefFor sends you to its Overview rather than leaving
-        // you on a settings page with nothing changed.
-        // ref + the same two state classes every other shell topbar
-        // carries. Without them this was a plain fixed bar: it never
-        // docked, never frosted, and - because .shell-topbar is
-        // position:fixed - the page content started underneath it.
-        <header
-          ref={topbarRef}
-          className={`shell-topbar m-account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}
-        >
-          <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
-          <div className="shell-topbar-right">
-            <MobileScopeButton instruments={instruments} currentSymbol={null} />
+      {/* Desktop keeps its bespoke topbar untouched. On mobile this page
+          used to render its own copy of the standard chrome, which is
+          where the logo drifted to 16px - the rule that shrinks it is
+          scoped to `.shell`, and this bar is the one that sits outside
+          `.shell`. The shared bar in app/app/layout.js serves this screen
+          now, so there is nothing here to disagree with it. */}
+      {!isMobile ? (
+        <>
+          <div ref={topbarRef} className={`account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
+            <div className="account-topbar-left">
+              <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
+              <Link href="/app" className="back-btn">Back to dashboard</Link>
+            </div>
+            <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
           </div>
-        </header>
-      ) : (
-        <div ref={topbarRef} className={`account-topbar${topbarMode === 'hidden' ? ' topbar-hidden' : ''}${topbarMode === 'pinned' ? ' topbar-pinned' : ''}`}>
-          <div className="account-topbar-left">
-            <Link href="/app" className="shell-logo"><TrendingUp size={18} />Edge<span>Log</span></Link>
-            <Link href="/app" className="back-btn">Back to dashboard</Link>
-          </div>
-          <button className="back-btn" onClick={handleLogout}><LogOut size={16} /> Log out</button>
-        </div>
-      )}
-      <div className="topbar-spacer" style={spacerStyle} />
+          <div className="topbar-spacer" style={spacerStyle} />
+        </>
+      ) : null}
 
       <div className="account-wrap">
         {section ? (
@@ -244,11 +226,9 @@ function AccountPageInner() {
           </>
         )}
       </div>
-      {/* Account settings is a tab bar destination, so it has to carry
-          the tab bar itself - it sits outside the instrument layout that
-          renders it everywhere else. Without this, tapping Account was a
-          one-way trip. */}
-      {isMobile ? <MobileTabBar symbol={null} instruments={instruments} /> : null}
+      {/* The tab bar used to be mounted here, because this screen sits
+          outside the instrument layout that rendered it everywhere else.
+          It comes from app/app/layout.js now, which covers both. */}
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { backfillOwnTradeSessions } from '@/lib/tradeSessions'
 import PageLoading from '@/components/PageLoading'
 import HolidayNotice from '@/components/HolidayNotice'
 import TimezoneGate from '@/components/TimezoneGate'
+import MobileChrome from '@/components/mobile/MobileChrome'
 
 function hasValidTimezone(user) {
   const tz = user.user_metadata?.timezone
@@ -80,7 +81,11 @@ export default function AppLayout({ children }) {
   return (
     <>
       {pathname !== '/app/account' && <HolidayNotice />}
-      {children}
+      {/* The one mobile topbar and tab bar for every screen under /app,
+          and the slide between them. This layout is the only thing that
+          persists across a tab switch, which is what both of those need -
+          see MobileChrome's own header. A no-op on desktop. */}
+      <MobileChrome>{children}</MobileChrome>
     </>
   )
 }

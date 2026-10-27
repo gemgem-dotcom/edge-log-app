@@ -130,6 +130,10 @@ export default function AppShell({ instruments, strategies = [], active, hideSid
           </aside>
         )}
 
+        {/* No TabTransition here, deliberately - see its own header. This
+            shell is rendered from inside each page, so it unmounts on
+            every navigation, and a boundary that does not survive the
+            commit produces no transition at all. */}
         <main className="main-area">{children}</main>
       </div>
       {/* symbol={null} because these screens have no single instrument

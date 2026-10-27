@@ -20,6 +20,7 @@ import { activatable } from '@/lib/activatable'
 import { useIsMobile } from '@/lib/useIsMobile'
 import MobileTabBar from '@/components/mobile/MobileTabBar'
 import MobileScopeButton from '@/components/mobile/MobileScopeButton'
+import TabTransition from '@/components/mobile/TabTransition'
 
 export default function InstrumentLayout({ children, params }) {
   const router = useRouter()
@@ -349,7 +350,9 @@ export default function InstrumentLayout({ children, params }) {
             </Link>
           </aside>
 
-          <main className="main-area">{children}</main>
+          {/* Inside .main-area, so the topbar and tab bar stay put while
+              the content slides - see TabTransition's own header. */}
+          <main className="main-area"><TabTransition>{children}</TabTransition></main>
         </div>
       </div>
       {/* Mounted only on mobile, so there is no desktop DOM for it to be

@@ -44,6 +44,16 @@ function displayNameFor(symbol) {
 export default function MobileTabBar({ symbol, instruments = [] }) {
   const pathname = usePathname()
   const active = activeTabFor(pathname)
+  // Which way the content should slide, read off the bar's own left-to-
+  // right order: a tab to the right of the current one is "forward", one
+  // to the left is "back". That is the only honest direction available -
+  // these five are siblings, not a hierarchy, so there is no deeper or
+  // shallower to encode, and matching the physical order of the buttons
+  // is what makes the motion read as moving ALONG the bar.
+  // -1 when the current route belongs to no tab (a strategy detail page,
+  // a trade edit form); every tab is then to its right, which gives a
+  // consistent forward slide rather than an arbitrary one.
+  const activeIndex = MOBILE_TABS.findIndex((t) => t.key === active)
   // Only ever open on the instrument-less screens - see the Log tab below.
   const [pickerOpen, setPickerOpen] = useState(false)
 
@@ -59,9 +69,16 @@ export default function MobileTabBar({ symbol, instruments = [] }) {
       {/* nav + aria-label so a screen reader can jump to it, and the same
           aria-current the desktop tab strip uses. */}
       <nav className="m-tabbar" aria-label="Main">
-        {MOBILE_TABS.map(({ key, label, path }) => {
+        {MOBILE_TABS.map(({ key, label, path }, index) => {
           const Icon = TAB_ICONS[key]
           const isActive = active === key
+          // Undefined on the tab you are already on - a navigation that
+          // goes nowhere should not animate. Undefined rather than [] so
+          // Link leaves the navigation untyped entirely, which is what
+          // TabTransition's `default: none` is keyed on.
+          const transitionTypes = isActive
+            ? undefined
+            : [index > activeIndex ? 'tab-forward' : 'tab-back']
           // Uniform: no tab is visually privileged. The Log tab used to
           // be a raised accent circle, which is the most template-looking
           // element in mobile design and made one of five equals shout.
@@ -98,7 +115,13 @@ export default function MobileTabBar({ symbol, instruments = [] }) {
             )
           }
           return (
-            <Link key={key} href={path(symbol)} className={className} aria-current={isActive ? 'page' : undefined}>
+            <Link
+              key={key}
+              href={path(symbol)}
+              className={className}
+              aria-current={isActive ? 'page' : undefined}
+              transitionTypes={transitionTypes}
+            >
               {inner}
             </Link>
           )

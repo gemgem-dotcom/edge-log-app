@@ -17,7 +17,8 @@ import CollapsibleSection from '@/components/mobile/CollapsibleSection'
 import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
-import { buildTodaysBrief } from '@/lib/econBriefing'
+import { buildTodaysBrief, nextEventSentence } from '@/lib/econBriefing'
+import EconTerminal from '@/components/EconTerminal'
 import { useUpcomingEconEvents } from '@/lib/useUpcomingEconEvents'
 import { daysToRollover } from '@/lib/contractRollover'
 import TradeLogTable from '@/components/TradeLogTable'
@@ -297,6 +298,8 @@ export default function DashboardPage({ params }) {
     // own 24-hour window. Today's brief needs a LOCAL DAY out of the same
     // fetch rather than a second query, so it takes them unfiltered.
     events: econEvents,
+    // Past prints of those same releases - the terminal's record line.
+    history: econHistory,
     now: econNow,
     loading: econLoading,
     error: econError,
@@ -486,7 +489,11 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime, symbol })
   // Null on a day with no high or medium USD release, which is the
   // signal for the card to say nothing about the calendar at all.
-  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow })
+  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow, history: econHistory })
+  // The clause the sentence below ends on. Null when nothing is coming, so
+  // the sentence simply stops rather than naming a release that is not
+  // there - which is the whole failure the hardcoded line was.
+  const nextEvent = nextEventSentence(econEvents, econNow)
   const now = new Date()
   const rolloverDays = daysToRollover(catalogEntryFor(symbol)?.data_symbol || symbol, now)
   const strategyName = (id) => strategies.find((s) => s.id === id)?.name || '—'
@@ -580,51 +587,17 @@ return (
         nothing to say - running them into one paragraph meant a quiet
         calendar day read as a truncated sentence. */}
     <p className="brief-card-text">
-      {streak ? `You're on a streak trading ${symbol}.` : `No active streak on ${symbol}.`}
+      {streak ? `You're on a streak trading ${symbol}` : `No active streak on ${symbol}`}
+      {/* Not case-folded: a release name is a proper noun, and lowering
+          the first letter turned "CPI m/m" into "cPI m/m". */}
+      {nextEvent ? `, and ${nextEvent}` : '.'}
       {briefClause ? ` ${briefClause}` : ''}
     </p>
 
     {/* Nothing at all on a day with no high or medium USD release. Not a
         "no events today" line: that is a sentence nobody needs to read
         every day, and the card is better short. */}
-    {econBrief ? (
-      <div className="econ-brief">
-        <div className="econ-brief-head">
-          {econBrief.highCount > 0
-            ? `${econBrief.highCount} high-impact US release${econBrief.highCount === 1 ? '' : 's'} today`
-            : 'On the US calendar today'}
-        </div>
-        {econBrief.events.map(({ event, timestamp, meaning, framing }) => (
-          <div className="econ-brief-item" key={event.event_key}>
-            <div className="econ-brief-item-head">
-              <span className={`econ-brief-dot econ-brief-dot-${event.impact}`} aria-hidden="true" />
-              <span className="econ-brief-title">{event.title}</span>
-              <span className="econ-brief-time">
-                {event.event_time && new Date(timestamp).getHours() === 0 && new Date(timestamp).getMinutes() === 0
-                  ? 'All day'
-                  : new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-            <p className="econ-brief-text">
-              {`It is ${meaning.what}. It moves ${meaning.affects}.`}
-            </p>
-            {/* The figures and the two-sided read. Absent for a release
-                with no forecast, or one whose direction does not map onto
-                policy - see framingFor. */}
-            {framing ? <p className="econ-brief-text econ-brief-framing">{framing}</p> : null}
-            {/* Once it has printed, the actual is the only number that
-                matters, so it goes last and in its own line rather than
-                replacing the forecast above. */}
-            {event.actual ? (
-              <p className="econ-brief-text econ-brief-actual">
-                Actual {event.actual}
-                {event.forecast ? ` against a ${event.forecast} forecast.` : '.'}
-              </p>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    ) : null}
+    <EconTerminal brief={econBrief} symbol={symbol} />
   </div>
   <div className="panel">
     <div className="stat-label dashboard-card-title">Session stats</div>

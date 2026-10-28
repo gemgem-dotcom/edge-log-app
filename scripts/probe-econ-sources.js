@@ -69,88 +69,74 @@ const CHALLENGE_MARKERS = [
 // is a page that loaded and is still useless, and that is exactly the
 // outcome worth knowing before writing a parser rather than after.
 const CANDIDATES = [
-  // ROUND TWO. The first run (Actions, 2026-10-28) answered four things:
-  //   - bls.gov returns 403 to every path, honest UA, no robots.txt at
-  //     all. CPI, CPI table 1, payrolls and the birth/death page alike,
-  //     a 1323-byte refusal each. That is the host refusing a robot, and
-  //     the file header says what happens next: a different source, not
-  //     a browser User-Agent. These four are kept here, reported, and
-  //     expected to keep failing - deleting them would lose the record
-  //     of what was tried.
-  //   - bea.gov and federalreserve.gov serve a plain request fine.
-  //   - dol.gov serves the claims figures, as a 548KB PDF.
-  //   - census.gov and ismworld.org both 404'd on URLs I had wrong, not
-  //     on anything they did. Corrected below, with alternates.
-  // New this round: download.bls.gov, which is a DIFFERENT HOST from the
-  // one that refused us and publishes flat time-series files rather than
-  // an API. If it serves them, CPI and payrolls detail is reachable
-  // after all; if it 403s too, that detail is not available this way and
-  // the Read line has to be built from what is.
+  // ROUND THREE. Round two closed the scraping route for BLS: every path
+  // on www.bls.gov AND on download.bls.gov - a different host serving
+  // flat files rather than pages - returned the same 403 to an honest
+  // User-Agent, with no robots.txt anywhere on either host. ISM turned
+  // out to redirect to ecommerce.ismworld.org/SSO/Login.aspx, i.e. it is
+  // behind a login, which settles it on principle rather than mechanics.
+  //
+  // So CPI and payrolls move to api.bls.gov, which is the agency's own
+  // sanctioned public route, free and keyless for v1. THAT IS A THIRD
+  // HOST and it has not been probed, so this asks rather than assumes -
+  // the whole reason this file exists is that the last two assumptions
+  // about a BLS host were both wrong.
+  //
+  // v2 GET is tried first and v1 GET second. v2 normally wants a
+  // registered key and a POST for anything substantial, but a plain GET
+  // on a single series is documented to work and is the smallest
+  // possible question; v1 GET is the fallback that needs nothing at all.
+  // Anchors here are JSON keys rather than prose, because that is what a
+  // usable answer looks like from this host.
   {
     release: 'CPI',
-    what: 'flat time-series files - different host from the one that refused us',
-    url: 'https://download.bls.gov/pub/time.series/cu/',
-    anchors: ['cu.data', 'cu.series', 'Index of'],
+    what: 'api v2, GET, all-items CPI - does this host answer at all',
+    url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0',
+    anchors: ['status', 'Results', 'seriesID'],
   },
   {
     release: 'CPI',
-    what: 'the current-month component file, if the directory above is served',
-    url: 'https://download.bls.gov/pub/time.series/cu/cu.series',
-    anchors: ['series_id', 'item_code'],
+    what: 'api v1, GET, same series - the keyless fallback',
+    url: 'https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0',
+    anchors: ['status', 'Results', 'seriesID'],
+  },
+  {
+    release: 'CPI',
+    what: 'shelter, seasonally adjusted - the component the Read line turns on',
+    url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CUSR0000SAH1',
+    anchors: ['status', 'Results', 'seriesID'],
+  },
+  {
+    release: 'CPI',
+    what: "owners' equivalent rent of residences, the imputed part of shelter",
+    url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CUSR0000SEHC',
+    anchors: ['status', 'Results', 'seriesID'],
   },
   {
     release: 'Non-Farm Payrolls',
-    what: 'CES flat files, including the birth/death adjustment series',
-    url: 'https://download.bls.gov/pub/time.series/ce/',
-    anchors: ['ce.data', 'ce.series', 'Index of'],
+    what: 'total nonfarm, seasonally adjusted - the headline itself',
+    url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CES0000000001',
+    anchors: ['status', 'Results', 'seriesID'],
   },
+  // The three that already answered, re-checked so one run shows the
+  // whole picture rather than needing the last two logs beside it.
   {
-    release: 'CPI',
-    what: 'the news release - expected 403, kept as the record of what was tried',
-    url: 'https://www.bls.gov/news.release/cpi.nr0.htm',
-    anchors: ['shelter', 'all items'],
-  },
-  {
-    release: 'Non-Farm Payrolls',
-    what: 'the news release - expected 403, same',
-    url: 'https://www.bls.gov/news.release/empsit.nr0.htm',
-    anchors: ['nonfarm payroll', 'revised'],
+    release: 'Core PCE',
+    what: 'confirmed 200 in rounds one and two',
+    url: 'https://www.bea.gov/data/personal-consumption-expenditures-price-index',
+    anchors: ['personal consumption', 'price index'],
   },
   {
     release: 'Retail Sales',
-    what: 'MARTS current release - corrected path',
+    what: 'confirmed 200 in round two',
     url: 'https://www.census.gov/retail/sales.html',
     anchors: ['retail', 'percent'],
   },
   {
-    release: 'Retail Sales',
-    what: 'the MARTS landing page, as an alternate',
-    url: 'https://www.census.gov/retail/index.html',
-    anchors: ['retail', 'advance'],
-  },
-  {
-    release: 'ISM Manufacturing PMI',
-    what: 'corrected path - the first URL redirected and then 404d',
-    url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/',
-    anchors: ['PMI', 'Report'],
-  },
-  {
-    release: 'Core PCE',
-    what: 'confirmed reachable in round one - re-checked for the table shape',
-    url: 'https://www.bea.gov/data/personal-consumption-expenditures-price-index',
-    anchors: ['personal consumption', 'price index', 'percent'],
-  },
-  {
-    release: 'Core PCE',
-    what: 'the actual release text, which is where the figures live',
-    url: 'https://www.bea.gov/news/current-releases',
-    anchors: ['personal income', 'release'],
-  },
-  {
     release: 'FOMC',
-    what: 'confirmed reachable - a real statement, not the calendar index',
-    url: 'https://www.federalreserve.gov/monetarypolicy/fomcpresconf20260128.htm',
-    anchors: ['FOMC', 'Committee'],
+    what: 'the calendar index, which answered 200 in round one - statements hang off it',
+    url: 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm',
+    anchors: ['FOMC', 'Statement', 'Minutes'],
   },
 ]
 

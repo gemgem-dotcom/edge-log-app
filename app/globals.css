@@ -53,7 +53,7 @@
    3705  Trade log column width stability
    3730  Strategy notes panel
    3745  Today's brief economic outlook
-   4041  Mobile app shell (below 768px only)
+   4046  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -4005,37 +4005,42 @@ button:active{
    cast, the accent wash doubles, and the specular pair flips from white
    highlights to a dark hairline, which is the same inversion --glass and
    --glass-border already make a few hundred lines up. */
-/* Light theme opens into a bright space rather than a dark one, so the
-   vignette is cool and faint rather than black - a near-white rim shadow
-   at the strength dark uses would read as grime around the edge. Same
-   construction, inverted ground, same job: the rim recedes. */
+/* Light theme opens into a BRIGHT space, and the first pass forgot the
+   second half of that. It inverted the construction correctly - fade
+   running the other way, dark hairline instead of a white one - and then
+   kept dark's instinct of "more of everything" for the parts that carry
+   colour: a near-black-strength vignette in blue, and blob alphas doubled
+   on the theory that a glow over white needs more of itself. Over a
+   near-white ground that does not read as depth, it reads as dirt. The
+   well came out visibly darker than the card around it, which is the one
+   thing light theme must not do.
+   So the rim is now a third of what it was and the blobs come back down
+   to roughly dark's own alphas. A bright opening recedes by being COOLER
+   than its frame, not darker than it - the hue does the work and the
+   luminance barely moves. */
 :root[data-theme="light"] .econ-term-body{
   background:
     linear-gradient(180deg,
-      rgba(252,253,255,.90) 0%,
-      rgba(240,246,253,.72) 46%,
-      rgba(234,241,250,.80) 100%),
+      rgba(255,255,255,.94) 0%,
+      rgba(249,252,255,.84) 46%,
+      rgba(246,250,255,.88) 100%),
     radial-gradient(120% 90% at 88% 0%,
-      rgba(59,167,255,.13) 0%,
+      rgba(59,167,255,.10) 0%,
       rgba(59,167,255,0) 62%);
   box-shadow:
     inset 0 .5px 0 rgba(255,255,255,.95),
-    inset 0 -.5px 0 rgba(20,22,26,.05),
-    inset 0 0 64px 10px rgba(58,96,150,.13);
+    inset 0 -.5px 0 rgba(20,22,26,.04),
+    inset 0 0 58px 6px rgba(96,140,200,.045);
 }
-/* The blobs need more of themselves on a light ground: the same alpha
-   that reads as a glow over a dark well all but vanishes over near-white,
-   so these roughly double. Still blue, still soft - the ground changed,
-   not the material. */
 :root[data-theme="light"] .econ-term-body::before{
   background:
-    radial-gradient(38% 46% at 24% 38%, rgba(59,167,255,.30), rgba(59,167,255,0) 70%),
-    radial-gradient(30% 38% at 72% 22%, rgba(96,205,255,.22), rgba(96,205,255,0) 72%);
+    radial-gradient(38% 46% at 24% 38%, rgba(59,167,255,.17), rgba(59,167,255,0) 70%),
+    radial-gradient(30% 38% at 72% 22%, rgba(96,205,255,.13), rgba(96,205,255,0) 72%);
 }
 :root[data-theme="light"] .econ-term-body::after{
   background:
-    radial-gradient(34% 42% at 64% 76%, rgba(59,167,255,.24), rgba(59,167,255,0) 72%),
-    radial-gradient(26% 34% at 10% 80%, rgba(126,160,255,.20), rgba(126,160,255,0) 74%);
+    radial-gradient(34% 42% at 64% 76%, rgba(59,167,255,.14), rgba(59,167,255,0) 72%),
+    radial-gradient(26% 34% at 10% 80%, rgba(126,160,255,.12), rgba(126,160,255,0) 74%);
 }
 
 /* ---------- Mobile app shell (below 768px only) ---------- */

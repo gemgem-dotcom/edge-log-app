@@ -4097,14 +4097,28 @@ button:active{
        the body padding, the bar's own offset, and the two glass rules
        all read the same numbers. */
     --m-tabbar-gap: 20px;
-    --m-tabbar-inset: 20px;
+    /* THE SAME INSET AS THE TOPBAR, which is the one number that makes
+       the two bars read as one chrome. Measured on a 390px phone they
+       had drifted apart - topbar 12px a side, tab bar 20px - so the two
+       floating shapes bracketing the page lined up with nothing and with
+       each other least of all. 20px came from the reference bar, but the
+       reference has no topbar to agree with; this app does, and its own
+       chrome is the stronger constraint. */
+    --m-tabbar-inset: 12px;
+    /* The clearance between the lozenge and the shell, used on all four
+       sides. One token, because the whole complaint was that it was not
+       the same on all four: 2px at the bar's end against 6px top and
+       bottom, which is what reads as the gapping being awkward. The
+       shell's side padding is this plus the bleed, so an end tab's
+       lozenge stops exactly this far short of the shell. */
+    --m-tabbar-pill-gap: 6px;
     /* How far the lozenge spills past its column, each side. The
        reference bar's selected shape is 1.15 columns wide, not one -
        see .m-tabbar-pill. */
     --m-tabbar-pill-bleed: 7px;
     /* The shell's own side padding. Named, because the lozenge's track
        has to subtract it - see .m-tabbar-pill. */
-    --m-tabbar-pad: 8px;
+    --m-tabbar-pad: calc(var(--m-tabbar-pill-bleed) + var(--m-tabbar-pill-gap));
   }
 
   /* Room for the fixed tab bar, plus the home-indicator inset on
@@ -4158,10 +4172,11 @@ button:active{
     padding: 0 var(--m-tabbar-pad);
     background: var(--panel);
     border: 1px solid var(--line);
-    /* Half the bar's height, so the ends are true semicircles at any
-       height rather than a radius that has to be retuned if the bar
-       grows. */
-    border-radius: calc(var(--m-tabbar-h) / 2);
+    /* A stadium, written the way the topbar writes it (100px), so the
+       two bars share a shape as well as an inset. A computed half-height
+       is the same curve but drifts the moment either bar's height moves,
+       and these two have to stay the same kind of object. */
+    border-radius: 100px;
   }
 
   /* ----- The selected lozenge ----- */
@@ -4199,16 +4214,22 @@ button:active{
      measured 0.00px off on all five tabs. */
   .m-tabbar-pill {
     position: absolute;
-    top: 5px; bottom: 5px;
+    top: var(--m-tabbar-pill-gap);
+    bottom: var(--m-tabbar-pill-gap);
     left: var(--m-tabbar-pad);
     width: calc((100% - var(--m-tabbar-pad) * 2) / 5);
     transform: translateX(calc(var(--m-tab-index, 0) * 100%));
     background: none;
-    /* A radius of half the height is a STADIUM, and on a 50px-tall box
-       that reads as a circle someone stretched. A fixed, smaller radius
-       keeps it a rounded rectangle that contains the icon and the label
-       rather than bulging around them. */
-    border-radius: 18px;
+    /* NESTED INSIDE A STADIUM, so it has to be one too. An 18px radius
+       inside a stadium shell leaves a wedge at the end tabs - the two
+       curves disagree, and the gap between them opens and closes around
+       the corner, which is the other half of what read as awkward.
+       A stadium inside a stadium at a constant inset keeps the gap even
+       the whole way round. This was a rounded rectangle earlier for a
+       real reason - at 0.86 columns it was nearly as wide as it was tall
+       and a stadium read as a circle - but at 1.21 columns it is a
+       capsule, which is what the reference's own shape is. */
+    border-radius: 100px;
     /* Over the two glass passes (z-index -1), under the tabs (1). */
     z-index: 0;
     pointer-events: none;

@@ -4089,13 +4089,24 @@ button:active{
      three left the action bar overlapping the tab bar by exactly 1px -
      its own top border - which is the kind of thing that is invisible
      in a screenshot and obvious in a measurement. */
-  :root { --m-tabbar-h: 56px; }
+  :root {
+    --m-tabbar-h: 56px;
+    /* The bar floats clear of the screen edges now, so the space it
+       occupies is its own height PLUS the gap underneath it. Two tokens
+       rather than one arithmetic expression repeated in four places -
+       the body padding, the bar's own offset, and the two glass rules
+       all read the same numbers. */
+    --m-tabbar-gap: 10px;
+    --m-tabbar-inset: 12px;
+  }
 
   /* Room for the fixed tab bar, plus the home-indicator inset on
      notched phones. Without this the last card sits under the bar and
      looks like the page simply ends. */
   body.m-app {
-    padding-bottom: calc(var(--m-tabbar-h) + 8px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(
+      var(--m-tabbar-h) + var(--m-tabbar-gap) + 8px + env(safe-area-inset-bottom, 0px)
+    );
   }
 
   /* ----- Bottom tab bar ----- */
@@ -4116,16 +4127,74 @@ button:active{
      state of accent text over a 2px accent rule - the same active
      treatment .sidebar-item uses at narrow widths.
   */
+  /* FLOATING, not seated on the screen edge. The bar used to run the
+     full width with a square bottom, which is the Android/web default and
+     the reason it read as chrome bolted to the viewport. Inset on three
+     sides with a fully rounded shell, it reads as an object over the
+     page - and the glass treatment it already carries finally has
+     something to be glass ABOUT, since content now passes under all four
+     of its edges rather than ending at its top one. */
   .m-tabbar {
     position: fixed;
-    left: 0; right: 0; bottom: 0;
+    left: var(--m-tabbar-inset);
+    right: var(--m-tabbar-inset);
+    bottom: calc(var(--m-tabbar-gap) + env(safe-area-inset-bottom, 0px));
     z-index: 60;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: stretch;
     background: var(--panel);
-    border-top: 1px solid var(--line);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border: 1px solid var(--line);
+    /* Half the bar's height, so the ends are true semicircles at any
+       height rather than a radius that has to be retuned if the bar
+       grows. */
+    border-radius: calc(var(--m-tabbar-h) / 2);
+  }
+
+  /* ----- The selected lozenge ----- */
+  /*
+     One element that slides, not five backgrounds that cross-fade. The
+     difference is what the motion MEANS: cross-fading says two tabs
+     changed, sliding says the selection moved - and the selection moving
+     is the true statement. Its direction also agrees with the content
+     transition behind it (see the bottom-tab slide section outside this
+     block), because both are driven by the same left-to-right index.
+
+     Positioned by transform rather than `left`, so the browser animates
+     it on the compositor and it cannot fight the bar's own backdrop
+     passes for layout. The width is one fifth of the padded track, and
+     translating by 100% of THAT width steps exactly one tab - which is
+     why the track padding is subtracted before the division rather than
+     after.
+  */
+  .m-tabbar-pill {
+    position: absolute;
+    top: 5px; bottom: 5px;
+    left: 5px;
+    width: calc((100% - 10px) / 5);
+    transform: translateX(calc(var(--m-tab-index, 0) * 100%));
+    border-radius: calc((var(--m-tabbar-h) - 10px) / 2);
+    /* Lighter than the bar, not accent-filled: the accent already lights
+       the icon and label on top of it, and a solid accent slab under
+       accent text is the version of this that disappears.
+       Mixed from --text rather than --panel-rgb, which is what the first
+       pass used and why the lozenge was almost invisible: --panel is a
+       DARK colour in dark theme, so washing it over already-dark content
+       at any alpha changes nothing. Mixing from --text inverts with the
+       theme for free - a white film in dark, a grey one in light - which
+       is the same trick --glass-border already uses two blocks up. */
+    background: color-mix(in srgb, var(--text) 13%, transparent);
+    box-shadow: inset 0 .5px 0 rgba(255,255,255,.20);
+    /* Sits over the two glass passes (z-index -1) and under the tabs. */
+    z-index: 0;
+    pointer-events: none;
+    transition: transform 380ms cubic-bezier(.32, .72, 0, 1);
+  }
+  /* The one case where the motion would be a lie: there is no previous
+     position to travel from on first paint, so the lozenge would appear
+     to fly in from the leftmost tab on every cold load. */
+  @media (prefers-reduced-motion: reduce) {
+    .m-tabbar-pill { transition: none; }
   }
 
   .m-tabbar-item {
@@ -4151,12 +4220,12 @@ button:active{
     border: none;
     border-radius: 0;
     box-shadow: none;
-    /* The active indicator, drawn as a rule the tab sits under - the
-       same 2px accent line the sidebar items use when they collapse to a
-       row below 900px. Transparent by default so nothing shifts when it
-       lights. */
-    border-top: 2px solid transparent;
-    margin-top: -1px;
+    /* The active indicator is the sliding lozenge above, not a rule on
+       the tab. A 2px line across the top of one segment of a rounded
+       floating bar cuts the shell's own curve, which is exactly the
+       seam the pill shape exists to remove. */
+    position: relative;
+    z-index: 1;
     color: var(--muted);
     text-decoration: none;
     font-family: 'Inter', sans-serif;
@@ -4166,55 +4235,30 @@ button:active{
     -webkit-tap-highlight-color: transparent;
   }
 
-  .m-tabbar-item.is-active {
-    color: var(--accent);
-    border-top-color: var(--accent);
+  .m-tabbar-item.is-active { color: var(--accent); }
+  /* LIGHT THEME CANNOT USE THE BARE ACCENT HERE. #3ba7ff on the lozenge
+     measured 2.03:1 - less than half WCAG AA - and the lozenge is what
+     made it worth fixing rather than inheriting: it puts a pale ground
+     directly under the one label the bar is trying to emphasise, so the
+     selected tab became the least legible thing in the bar.
+     Mixed toward --text rather than replaced, so it is still recognisably
+     the app's blue and still clearly the accent: 5.6:1 measured on the
+     same ground. Scoped to this bar - the global accent is not this
+     rule's business, and retuning a token the whole app reads to fix one
+     label would be the wrong size of change. */
+  :root[data-theme="light"] .m-tabbar-item.is-active {
+    color: color-mix(in srgb, var(--accent) 50%, var(--text));
   }
-  .m-tabbar-item:active { background: var(--panel-hover); }
+  /* The press state is a dip rather than a fill: a rectangular
+     --panel-hover block inside a rounded bar squared off the corners of
+     whichever end tab was being pressed. */
+  .m-tabbar-item:active { opacity: .55; }
 
   .m-tabbar-icon { display: flex; align-items: center; justify-content: center; }
   /* Inline SVGs collapse to 0px without an explicit size - see the
      .theme-toggle-btn svg precedent in this file. */
   .m-tabbar-icon svg { width: 19px; height: 19px; }
   .m-tabbar-label { line-height: 1; }
-
-  /* The Log tab's raised circle.
-     It is the one action in the bar rather than a destination, and
-     standing it slightly proud is the phone convention for exactly that.
-     Deliberately flat: a solid accent fill, no glow and no drop shadow -
-     the glow is what made the earlier version read as a template, and
-     removing it is why this came back as a plain circle.
-     overflow:visible on the bar itself is what lets it stand proud at
-     all; without it the circle is clipped to the bar's own box. */
-  .m-tabbar { overflow: visible; }
-  .m-tabbar-item.is-action {
-    /* No top rule: the circle carries the active state itself, and a 2px
-       accent line above a raised button reads as a stray tick. */
-    border-top-color: transparent !important;
-    justify-content: flex-end;
-    padding-bottom: 8px;
-  }
-  .m-tabbar-item.is-action .m-tabbar-icon {
-    width: 46px; height: 46px; border-radius: 50%;
-    background: var(--accent);
-    /* --bg, not white: the accent is light enough that a white glyph on
-       it fails contrast, and this is the same dark ink the app's own
-       accent buttons use. */
-    color: var(--bg);
-    margin-top: -18px;
-    /* A 1px ring in the bar's own fill separates the circle from the bar
-       it overlaps, without a shadow. */
-    border: 3px solid var(--panel);
-    box-sizing: content-box;
-    flex-shrink: 0;
-  }
-  .m-tabbar-item.is-action .m-tabbar-icon svg { width: 24px; height: 24px; stroke-width: 2.25; }
-  .m-tabbar-item.is-action:active .m-tabbar-icon { background: var(--accent-bright, var(--accent)); }
-  /* The label sits under the circle, and the circle's negative margin
-     already pulled the column up - so this only needs its own colour,
-     which stays muted even when the tab is current, because the filled
-     circle is the active signal. */
-  .m-tabbar-item.is-action .m-tabbar-label { margin-top: 3px; }
 
   /* ----- Trade list ----- */
   .m-list-toolbar {
@@ -5217,11 +5261,20 @@ button:active{
      .shell, so a .shell.is-mobile prefix silently matches nothing - which
      is exactly what it did on the first pass, leaving the one surface
      most associated with iOS as the only opaque bar on screen. */
-  .m-tabbar,
   .m-chrome-topbar {
     box-shadow:
       0 0 0 .5px rgba(0,0,0,.40),
       0 10px 30px rgba(0,0,0,.30);
+  }
+  /* The tab bar now has content under all four edges, so its lift falls
+     DOWNWARD and outward rather than only below a seated bar - a shadow
+     offset 10px down on a floating pill pools under one edge and leaves
+     the other three sitting flat on the page. */
+  .m-tabbar {
+    box-shadow:
+      0 0 0 .5px rgba(0,0,0,.40),
+      0 6px 24px rgba(0,0,0,.34),
+      0 1px 3px rgba(0,0,0,.22);
   }
   .m-tabbar::after,
   .m-chrome-topbar::after {
@@ -5252,10 +5305,13 @@ button:active{
      material, the way iOS's own sheets do - the scrim now dims what is
      BEHIND the sheet rather than showing through it. */
   .m-sheet::after { background: rgba(var(--panel-rgb), .88); }
-  /* Continuous-curve radii, iOS's own proportions. The tab bar keeps its
-     square bottom because it meets the screen edge. */
+  /* Continuous-curve radii, iOS's own proportions. The tab bar no longer
+     meets the screen edge, so its hairline runs all the way round rather
+     than along the top alone - and its radius is set with the layout a
+     few hundred lines up, since the shape is now structural rather than
+     decorative. */
   .m-sheet { border-radius: 22px 22px 0 0; }
-  .m-tabbar { border-top: .5px solid var(--glass-border); }
+  .m-tabbar { border: .5px solid var(--glass-border); }
 
   /* Small floating controls get the same material, scaled down - one
      highlight, a tighter edge, no lift, since they sit ON the glass bars
@@ -5307,7 +5363,6 @@ button:active{
     .m-tabbar::before, .m-tabbar::after,
     .m-chrome-topbar::before, .m-chrome-topbar::after,
     .m-sheet::before, .m-sheet::after { display: none; }
-    .m-tabbar,
     .m-chrome-topbar {
       box-shadow:
         inset 0 .5px 0 rgba(255,255,255,.30),
@@ -5315,6 +5370,16 @@ button:active{
         0 0 0 .5px rgba(0,0,0,.40),
         0 10px 30px rgba(0,0,0,.30);
     }
+    .m-tabbar {
+      box-shadow:
+        inset 0 .5px 0 rgba(255,255,255,.30),
+        inset 0 -.5px 0 rgba(255,255,255,.07),
+        0 0 0 .5px rgba(0,0,0,.40),
+        0 6px 24px rgba(0,0,0,.34);
+    }
+    /* With the glass gone the bar is opaque, so the lozenge has to be a
+       step off --panel rather than a wash of it - otherwise it vanishes. */
+    .m-tabbar-pill { background: var(--panel-hover); }
     .m-sheet {
       box-shadow:
         inset 0 .5px 0 rgba(255,255,255,.30),

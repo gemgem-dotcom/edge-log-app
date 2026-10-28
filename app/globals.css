@@ -53,7 +53,7 @@
    3705  Trade log column width stability
    3730  Strategy notes panel
    3745  Today's brief economic outlook
-   4046  Mobile app shell (below 768px only)
+   4065  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3997,6 +3997,25 @@ button:active{
    fill. This clears it at every width in both themes. */
 .econ-term-copy,
 .econ-term-note{color:color-mix(in srgb, var(--text) 30%, var(--muted));}
+/* The structural line sits under the read, separated by a hairline
+   rather than just more vertical space: it is a different KIND of claim
+   from everything above it - what the number is made of, not what it is -
+   and the rule is the cheapest way to say so without a second heading. */
+.econ-term-structure{
+  margin-top:11px; padding-top:11px;
+  border-top:1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+/* "how it is built, not this month's data" - the disclaimer that keeps a
+   methodology line from reading as a live figure. Deliberately quieter
+   than the sentence it qualifies, and deliberately not hidden. */
+.econ-term-method-tag{
+  /* NOT --muted-2, which is the obvious choice and the wrong one: this
+     card already measured that token at 2.94:1 over its own well, well
+     under AA. Same color-mix step the source line buys its contrast back
+     with, a few rules up. */
+  color:color-mix(in srgb, var(--text) 56%, var(--muted));
+  font-size:11px; font-style:italic;
+}
 /* LIGHT THEME NEEDS THE OPPOSITE CONSTRUCTION. Dark glass works by being
    lighter than its ground; a white well on a near-white page is just
    white, and the whole material disappears - measured as a 0.7 luminance

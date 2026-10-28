@@ -35,6 +35,7 @@ on:
           - scripts/smoke-test-forexfactory-feed.js
           - scripts/probe-forexfactory-sources.js
           - scripts/probe-econ-sources.js
+          - scripts/fetch-econ-release-detail.js
           - scripts/inspect-economic-calendar.js
           - scripts/pull-strategy-market-context.js
           - scripts/list-strategy-screenshots.js

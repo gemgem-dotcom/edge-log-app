@@ -21,6 +21,7 @@ import EconomicCalendarCard from '@/components/EconomicCalendarCard'
 import EconTerminal from '@/components/EconTerminal'
 import { useUpcomingEconEvents } from '@/lib/useUpcomingEconEvents'
 import { buildTodaysBrief, nextEventSentence } from '@/lib/econBriefing'
+import { useEconReleaseDetail } from '@/lib/econReleaseDetailQuery'
 import CalendarNewsBadge from '@/components/CalendarNewsBadge'
 import { useCalendarNewsByDay } from '@/lib/useCalendarNewsByDay'
 import StreakBadge from '@/components/StreakBadge'
@@ -237,6 +238,10 @@ export default function OverviewDashboard({ instruments, strategies }) {
     history: econHistory,
     now: econNow,
   } = useUpcomingEconEvents()
+  // What the headline is made of, from econ_release_detail. Separate
+  // read from the calendar rows above: different table, different
+  // refresh cadence, and the brief is useful without it.
+  const econDetail = useEconReleaseDetail()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [allTrades, setAllTrades] = useState([])
@@ -313,7 +318,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
   }
 
   const streak = computeStreak(allTrades)
-  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow, history: econHistory })
+  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow, history: econHistory, detail: econDetail })
   const nextEvent = nextEventSentence(econEvents, econNow)
 
   // Was a hardcoded "CPI drops at 08:30" on both branches - printed every

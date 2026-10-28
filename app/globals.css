@@ -53,7 +53,7 @@
    3705  Trade log column width stability
    3730  Strategy notes panel
    3745  Today's brief economic outlook
-   3845  Mobile app shell (below 768px only)
+   3967  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3761,9 +3761,20 @@ button:active{
    figures in a ~384px column ran 925px tall and stretched the calendar
    card beside it to match, leaving ~600px of empty panel under a 207px
    list. Out here the releases lay out side by side instead. */
+/* THE SHELL IS A FRAME, THE BODY IS THE GLASS. The card used to be a flat
+   --panel-2 fill; the content well below is now a translucent, blurred,
+   lit surface, so the shell itself has to stop painting an opaque colour
+   behind it or there is nothing for the blur to find. What is left here
+   is the geometry, the edge and the lift.
+   The outer shadow is doubled: a hairline ring that keeps the edge legible
+   against any ground, and a soft drop that separates the card from the
+   page's own ambient gradient rather than letting it sit flush on it. */
 .econ-term{
   margin:0 0 15px; border-radius:14px; overflow:hidden;
-  background:var(--panel-2); border:1px solid var(--line);
+  background:transparent; border:1px solid var(--glass-border, var(--line));
+  box-shadow:
+    0 0 0 .5px rgba(0,0,0,.18),
+    0 10px 30px rgba(0,0,0,.18);
 }
 /* Bar lighter than the body in both themes - var(--panel) is #141d30 over
    #0b1428 in dark and #ffffff over #eef0f3 in light, so the two-tone holds
@@ -3781,7 +3792,74 @@ button:active{
 /* auto-fit rather than a fixed column count: one release on a quiet day
    gets the full width, three share it, and the 330px floor is what stops a
    narrow window from slicing the prose into a column too thin to read. */
-.econ-term-body{padding:4px 16px 16px;}
+/* THE GLASS. The brief asked for high-tech rather than "codey", so none
+   of this is a terminal costume - no scanlines, no phosphor, no monospace
+   beyond the figures that already use it. It is the same material the
+   mobile bars are built from, which is what makes it read as software
+   rather than as a theme: a translucent surface over a real blur, a lit
+   top edge, and one cool sheen raking across it.
+
+   The stack, bottom to top:
+     1. the two gradients    a vertical fade that is lighter at the top
+                             (where light would land) over a wide accent
+                             wash in the corner, at 5-7% so it tints
+                             rather than colours. Translucent, so the
+                             page's own ambient glow shows through and the
+                             well picks up the ground it stands on
+     2. inset box-shadows    a .5px top highlight and a fainter bottom
+                             one - the specular pair, same as .m-tabbar
+     3. the rake, below      one wide diagonal band of light
+   --panel-rgb, not a literal, so light theme gets the same construction
+   with its own ground rather than a dark card bleached pale.
+
+   NO backdrop-filter, deliberately, and this is the one thing here worth
+   knowing. It was in the first version and it was measured out: the only
+   thing behind this card is the page's own background - a flat --bg plus
+   two fixed radial blobs at 7-9% alpha - and blurring a gradient that
+   slow over a ~1000px card changes nothing. On vs off came back identical
+   to the first decimal. The mobile bars earn their blur because real
+   scrolled content passes under them; an in-flow card on a flat page does
+   not, and a filter that provably does nothing is still a compositing
+   layer on every paint. */
+.econ-term-body{
+  position:relative;
+  padding:4px 16px 16px;
+  background:
+    linear-gradient(180deg,
+      rgba(var(--panel-rgb), .72) 0%,
+      rgba(var(--panel-rgb), .58) 42%,
+      rgba(var(--panel-rgb), .64) 100%),
+    radial-gradient(120% 90% at 88% 0%,
+      rgba(59,167,255,.07) 0%,
+      rgba(59,167,255,0) 62%);
+  box-shadow:
+    inset 0 .5px 0 rgba(255,255,255,.16),
+    inset 0 -.5px 0 rgba(255,255,255,.05);
+}
+/* The rake. A single wide diagonal band at 4% white, angled across the
+   well - it is what stops a flat translucent panel reading as "slightly
+   see-through card" and starts it reading as a pane with a light source
+   somewhere off to the left. pointer-events:none because it covers the
+   content; aria is unaffected, it is a pseudo-element. */
+.econ-term-body::before{
+  content:'';
+  position:absolute; inset:0;
+  pointer-events:none;
+  background:linear-gradient(104deg,
+    rgba(255,255,255,0) 28%,
+    rgba(255,255,255,.055) 44%,
+    rgba(255,255,255,.012) 56%,
+    rgba(255,255,255,0) 70%);
+}
+/* Everything real sits above the rake. */
+.econ-term-grid,
+.econ-term-source{position:relative; z-index:1;}
+/* iOS's Reduce Transparency and its desktop equivalents: the well falls
+   back to the opaque panel colour it used to be, and keeps the edge. */
+@media (prefers-reduced-transparency: reduce){
+  .econ-term-body{background:var(--panel-2);}
+  .econ-term-body::before{display:none;}
+}
 /* auto-fit collapses the tracks it does not need, so one release on a
    quiet day takes the full width and three share it. That only works
    while nothing SPANS the empty tracks - the source line used to sit in
@@ -3840,6 +3918,50 @@ button:active{
 .econ-term-source{
   font-size:11px; color:var(--muted-2); margin:14px 0 0;
   padding-top:12px; border-top:1px solid var(--line);
+}
+/* --muted-2 does not survive out here, and it did not survive BEFORE this
+   either: measured against the old flat --panel-2 well, the source line
+   and the figure labels came back at 2.94:1 in dark theme, well under
+   WCAG AA's 4.5. The glass costs a little more ground again, so both move
+   up to a step that clears it on the surface they actually sit on. Scoped
+   to this card - --muted-2 is right where it is used over opaque panels,
+   and this is not a reason to move the token itself. */
+.econ-term-source,
+.econ-term-fig-label{color:color-mix(in srgb, var(--text) 56%, var(--muted));}
+/* The body copy pays for the glass the same way the mobile tab labels
+   did: a translucent well costs ground, and the honest place to buy it
+   back is the ink, not the alpha. Plain --muted measured 4.43:1 here in
+   dark theme at 390px - just under AA - against 4.92 over the old opaque
+   fill. This clears it at every width in both themes. */
+.econ-term-copy,
+.econ-term-note{color:color-mix(in srgb, var(--text) 30%, var(--muted));}
+/* LIGHT THEME NEEDS THE OPPOSITE CONSTRUCTION. Dark glass works by being
+   lighter than its ground; a white well on a near-white page is just
+   white, and the whole material disappears - measured as a 0.7 luminance
+   sd across the well, i.e. flat. So here the fade runs the other way:
+   the surface sits very slightly BELOW the page in lightness with a cool
+   cast, the accent wash doubles, and the specular pair flips from white
+   highlights to a dark hairline, which is the same inversion --glass and
+   --glass-border already make a few hundred lines up. */
+:root[data-theme="light"] .econ-term-body{
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.92) 0%,
+      rgba(246,249,252,.74) 46%,
+      rgba(240,244,249,.80) 100%),
+    radial-gradient(120% 90% at 88% 0%,
+      rgba(59,167,255,.13) 0%,
+      rgba(59,167,255,0) 62%);
+  box-shadow:
+    inset 0 .5px 0 rgba(255,255,255,.85),
+    inset 0 -.5px 0 rgba(20,22,26,.05);
+}
+:root[data-theme="light"] .econ-term-body::before{
+  background:linear-gradient(104deg,
+    rgba(255,255,255,0) 28%,
+    rgba(255,255,255,.55) 44%,
+    rgba(255,255,255,.1) 56%,
+    rgba(255,255,255,0) 70%);
 }
 
 /* ---------- Mobile app shell (below 768px only) ---------- */

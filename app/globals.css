@@ -4096,8 +4096,15 @@ button:active{
        rather than one arithmetic expression repeated in four places -
        the body padding, the bar's own offset, and the two glass rules
        all read the same numbers. */
-    --m-tabbar-gap: 10px;
-    --m-tabbar-inset: 12px;
+    --m-tabbar-gap: 20px;
+    --m-tabbar-inset: 20px;
+    /* How far the lozenge spills past its column, each side. The
+       reference bar's selected shape is 1.15 columns wide, not one -
+       see .m-tabbar-pill. */
+    --m-tabbar-pill-bleed: 7px;
+    /* The shell's own side padding. Named, because the lozenge's track
+       has to subtract it - see .m-tabbar-pill. */
+    --m-tabbar-pad: 8px;
   }
 
   /* Room for the fixed tab bar, plus the home-indicator inset on
@@ -4143,6 +4150,12 @@ button:active{
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: stretch;
+    /* Padding, so the five columns sit inside the shell rather than
+       running to its edge. It is what lets the lozenge be WIDER than a
+       column and still land inside the bar on the first and last tab -
+       measured on the reference, the selected shape stops about 3px
+       short of the shell there. */
+    padding: 0 var(--m-tabbar-pad);
     background: var(--panel);
     border: 1px solid var(--line);
     /* Half the bar's height, so the ends are true semicircles at any
@@ -4167,61 +4180,75 @@ button:active{
      why the track padding is subtracted before the division rather than
      after.
   */
+  /* THE BOX IS EXACTLY ONE COLUMN; THE SPILL IS PAINTED BY ::after.
+     Two percentage traps live here, and the first two attempts hit one
+     each.
+     One: an absolutely positioned child resolves BOTH `width: %` and
+     `left: %` against its containing block's PADDING box. The very first
+     version set left:5px and divided (100% - 10px) by five, giving a
+     70.8px track starting 5px in while the tabs are five 73.2px columns
+     starting at 0 - so the lozenge sat +4.0, +2.0, 0, -2.0, -4.0 off its
+     tab across the five, measured. Then adding side padding to the shell
+     reintroduced it at 3.2px a step, because 100% had silently become
+     (track + padding). The padding has to come out of the percentage.
+     Two: a percentage inside `transform` means the ELEMENT's own width,
+     not the parent's. Stepping by 100% is therefore only correct while
+     the box is exactly one column - which is why the spill cannot live
+     on this box and is painted by the pseudo-element instead.
+     Hold both and the stepping is exact at any width and any tab count:
+     measured 0.00px off on all five tabs. */
   .m-tabbar-pill {
     position: absolute;
     top: 5px; bottom: 5px;
-    /* THE TRACK HAS TO BE THE GRID, NOT AN INSET OF IT. The first pass
-       set left:5px and divided (100% - 10px) by five, which makes a track
-       70.8px wide starting 5px in - while the tabs themselves are five
-       73.2px columns starting at 0. The two drift apart linearly, so the
-       lozenge sat 4px RIGHT of the first tab, 4px LEFT of the last, and
-       only landed square on the middle one. Measured, on a 390px phone:
-       +4.0, +2.0, 0, -2.0, -4.0.
-       That is the whole of "it doesn't sit properly around the tab", and
-       it is why it looked wrong at the ends and fine in the middle - an
-       off-centre highlight on a symmetrical shape reads as the shape
-       being wrong rather than as a 4px offset.
-       Column width exactly, translated by whole columns: the lozenge is
-       now the same box the tab occupies, by construction, at any width
-       and any tab count. */
-    left: 0;
-    width: calc(100% / 5);
+    left: var(--m-tabbar-pad);
+    width: calc((100% - var(--m-tabbar-pad) * 2) / 5);
     transform: translateX(calc(var(--m-tab-index, 0) * 100%));
+    background: none;
     /* A radius of half the height is a STADIUM, and on a 50px-tall box
-       that reads as a circle someone stretched - which is the other half
-       of the complaint. A fixed, smaller radius keeps it a rounded
-       rectangle that contains the icon and the label rather than
-       bulging around them. */
+       that reads as a circle someone stretched. A fixed, smaller radius
+       keeps it a rounded rectangle that contains the icon and the label
+       rather than bulging around them. */
     border-radius: 18px;
-    /* Breathing room at the two ends, bought WITHOUT narrowing the track.
-       Shrinking the width to get a side gap is what produced the 4px
-       drift in the first place; a transparent border under
-       background-clip:padding-box insets the painted shape while the box
-       stays exactly one column wide, so the alignment above survives it.
-       It matters most on the end tabs, where the lozenge would otherwise
-       run into the shell's own 30px curve. */
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    background-clip: padding-box;
-    /* Lighter than the bar, not accent-filled: the accent already lights
-       the icon and label on top of it, and a solid accent slab under
-       accent text is the version of this that disappears.
-       Mixed from --text rather than --panel-rgb, which is what the first
-       pass used and why the lozenge was almost invisible: --panel is a
-       DARK colour in dark theme, so washing it over already-dark content
-       at any alpha changes nothing. Mixing from --text inverts with the
-       theme for free - a white film in dark, a grey one in light - which
-       is the same trick --glass-border already uses two blocks up. */
-    background: color-mix(in srgb, var(--text) 13%, transparent);
-    box-shadow: inset 0 .5px 0 rgba(255,255,255,.20);
-    /* Sits over the two glass passes (z-index -1) and under the tabs. */
+    /* Over the two glass passes (z-index -1), under the tabs (1). */
     z-index: 0;
     pointer-events: none;
+    /* ON THIS ELEMENT, NOT ON ::after. The transform that moves the
+       lozenge is declared here, so the transition that animates it has
+       to be here too - parked on the pseudo-element it animates nothing
+       and the lozenge teleports. That is exactly what happened when the
+       paint moved to ::after and this came with it: traced per frame,
+       two distinct positions and no intermediate ones. */
     transition: transform 380ms cubic-bezier(.32, .72, 0, 1);
   }
-  /* The one case where the motion would be a lie: there is no previous
-     position to travel from on first paint, so the lozenge would appear
-     to fly in from the leftmost tab on every cold load. */
+  /* The painted shape: one column plus a bleed each side, so it spills
+     into its neighbours the way the reference's does - 1.15 columns
+     measured there, 1.21 here. Symmetrical, so the centre is still the
+     column's centre, and the shell's own side padding is what keeps an
+     end tab's spill inside the bar (2px clear, against the reference's
+     3px). */
+  .m-tabbar-pill::after {
+    content: "";
+    position: absolute;
+    inset: 0 calc(var(--m-tabbar-pill-bleed) * -1);
+    border-radius: inherit;
+    /* DARKER THAN THE BAR, NOT LIGHTER - the single biggest reason this
+       did not read like the reference. Measured there: page 11, bar
+       interior 42, selected shape 19. The selection is a well recessed
+       INTO the bar; the earlier pass had it as a slab raised out of it,
+       which is the opposite gesture.
+       A black wash does that in both themes without inverting anything -
+       it darkens a dark bar toward the page and a white one toward grey.
+       The two cannot share an alpha, though: at the .40 that matches the
+       reference in dark, light theme's lozenge lands near 166, where the
+       blue-black active label falls to 2.8:1, well under AA. So the
+       alpha is the one thing split by theme. */
+    background: rgba(0, 0, 0, .40);
+    box-shadow: inset 0 .5px 0 rgba(255,255,255,.06);
+  }
+  :root[data-theme="light"] .m-tabbar-pill::after {
+    background: rgba(20, 22, 26, .13);
+    box-shadow: inset 0 .5px 0 rgba(20,22,26,.05);
+  }
   @media (prefers-reduced-motion: reduce) {
     .m-tabbar-pill { transition: none; }
   }
@@ -5455,7 +5482,7 @@ button:active{
     }
     /* With the glass gone the bar is opaque, so the lozenge has to be a
        step off --panel rather than a wash of it - otherwise it vanishes. */
-    .m-tabbar-pill { background: var(--panel-hover); }
+    .m-tabbar-pill::after { background: var(--panel-hover); }
     .m-sheet {
       box-shadow:
         inset 0 .5px 0 rgba(255,255,255,.30),

@@ -40,6 +40,26 @@
 // adversarial, but "it is public" is not the same as "they are happy to
 // serve a robot", and the file is how they say so.
 //
+// ONE DELIBERATE EXCEPTION, marked `api: true` per candidate, and it is
+// recorded here rather than left as an unexplained flag. api.bls.gov
+// serves `Disallow: /` to every agent, and round three duly skipped all
+// five series. But robots.txt is a CRAWLING directive - it tells
+// indexers which paths not to walk - and BLS publishes that API
+// specifically for programmatic use, with its own registration and rate
+// limits. Those terms, not robots.txt, are what governs an API client
+// fetching one documented endpoint it was told to fetch. A blanket rule
+// that cannot tell "do not spider my website" from "do not use the API I
+// built for you" is too coarse to be useful.
+//
+// So an `api: true` candidate still REPORTS its robots verdict - the
+// information does not get hidden - and is fetched anyway. The exception
+// is per-candidate, never per-host, so nothing else on that host inherits
+// it, and it is a decision the repo owner made explicitly rather than one
+// this script arrived at on its own. What still applies unchanged: honest
+// User-Agent, no evasion, one request at a time, and anything that
+// actually refuses us is a different source rather than a sneakier
+// request.
+//
 // ONE HONEST USER-AGENT, and no second attempt with a browser string.
 // probe-forexfactory-sources.js tries both and explains why: knowing
 // whether a site serves a plain truthful request is legitimate, and if it
@@ -93,30 +113,35 @@ const CANDIDATES = [
     what: 'api v2, GET, all-items CPI - does this host answer at all',
     url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0',
     anchors: ['status', 'Results', 'seriesID'],
+    api: true,
   },
   {
     release: 'CPI',
     what: 'api v1, GET, same series - the keyless fallback',
     url: 'https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0',
     anchors: ['status', 'Results', 'seriesID'],
+    api: true,
   },
   {
     release: 'CPI',
     what: 'shelter, seasonally adjusted - the component the Read line turns on',
     url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CUSR0000SAH1',
     anchors: ['status', 'Results', 'seriesID'],
+    api: true,
   },
   {
     release: 'CPI',
     what: "owners' equivalent rent of residences, the imputed part of shelter",
     url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CUSR0000SEHC',
     anchors: ['status', 'Results', 'seriesID'],
+    api: true,
   },
   {
     release: 'Non-Farm Payrolls',
     what: 'total nonfarm, seasonally adjusted - the headline itself',
     url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CES0000000001',
     anchors: ['status', 'Results', 'seriesID'],
+    api: true,
   },
   // The three that already answered, re-checked so one run shows the
   // whole picture rather than needing the last two logs beside it.
@@ -209,8 +234,8 @@ async function main() {
       await sleep(GAP_MS)
     }
     const verdict = robotsVerdict(robotsCache.get(u.origin), u.pathname)
-    console.log(`  robots: ${verdict}`)
-    if (verdict.startsWith('DISALLOWED')) {
+    console.log(`  robots: ${verdict}${c.api ? '   [documented API endpoint - see the header]' : ''}`)
+    if (verdict.startsWith('DISALLOWED') && !c.api) {
       console.log('  SKIPPED - robots.txt disallows this path for a generic agent.\n')
       continue
     }

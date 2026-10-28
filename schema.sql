@@ -857,6 +857,37 @@ insert into econ_refresh_lock (id, claimed_at)
 -- read or move the lock.
 alter table econ_refresh_lock enable row level security;
 
+-- WHAT THE LAST ATTEMPT ACTUALLY DID, which this table could not say.
+--
+-- On 2026-10-28 the FOMC decision printed at 18:00Z and the card still
+-- had no actual at 18:39Z. Everything observable looked healthy: the
+-- table was clean, the lock had been claimed a minute earlier, and the
+-- scheduled job - same fetch, run from a GitHub runner - had been
+-- succeeding all day. The on-demand route was claiming its turn and
+-- writing nothing, and there was no way to find out why from outside it.
+-- Sentry could not answer either: a serverless function killed by its
+-- platform does not throw, so the catch never runs and no event is ever
+-- sent.
+--
+-- THE PAIR OF TIMESTAMPS IS THE POINT, not last_outcome on its own.
+-- claimed_at is stamped before the fetch and last_finished_at after it,
+-- so the two together separate the failures that look identical from
+-- outside:
+--
+--   finished_at > claimed_at   the attempt ran to completion, and
+--                              last_outcome says what it concluded
+--   finished_at < claimed_at   the attempt never reached its own end -
+--                              the platform killed it mid-flight, which
+--                              is precisely the case that reports
+--                              nothing anywhere else
+--
+-- Diagnostic only. Nothing reads these to make a decision; the claim
+-- still turns on claimed_at alone, so a stuck or absent outcome cannot
+-- wedge the refresh.
+alter table econ_refresh_lock add column if not exists last_finished_at timestamptz;
+alter table econ_refresh_lock add column if not exists last_outcome text;
+alter table econ_refresh_lock add column if not exists last_detail text;
+
 -- ============================================================
 -- Release detail behind the brief's "Read" line
 -- ============================================================

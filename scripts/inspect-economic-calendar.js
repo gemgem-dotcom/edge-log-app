@@ -388,6 +388,39 @@ async function reportLock(admin) {
     line('', 'claimed_at is in the FUTURE - on-demand refresh is wedged until it passes')
     return 1
   }
+
+  // WHAT THE LAST ATTEMPT CONCLUDED, and whether it reached its own end.
+  //
+  // claimed_at is stamped before the fetch, last_finished_at after it, so
+  // the ORDER of the two is the diagnosis. A claim with no later finish is
+  // an attempt the platform killed mid-flight - the one failure mode that
+  // reports nothing anywhere else, Sentry included, because a killed
+  // serverless function never throws and so never reaches its own catch.
+  const { last_finished_at: finished, last_outcome: outcome, last_detail: detail } = data[0]
+  if (finished === undefined) {
+    line('last attempt', 'columns absent - run the econ_refresh_lock block in schema.sql')
+    return 0
+  }
+  if (!finished) {
+    line('last attempt', 'never recorded one - no attempt has completed since the columns were added')
+    return 0
+  }
+  line('last_outcome', `${outcome || '(none)'}${detail ? `  -  ${detail}` : ''}`)
+  line('last_finished_at', `${finished} (${ago(finished)})`)
+  const claimedMs = Date.parse(data[0].claimed_at)
+  const finishedMs = Date.parse(finished)
+  if (Number.isFinite(claimedMs) && Number.isFinite(finishedMs) && finishedMs < claimedMs) {
+    line('verdict', 'KILLED MID-ATTEMPT  <- claimed, then never reached its own end')
+    line('', 'the platform cut the function off: not a refusal by the source,')
+    line('', 'and nothing about it will appear in Sentry')
+    return 1
+  }
+  if (outcome && outcome !== 'ok') {
+    line('verdict', `the attempt RAN and concluded "${outcome}" - the source answered,`)
+    line('', 'so this is about what came back, not about being cut off')
+    return 1
+  }
+  line('verdict', 'last attempt ran to completion and stored rows')
   return 0
 }
 

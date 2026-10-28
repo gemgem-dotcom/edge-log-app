@@ -69,60 +69,88 @@ const CHALLENGE_MARKERS = [
 // is a page that loaded and is still useless, and that is exactly the
 // outcome worth knowing before writing a parser rather than after.
 const CANDIDATES = [
+  // ROUND TWO. The first run (Actions, 2026-10-28) answered four things:
+  //   - bls.gov returns 403 to every path, honest UA, no robots.txt at
+  //     all. CPI, CPI table 1, payrolls and the birth/death page alike,
+  //     a 1323-byte refusal each. That is the host refusing a robot, and
+  //     the file header says what happens next: a different source, not
+  //     a browser User-Agent. These four are kept here, reported, and
+  //     expected to keep failing - deleting them would lose the record
+  //     of what was tried.
+  //   - bea.gov and federalreserve.gov serve a plain request fine.
+  //   - dol.gov serves the claims figures, as a 548KB PDF.
+  //   - census.gov and ismworld.org both 404'd on URLs I had wrong, not
+  //     on anything they did. Corrected below, with alternates.
+  // New this round: download.bls.gov, which is a DIFFERENT HOST from the
+  // one that refused us and publishes flat time-series files rather than
+  // an API. If it serves them, CPI and payrolls detail is reachable
+  // after all; if it 403s too, that detail is not available this way and
+  // the Read line has to be built from what is.
   {
     release: 'CPI',
-    what: 'headline + core, and the shelter/OER contribution that is most of it',
+    what: 'flat time-series files - different host from the one that refused us',
+    url: 'https://download.bls.gov/pub/time.series/cu/',
+    anchors: ['cu.data', 'cu.series', 'Index of'],
+  },
+  {
+    release: 'CPI',
+    what: 'the current-month component file, if the directory above is served',
+    url: 'https://download.bls.gov/pub/time.series/cu/cu.series',
+    anchors: ['series_id', 'item_code'],
+  },
+  {
+    release: 'Non-Farm Payrolls',
+    what: 'CES flat files, including the birth/death adjustment series',
+    url: 'https://download.bls.gov/pub/time.series/ce/',
+    anchors: ['ce.data', 'ce.series', 'Index of'],
+  },
+  {
+    release: 'CPI',
+    what: 'the news release - expected 403, kept as the record of what was tried',
     url: 'https://www.bls.gov/news.release/cpi.nr0.htm',
-    anchors: ['shelter', 'owners’ equivalent rent', "owners' equivalent rent", 'all items', 'seasonally adjusted'],
-  },
-  {
-    release: 'CPI',
-    what: 'Table 1, the component table the contributions are computed from',
-    url: 'https://www.bls.gov/news.release/cpi.t01.htm',
-    anchors: ['Relative importance', 'Shelter', 'All items', '<table'],
+    anchors: ['shelter', 'all items'],
   },
   {
     release: 'Non-Farm Payrolls',
-    what: 'headline, revisions to the prior two months, household vs establishment',
+    what: 'the news release - expected 403, same',
     url: 'https://www.bls.gov/news.release/empsit.nr0.htm',
-    anchors: ['nonfarm payroll', 'revised', 'household survey', 'establishment survey'],
+    anchors: ['nonfarm payroll', 'revised'],
   },
   {
-    release: 'Non-Farm Payrolls',
-    what: 'the birth-death model adjustment, which is the caveat worth stating',
-    url: 'https://www.bls.gov/web/empsit/cesbd.htm',
-    anchors: ['birth', 'death', 'net birth/death', '<table'],
+    release: 'Retail Sales',
+    what: 'MARTS current release - corrected path',
+    url: 'https://www.census.gov/retail/sales.html',
+    anchors: ['retail', 'percent'],
+  },
+  {
+    release: 'Retail Sales',
+    what: 'the MARTS landing page, as an alternate',
+    url: 'https://www.census.gov/retail/index.html',
+    anchors: ['retail', 'advance'],
+  },
+  {
+    release: 'ISM Manufacturing PMI',
+    what: 'corrected path - the first URL redirected and then 404d',
+    url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-pmi-reports/',
+    anchors: ['PMI', 'Report'],
   },
   {
     release: 'Core PCE',
-    what: "the Fed's own target series, and the services-ex-housing cut",
+    what: 'confirmed reachable in round one - re-checked for the table shape',
     url: 'https://www.bea.gov/data/personal-consumption-expenditures-price-index',
     anchors: ['personal consumption', 'price index', 'percent'],
   },
   {
-    release: 'Retail Sales',
-    what: 'headline and the control group that actually feeds GDP',
-    url: 'https://www.census.gov/retail/marts/www/marts_current.html',
-    anchors: ['retail', 'advance', 'percent', '<table'],
-  },
-  {
-    release: 'Unemployment Claims',
-    what: 'initial claims, the 4-week average, and continuing claims',
-    url: 'https://www.dol.gov/ui/data.pdf',
-    anchors: [],
-    note: 'PDF - probed for reachability only, not parsed here',
-  },
-  {
-    release: 'ISM Manufacturing PMI',
-    what: 'headline PMI and the sub-indices it is a diffusion average of',
-    url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/pmi/',
-    anchors: ['PMI', 'New Orders', 'Production', 'Employment'],
+    release: 'Core PCE',
+    what: 'the actual release text, which is where the figures live',
+    url: 'https://www.bea.gov/news/current-releases',
+    anchors: ['personal income', 'release'],
   },
   {
     release: 'FOMC',
-    what: 'the statement itself, for the language change rather than a number',
-    url: 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm',
-    anchors: ['FOMC', 'Statement', 'Minutes'],
+    what: 'confirmed reachable - a real statement, not the calendar index',
+    url: 'https://www.federalreserve.gov/monetarypolicy/fomcpresconf20260128.htm',
+    anchors: ['FOMC', 'Committee'],
   },
 ]
 
@@ -133,7 +161,10 @@ async function get(url, accept) {
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': UA, Accept: accept || 'text/html,application/xhtml+xml' },
+      // */* rather than a text/html list: several of these candidates are
+      // flat data files and directory indexes, and a narrow Accept is an
+      // easy way to manufacture a false negative on one.
+      headers: { 'User-Agent': UA, Accept: accept || '*/*' },
       redirect: 'follow',
       signal: ctrl.signal,
     })

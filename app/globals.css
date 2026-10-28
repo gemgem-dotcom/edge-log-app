@@ -4170,10 +4170,39 @@ button:active{
   .m-tabbar-pill {
     position: absolute;
     top: 5px; bottom: 5px;
-    left: 5px;
-    width: calc((100% - 10px) / 5);
+    /* THE TRACK HAS TO BE THE GRID, NOT AN INSET OF IT. The first pass
+       set left:5px and divided (100% - 10px) by five, which makes a track
+       70.8px wide starting 5px in - while the tabs themselves are five
+       73.2px columns starting at 0. The two drift apart linearly, so the
+       lozenge sat 4px RIGHT of the first tab, 4px LEFT of the last, and
+       only landed square on the middle one. Measured, on a 390px phone:
+       +4.0, +2.0, 0, -2.0, -4.0.
+       That is the whole of "it doesn't sit properly around the tab", and
+       it is why it looked wrong at the ends and fine in the middle - an
+       off-centre highlight on a symmetrical shape reads as the shape
+       being wrong rather than as a 4px offset.
+       Column width exactly, translated by whole columns: the lozenge is
+       now the same box the tab occupies, by construction, at any width
+       and any tab count. */
+    left: 0;
+    width: calc(100% / 5);
     transform: translateX(calc(var(--m-tab-index, 0) * 100%));
-    border-radius: calc((var(--m-tabbar-h) - 10px) / 2);
+    /* A radius of half the height is a STADIUM, and on a 50px-tall box
+       that reads as a circle someone stretched - which is the other half
+       of the complaint. A fixed, smaller radius keeps it a rounded
+       rectangle that contains the icon and the label rather than
+       bulging around them. */
+    border-radius: 18px;
+    /* Breathing room at the two ends, bought WITHOUT narrowing the track.
+       Shrinking the width to get a side gap is what produced the 4px
+       drift in the first place; a transparent border under
+       background-clip:padding-box insets the painted shape while the box
+       stays exactly one column wide, so the alignment above survives it.
+       It matters most on the end tabs, where the lozenge would otherwise
+       run into the shell's own 30px curve. */
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    background-clip: padding-box;
     /* Lighter than the bar, not accent-filled: the accent already lights
        the icon and label on top of it, and a solid accent slab under
        accent text is the version of this that disappears.

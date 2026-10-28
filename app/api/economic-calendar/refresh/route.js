@@ -49,6 +49,38 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 // costing very little of what the feature is for: FF fills an actual in
 // within minutes of a release printing, so the figure still lands while
 // the trader is watching, just not within the same minute.
+// HOW LONG THE PLATFORM LETS THIS RUN, and the reason it is declared at
+// all rather than left to the default.
+//
+// This route's own budget is one 15s fetch, a 2s pause, and a second 15s
+// fetch - 32 seconds worst case, before parsing a ~400KB page and
+// upserting the week. Vercel's default serverless timeout is 10 seconds.
+// So the slow half of this route could never finish: the platform killed
+// the function somewhere inside the first fetch.
+//
+// Every symptom follows from that, and it is worth writing down because
+// the obvious suspect - Forex Factory refusing us - was the wrong one.
+// On 2026-10-28 the FOMC decision printed at 18:00Z and the card still
+// had no actual at 18:39Z. The table was healthy, the lock had been
+// claimed a minute earlier, and the newest row in the whole table had
+// been fetched at 15:55Z - by the scheduled job, which runs on a GitHub
+// runner with no such limit and had been succeeding all along. A probe
+// from that same runner four minutes later pulled the calendar page down
+// and parsed it cleanly, actuals and all. FF was answering us the whole
+// time; this function was being killed before it could write.
+//
+// It also explains the silence. A function killed by the platform does
+// not throw, so the catch below never ran, Sentry never received an
+// event, and the claim stayed taken - which backed the next caller off
+// for ten minutes, exactly as designed, on a failure that had nothing to
+// do with being refused.
+//
+// 60 is the ceiling on Vercel's lowest tier and comfortably clears the
+// 32s worst case plus the parse and the write. Raising it is not making
+// the route slower or greedier: the request budget below is unchanged,
+// and this only stops the platform from cutting it off mid-flight.
+export const maxDuration = 60
+
 const COOLDOWN_MS = 10 * 60_000
 const USER_AGENT = 'EdgeLog/1.0 (trading journal; +https://github.com/gemgem-dotcom/edge-log-app)'
 const FETCH_TIMEOUT_MS = 15000

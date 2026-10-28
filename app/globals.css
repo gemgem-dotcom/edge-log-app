@@ -5428,7 +5428,38 @@ button:active{
      for - while making it an object the content passes BEHIND rather
      than a filter the content shows through. The topbar keeps .26: it
      still meets two screen edges and is still a band. */
-  .m-tabbar::after { background: rgba(var(--panel-rgb), .62); }
+  /* DARK THEME TINTS TOWARD THE PAGE, NOT TOWARD --panel.
+     --panel is LIGHTER than the page it floats over (20,29,48 against a
+     bg of 10,17,27), so a near-opaque bar made of it sits lighter than
+     everything around it - a grey-blue slab under a topbar that is still
+     deep blue. Sampled with the bars' own children hidden: topbar
+     rgb(10,32,55), tab bar rgb(22,32,50), i.e. the tab bar had become
+     its own flat panel colour. That is the "colour is a bit weird" -
+     not a hue anywhere, but one bar having quietly stopped being glass
+     and landed on the wrong side of the page in lightness.
+     Lowering the alpha was the obvious fix and the wrong one: at .34 the
+     page read straight through again, which is why it was raised in the
+     first place. Both wants are satisfiable at once by moving the COLOUR
+     rather than the alpha - a tint mixed most of the way toward --bg,
+     laid on thickly. Measured across the sweep, as the mean colour and
+     the luminance spread over the bar (spread is how much of the page
+     still reads through):
+        panel at .62 (shipped)  rgb(22,32,50)  sd 15.4
+        deep mix at 68%         rgb(17,27,40)  sd 12.9
+        deep mix at 90%         rgb(15,23,37)  sd  4.0
+        deep mix opaque         rgb(14,22,35)  sd  0
+     90% is the last step that still has a backdrop: a faint smear of
+     colour and movement, nothing legible. Note the shipped value was the
+     WORST of the three for read-through as well as the lightest - it was
+     not buying anything with that lightness.
+     Light theme keeps its own value: there --panel is white and the page
+     is near-white, so tinting toward --bg would mean tinting toward the
+     page, which is the opposite of what a light bar needs. */
+  .m-tabbar::after {
+    background: color-mix(in srgb,
+      color-mix(in srgb, var(--bg) 60%, var(--panel)) 90%, transparent);
+  }
+  :root[data-theme="light"] .m-tabbar::after { background: rgba(var(--panel-rgb), .62); }
   /* Continuous-curve radii, iOS's own proportions. The tab bar no longer
      meets the screen edge, so its hairline runs all the way round rather
      than along the top alone - and its radius is set with the layout a

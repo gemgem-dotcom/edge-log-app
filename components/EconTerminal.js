@@ -39,7 +39,7 @@ export default function EconTerminal({ brief }) {
             tracks it does not need - see .econ-term-grid. The source line
             below is a SIBLING of it, not a cell spanning it. */}
         <div className="econ-term-grid">
-        {brief.events.map(({ event, timestamp, meaning, framing, bias }) => (
+        {brief.events.map(({ event, timestamp, meaning, framing, bias, structure, structureLive }) => (
           <div className="econ-term-release" key={event.event_key}>
             <div className="econ-term-head">
               <span className={`econ-term-dot econ-term-dot-${event.impact}`} aria-hidden="true" />
@@ -75,6 +75,23 @@ export default function EconTerminal({ brief }) {
               <p className="econ-term-note">
                 <span className="econ-term-note-label">Read</span>
                 {framing}
+              </p>
+            ) : null}
+
+            {/* What the number is made of. Labelled by SOURCE, not by
+                topic: a line built from this month's BLS figures and one
+                that is standing methodology are different kinds of claim,
+                and a card that prints them identically is implying it
+                knows more than it does. See lib/econStructure.mjs. */}
+            {structure ? (
+              <p className="econ-term-note econ-term-structure">
+                <span className="econ-term-note-label">
+                  {structureLive ? 'Underneath' : 'Method'}
+                </span>
+                {structure}
+                {structureLive ? null : (
+                  <span className="econ-term-method-tag"> \u00b7 how it is built, not this month\u2019s data</span>
+                )}
               </p>
             ) : null}
           </div>

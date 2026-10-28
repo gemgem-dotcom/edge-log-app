@@ -856,3 +856,71 @@ insert into econ_refresh_lock (id, claimed_at)
 -- row level security on and nothing granted, a signed-in client cannot
 -- read or move the lock.
 alter table econ_refresh_lock enable row level security;
+
+-- ============================================================
+-- Release detail behind the brief's "Read" line
+-- ============================================================
+-- The component series underneath a headline release, so the card can say
+-- what the number is actually made of rather than restating that a beat
+-- is a beat.
+--
+-- One row per (series_id, year, period), which is what makes a REVISION
+-- detectable at all: BLS restates prior months in place, so the only way
+-- to know August moved is to have kept what August said last time and
+-- compare. See revisionsBetween in lib/econSeries.mjs.
+--
+-- SOURCED FROM api.bls.gov, not from scraping. Every bls.gov page path
+-- and the whole of download.bls.gov answer 403 to an honest User-Agent -
+-- measured, repeatedly, by scripts/probe-econ-sources.js - so the API is
+-- the only route the agency leaves open. Its robots.txt disallows all
+-- agents, which is a crawling directive rather than a statement about the
+-- API it publishes for programmatic use; that reading was an explicit
+-- decision and is written up in that script's header.
+create table if not exists econ_release_detail (
+  series_id text not null,
+  year text not null,
+  period text not null,
+  period_name text,
+  value numeric not null,
+  -- BLS's own footnote codes for the observation. "P" is preliminary,
+  -- which is the one the Read line reads: a payrolls print carrying it is
+  -- explicitly not final, and saying so is more useful than the number.
+  footnote_codes text[] not null default '{}',
+  first_seen_at timestamptz not null default now(),
+  fetched_at timestamptz not null default now(),
+  primary key (series_id, year, period)
+);
+
+-- Every read is "the recent observations for these series", newest first.
+create index if not exists econ_release_detail_series_idx
+  on econ_release_detail(series_id, year desc, period desc);
+
+alter table econ_release_detail enable row level security;
+drop policy if exists "Anyone signed in can read release detail" on econ_release_detail;
+create policy "Anyone signed in can read release detail"
+  on econ_release_detail for select
+  using (auth.role() = 'authenticated');
+
+-- A revision, kept as its own row rather than inferred on read. The
+-- comparison that produces it only exists at fetch time - once the value
+-- column is overwritten, what it used to say is gone - so the finding is
+-- recorded when it is made.
+create table if not exists econ_release_revision (
+  id uuid primary key default gen_random_uuid(),
+  series_id text not null,
+  year text not null,
+  period text not null,
+  period_name text,
+  value_from numeric not null,
+  value_to numeric not null,
+  detected_at timestamptz not null default now()
+);
+
+create index if not exists econ_release_revision_series_idx
+  on econ_release_revision(series_id, detected_at desc);
+
+alter table econ_release_revision enable row level security;
+drop policy if exists "Anyone signed in can read release revisions" on econ_release_revision;
+create policy "Anyone signed in can read release revisions"
+  on econ_release_revision for select
+  using (auth.role() = 'authenticated');

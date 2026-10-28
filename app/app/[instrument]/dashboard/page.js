@@ -18,6 +18,7 @@ import { usePageTitle } from '@/lib/usePageTitle'
 import { computeStreak } from '@/lib/streak'
 import { latestClosedSessionRegime, edgeEngineClause } from '@/lib/todaysBrief'
 import { buildTodaysBrief, nextEventSentence } from '@/lib/econBriefing'
+import { useEconReleaseDetail } from '@/lib/econReleaseDetailQuery'
 import EconTerminal from '@/components/EconTerminal'
 import { useUpcomingEconEvents } from '@/lib/useUpcomingEconEvents'
 import { daysToRollover } from '@/lib/contractRollover'
@@ -304,6 +305,10 @@ export default function DashboardPage({ params }) {
     loading: econLoading,
     error: econError,
   } = useUpcomingEconEvents()
+  // What the headline is made of, from econ_release_detail. Separate
+  // read from the calendar rows above: different table, different
+  // refresh cadence, and the brief is useful without it.
+  const econDetail = useEconReleaseDetail()
 
 // Identifies the most recent load, so a slower earlier one can never write
 // its results over a newer one's.
@@ -489,7 +494,7 @@ const classifiedTrades = allTrades.filter((t) => t.strategy_id)
   const briefClause = edgeEngineClause({ trades: classifiedTrades, strategies, regime, symbol })
   // Null on a day with no high or medium USD release, which is the
   // signal for the card to say nothing about the calendar at all.
-  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow, history: econHistory })
+  const econBrief = buildTodaysBrief({ events: econEvents, now: econNow, history: econHistory, detail: econDetail })
   // The clause the sentence below ends on. Null when nothing is coming, so
   // the sentence simply stops rather than naming a release that is not
   // there - which is the whole failure the hardcoded line was.

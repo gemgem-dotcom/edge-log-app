@@ -1,0 +1,73 @@
+# Daily BLS release-detail refresh
+#
+# Runs scripts/fetch-econ-release-detail.js against api.bls.gov and fills
+# econ_release_detail (plus econ_release_revision when a stored value has
+# moved). That script's header carries the access reasoning - why the API
+# and not a page, and why its robots.txt was read as a crawling directive;
+# the decision is on record there and was the repo owner's.
+#
+# WHY DAILY AND NOT HOURLY, which is the whole shape of this file. These
+# are monthly series. CPI prints once a month and payrolls once a month,
+# and between those mornings every request returns the identical bytes.
+# The economic-calendar workflow next door is hourly because `actual`
+# fills in minutes after a release; nothing here does. An hourly schedule
+# would be 24x the requests for the same four numbers, against an agency
+# whose web host already refuses us - see the probe findings. Four
+# requests a day is the smallest schedule that still catches a release and
+# a revision on the day it happens.
+#
+# 05:41 UTC is after BLS's own 08:30 ET release window has closed for the
+# previous day and before the US morning, so a print lands in the table
+# the night it is published. Not on the hour or half hour, for the reason
+# the calendar workflow's own comment gives.
+#
+# Like the calendar refresh this never touches a committed file: it writes
+# to Supabase and exits. No commit, no PR, no build gate.
+#
+# THE TABLES HAVE TO EXIST FIRST. econ_release_detail and
+# econ_release_revision ship in schema.sql but there is no migration
+# runner (CLAUDE.md non-negotiable 4), so until that SQL is run by hand in
+# Supabase this workflow fails on its first write. That is the intended
+# failure - it is loud, and the dashboard degrades to standing methodology
+# meanwhile rather than showing a wrong figure.
+#
+# Secrets needed (both already configured for the calendar refresh):
+#   SUPABASE_SERVICE_ROLE_KEY
+#   NEXT_PUBLIC_SUPABASE_URL
+
+name: Refresh econ release detail
+
+on:
+  schedule:
+    - cron: '41 5 * * *'
+  workflow_dispatch:
+
+# One writer at a time. The script reads the stored values, compares, then
+# upserts over them - two runs overlapping could have the second read the
+# first's already-updated rows and conclude nothing was revised.
+concurrency:
+  group: refresh-econ-release-detail
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # 22 for the same reason every other scheduled workflow here
+          # pins it - @supabase/supabase-js wants native WebSocket.
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Fetch BLS release detail
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: node scripts/fetch-econ-release-detail.js

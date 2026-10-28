@@ -69,6 +69,26 @@ export default function MobileTabBar({ symbol, instruments = [] }) {
       {/* nav + aria-label so a screen reader can jump to it, and the same
           aria-current the desktop tab strip uses. */}
       <nav className="m-tabbar" aria-label="Main">
+        {/* The selected lozenge, as ONE element that slides rather than a
+            background on each tab that fades in and out.
+            That distinction is the whole effect: five backgrounds
+            cross-fading reads as two separate things changing, while one
+            object moving reads as the selection itself travelling along
+            the bar - which is what it is. It also means the motion has a
+            direction, and the direction always agrees with the content
+            sliding behind it, because both are driven by the same index.
+            Hidden rather than parked at 0 when no tab is current (a
+            strategy detail page, a trade edit form): sliding the lozenge
+            onto a tab the trader is not on would be a lie about where
+            they are. aria-hidden - it is a visual echo of aria-current,
+            which the links already carry. */}
+        {activeIndex >= 0 ? (
+          <span
+            className="m-tabbar-pill"
+            aria-hidden="true"
+            style={{ '--m-tab-index': activeIndex }}
+          />
+        ) : null}
         {MOBILE_TABS.map(({ key, label, path }, index) => {
           const Icon = TAB_ICONS[key]
           const isActive = active === key
@@ -88,9 +108,12 @@ export default function MobileTabBar({ symbol, instruments = [] }) {
               <span className="m-tabbar-label">{label}</span>
             </>
           )
-          // Log is an action, not a destination, so it gets the raised
-          // circle rather than an icon-over-label like its neighbours.
-          const className = `m-tabbar-item${isActive ? ' is-active' : ''}${key === 'new' ? ' is-action' : ''}`
+          // No `is-action` variant any more. The raised accent circle
+          // under Log is gone with the floating bar: a disc standing
+          // proud of a pill that is itself floating free of the screen
+          // edge reads as two competing ideas about what the bar is, and
+          // the sliding lozenge now carries the only emphasis in here.
+          const className = `m-tabbar-item${isActive ? ' is-active' : ''}`
 
           // "Log a trade" needs an instrument, and three screens have
           // none in view (/app, /app/log, /app/account). The tab's own

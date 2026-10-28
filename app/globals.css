@@ -4090,7 +4090,7 @@ button:active{
      its own top border - which is the kind of thing that is invisible
      in a screenshot and obvious in a measurement. */
   :root {
-    --m-tabbar-h: 56px;
+    --m-tabbar-h: 60px;
     /* The bar floats clear of the screen edges now, so the space it
        occupies is its own height PLUS the gap underneath it. Two tokens
        rather than one arithmetic expression repeated in four places -
@@ -4202,7 +4202,7 @@ button:active{
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 5px;
     /* The tap target is the point, not the icon's own height. */
     min-height: var(--m-tabbar-h);
     padding: 6px 2px;
@@ -4229,10 +4229,42 @@ button:active{
     color: var(--muted);
     text-decoration: none;
     font-family: 'Inter', sans-serif;
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: .04em;
+    /* Quiet labels, not chunky ones. 600 with positive tracking is a
+       UI-LABEL treatment - right on a stat caption, wrong here, where it
+       made five words fight each other for a 73px column and pushed
+       "Overview" and "Strategies" into their neighbours. The reference
+       bars all set this at normal weight and normal tracking and let the
+       icon carry the identification. */
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* THE GLOBAL BUTTON RULES REACH THE LOG TAB, AND ON A PHONE THEY STICK.
+     On the three instrument-less screens (/app, /app/log, /app/account)
+     the Log tab is a <button> rather than a <Link>, because it has to
+     pick an instrument before it can go anywhere. globals.css's bare
+     `button:hover` sets transform + box-shadow and `button:active` sets
+     transform + filter, both at (0,1,1) - which outranks .m-tabbar-item's
+     (0,1,0), so the reset a few lines up never touched them.
+     iOS has no hover to leave, so the state LATCHES on tap and the tab
+     stays lifted afterwards. Two visible faults from the one cause: the
+     lift promotes the tab to its own compositing layer, which Safari
+     paints against the bar's own fill instead of through its backdrop
+     blur - a hard white rectangle standing proud of the pill - and the
+     .15s transition the base rule carries makes it crawl into and out of
+     that state, which is the "lag".
+     Reset at (0,2,0) so it wins, on both pseudo-classes, including the
+     transition itself: the only thing that should move in this bar is the
+     lozenge. The press feedback is the opacity dip below. */
+  .m-tabbar .m-tabbar-item:hover,
+  .m-tabbar .m-tabbar-item:active {
+    transform: none;
+    box-shadow: none;
+    filter: none;
+    background: none;
+    transition: none;
   }
 
   .m-tabbar-item.is-active { color: var(--accent); }
@@ -4257,7 +4289,7 @@ button:active{
   .m-tabbar-icon { display: flex; align-items: center; justify-content: center; }
   /* Inline SVGs collapse to 0px without an explicit size - see the
      .theme-toggle-btn svg precedent in this file. */
-  .m-tabbar-icon svg { width: 19px; height: 19px; }
+  .m-tabbar-icon svg { width: 21px; height: 21px; }
   .m-tabbar-label { line-height: 1; }
 
   /* ----- Trade list ----- */
@@ -5305,6 +5337,21 @@ button:active{
      material, the way iOS's own sheets do - the scrim now dims what is
      BEHIND the sheet rather than showing through it. */
   .m-sheet::after { background: rgba(var(--panel-rgb), .88); }
+  /* THE TAB BAR IS NOW AN OBJECT, AND .26 IS AN EDGE'S ALPHA.
+     That number was tuned when the bar ran the full width and met the
+     screen - a band of frosted glass across the bottom, where seeing the
+     page continue underneath is the whole point. Floating free on three
+     sides it is a shape on top of the page instead, and at .26 the page
+     read straight THROUGH it: on the Overview, a calendar row's text
+     crossed the bar's middle and sat between the tab labels, legible, in
+     light theme especially, where .26 white over near-white content
+     barely tints anything.
+     .62 keeps it unmistakably glass - the page still shows as blurred
+     colour and movement behind it, which is what the two blur passes are
+     for - while making it an object the content passes BEHIND rather
+     than a filter the content shows through. The topbar keeps .26: it
+     still meets two screen edges and is still a band. */
+  .m-tabbar::after { background: rgba(var(--panel-rgb), .62); }
   /* Continuous-curve radii, iOS's own proportions. The tab bar no longer
      meets the screen edge, so its hairline runs all the way round rather
      than along the top alone - and its radius is set with the layout a

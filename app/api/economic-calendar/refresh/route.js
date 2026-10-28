@@ -107,6 +107,32 @@ async function fetchWeekPage() {
   return request()
 }
 
+// Records what this attempt concluded, for scripts/inspect-economic-
+// calendar.js to read later. Paired with claimed_at, which was stamped
+// before the fetch: an attempt that finishes stamps a time AFTER its
+// claim, so a claim with no later finish is one the platform killed
+// mid-flight - the failure mode that reports nothing anywhere else,
+// Sentry included, because a killed function never throws.
+//
+// Never allowed to affect the request. A failure to write a diagnostic
+// is not a failure to refresh, and the claim does not depend on any of
+// these columns, so a stuck outcome cannot wedge the route.
+async function record(admin, outcome, detail) {
+  try {
+    await admin
+      .from('econ_refresh_lock')
+      .update({
+        last_finished_at: new Date().toISOString(),
+        last_outcome: outcome,
+        // Bounded: this is a log line in a column, not a payload.
+        last_detail: detail === undefined || detail === null ? null : String(detail).slice(0, 300),
+      })
+      .eq('id', 1)
+  } catch {
+    // Deliberately silent - see above.
+  }
+}
+
 export async function POST(req) {
   // Against the mock database there is no Supabase to authenticate with
   // and no reason to fetch a live page - the card polls this on a timer,
@@ -170,6 +196,7 @@ export async function POST(req) {
       // markup moved, and the right response is to leave the table alone
       // and say so, not to report a successful refresh of nothing.
       Sentry.captureMessage('Economic calendar on-demand refresh parsed 0 events', 'warning')
+      await record(admin, 'no-events', 'page fetched but parsed to zero events')
       return Response.json({ refreshed: false, reason: 'no-events' })
     }
 
@@ -181,12 +208,14 @@ export async function POST(req) {
       )
     if (error) throw new Error(error.message)
 
+    await record(admin, 'ok', `${events.length} rows`)
     return Response.json({ refreshed: true, count: events.length })
   } catch (err) {
     // A failed refresh is not a failed page. The card already has whatever
     // the scheduled job last stored, so this reports the miss and lets the
     // client carry on showing it.
     Sentry.captureException(err)
+    await record(admin, 'fetch-failed', err?.message)
     return Response.json({ refreshed: false, reason: 'fetch-failed' }, { status: 200 })
   }
 }

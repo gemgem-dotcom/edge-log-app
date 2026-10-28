@@ -53,7 +53,7 @@
    3705  Trade log column width stability
    3730  Strategy notes panel
    3745  Today's brief economic outlook
-   3967  Mobile app shell (below 768px only)
+   4041  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3823,33 +3823,94 @@ button:active{
    layer on every paint. */
 .econ-term-body{
   position:relative;
+  overflow:hidden;
   padding:4px 16px 16px;
+  /* The well sits DEEPER than the card around it, not lighter. A surface
+     that is brighter than its frame reads as a panel laid on top; an
+     opening reads as one by being darker at the edges than whatever
+     surrounds it, which is the whole difference between a pane and a
+     window. */
   background:
     linear-gradient(180deg,
-      rgba(var(--panel-rgb), .72) 0%,
-      rgba(var(--panel-rgb), .58) 42%,
-      rgba(var(--panel-rgb), .64) 100%),
+      rgba(6,11,24,.58) 0%,
+      rgba(6,11,24,.44) 44%,
+      rgba(6,11,24,.56) 100%),
     radial-gradient(120% 90% at 88% 0%,
       rgba(59,167,255,.07) 0%,
       rgba(59,167,255,0) 62%);
+  /* Three things, in order of what they do: a lit top edge and a fainter
+     bottom one (the glass pane across the opening), then a wide soft
+     vignette pulled in from every side. The vignette is what gives the
+     opening its depth - without it the blobs float in a flat rectangle
+     and the illusion collapses back to a decorated panel. */
   box-shadow:
-    inset 0 .5px 0 rgba(255,255,255,.16),
-    inset 0 -.5px 0 rgba(255,255,255,.05);
+    inset 0 .5px 0 rgba(255,255,255,.18),
+    inset 0 -.5px 0 rgba(255,255,255,.05),
+    inset 0 0 70px 12px rgba(2,5,14,.40);
 }
-/* The rake. A single wide diagonal band at 4% white, angled across the
-   well - it is what stops a flat translucent panel reading as "slightly
-   see-through card" and starts it reading as a pane with a light source
-   somewhere off to the left. pointer-events:none because it covers the
-   content; aria is unaffected, it is a pseudo-element. */
-.econ-term-body::before{
+/* THE DRIFT. A fixed diagonal rake of light was the first attempt and it
+   read as stagnant, which is the honest failure mode of static glass: a
+   highlight that never moves is just a painted-on gradient. What is here
+   instead is a field of very soft blue blobs, blurred past any edge and
+   crawling across the well on two different clocks.
+
+   TWO pseudo-elements, not one with four gradients in it. Layers in a
+   single background move together - transform applies to the box, not to
+   each gradient - so a one-element version drifts as a slab and reads as
+   the panel sliding rather than as light moving inside it. Two boxes on
+   different durations, different directions and different scales never
+   repeat their relative positions inside a sitting.
+
+   inset:-30% so the blobs are already outside the frame before they
+   start, and a 46px blur on top of radii that are themselves 30-46% of
+   the box: the point is that no edge is ever visible, only the colour.
+   .econ-term-body carries overflow:hidden to clip them, because without
+   it they wash up over the title bar above.
+
+   Durations are long and deliberately coprime-ish (34s/46s) with
+   alternate, so the pair never lands back in the same arrangement on any
+   timescale someone is looking at the card for. Transform-only animation,
+   so this composites rather than repainting the text above it. */
+.econ-term-body::before,
+.econ-term-body::after{
   content:'';
-  position:absolute; inset:0;
+  position:absolute; inset:-30%;
   pointer-events:none;
-  background:linear-gradient(104deg,
-    rgba(255,255,255,0) 28%,
-    rgba(255,255,255,.055) 44%,
-    rgba(255,255,255,.012) 56%,
-    rgba(255,255,255,0) 70%);
+  z-index:0;
+  filter:blur(46px);
+  will-change:transform;
+}
+.econ-term-body::before{
+  background:
+    radial-gradient(38% 46% at 24% 38%, rgba(59,167,255,.17), rgba(59,167,255,0) 70%),
+    radial-gradient(30% 38% at 72% 22%, rgba(96,205,255,.12), rgba(96,205,255,0) 72%);
+  animation:econ-drift-a 38s ease-in-out infinite alternate;
+}
+.econ-term-body::after{
+  background:
+    radial-gradient(34% 42% at 64% 76%, rgba(59,167,255,.14), rgba(59,167,255,0) 72%),
+    radial-gradient(26% 34% at 10% 80%, rgba(138,180,255,.11), rgba(138,180,255,0) 74%);
+  animation:econ-drift-b 46s ease-in-out infinite alternate;
+}
+/* PARALLAX IS THE DEPTH CUE. The near layer travels roughly three times
+   as far as the far one and scales harder; the far one barely moves. Two
+   layers drifting at the same rate read as one sheet of colour sliding,
+   which is a surface. Different rates read as distance between them,
+   which is what makes it look into something rather than at it. */
+@keyframes econ-drift-a{   /* far: small, slow */
+  from{transform:translate3d(-2%,-1.5%,0) scale(1.02);}
+  to{transform:translate3d(2.5%,2%,0) scale(1.1);}
+}
+@keyframes econ-drift-b{   /* near: wide, faster, counter-directional */
+  from{transform:translate3d(8%,4%,0) scale(1.16);}
+  to{transform:translate3d(-9%,-6%,0) scale(.9);}
+}
+/* Motion sensitivity: the blobs stay, the movement stops. Freezing them
+   mid-field keeps the material - it is the colour that makes it glass,
+   not the travel - rather than dropping back to a flat panel. */
+@media (prefers-reduced-motion: reduce){
+  .econ-term-body::before,
+  .econ-term-body::after{animation:none;}
 }
 /* Everything real sits above the rake. */
 .econ-term-grid,
@@ -3858,7 +3919,8 @@ button:active{
    back to the opaque panel colour it used to be, and keeps the edge. */
 @media (prefers-reduced-transparency: reduce){
   .econ-term-body{background:var(--panel-2);}
-  .econ-term-body::before{display:none;}
+  .econ-term-body::before,
+  .econ-term-body::after{display:none;}
 }
 /* auto-fit collapses the tracks it does not need, so one release on a
    quiet day takes the full width and three share it. That only works
@@ -3943,25 +4005,37 @@ button:active{
    cast, the accent wash doubles, and the specular pair flips from white
    highlights to a dark hairline, which is the same inversion --glass and
    --glass-border already make a few hundred lines up. */
+/* Light theme opens into a bright space rather than a dark one, so the
+   vignette is cool and faint rather than black - a near-white rim shadow
+   at the strength dark uses would read as grime around the edge. Same
+   construction, inverted ground, same job: the rim recedes. */
 :root[data-theme="light"] .econ-term-body{
   background:
     linear-gradient(180deg,
-      rgba(255,255,255,.92) 0%,
-      rgba(246,249,252,.74) 46%,
-      rgba(240,244,249,.80) 100%),
+      rgba(252,253,255,.90) 0%,
+      rgba(240,246,253,.72) 46%,
+      rgba(234,241,250,.80) 100%),
     radial-gradient(120% 90% at 88% 0%,
       rgba(59,167,255,.13) 0%,
       rgba(59,167,255,0) 62%);
   box-shadow:
-    inset 0 .5px 0 rgba(255,255,255,.85),
-    inset 0 -.5px 0 rgba(20,22,26,.05);
+    inset 0 .5px 0 rgba(255,255,255,.95),
+    inset 0 -.5px 0 rgba(20,22,26,.05),
+    inset 0 0 64px 10px rgba(58,96,150,.13);
 }
+/* The blobs need more of themselves on a light ground: the same alpha
+   that reads as a glow over a dark well all but vanishes over near-white,
+   so these roughly double. Still blue, still soft - the ground changed,
+   not the material. */
 :root[data-theme="light"] .econ-term-body::before{
-  background:linear-gradient(104deg,
-    rgba(255,255,255,0) 28%,
-    rgba(255,255,255,.55) 44%,
-    rgba(255,255,255,.1) 56%,
-    rgba(255,255,255,0) 70%);
+  background:
+    radial-gradient(38% 46% at 24% 38%, rgba(59,167,255,.30), rgba(59,167,255,0) 70%),
+    radial-gradient(30% 38% at 72% 22%, rgba(96,205,255,.22), rgba(96,205,255,0) 72%);
+}
+:root[data-theme="light"] .econ-term-body::after{
+  background:
+    radial-gradient(34% 42% at 64% 76%, rgba(59,167,255,.24), rgba(59,167,255,0) 72%),
+    radial-gradient(26% 34% at 10% 80%, rgba(126,160,255,.20), rgba(126,160,255,0) 74%);
 }
 
 /* ---------- Mobile app shell (below 768px only) ---------- */

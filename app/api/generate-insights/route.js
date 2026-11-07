@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 import { overallInsightData, instrumentInsightData, strategyInsightData, totalTradeCount } from '@/lib/insightData'
 import { isMockDbEnabled } from '@/lib/mockMode'
+import { spendVerdict, continuityFrom, DAY_MS } from '@/lib/insightSpend'
 import { fetchAllRows } from '@/lib/fetchAllRows'
 
 const ANTHROPIC_MODEL = 'claude-sonnet-5'
@@ -165,24 +166,20 @@ const MOCK_NARRATIVE = `This is a placeholder insight shown in mock-DB dev mode 
 | London session | 5 trades | 40% |
 | New York AM | 9 trades | 78% |`
 
-// The only server-side defense against runaway Claude spend - the panel's
-// own `regenerating` boolean (client-side, trivially bypassed by a second
-// tab, a second browser, or a direct authenticated request) is otherwise
-// the sole guard on a route that costs real money per call. Independent
-// of the removed trade-count-based REGEN_THRESHOLD (see
-// lib/insightsClient.js's header comment - that was about not
-// regenerating on stale data, not about spend) - this is purely "don't
-// let the same (user, scope) pay for two calls within N seconds of each
-// other," regardless of why a second request arrived. 60s is generous
-// enough that no legitimate manual click pattern hits it (regeneration is
-// already a deliberate, occasional action) while still capping the worst
-// case at one paid call per minute per scope.
-const MIN_REGEN_INTERVAL_MS = 60 * 1000
+// The spend limit lives in lib/insightSpend.js and in the `insight_call`
+// table, not here. The version that lived here read
+// edge_insights.generated_at - a row this route never writes and the
+// caller owns - so it limited nothing at all. See that file's header.
 
 export async function POST(req) {
   try {
     const body = await req.json().catch(() => ({}))
-    const { scope, tradeCount: clientTradeCount, previousNarrative } = body
+    // previousNarrative is deliberately NOT read from the request. It
+    // used to be, and it was concatenated into the SYSTEM prompt - so
+    // the caller wrote part of the model's instructions. It now comes
+    // from the row this route reads below, which only the server
+    // writes.
+    const { scope, tradeCount: clientTradeCount } = body
     if (!scope) return new Response(JSON.stringify({ error: 'scope is required' }), { status: 400 })
 
     // isMockDbEnabled(), not the env var directly - this returns before the
@@ -205,23 +202,64 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401 })
     }
 
-    // Checked before touching buildDataset/Claude, not after - a rejected
-    // request should cost nothing beyond this one cheap lookup, not a full
-    // dataset assembly plus a wasted model call.
-    const { data: existingInsight } = await supabase
-      .from('edge_insights').select('generated_at').eq('user_id', userData.user.id).eq('scope', scope).maybeSingle()
-    if (existingInsight?.generated_at) {
-      const elapsedMs = Date.now() - new Date(existingInsight.generated_at).getTime()
-      if (elapsedMs < MIN_REGEN_INTERVAL_MS) {
-        const waitSeconds = Math.ceil((MIN_REGEN_INTERVAL_MS - elapsedMs) / 1000)
-        return new Response(JSON.stringify({ error: `Please wait ${waitSeconds}s before regenerating this again.` }), { status: 429 })
-      }
+    const userId = userData.user.id
+
+    // The spend limit. Needs the service role because `insight_call`
+    // has row level security on with no policies - a table the caller
+    // could write is a limit the caller can erase, which is exactly
+    // how the previous version failed.
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceKey) {
+      // Fail CLOSED. Everywhere else in this app a missing limiter
+      // means a bit more friction; here it means an unmetered paid
+      // endpoint, so the right answer is to refuse.
+      Sentry.captureException(new Error('generate-insights: SUPABASE_SERVICE_ROLE_KEY is not configured'))
+      return new Response(JSON.stringify({ error: 'Insights are unavailable right now.' }), { status: 503 })
     }
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+
+    // RECORDED FIRST, then judged. Checking and then acting lets a
+    // burst of parallel requests all see the same clear state and all
+    // proceed - the same reason econ_refresh_lock claims rather than
+    // checks. The cost of a refused request is this one row, not a
+    // dataset build and a model call.
+    const { error: claimError } = await admin
+      .from('insight_call')
+      .insert({ user_id: userId, scope })
+    if (claimError) {
+      Sentry.captureException(claimError)
+      return new Response(JSON.stringify({ error: 'Insights are unavailable right now.' }), { status: 503 })
+    }
+
+    const { data: calls, error: callsError } = await admin
+      .from('insight_call')
+      .select('scope, created_at')
+      .eq('user_id', userId)
+      .gt('created_at', new Date(Date.now() - DAY_MS).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (callsError) {
+      Sentry.captureException(callsError)
+      return new Response(JSON.stringify({ error: 'Insights are unavailable right now.' }), { status: 503 })
+    }
+
+    const verdict = spendVerdict(calls, { scope })
+    if (!verdict.allowed) {
+      return new Response(JSON.stringify({ error: verdict.message }), { status: 429 })
+    }
+
+    // The previous write-up, read from the database rather than taken
+    // from the request. Read through the SCOPED client, so RLS still
+    // decides whose narrative this is.
+    const { data: existingInsight } = await supabase
+      .from('edge_insights').select('narrative').eq('user_id', userId).eq('scope', scope).maybeSingle()
 
     const built = await buildDataset(supabase, scope)
     if (!built) return new Response(JSON.stringify({ error: 'Unknown or inaccessible scope' }), { status: 404 })
 
-    const narrative = await callClaude(built.data, previousNarrative)
+    const narrative = await callClaude(built.data, continuityFrom(existingInsight?.narrative))
     const generatedAt = new Date().toISOString()
 
     return new Response(JSON.stringify({ narrative, generatedAt, tradeCount: built.tradeCount }), { status: 200 })

@@ -28,7 +28,16 @@ async function handleSubmit(e) {
   })
   setLoading(false)
   if (resetError) {
-    setError(resetError.message)
+    // Deliberately NOT resetError.message, and deliberately not even a
+    // failure: the success screen below is already non-committal about
+    // whether the address exists, and surfacing the server's text here
+    // would undo that. A genuine outage is reported, but nothing that
+    // distinguishes a known address from an unknown one.
+    if (/rate|too many/i.test(resetError.message || '')) {
+      setError('Too many requests just now. Please wait a minute and try again.')
+      return
+    }
+    setSent(true)
     return
   }
   setSent(true)

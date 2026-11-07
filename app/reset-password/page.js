@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/validatePassword'
+import { validatePassword, PASSWORD_REQUIREMENTS_TEXT, PASSWORD_MAX_LENGTH } from '@/lib/validatePassword'
 import { usePageTitle } from '@/lib/usePageTitle'
 
 export default function ResetPasswordPage() {
@@ -189,7 +189,7 @@ export default function ResetPasswordPage() {
                     placeholder="Enter your new password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    maxLength={15}
+                    maxLength={PASSWORD_MAX_LENGTH}
                     required
                   />
                   <button type="button" className="eye-btn" onClick={() => setShowPassword(!showPassword)}>
@@ -211,7 +211,7 @@ export default function ResetPasswordPage() {
                   placeholder="Confirm your new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  maxLength={15}
+                  maxLength={PASSWORD_MAX_LENGTH}
                   required
                 />
               </div>

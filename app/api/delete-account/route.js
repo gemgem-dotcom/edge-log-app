@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
-import { decodeJwtClaims } from '@/lib/authAssurance'
+import { serviceRouteNeedsSecondFactor } from '@/lib/authAssurance'
 
 // Every table that references auth.users. deleteUser fails if any row still
 // points at the user, and the failure surfaces as an unhelpful empty error,
@@ -75,16 +75,11 @@ export async function POST(req) {
     // present an aal2 token. An account with no factor is unaffected,
     // which is also what keeps this from breaking the Google-only and
     // no-2FA cases.
-    const { data: factorData } = await admin.auth.admin.mfa.listFactors({ userId })
-    const hasFactor = (factorData?.factors || []).some((f) => f?.status === 'verified')
-    if (hasFactor) {
-      const claims = decodeJwtClaims(token)
-      if (claims?.aal !== 'aal2') {
-        return new Response(
-          JSON.stringify({ error: 'Sign in with your authenticator code before deleting your account.' }),
-          { status: 403 },
-        )
-      }
+    if (await serviceRouteNeedsSecondFactor(admin, userId, token)) {
+      return new Response(
+        JSON.stringify({ error: 'Sign in with your authenticator code before deleting your account.' }),
+        { status: 403 },
+      )
     }
 
     // Best-effort, not blocking - see deleteUserScreenshots' own comment on

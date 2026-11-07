@@ -13,6 +13,7 @@
 // ohlcv-1m bars).
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
+import { serviceRouteNeedsSecondFactor } from '@/lib/authAssurance'
 import { fetchTrades, NQ_CONTINUOUS_SYMBOL, isNearRollover, sessionBoundsFor, resolveFrontMonthByVolume } from '@/lib/databento'
 import { excursionWindow, computeExcursion, isEmbargoError, deriveFillTicks, sliceTicksForWindow, deriveVerifiedTimes, instantToWallClockTime, FILL_SEARCH_PAD_MINUTES } from '@/lib/tradeExcursions'
 
@@ -47,6 +48,15 @@ async function handlePost(req) {
 
   const { data: userData, error: userError } = await admin.auth.getUser(token)
   if (userError || !userData?.user) return json({ error: 'Invalid session' }, 401)
+
+  // The assurance gate. This route acts with the service role, which
+  // bypasses the restrictive RLS policies entirely, and proxy.js does
+  // not run for /api - so without this a password-only session keeps a
+  // write path into the journal, plus a 404-vs-200 oracle for which
+  // trade ids exist, both of which those policies were added to close.
+  if (await serviceRouteNeedsSecondFactor(admin, userData.user.id, token)) {
+    return json({ error: 'Sign in with your authenticator code first.' }, 403)
+  }
 
   const { tradeId } = await req.json().catch(() => ({}))
   if (!tradeId) return json({ error: 'tradeId required' }, 400)

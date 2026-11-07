@@ -955,3 +955,99 @@ drop policy if exists "Anyone signed in can read release revisions" on econ_rele
 create policy "Anyone signed in can read release revisions"
   on econ_release_revision for select
   using (auth.role() = 'authenticated');
+
+-- ============================================================
+-- Two-factor hardening: attempt limiting and trusted devices
+-- ============================================================
+-- Both tables are written and read ONLY by the service role, from the
+-- routes under app/api. Row level security is enabled with NO policies,
+-- which in Postgres means a signed-in client can neither read nor write
+-- them - and that is the point rather than an oversight:
+--
+--   mfa_attempt        a client that can edit its own attempt history can
+--                      erase its own lockout, which is the whole control.
+--   mfa_trusted_device a client that can insert a row can mint itself a
+--                      trusted device and skip the second factor forever.
+--
+-- So the account page reads its device list through a server route, not
+-- with a direct Supabase query like the rest of the app does. That is a
+-- deliberate departure from this file's usual pattern and the reason is
+-- above.
+
+-- Every verification attempt, so the server can refuse a brute force.
+--
+-- WHY A TABLE AND NOT MEMORY. The API routes run serverless: each request
+-- may land on a different instance with its own empty memory, so an
+-- in-process counter counts to one forever and limits nothing. The state
+-- has to be somewhere all instances share, and that is here.
+--
+-- Rows are kept for both successes and failures. A limiter that only
+-- records failures cannot tell "five failures then the real user got in"
+-- from "five failures and still going", and the first should clear the
+-- count while the second must not.
+create table if not exists mfa_attempt (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  -- 'totp' | 'reauth' - counted separately, because burning guesses on
+  -- one must not lock someone out of the other.
+  kind text not null,
+  succeeded boolean not null,
+  -- SHA-256 of the caller's IP, never the address itself. Enough to spot
+  -- one source spraying many accounts; not enough to be a location log.
+  -- Nullable: a request that arrives without a usable address is still
+  -- rate limited per user, which is the control that matters.
+  ip_hash text,
+  created_at timestamptz not null default now()
+);
+
+-- The limiter's only read: "how many attempts of this kind, for this
+-- user, since a cutoff". Index ordered to serve exactly that.
+create index if not exists mfa_attempt_user_idx
+  on mfa_attempt(user_id, kind, created_at desc);
+
+-- Retention. Nothing here is useful after a day or so, and the table
+-- would otherwise grow forever on a busy account. Indexed so the delete
+-- is cheap; the sweep itself belongs to a scheduled job, not to a user's
+-- login path.
+create index if not exists mfa_attempt_sweep_idx on mfa_attempt(created_at);
+
+alter table mfa_attempt enable row level security;
+
+-- A browser the user has told us to trust, so it is not challenged for
+-- the next 30 days.
+--
+-- THE TOKEN IS NEVER STORED. token_hash holds the SHA-256 of a random
+-- value that exists only in an httpOnly cookie on the user's machine. If
+-- this table leaked in full, the rows would let nobody past the second
+-- factor, because a hash cannot be replayed as a cookie. Storing the
+-- token itself would turn one database leak into a permanent 2FA bypass
+-- for every remembered device.
+--
+-- expires_at is enforced HERE, not by the cookie's own max-age. A cookie
+-- expiry lives on the client and can be edited by whoever holds the
+-- machine; this column cannot.
+create table if not exists mfa_trusted_device (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  token_hash text not null,
+  -- "Chrome on macOS" - derived from the user agent at the moment of
+  -- trusting, purely so the revoke list is readable. Never matched
+  -- against on a later request: a user agent is trivially forged, so
+  -- treating it as identity would weaken the token it sits beside.
+  label text,
+  created_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+-- One row per token, enforced by the database rather than by the code
+-- that inserts it.
+create unique index if not exists mfa_trusted_device_token_idx
+  on mfa_trusted_device(token_hash);
+
+-- "Which devices does this user trust, and which have lapsed" - the
+-- revoke list and the expiry sweep both read this way.
+create index if not exists mfa_trusted_device_user_idx
+  on mfa_trusted_device(user_id, expires_at desc);
+
+alter table mfa_trusted_device enable row level security;

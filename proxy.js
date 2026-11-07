@@ -17,6 +17,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabaseConfig'
 import { isMockDbEnabled } from '@/lib/mockMode'
+import { decodeJwtClaims, sessionNeedsSecondFactor, verifiedFactorsOf } from '@/lib/authAssurance'
 
 export async function proxy(request) {
   // Mock-DB dev mode (npm run dev:mock) never talks to real Supabase -
@@ -83,6 +84,52 @@ export async function proxy(request) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''
+    return NextResponse.redirect(url)
+  }
+
+  // SECOND FACTOR. Until this, "is this person logged in?" was the only
+  // question asked here, and two-factor authentication was enforced in
+  // exactly one place in the whole app: the login form. That is not a
+  // theoretical gap. A password-recovery link mints a real, live session
+  // without ever presenting a code, so anyone holding the account's
+  // email could reset the password and then navigate straight to /app -
+  // with 2FA switched on - and never be asked for anything. The login
+  // form was guarding a door that had another way in beside it.
+  //
+  // getSession() rather than another round trip: getUser() above has
+  // already revalidated this exact token against the auth server, so the
+  // cookie's claims are known good by the time they are read. That is
+  // the whole reason decodeJwtClaims does no verification of its own -
+  // it must never be mistaken for the thing that makes a token
+  // trustworthy.
+  //
+  // Wrapped for the same reason the getUser() call above is: a thrown
+  // exception in middleware 500s the page for every visitor. The
+  // difference is what the catch does. Failing open on a Supabase outage
+  // is right for "are you logged in", because the client-side check
+  // still runs and the cost is a brief unauthenticated page shell. It is
+  // NOT right here - failing open would wave through exactly the
+  // sessions this exists to stop - so an unreadable session is sent to
+  // the login page instead.
+  let needsSecondFactor = false
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    needsSecondFactor = sessionNeedsSecondFactor({
+      claims: decodeJwtClaims(session?.access_token),
+      user,
+    })
+  } catch {
+    needsSecondFactor = verifiedFactorsOf(user).length > 0
+  }
+
+  if (needsSecondFactor) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    // The login page reads this and goes straight to the code step
+    // rather than asking for a password the visitor has already given.
+    // Without it, someone bounced out of a recovery session sees a bare
+    // login form with no hint of why they were sent back.
+    url.search = '?step=2fa'
     return NextResponse.redirect(url)
   }
 

@@ -135,6 +135,17 @@ async function main() {
     const [verdict, good] = verdictFor(res.status, p.expectOpen)
     console.log(`  ${p.method.padEnd(6)} ${p.what.padEnd(42)} ${String(res.status).padEnd(4)} ${verdict}`)
 
+    // /health carries the auth server's VERSION, which is the single
+    // most useful fact here: a 404 on a route the client library knows
+    // about means the server is older than the client, and the version
+    // is what turns "it does not work" into "you need at least vX".
+    if (p.path === '/health' && res.status === 200) {
+      try {
+        const h = JSON.parse(res.body)
+        console.log(`         auth server: ${h.name || 'gotrue'} ${h.version || '(version not reported)'}`)
+      } catch { /* a body we cannot parse is not a failure of the probe */ }
+    }
+
     // settings is the one response whose BODY is worth reading - it lists
     // what the project has switched on, which no status code can tell us.
     if (p.path === '/settings' && res.status === 200) {

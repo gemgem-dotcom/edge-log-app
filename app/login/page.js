@@ -87,6 +87,36 @@ export default function LoginPage() {
     router.push('/app')
   }
 
+  // Arriving already half-authenticated.
+  //
+  // proxy.js now bounces any /app request whose session has not cleared
+  // its second factor, and sends it here with ?step=2fa. The commonest
+  // way to be in that state is a password-recovery link, which mints a
+  // live aal1 session without ever showing a code. Such a visitor has
+  // already proved the first factor, so asking for the password again
+  // would be theatre - and a bare login form with no explanation reads
+  // as "it forgot I just reset my password".
+  //
+  // Deliberately keyed on the real assurance level rather than on the
+  // query parameter: ?step=2fa is in the URL and anyone can type it, so
+  // it decides only whether to LOOK, never what the answer is. A session
+  // that does not need a second factor falls through untouched.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('step') !== '2fa') return
+    let alive = true
+    ;(async () => {
+      const { data: levelData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (!alive || !needsSecondFactor(levelData)) return
+      const { data: factorsData } = await supabase.auth.mfa.listFactors()
+      const factor = preferredFactor(factorsData)
+      if (!alive || !factor) return
+      setMfaFactors(verifiedFactors(factorsData))
+      setMfaFactorId(factor.id)
+      setStep('mfa')
+    })()
+    return () => { alive = false }
+  }, [])
+
   async function handleOAuth(provider) {
     setError('')
     const { error } = await supabase.auth.signInWithOAuth({

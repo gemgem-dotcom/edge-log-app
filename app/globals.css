@@ -5,56 +5,57 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–680  Base: reset, typography, forms, tables, thumbnails,
+     1–681  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   681  Auth pages
-   747  Top nav
-   762  Instrument nav (topbar pill row)
-   839  Page layout
-   893  Tabs
-   903  Misc form helpers
-   909  Detail view
-   932  Holiday notice (site-wide, above the shell)
-   964  Shell layout (sidebar + topbar)
-   1335  Expandable trade rows
-   1401  Calendar
-   1449  Account settings page
-   1673  Light theme
-   1714  2FA
-   1729  Account fine print
-   1732  Screenshot preview (log new trade)
-   1774  Auth pages always dark
-   1809  Monthly P&L (calendar on Overview)
-   1896  Trade form: sections, validation, currency, screenshots
-   2134  Field tooltips
-   2196  Date/time picker (adds an optional popup to a typed input)
-   2313  In-header column filters (trade log table)
-   2361  Active filter chips
-   2424  Empty states, error banners, skeleton loaders
-   2521  Cross-instrument overview dashboard (/app)
-   2700  Not found / error boundary state pages
-   2713  Toast notifications
-   2741  Public policy pages (Privacy, Terms)
-   2760  Legal links (auth pages + account settings)
-   2799  Economic calendar card (Overview pages)
-   3071  Calendar news badge (Monthly P&L day cells)
-   3099  Streak badge (Overview + strategy detail pages)
-   3122  Market status pill (Overview + strategy detail pages)
-   3148  Today's brief & session stats
-   3183  Market context cards (all-instruments Overview)
-   3225  Edge Insights panel
-   3240  Unverified logged time badge
-   3257  Welcome transition (first-run)
-   3286  Zero-instrument empty state
-   3296  Tutorial overlay (first-run guided tour)
-   3388  Tutorial step 3 (guided form scroll)
-   3435  Press states, value changes, content fade-in
-   3532  Bottom-tab slide
-   3706  Trade log column width stability
-   3731  Strategy notes panel
-   3746  Today's brief economic outlook
-   4066  Two-factor device list
-   4117  Mobile app shell (below 768px only)
+   682  Auth pages
+   748  Top nav
+   763  Instrument nav (topbar pill row)
+   840  Page layout
+   894  Tabs
+   904  Misc form helpers
+   910  Detail view
+   933  Holiday notice (site-wide, above the shell)
+   965  Shell layout (sidebar + topbar)
+   1336  Expandable trade rows
+   1402  Calendar
+   1450  Account settings page
+   1674  Light theme
+   1715  2FA
+   1730  Account fine print
+   1733  Screenshot preview (log new trade)
+   1775  Auth pages always dark
+   1810  Monthly P&L (calendar on Overview)
+   1897  Trade form: sections, validation, currency, screenshots
+   2135  Field tooltips
+   2197  Date/time picker (adds an optional popup to a typed input)
+   2314  In-header column filters (trade log table)
+   2362  Active filter chips
+   2425  Empty states, error banners, skeleton loaders
+   2522  Cross-instrument overview dashboard (/app)
+   2701  Not found / error boundary state pages
+   2714  Toast notifications
+   2742  Public policy pages (Privacy, Terms)
+   2761  Legal links (auth pages + account settings)
+   2800  Economic calendar card (Overview pages)
+   3072  Calendar news badge (Monthly P&L day cells)
+   3100  Streak badge (Overview + strategy detail pages)
+   3123  Market status pill (Overview + strategy detail pages)
+   3149  Today's brief & session stats
+   3184  Market context cards (all-instruments Overview)
+   3226  Edge Insights panel
+   3241  Unverified logged time badge
+   3258  Welcome transition (first-run)
+   3287  Zero-instrument empty state
+   3297  Tutorial overlay (first-run guided tour)
+   3389  Tutorial step 3 (guided form scroll)
+   3436  Press states, value changes, content fade-in
+   3533  Bottom-tab slide
+   3707  Trade log column width stability
+   3732  Strategy notes panel
+   3747  Today's brief economic outlook
+   4067  Two-factor device list
+   4118  Reset-password two-factor warning
+   4153  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -4113,6 +4114,41 @@ button:active{
 }
 .mfa-pick-btn:hover{border-color:var(--accent); background:var(--panel-hover); transform:none; filter:none; box-shadow:none;}
 .mfa-pick-btn.is-current{border-color:var(--accent);}
+
+/* ---------- Reset-password two-factor warning ---------- */
+/*
+   Shown on /reset-password only when the account actually has a
+   verified authenticator. EdgeLog has no recovery codes by design, so
+   finishing a reset is the only way back into an account whose
+   authenticator is lost - and that only works if the reset clears the
+   factor. This block is where the user is told so, and agrees.
+
+   Styled as a caution rather than an error: nothing has gone wrong, and
+   a red panel on a page someone reached because they are already
+   locked out reads as a failure they caused. --be is the palette's
+   warning tone, used here at low opacity over the card rather than as
+   a solid fill, so the form below stays the thing being looked at.
+*/
+.reset-2fa-warning{
+  margin:4px 0 14px; padding:13px 14px; border-radius:10px;
+  border:1px solid color-mix(in srgb, var(--be) 45%, transparent);
+  background:color-mix(in srgb, var(--be) 9%, transparent);
+  text-align:left;
+}
+.reset-2fa-warning-title{
+  display:flex; align-items:center; gap:7px;
+  font-size:13px; font-weight:650; color:var(--be); letter-spacing:-.01em;
+}
+.reset-2fa-warning-title svg{width:15px; height:15px; flex:0 0 auto;}
+.reset-2fa-warning p{margin:7px 0 0; font-size:12.5px; line-height:1.5; color:var(--muted);}
+
+/* The checkbox is the gate on the submit, so it needs a hit area a
+   thumb can find - the label wraps both parts for that reason. */
+.reset-2fa-accept{
+  display:flex; align-items:center; gap:8px; margin-top:11px;
+  font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;
+}
+.reset-2fa-accept input{width:15px; height:15px; margin:0; accent-color:var(--accent); cursor:pointer;}
 
 /* ---------- Mobile app shell (below 768px only) ---------- */
 /*

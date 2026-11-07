@@ -1225,6 +1225,16 @@ $$;
 
 revoke all on function public.session_meets_assurance() from public;
 grant execute on function public.session_meets_assurance() to authenticated;
+-- `from public` does NOT take anon's grant with it. Supabase grants
+-- EXECUTE on new functions to anon and authenticated by default, and
+-- those are explicit grants that survive a revoke from PUBLIC - so
+-- without the next line this SECURITY DEFINER function is reachable
+-- UNAUTHENTICATED at /rest/v1/rpc/session_meets_assurance. It leaks
+-- nothing (no arguments, returns a boolean about the caller, and an
+-- anon caller has no uid) but there is no reason for it to be exposed:
+-- the only callers are the restrictive policies below, and those are
+-- `to authenticated`. Supabase's own database linter flags this.
+revoke execute on function public.session_meets_assurance() from anon;
 
 -- RESTRICTIVE policies, deliberately, rather than rewriting the six
 -- permissive ones above. Restrictive policies are ANDed with the
@@ -1240,30 +1250,56 @@ grant execute on function public.session_meets_assurance() to authenticated;
 -- the function once per query as an initplan instead of once per row.
 drop policy if exists "Second factor required for instruments" on instruments;
 create policy "Second factor required for instruments" on instruments
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for strategies" on strategies;
 create policy "Second factor required for strategies" on strategies
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for trades" on trades;
 create policy "Second factor required for trades" on trades
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for login events" on login_events;
 create policy "Second factor required for login events" on login_events
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for AI insights" on edge_insights;
 create policy "Second factor required for AI insights" on edge_insights
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
+
+-- exit_legs is already protected transitively - its permissive policy's
+-- EXISTS subquery reads `trades`, and RLS applies inside that subquery,
+-- so a caller the gate blocks sees no trade and therefore no leg. That
+-- was measured against the live database, not assumed.
+--
+-- It is listed here anyway because that protection is a side effect of
+-- how the policy happens to be written. Denormalise a user_id onto this
+-- table one day - the obvious optimisation, since every read joins to
+-- trades for nothing but ownership - and the exit price of every trade
+-- is readable by any aal1 token, with nothing failing to say so.
+drop policy if exists "Second factor required for exit legs" on exit_legs;
+create policy "Second factor required for exit legs" on exit_legs
+  as restrictive for all to authenticated
+  using ((select public.session_meets_assurance()))
+  with check ((select public.session_meets_assurance()));
+
+
+-- ---------- FUNCTION HARDENING ----------
+-- shift_trade_times is SECURITY INVOKER, so a mutable search_path
+-- cannot be used to escalate anything - it runs as the caller and row
+-- level security still applies to every row it touches. Pinned anyway,
+-- because the protection is currently "it happens not to be a definer
+-- function", and the day somebody adds SECURITY DEFINER to it that
+-- protection disappears with nothing to say so.
+alter function public.shift_trade_times(numeric) set search_path = public;

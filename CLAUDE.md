@@ -28,9 +28,18 @@ more detail. `README.md` is the first-time setup guide.
    runnable top-to-bottom; post-v1 changes live in the "changes since v1" block at
    the bottom, written `add column if not exists` so re-running is safe. Prefer
    additive changes — avoid `drop`.
-4. **A schema change is not live until it is run in Supabase by hand.** There is no
-   migration runner. Merging code that writes a new column breaks production until
-   the SQL is run, so call this out when handing over.
+4. **A schema change is not live until it is run in Supabase.** There is no
+   migration runner in the repo. Merging code that writes a new column breaks
+   production until the SQL is run, so call this out when handing over.
+   Everything in `schema.sql` as of 2026-11-07 **has been run** against the
+   production project, and the policy gate was verified live afterwards (see
+   "Assurance at the data layer" below).
+   **Check the syntax by running it, not by reading it.** The restrictive-policy
+   block was merged reading `as restrictive to authenticated for all`, which is a
+   syntax error - Postgres wants `AS RESTRICTIVE`, then `FOR`, then `TO`. It was
+   caught only because the statement was actually executed; a hand-run would have
+   failed halfway through the block, after the table and function were already
+   created.
 
 ## Project map
 
@@ -256,6 +265,36 @@ sentry.edge.config.js
   of four character classes required below that. The old rule was 8–15 from a
   restricted charset with no complexity requirement, which accepted `password` and
   blocked every password manager.
+
+## Assurance at the data layer
+
+- **Every RLS policy used to key on `auth.uid()` alone, and `auth.uid()` is
+  satisfied by any valid token for that user — aal1 included.** So 2FA protected
+  the pages and not the rows: a password-only session could skip the app and read
+  the whole journal from PostgREST with the public anon key. Five restrictive
+  policies plus `session_meets_assurance()` close that. They are **restrictive**,
+  so they AND onto the original permissive ones, which are untouched and still
+  decide whose rows these are; undoing the block is dropping the policies.
+- **`mfa_assurance_grant` is the bridge, and it exists because of trusted
+  devices.** Supabase will not mint aal2 without a code, so a remembered browser
+  stays aal1 and Postgres cannot see the cookie. A naive aal2 policy would have
+  loaded the app and then shown an **empty journal** — which looks like data loss,
+  not like a security control. `proxy.js` records the `session_id` when it
+  validates the cookie; the function reads the same table. Server-written only.
+- **The branch that matters is the one that lets people IN.** `not exists (verified
+  factor)` is what keeps every password-only and Google-only account working. Get
+  that wrong and the gate locks out everybody rather than letting anybody in, which
+  is the failure this design is most likely to produce.
+- **Verified live on 2026-11-07, not reasoned about:** no-2FA account reads and
+  writes its own rows at aal1; aal2 reads; aal1 + a valid grant reads; aal1 with no
+  grant reads **nothing**; a token with **no `aal` claim at all** reads nothing
+  (fails closed). The last two are the attack, and both are shut.
+- **`exit_legs` carries the policy too, although it did not need it.** Its
+  permissive policy's `EXISTS` reads `trades`, and RLS applies inside that
+  subquery, so a blocked caller already saw no legs — measured, not assumed. But
+  that is a side effect of how the policy is written. Denormalise a `user_id` onto
+  that table (the obvious optimisation) and every exit price goes public with
+  nothing failing to say so.
 
 ## Gotchas
 

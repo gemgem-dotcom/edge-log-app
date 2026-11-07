@@ -164,6 +164,23 @@ export async function DELETE(req) {
     if (!all) q = q.eq('id', id)
     const { error } = await q
     if (error) throw error
+
+    // And the assurance grants those devices produced. A grant is what
+    // lets an aal1 session read rows (see schema.sql's
+    // session_meets_assurance), so leaving one behind would mean
+    // "forget this computer" stopped the page gate and not the data
+    // gate - the browser would be challenged for a code and could
+    // still read everything with the token it already holds.
+    //
+    // Every grant for the user, not just the one device's: a grant
+    // records a session, not a device, and nothing maps one back to
+    // the row it came from. Over-revoking here costs a code at the
+    // next sign-in; under-revoking costs the point of the button.
+    const { error: grantError } = await auth.admin
+      .from('mfa_assurance_grant')
+      .delete()
+      .eq('user_id', auth.user.id)
+    if (grantError) Sentry.captureException(grantError)
   } catch (err) {
     Sentry.captureException(err)
     return json(500, { error: 'Could not forget that browser' })

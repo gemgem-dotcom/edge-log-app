@@ -21,6 +21,7 @@ import { decodeJwtClaims, sessionNeedsSecondFactor, verifiedFactorsOf } from '@/
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
 import { TRUST_COOKIE, isTrustedRowValid } from '@/lib/trustedDevice'
+import { sessionIdFrom, grantExpiry, isGrantValid } from '@/lib/assuranceGrant'
 
 export async function proxy(request) {
   // Mock-DB dev mode (npm run dev:mock) never talks to real Supabase -
@@ -133,12 +134,11 @@ export async function proxy(request) {
   // sessions this exists to stop - so an unreadable session is sent to
   // the login page instead.
   let needsSecondFactor = false
+  let claims = null
   try {
     const { data: { session } } = await supabase.auth.getSession()
-    needsSecondFactor = sessionNeedsSecondFactor({
-      claims: decodeJwtClaims(session?.access_token),
-      user,
-    })
+    claims = decodeJwtClaims(session?.access_token)
+    needsSecondFactor = sessionNeedsSecondFactor({ claims, user })
   } catch {
     needsSecondFactor = verifiedFactorsOf(user).length > 0
   }
@@ -155,7 +155,7 @@ export async function proxy(request) {
   // database read happens on exactly the requests that were going to
   // be redirected regardless.
   if (needsSecondFactor) {
-    needsSecondFactor = !(await browserIsTrusted(request, user.id))
+    needsSecondFactor = !(await browserIsTrusted(request, user.id, sessionIdFrom(claims)))
   }
 
   if (needsSecondFactor) {
@@ -179,7 +179,7 @@ export async function proxy(request) {
 // each returns false and the user is asked for a code. The cost of a
 // false negative is one extra code; the cost of a false positive is
 // that the second factor stops existing for whoever holds the cookie.
-async function browserIsTrusted(request, userId) {
+async function browserIsTrusted(request, userId, sessionId) {
   const secret = request.cookies.get(TRUST_COOKIE)?.value
   if (!secret) return false
 
@@ -190,6 +190,31 @@ async function browserIsTrusted(request, userId) {
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
+
+    // THE GRANT COMES FIRST, and not only to save a round trip.
+    //
+    // Letting a remembered browser past this gate is half the job: the
+    // row-level security policies also require assurance, and Postgres
+    // cannot see the cookie. It can see session_id, so a grant row is
+    // the bridge - schema.sql's session_meets_assurance() reads the
+    // same table. Without the row the page would load and then show an
+    // empty journal, which is a worse failure than being asked for a
+    // code.
+    //
+    // Reading it first means the steady state for a remembered browser
+    // is one indexed lookup, the same cost as before, and the write
+    // below happens once per session rather than once per request.
+    if (sessionId) {
+      const { data: grant } = await admin
+        .from('mfa_assurance_grant')
+        .select('expires_at')
+        .eq('user_id', userId)
+        .eq('session_id', sessionId)
+        .limit(1)
+        .maybeSingle()
+      if (isGrantValid(grant)) return true
+    }
+
     const tokenHash = createHash('sha256').update(secret).digest('hex')
     // Matched on BOTH the hash and the user. A single-column lookup
     // that found the row and then compared user_id afterwards is the
@@ -211,6 +236,23 @@ async function browserIsTrusted(request, userId) {
       .update({ last_seen_at: new Date().toISOString() })
       .eq('id', data.id)
       .then(() => {}, () => {})
+
+    // Record the grant so the data layer agrees with this decision.
+    // AWAITED, unlike the timestamp above, because the very next thing
+    // the browser does is query its trades - and a grant written a
+    // moment too late is an empty dashboard on the first load after
+    // every sign-in.
+    //
+    // Capped by the device row's own expiry, so shortening or
+    // revoking the trust cannot leave a longer-lived grant behind it.
+    if (sessionId) {
+      const expiresAt = grantExpiry(data.expires_at)
+      if (expiresAt) {
+        await admin.from('mfa_assurance_grant')
+          .upsert({ user_id: userId, session_id: sessionId, source: 'trusted_device', expires_at: expiresAt },
+                  { onConflict: 'user_id,session_id' })
+      }
+    }
 
     return true
   } catch {

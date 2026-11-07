@@ -124,6 +124,15 @@ export async function POST(req) {
     .eq('user_id', user.id)
   if (trustError) Sentry.captureException(trustError)
 
+  // And the assurance grants, for the same reason: a grant lets an
+  // aal1 session read rows, and the factors it was granted against
+  // have just been removed.
+  const { error: grantError } = await admin
+    .from('mfa_assurance_grant')
+    .delete()
+    .eq('user_id', user.id)
+  if (grantError) Sentry.captureException(grantError)
+
   return new Response(JSON.stringify({ success: true, removed: factors.length }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },

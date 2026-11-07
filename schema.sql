@@ -1053,71 +1053,61 @@ create index if not exists mfa_trusted_device_user_idx
 alter table mfa_trusted_device enable row level security;
 
 -- ============================================================
--- OPTIONAL, NOT YET RUN: require a second factor to read the data
+-- Assurance at the data layer: require a second factor to read rows
 -- ============================================================
--- An adversarial review found that two-factor authentication in this
--- app protects the PAGES and not the ROWS. proxy.js gates /app on
--- assurance, but every policy below keys on auth.uid() alone, and
--- auth.uid() is satisfied by any valid token for that user - aal1
--- included. So somebody holding only the password can skip the app
--- entirely and read the whole journal straight from the REST API:
+-- THE HOLE THIS CLOSES. Every policy above keys on auth.uid() alone,
+-- and auth.uid() is satisfied by ANY valid token for that user - aal1
+-- included. So two-factor authentication protected the pages and not
+-- the rows: somebody holding only the password could skip the app and
+-- read the whole journal straight from PostgREST with the public anon
+-- key.
 --
 --   GET /rest/v1/trades?select=*
 --     apikey: <the anon key, which ships in every page>
 --     Authorization: Bearer <an aal1 token from a password grant>
 --
--- The block below closes that. It is NOT part of the application
--- change that added it and nothing in the code depends on it, so the
--- app works identically whether or not it has been run. It is left
--- unapplied deliberately, because it is the one change here that can
--- lock real users out of their own data if it is wrong, and that is a
--- decision to take deliberately rather than inherit.
+-- THE COMPLICATION. "Remember this browser" deliberately leaves the
+-- session at aal1 - Supabase will not mint aal2 without a code, so the
+-- cookie only tells proxy.js to let the page through. Postgres cannot
+-- see that cookie, so a naive aal2 check would load the app and then
+-- show an empty journal for every remembered browser.
 --
--- WHAT IT DOES. A row is readable when the session is aal2, OR when
--- the account has no verified factor at all. The second branch is
--- what keeps every password-only and Google-only user working exactly
--- as before - without it, this locks out everyone who has not set up
--- 2FA, which is currently everyone.
---
--- NOTE THE DIRECTION OF THE DEFAULT. A missing aal claim must not take
--- the permissive branch: `coalesce(auth.jwt() ->> 'aal', 'aal1')`
--- resolves an absent claim to aal1, which fails closed here. This is
--- the same trap that lib/authAssurance.js documents in JavaScript -
--- aal1 is the safe default in one direction and the dangerous one in
--- the other.
---
--- BEFORE RUNNING IT:
---   1. Read it. It changes who can read your trades.
---   2. Run it in a branch/staging project first if you have one.
---   3. Afterwards, sign in WITHOUT 2FA and confirm the journal still
---      loads. That is the case the second branch protects and the one
---      that breaks if this is wrong.
---   4. Then enable 2FA on a test account, sign in with the code, and
---      confirm it still loads.
---
--- TO UNDO: re-run each policy with the `using` clause reduced back to
--- `auth.uid() = user_id`.
+-- Postgres CAN see `session_id`, which Supabase puts in every access
+-- token. So a remembered browser is handled by recording its session
+-- id server-side, where both proxy.js and these policies can read it.
+-- The grant is written by the server, never by the client, is bounded
+-- by the trusted device's own expiry, and dies with the session.
 
--- create or replace function public.session_meets_assurance()
--- returns boolean
--- language sql
--- stable
--- security definer
--- set search_path = auth, public
--- as $$
---   select
---     coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
---     or not exists (
---       select 1 from auth.mfa_factors f
---       where f.user_id = auth.uid() and f.status = 'verified'
---     );
--- $$;
+create table if not exists mfa_assurance_grant (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  -- The `session_id` claim from the access token. Not a device and not
+  -- a cookie: one Supabase session, which ends when the user signs out.
+  session_id uuid not null,
+  -- 'trusted_device' today. Named so a future source (a short
+  -- re-authentication window, say) is distinguishable in the table
+  -- rather than indistinguishable from this one.
+  source text not null default 'trusted_device',
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+-- One grant per session. The upsert in proxy.js depends on this.
+create unique index if not exists mfa_assurance_grant_session_idx
+  on mfa_assurance_grant(user_id, session_id);
+create index if not exists mfa_assurance_grant_sweep_idx
+  on mfa_assurance_grant(expires_at);
+
+-- RLS on with NO policies, like the other two hardening tables: a
+-- client that could insert here could grant itself the assurance this
+-- whole block exists to require.
+alter table mfa_assurance_grant enable row level security;
+
+-- The one decision, in one place.
 --
--- drop policy if exists "Users manage their own trades" on trades;
--- create policy "Users manage their own trades"
---   on trades for all
---   using (auth.uid() = user_id and public.session_meets_assurance())
---   with check (auth.uid() = user_id and public.session_meets_assurance());
+-- SECURITY DEFINER because it reads auth.mfa_factors, which the
+-- authenticated role cannot. search_path is pinned so the function
+-- cannot be redirected at a shadowed table.
 --
 -- (repeat for strategies, instruments, login_events, and any other
 --  table holding this user's own data)
@@ -1200,3 +1190,80 @@ create policy "Users manage their own trades"
       )
     )
   );
+
+-- NOTE THE DIRECTION OF THE DEFAULT. coalesce(..., 'aal1') resolves a
+-- MISSING aal claim to aal1, which fails CLOSED here. This mirrors the
+-- same trap lib/authAssurance.js documents in JavaScript: aal1 is the
+-- safe default in one direction and the dangerous one in the other.
+create or replace function public.session_meets_assurance()
+returns boolean
+language sql
+stable
+security definer
+set search_path = auth, public
+as $$
+  select
+    -- Fully authenticated.
+    coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+    -- Or the account has no second factor to present. This branch is
+    -- what keeps every password-only and Google-only user working
+    -- exactly as before; without it this locks out everyone who has
+    -- not set 2FA up.
+    or not exists (
+      select 1 from auth.mfa_factors f
+      where f.user_id = auth.uid() and f.status = 'verified'
+    )
+    -- Or this session was granted assurance by the server, because the
+    -- browser presented a valid trusted-device cookie.
+    or exists (
+      select 1 from public.mfa_assurance_grant g
+      where g.user_id = auth.uid()
+        and g.session_id = nullif(auth.jwt() ->> 'session_id', '')::uuid
+        and g.expires_at > now()
+    );
+$$;
+
+revoke all on function public.session_meets_assurance() from public;
+grant execute on function public.session_meets_assurance() to authenticated;
+
+-- RESTRICTIVE policies, deliberately, rather than rewriting the six
+-- permissive ones above. Restrictive policies are ANDed with the
+-- existing ones, so the originals stay exactly as they are and are
+-- still the thing deciding WHOSE rows these are. To undo this whole
+-- block, drop these five policies; nothing else has to be touched.
+--
+-- `to authenticated` keeps it off the anon role (which has no
+-- permissive policy to combine with anyway) and off the service role
+-- used by the routes under app/api.
+--
+-- The (select ...) wrapper is not cosmetic: it lets Postgres evaluate
+-- the function once per query as an initplan instead of once per row.
+drop policy if exists "Second factor required for instruments" on instruments;
+create policy "Second factor required for instruments" on instruments
+  as restrictive to authenticated for all
+  using ((select public.session_meets_assurance()))
+  with check ((select public.session_meets_assurance()));
+
+drop policy if exists "Second factor required for strategies" on strategies;
+create policy "Second factor required for strategies" on strategies
+  as restrictive to authenticated for all
+  using ((select public.session_meets_assurance()))
+  with check ((select public.session_meets_assurance()));
+
+drop policy if exists "Second factor required for trades" on trades;
+create policy "Second factor required for trades" on trades
+  as restrictive to authenticated for all
+  using ((select public.session_meets_assurance()))
+  with check ((select public.session_meets_assurance()));
+
+drop policy if exists "Second factor required for login events" on login_events;
+create policy "Second factor required for login events" on login_events
+  as restrictive to authenticated for all
+  using ((select public.session_meets_assurance()))
+  with check ((select public.session_meets_assurance()));
+
+drop policy if exists "Second factor required for AI insights" on edge_insights;
+create policy "Second factor required for AI insights" on edge_insights
+  as restrictive to authenticated for all
+  using ((select public.session_meets_assurance()))
+  with check ((select public.session_meets_assurance()));

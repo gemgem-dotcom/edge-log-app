@@ -38,8 +38,12 @@
 // Usage: node scripts/probe-auth-rate-limits.js
 
 const BURST = 20
-const GAP_MS = 150
-const TIMEOUT_MS = 10000
+// 400ms rather than 150. The first run hammered at 150ms and the
+// connection stalled after five requests - which may have BEEN the
+// server shedding load, but is indistinguishable from a flaky runner.
+// A slower burst separates "refused me" from "never answered".
+const GAP_MS = 400
+const TIMEOUT_MS = 20000
 
 const FAKE_FACTOR = '00000000-0000-4000-8000-000000000000'
 
@@ -97,6 +101,7 @@ async function main() {
     console.log('-'.repeat(68))
     const counts = new Map()
     let limitedAt = null
+    let stoppedEarlyAt = null
     let retryAfter = null
     let firstLimitedBody = ''
 
@@ -111,21 +116,37 @@ async function main() {
         break
       }
       if (res.status === 0) {
-        console.log(`  attempt ${String(i).padStart(2)}  request failed: ${res.error}`)
-        break
+        // Retry once. A single timeout is noise; two in a row at the
+        // same point is a finding worth reporting as one.
+        const retry = await call(authBase, anon, t)
+        if (retry.status === 0) {
+          console.log(`  attempt ${String(i).padStart(2)}  no answer twice: ${res.error}`)
+          stoppedEarlyAt = i
+          break
+        }
+        counts.set(retry.status, (counts.get(retry.status) || 0) + 1)
+        if (retry.status === 429) { limitedAt = i; retryAfter = retry.retryAfter; firstLimitedBody = retry.body; break }
       }
     }
 
     const summary = [...counts.entries()].map(([s, n]) => `${n}x ${s}`).join(', ')
-    console.log(`  statuses seen: ${summary}`)
-    if (limitedAt === null) {
+    const sent = [...counts.values()].reduce((a, b) => a + b, 0)
+    console.log(`  statuses seen: ${summary}  (${sent} answered of ${BURST} planned)`)
+    if (limitedAt === null && stoppedEarlyAt !== null) {
+      // The distinction that matters. The first version of this script
+      // printed "not rate limited within 20 attempts" after managing
+      // five - a false statement, and precisely the kind that gets
+      // copied into a handover document as if it were a measurement.
+      console.log(`  INCONCLUSIVE - the burst stopped at attempt ${stoppedEarlyAt} without an answer,`)
+      console.log('  so nothing here says whether a limit exists')
+    } else if (limitedAt === null) {
       console.log(`  NOT rate limited within ${BURST} attempts`)
     } else {
       console.log(`  rate limited at attempt ${limitedAt}`)
       if (retryAfter) console.log(`  retry-after: ${retryAfter}`)
       if (firstLimitedBody) console.log(`  server said: ${firstLimitedBody}`)
     }
-    findings.push({ what: t.what, limitedAt })
+    findings.push({ what: t.what, limitedAt, stoppedEarlyAt })
     console.log('')
   }
 
@@ -138,6 +159,10 @@ async function main() {
     console.log(`  (at attempt ${mfa.limitedAt} from one IP). An application-level`)
     console.log(`  limiter is a SECOND layer, not the only one - say so rather`)
     console.log(`  than claiming EdgeLog is what stops a brute force.`)
+  } else if (mfa && mfa.stoppedEarlyAt !== null) {
+    console.log('  INCONCLUSIVE. The burst never completed, so this run says')
+    console.log('  nothing either way. Do not write down that there is no')
+    console.log('  server-side limit on the strength of it.')
   } else {
     console.log(`  No server-side refusal appeared within ${BURST} attempts.`)
     console.log('  That does NOT prove there is none - the window may be longer')

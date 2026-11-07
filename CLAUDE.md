@@ -228,6 +228,35 @@ sentry.edge.config.js
   `isRecoverySession` refuses it outright, because there aal1 is the permissive
   answer and the same default would be fail-open.
 
+## Security beyond 2FA
+
+- **`/api/generate-insights` spend is limited by `insight_call`, server-side.** The
+  old limit read `edge_insights.generated_at` — a row this route never writes and
+  the caller owns under a `for all` policy. A caller who never wrote had no
+  cooldown at all, and one PATCH reset it anyway. Signup is open, so that was an
+  unmetered paid endpoint. The row is written **before** the model call
+  (claim-not-check, as `econ_refresh_lock` does), and the table has RLS on with no
+  policies.
+- **The caller does not write any part of the system prompt.** `previousNarrative`
+  used to come off the request body and was concatenated into `system` — a free
+  LLM proxy on the owner's Anthropic key. The continuity text is now read from
+  `edge_insights` server-side and length-capped.
+- **Every service-role route must call `serviceRouteNeedsSecondFactor`.**
+  `proxy.js` does not run for `/api`, and the restrictive RLS policies are `to
+  authenticated` so they do not apply to the service role. A route that
+  authenticates with `getUser()` and then acts with the service key punches
+  through both layers unless it asks the question itself.
+- **Security headers live in `next.config.js`.** The app previously shipped with
+  none. `'unsafe-eval'` is in `script-src` **in development only** — Turbopack's
+  HMR needs it and the production bundle does not, which was verified by building,
+  serving with `next start` and walking the pages, not assumed. The font hosts
+  must stay in `style-src`/`font-src`: the first version of the policy omitted them
+  and silently blocked every page's typography.
+- **Passwords are 10–128 characters**, with 12+ accepted on length alone and three
+  of four character classes required below that. The old rule was 8–15 from a
+  restricted charset with no complexity requirement, which accepted `password` and
+  blocked every password manager.
+
 ## Gotchas
 
 - **`display:flex` on a `<td>` breaks table column alignment.** It removes the cell

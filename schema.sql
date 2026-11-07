@@ -1109,6 +1109,88 @@ alter table mfa_assurance_grant enable row level security;
 -- authenticated role cannot. search_path is pinned so the function
 -- cannot be redirected at a shadowed table.
 --
+-- (repeat for strategies, instruments, login_events, and any other
+--  table holding this user's own data)
+
+-- ============================================================
+-- Spend limiting for the AI insights route
+-- ============================================================
+-- One row per paid Claude call. The route writes it BEFORE calling the
+-- model and then judges; see lib/insightSpend.js for why that order.
+--
+-- WHAT THIS REPLACES. The limit used to be "is edge_insights.generated_at
+-- less than a minute old". That failed twice over: the route never wrote
+-- edge_insights (the browser does), so a caller who simply never wrote
+-- had no row and no cooldown; and even with a row it was the caller's
+-- own, under a `for all` policy, so one PATCH through PostgREST reset
+-- it. The limit was keyed on state the attacker owned, and signup is
+-- open, so anyone could loop the endpoint and bill the owner's
+-- Anthropic key without bound.
+--
+-- RLS on with NO policies, like mfa_attempt and econ_refresh_lock: a
+-- table the client can write is a limit the client can erase.
+create table if not exists insight_call (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  -- 'overall' | 'instrument:<uuid>' | 'strategy:<uuid>'. Recorded so the
+  -- per-scope interval and the account-wide daily cap can be read from
+  -- the same rows.
+  scope text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists insight_call_user_idx
+  on insight_call(user_id, created_at desc);
+create index if not exists insight_call_sweep_idx on insight_call(created_at);
+
+alter table insight_call enable row level security;
+
+-- ============================================================
+-- Tighten `with check` so a row cannot be grafted onto someone else's
+-- instrument or strategy
+-- ============================================================
+-- The existing policies validate user_id and nothing else, while
+-- instrument_id and strategy_id are foreign keys with no ownership
+-- check anywhere - not in SQL, and not server-side, because every
+-- trade and strategy write goes straight from the browser to
+-- PostgREST. So a caller holding another user's instrument id (they
+-- leak through share links and screenshots) could insert their own row
+-- pointing at it: enough to occupy unique(instrument_id, name) and
+-- permanently deny the victim a strategy name they cannot see, list or
+-- delete.
+--
+-- NOT LIVE UNTIL RUN BY HAND. Like the rest of this file.
+drop policy if exists "Users manage their own strategies" on strategies;
+create policy "Users manage their own strategies"
+  on strategies for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from instruments i
+      where i.id = instrument_id and i.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Users manage their own trades" on trades;
+create policy "Users manage their own trades"
+  on trades for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from instruments i
+      where i.id = instrument_id and i.user_id = auth.uid()
+    )
+    and (
+      strategy_id is null
+      or exists (
+        select 1 from strategies s
+        where s.id = strategy_id and s.user_id = auth.uid()
+      )
+    )
+  );
+
 -- NOTE THE DIRECTION OF THE DEFAULT. coalesce(..., 'aal1') resolves a
 -- MISSING aal claim to aal1, which fails CLOSED here. This mirrors the
 -- same trap lib/authAssurance.js documents in JavaScript: aal1 is the

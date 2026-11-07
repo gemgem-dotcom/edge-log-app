@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { needsSecondFactor, preferredFactor, verifiedFactors, factorLabel } from '@/lib/mfaFactors'
 import { GoogleIcon } from '@/components/OAuthIcons'
 import { usePageTitle } from '@/lib/usePageTitle'
 
@@ -35,6 +36,11 @@ export default function LoginPage() {
   const [step, setStep] = useState('password') // 'password' | 'mfa'
   const [mfaCode, setMfaCode] = useState('')
   const [mfaFactorId, setMfaFactorId] = useState(null)
+  // Every verified device, so somebody whose phone is flat can reach for
+  // the tablet they deliberately enrolled as a spare. Before this the
+  // login page read factors[0] and the spare was unreachable.
+  const [mfaFactors, setMfaFactors] = useState([])
+  const [pickingFactor, setPickingFactor] = useState(false)
 
   async function recordLoginEvent() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -66,10 +72,11 @@ export default function LoginPage() {
     const { data: levelData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     setLoading(false)
 
-    if (levelData.nextLevel === 'aal2' && levelData.currentLevel !== 'aal2') {
+    if (needsSecondFactor(levelData)) {
       const { data: factorsData } = await supabase.auth.mfa.listFactors()
-      const factor = factorsData?.totp?.[0]
+      const factor = preferredFactor(factorsData)
       if (factor) {
+        setMfaFactors(verifiedFactors(factorsData))
         setMfaFactorId(factor.id)
         setStep('mfa')
         return
@@ -169,20 +176,51 @@ export default function LoginPage() {
         ) : (
           <>
             <h1>Two-factor code</h1>
-            <p className="onboard-note">Enter the 6-digit code from your authenticator app.</p>
-            <form onSubmit={handleMfaSubmit}>
-              <div className="field full">
-                <label>Code</label>
-                <input
-                  type="text" maxLength={6} autoFocus placeholder="123456"
-                  value={mfaCode} onChange={(e) => setMfaCode(e.target.value)}
-                />
-              </div>
-              {error && <div className="auth-error">{error}</div>}
-              <button type="submit" disabled={loading} className="auth-submit">
-                {loading ? 'Verifying...' : 'Verify'}
-              </button>
-            </form>
+            <p className="onboard-note">
+              {pickingFactor
+                ? 'Which device do you have with you?'
+                : 'Enter the 6-digit code from your authenticator app.'}
+            </p>
+            {pickingFactor ? (
+              /* Only reachable when more than one device is enrolled -
+                 see the link below. A picker shown to somebody with a
+                 single authenticator is a question with one answer. */
+              <ul className="mfa-pick-list">
+                {mfaFactors.map((f) => (
+                  <li key={f.id}>
+                    <button
+                      type="button"
+                      className={`mfa-pick-btn${f.id === mfaFactorId ? ' is-current' : ''}`}
+                      onClick={() => { setMfaFactorId(f.id); setPickingFactor(false); setError('') }}
+                    >
+                      {factorLabel(f)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <form onSubmit={handleMfaSubmit}>
+                <div className="field full">
+                  <label>Code</label>
+                  <input
+                    type="text" inputMode="numeric" autoComplete="one-time-code"
+                    maxLength={6} autoFocus placeholder="123456"
+                    value={mfaCode} onChange={(e) => setMfaCode(e.target.value)}
+                  />
+                </div>
+                {error && <div className="auth-error">{error}</div>}
+                <button type="submit" disabled={loading} className="auth-submit">
+                  {loading ? 'Verifying...' : 'Verify'}
+                </button>
+                {mfaFactors.length > 1 && (
+                  <div className="auth-switch">
+                    <a href="#" onClick={(e) => { e.preventDefault(); setPickingFactor(true) }}>
+                      Use a different device
+                    </a>
+                  </div>
+                )}
+              </form>
+            )}
           </>
         )}
       </div>

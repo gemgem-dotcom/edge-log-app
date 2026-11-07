@@ -5,55 +5,56 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–679  Base: reset, typography, forms, tables, thumbnails,
+     1–680  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   680  Auth pages
-   746  Top nav
-   761  Instrument nav (topbar pill row)
-   838  Page layout
-   892  Tabs
-   902  Misc form helpers
-   908  Detail view
-   931  Holiday notice (site-wide, above the shell)
-   963  Shell layout (sidebar + topbar)
-   1334  Expandable trade rows
-   1400  Calendar
-   1448  Account settings page
-   1672  Light theme
-   1713  2FA
-   1728  Account fine print
-   1731  Screenshot preview (log new trade)
-   1773  Auth pages always dark
-   1808  Monthly P&L (calendar on Overview)
-   1895  Trade form: sections, validation, currency, screenshots
-   2133  Field tooltips
-   2195  Date/time picker (adds an optional popup to a typed input)
-   2312  In-header column filters (trade log table)
-   2360  Active filter chips
-   2423  Empty states, error banners, skeleton loaders
-   2520  Cross-instrument overview dashboard (/app)
-   2699  Not found / error boundary state pages
-   2712  Toast notifications
-   2740  Public policy pages (Privacy, Terms)
-   2759  Legal links (auth pages + account settings)
-   2798  Economic calendar card (Overview pages)
-   3070  Calendar news badge (Monthly P&L day cells)
-   3098  Streak badge (Overview + strategy detail pages)
-   3121  Market status pill (Overview + strategy detail pages)
-   3147  Today's brief & session stats
-   3182  Market context cards (all-instruments Overview)
-   3224  Edge Insights panel
-   3239  Unverified logged time badge
-   3256  Welcome transition (first-run)
-   3285  Zero-instrument empty state
-   3295  Tutorial overlay (first-run guided tour)
-   3387  Tutorial step 3 (guided form scroll)
-   3434  Press states, value changes, content fade-in
-   3531  Bottom-tab slide
-   3705  Trade log column width stability
-   3730  Strategy notes panel
-   3745  Today's brief economic outlook
-   4065  Mobile app shell (below 768px only)
+   681  Auth pages
+   747  Top nav
+   762  Instrument nav (topbar pill row)
+   839  Page layout
+   893  Tabs
+   903  Misc form helpers
+   909  Detail view
+   932  Holiday notice (site-wide, above the shell)
+   964  Shell layout (sidebar + topbar)
+   1335  Expandable trade rows
+   1401  Calendar
+   1449  Account settings page
+   1673  Light theme
+   1714  2FA
+   1729  Account fine print
+   1732  Screenshot preview (log new trade)
+   1774  Auth pages always dark
+   1809  Monthly P&L (calendar on Overview)
+   1896  Trade form: sections, validation, currency, screenshots
+   2134  Field tooltips
+   2196  Date/time picker (adds an optional popup to a typed input)
+   2313  In-header column filters (trade log table)
+   2361  Active filter chips
+   2424  Empty states, error banners, skeleton loaders
+   2521  Cross-instrument overview dashboard (/app)
+   2700  Not found / error boundary state pages
+   2713  Toast notifications
+   2741  Public policy pages (Privacy, Terms)
+   2760  Legal links (auth pages + account settings)
+   2799  Economic calendar card (Overview pages)
+   3071  Calendar news badge (Monthly P&L day cells)
+   3099  Streak badge (Overview + strategy detail pages)
+   3122  Market status pill (Overview + strategy detail pages)
+   3148  Today's brief & session stats
+   3183  Market context cards (all-instruments Overview)
+   3225  Edge Insights panel
+   3240  Unverified logged time badge
+   3257  Welcome transition (first-run)
+   3286  Zero-instrument empty state
+   3296  Tutorial overlay (first-run guided tour)
+   3388  Tutorial step 3 (guided form scroll)
+   3435  Press states, value changes, content fade-in
+   3532  Bottom-tab slide
+   3706  Trade log column width stability
+   3731  Strategy notes panel
+   3746  Today's brief economic outlook
+   4066  Two-factor device list
+   4117  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -4061,6 +4062,57 @@ button:active{
     radial-gradient(34% 42% at 64% 76%, rgba(59,167,255,.14), rgba(59,167,255,0) 72%),
     radial-gradient(26% 34% at 10% 80%, rgba(126,160,255,.12), rgba(126,160,255,0) 74%);
 }
+
+/* ---------- Two-factor device list ---------- */
+/* The enrolled authenticators, one row each. Before this the panel showed
+   a single Enabled/Turn-off row no matter how many devices the account
+   had, so a second authenticator existed on the server, protected
+   nothing the user could see, and could not be removed. */
+.mfa-factor-list{list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:2px;}
+.mfa-factor-row{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px; background:var(--panel-2);
+  border:1px solid var(--line);
+}
+.mfa-factor-icon{display:flex; align-items:center; color:var(--muted); flex:none;}
+/* Inline SVGs collapse to 0px without an explicit size - the same
+   .theme-toggle-btn svg precedent the rest of this file follows. */
+.mfa-factor-icon svg{width:15px; height:15px;}
+.mfa-factor-name{
+  flex:1 1 auto; min-width:0; font-size:13px; color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* Icon-only, so it needs the global button rules reset the same way every
+   other icon control in this file does: no accent pill, no radius, no
+   shadow, no hover lift. The accessible name comes from aria-label on the
+   element, since there is no text to read. */
+.mfa-factor-remove{
+  background:none; border:none; box-shadow:none; border-radius:8px;
+  padding:6px; color:var(--muted); cursor:pointer; flex:none;
+  display:flex; align-items:center;
+  transition:color .15s ease, background-color .15s ease;
+}
+.mfa-factor-remove svg{width:14px; height:14px;}
+.mfa-factor-remove:hover{color:var(--loss); background:rgba(225,92,92,.1); transform:none; filter:none; box-shadow:none;}
+.mfa-factor-remove:disabled{opacity:.45; cursor:not-allowed;}
+
+/* The copy-secret control. It reuses .del for layout, which carries a RED
+   hover because .del is the delete-link class - red on a control that
+   destroys nothing. This restores a neutral hover without disturbing
+   .del itself, which a dozen real delete links still use. */
+.del.mfa-copy:hover{color:var(--accent);}
+
+/* Choosing which authenticator to use at login, shown only when more than
+   one is enrolled. */
+.mfa-pick-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+.mfa-pick-btn{
+  width:100%; text-align:left; background:var(--panel-2); border:1px solid var(--line);
+  color:var(--text); border-radius:10px; padding:12px 14px; font-size:13.5px;
+  font-weight:600; cursor:pointer; box-shadow:none;
+  transition:border-color .15s ease, background-color .15s ease;
+}
+.mfa-pick-btn:hover{border-color:var(--accent); background:var(--panel-hover); transform:none; filter:none; box-shadow:none;}
+.mfa-pick-btn.is-current{border-color:var(--accent);}
 
 /* ---------- Mobile app shell (below 768px only) ---------- */
 /*

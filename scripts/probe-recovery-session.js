@@ -84,7 +84,15 @@ async function main() {
     users.push(...batch)
     if (batch.length < 200) break
   }
-  const user = users.find((u) => (u.email || '').toLowerCase() === email.toLowerCase())
+  // "#2" picks the second account in the list below rather than naming
+  // it. The operator running this often has only the masked list to go
+  // on - deliberately, since the full addresses have no business in a
+  // build log - and an index is the one way to choose from a list you
+  // are not allowed to read.
+  const byIndex = /^#(\d+)$/.exec(email.trim())
+  const user = byIndex
+    ? users[Number(byIndex[1]) - 1]
+    : users.find((u) => (u.email || '').toLowerCase() === email.toLowerCase())
   if (!user) {
     // Masked, never the addresses themselves. This log is a CI artifact
     // on a repo that may not stay private, and the point here is only to
@@ -96,11 +104,11 @@ async function main() {
       const tail = name.length > 1 ? name.slice(-1) : ''
       return `${head}${'*'.repeat(Math.max(1, name.length - 2))}${tail}@${host}`
     }
-    console.log(`\n  No account with that email. This project has ${users.length} user(s):`)
-    for (const u of users) line('', `${mask(u.email)}  (${(u.factors || []).filter((f) => f.status === 'verified').length} verified factor(s))`)
-    throw new Error(`no user with the email ${email} - pick one of the masked addresses above`)
+    console.log(`\n  No account matched. This project has ${users.length} user(s):`)
+    users.forEach((u, i) => line('', `#${i + 1}  ${mask(u.email)}  (${(u.factors || []).filter((f) => f.status === 'verified').length} verified factor(s))`))
+    throw new Error(`nothing matched "${email}" - re-run with user_email set to one of the #N indexes above`)
   }
-  line('user id', user.id)
+  line('chosen account', `#${users.indexOf(user) + 1} (id ${user.id})`)
   const { data: factorData } = await admin.auth.admin.mfa.listFactors({ userId: user.id })
   const factors = factorData?.factors || []
   line('factors', factors.length ? factors.map((f) => `${f.friendly_name || f.id} (${f.status})`).join(', ') : 'none')

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { needsSecondFactor, preferredFactor, verifiedFactors, factorLabel } from '@/lib/mfaFactors'
+import { checkAttemptAllowed, recordAttempt } from '@/lib/mfaAttemptClient'
 import { GoogleIcon } from '@/components/OAuthIcons'
 import { usePageTitle } from '@/lib/usePageTitle'
 
@@ -134,6 +135,18 @@ export default function LoginPage() {
       return
     }
     setLoading(true)
+
+    // Asked BEFORE the code is sent, not only after. A lockout that
+    // only appears once you have guessed again is not a lockout, and
+    // the check also survives a page reload - which is the whole point
+    // of counting server-side rather than in this component's state.
+    const gate = await checkAttemptAllowed('totp')
+    if (!gate.allowed) {
+      setError(gate.message)
+      setLoading(false)
+      return
+    }
+
     const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId })
     if (challengeError) {
       setError(challengeError.message)
@@ -145,9 +158,15 @@ export default function LoginPage() {
       challengeId: challenge.id,
       code: mfaCode.trim(),
     })
+
+    // Recorded either way. A limiter that only sees failures cannot
+    // tell "five wrong then the real user got in" from "five wrong and
+    // still going", and the first of those should clear the count.
+    const after = await recordAttempt('totp', !verifyError)
     setLoading(false)
+
     if (verifyError) {
-      setError('Incorrect code - try again.')
+      setError(after.message || 'Incorrect code - try again.')
       return
     }
     await recordLoginEvent()

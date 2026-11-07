@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Copy, Check, Smartphone, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useConfirm } from '@/lib/useConfirm'
+import { checkAttemptAllowed, recordAttempt } from '@/lib/mfaAttemptClient'
 import { activatable } from '@/lib/activatable'
 import {
   verifiedFactors, unverifiedFactors, factorLabel,
@@ -90,6 +91,18 @@ export default function TwoFactorSection({ initialFactors }) {
       return
     }
     setMfaBusy(true)
+
+    // The same limit as the login page, and for a less obvious reason:
+    // this screen is reachable by anyone holding an unattended signed-in
+    // browser, and unlimited guesses here would let them enrol their own
+    // authenticator onto somebody else's account.
+    const gate = await checkAttemptAllowed('totp')
+    if (!gate.allowed) {
+      setMfaError(gate.message)
+      setMfaBusy(false)
+      return
+    }
+
     const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: enrollFactorId })
     if (challengeError) {
       setMfaError("Couldn't verify that code. Please try again.")
@@ -101,9 +114,10 @@ export default function TwoFactorSection({ initialFactors }) {
       challengeId: challenge.id,
       code: verifyCode.trim(),
     })
+    const after = await recordAttempt('totp', !verifyError)
     setMfaBusy(false)
     if (verifyError) {
-      setMfaError('Incorrect code - try again.')
+      setMfaError(after.message || 'Incorrect code - try again.')
       return
     }
     closeEnrolment()

@@ -117,7 +117,9 @@ async function main() {
 
   // ---------------------------------------------------------------
   console.log('\nTHE RECOVERY SESSION')
-  const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({ type: 'recovery', email })
+  // user.email, not the `email` input - that input may be an "#N" index,
+  // and the auth server quite rightly refuses "#2" as an address.
+  const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({ type: 'recovery', email: user.email })
   if (linkErr) throw new Error(`could not generate a recovery link: ${linkErr.message}`)
   const tokenHash = linkData?.properties?.hashed_token
   if (!tokenHash) throw new Error('the generated link carried no hashed_token')

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ShieldAlert } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { validatePassword } from '@/lib/validatePassword'
 import { usePageTitle } from '@/lib/usePageTitle'
@@ -53,6 +53,34 @@ export default function ResetPasswordPage() {
   // person knows the current password.
   const ready = recoveryLinkInUrl || recoveryEvent
 
+  // TWO-FACTOR, AND WHY THIS PAGE TOUCHES IT AT ALL.
+  //
+  // EdgeLog deliberately has no recovery codes. That makes this page the
+  // only way back into an account whose authenticator is lost, and it
+  // only works if finishing the reset also clears the factor - otherwise
+  // the user sets a new password, is asked for a code they cannot
+  // produce, and is locked out for good by the very flow meant to save
+  // them.
+  //
+  // It is not done quietly. Switching someone's second factor off is a
+  // real reduction in their account's security, so they are told in
+  // plain words and have to agree to it before the reset will run.
+  const [factorCount, setFactorCount] = useState(0)
+  const [acceptsClearing, setAcceptsClearing] = useState(false)
+
+  useEffect(() => {
+    if (!ready) return
+    let alive = true
+    ;(async () => {
+      const { data } = await supabase.auth.mfa.listFactors()
+      // Verified only. An abandoned enrolment is not protection the user
+      // relies on, and warning about one would be noise.
+      const verified = (data?.totp || []).filter((f) => f?.status === 'verified')
+      if (alive) setFactorCount(verified.length)
+    })()
+    return () => { alive = false }
+  }, [ready])
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -73,15 +101,64 @@ export default function ResetPasswordPage() {
       setError('Passwords do not match.')
       return
     }
+    if (factorCount > 0 && !acceptsClearing) {
+      setError('Tick the box to confirm you understand two-factor authentication will be turned off.')
+      return
+    }
     setLoading(true)
     const { error: updateError } = await supabase.auth.updateUser({ password })
-    setLoading(false)
     if (updateError) {
+      setLoading(false)
       setError("Couldn't update your password. Your reset link may have expired — request a new one and try again.")
       return
     }
+
+    // Password first, factors second, and the order matters.
+    //
+    // Clearing first would mean an abandoned reset silently strips
+    // someone's 2FA: they open the email, think better of it, close the
+    // tab, and their account is weaker than before without them ever
+    // confirming anything.
+    //
+    // The cost of this order is the window it leaves - a new password
+    // set, the factor still in place - which is exactly the lockout this
+    // feature exists to prevent. So the failure is never reported as
+    // success, and the way out is stated: another reset link re-runs the
+    // clear, because the user's new password is already in place and
+    // this step is idempotent.
+    if (factorCount > 0) {
+      const cleared = await clearTwoFactor()
+      setLoading(false)
+      if (!cleared) {
+        setError('Your password was changed, but two-factor authentication could not be switched off. Request another reset link to finish — your new password still works.')
+        return
+      }
+    } else {
+      setLoading(false)
+    }
+
     setDone(true)
     setTimeout(() => router.push('/login'), 2500)
+  }
+
+  // Read the token fresh rather than closing over one: updateUser() can
+  // issue a new access token, and the stale one would be rejected.
+  async function clearTwoFactor() {
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return false
+    try {
+      const res = await fetch('/api/clear-2fa', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      return res.ok
+    } catch {
+      // A network failure here is the same outcome as a refusal, and the
+      // caller's message covers both. Throwing would leave the button
+      // stuck on "Updating...".
+      return false
+    }
   }
 
   return (
@@ -131,6 +208,32 @@ export default function ResetPasswordPage() {
                   required
                 />
               </div>
+              {/* Shown only when there is actually a factor to lose.
+                  An account without 2FA should not be read a warning
+                  about losing it - that is how people learn to click
+                  past warnings without reading them. */}
+              {factorCount > 0 && (
+                <div className="reset-2fa-warning">
+                  <div className="reset-2fa-warning-title">
+                    <ShieldAlert size={15} aria-hidden="true" />
+                    This will turn off two-factor authentication
+                  </div>
+                  <p>
+                    {factorCount === 1
+                      ? 'Your authenticator app will be removed from this account, so you can get back in without it.'
+                      : `All ${factorCount} of your authenticators will be removed from this account, so you can get back in without them.`}
+                    {' '}You can set it up again from Account settings once you have signed in.
+                  </p>
+                  <label className="reset-2fa-accept">
+                    <input
+                      type="checkbox"
+                      checked={acceptsClearing}
+                      onChange={(e) => setAcceptsClearing(e.target.checked)}
+                    />
+                    <span>I understand</span>
+                  </label>
+                </div>
+              )}
               {error && <div className="auth-error">{error}</div>}
               <button type="submit" disabled={loading || !ready} className="auth-submit">
                 {loading ? 'Updating...' : 'Update password'}

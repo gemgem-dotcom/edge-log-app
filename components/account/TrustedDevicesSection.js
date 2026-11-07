@@ -8,6 +8,20 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 
 // The browsers this account has told EdgeLog not to challenge.
 //
+// "Devices", not "computers", in every string a user reads. The list
+// genuinely holds phones and tablets - lib/deviceLabel.js labels
+// iPhone, iPad and Android - so the old wording told someone their
+// phone was a computer, and the icon beside each row has always been
+// a phone-and-monitor pair.
+//
+// It renders as a SUBSECTION of two-factor authentication, not a peer
+// of it: .panel-subtitle rather than .panel-title, inside the indented
+// .trusted-device-block its parent provides. Remembering a browser is
+// a setting ON two-factor authentication - it has no meaning at all
+// with 2FA off, which is why the parent does not render this at all
+// then - and two identical uppercase labels in one card said the
+// opposite.
+//
 // WHY THIS SCREEN HAS TO EXIST. A trusted-device cookie skips the
 // second factor for thirty days, which makes it as powerful as the
 // factor itself for anything EdgeLog protects. Granting that from a
@@ -27,7 +41,7 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 const MOCK_DEVICES = [
   { id: 'mock-1', label: 'Mac (macOS)', valid: true, daysLeft: 28, note: "Won't ask for a code for 28 more days" },
   { id: 'mock-2', label: 'iPhone (iOS)', valid: true, daysLeft: 1, note: "Won't ask for a code for 1 more day" },
-  { id: 'mock-3', label: 'Windows PC (Windows)', valid: false, daysLeft: 0, note: 'Expired - this computer will be asked for a code' },
+  { id: 'mock-3', label: 'Windows PC (Windows)', valid: false, daysLeft: 0, note: 'Expired - this device will be asked for a code' },
 ]
 
 export default function TrustedDevicesSection({ twoFactorOn }) {
@@ -58,12 +72,12 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       if (!alive()) return
-      if (!res.ok) { setError("Couldn't load your list of computers."); setLoading(false); return }
+      if (!res.ok) { setError("Couldn't load your list of devices."); setLoading(false); return }
       const data = await res.json()
       setDevices(data.devices || [])
       setError('')
     } catch {
-      if (alive()) setError("Couldn't load your list of computers.")
+      if (alive()) setError("Couldn't load your list of devices.")
     } finally {
       if (alive()) setLoading(false)
     }
@@ -78,7 +92,7 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
   async function forget(device) {
     const sure = await confirm({
       title: `Forget ${device.label}?`,
-      message: 'That computer will be asked for a code the next time it signs in.',
+      message: 'That device will be asked for a code the next time it signs in.',
       confirmLabel: 'Ask it for a code again',
       danger: true,
     })
@@ -92,8 +106,8 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
     // mechanism - "revoke all trusted device tokens" is not what the
     // person having that afternoon is searching for.
     const sure = await confirm({
-      title: 'Forget every computer',
-      message: 'Every computer, including this one, will be asked for a code at the next sign-in. Do this if a device has been lost or stolen.',
+      title: 'Forget every device',
+      message: 'Every device, including this one, will be asked for a code at the next sign-in. Do this if a device has been lost or stolen.',
       confirmLabel: 'Forget all',
       danger: true,
     })
@@ -118,9 +132,9 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.access_token}` },
       })
-      if (!res.ok) setError("Couldn't update your list of computers. Please try again.")
+      if (!res.ok) setError("Couldn't update your list of devices. Please try again.")
     } catch {
-      setError("Couldn't update your list of computers. Please try again.")
+      setError("Couldn't update your list of devices. Please try again.")
     }
     setBusy(false)
     await load()
@@ -132,15 +146,21 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
 
   return (
     <>
-      <div className="panel-title">Computers that don&apos;t ask for a code</div>
+      <div className="panel-subtitle">Devices that don&apos;t ask for a code</div>
       <div className="mfa-status-row">
         <div>
-          <div className="danger-row-title">
+          {/* Not .danger-row-title (14.5px bold) as it was: with the
+              subsection heading directly above it, a line heavier than
+              its own heading inverted the hierarchy, and the two said
+              nearly the same words. A quiet count under the heading
+              reads as the heading's answer rather than as a second
+              title. */}
+          <div className="trusted-device-count">
             {loading
               ? 'Checking...'
               : devices.length === 0
                 ? 'None'
-                : `${devices.length} computer${devices.length === 1 ? '' : 's'} won't be asked for a code`}
+                : `${devices.length} device${devices.length === 1 ? '' : 's'} won't be asked for a code`}
           </div>
           {/* The "how did these get here" sentence used to show only
               when the list was EMPTY - that is, only when nobody
@@ -148,7 +168,7 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
               otherwise reads as something the app did rather than
               something the user chose. */}
           <div className="danger-row-note">
-            These are computers where you ticked &ldquo;skip the code&rdquo; when signing in.
+            These are devices where you ticked &ldquo;skip the code&rdquo; when signing in.
             {devices.length > 0 && ' Each can sign in with your password alone until the date shown.'}
           </div>
         </div>

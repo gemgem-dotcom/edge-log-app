@@ -67,7 +67,7 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
       return
     }
 
-    // Forget every remembered computer. Changing a password is what
+    // Forget every remembered device. Changing a password is what
     // somebody does when they think their account has been reached,
     // and a trusted-device cookie would otherwise keep skipping the
     // second factor for whoever holds it - surviving the one action

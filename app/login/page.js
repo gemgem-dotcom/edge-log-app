@@ -300,18 +300,26 @@ export default function LoginPage() {
                     value={mfaCode} onChange={(e) => setMfaCode(e.target.value)}
                   />
                 </div>
-                {/* Says "this browser", not "this device". A phone has
-                    several browsers and the trust only follows the
-                    cookie; "device" promises something the cookie
-                    cannot deliver, and the user finds out when the
-                    other browser asks for a code anyway. */}
+                {/* "Device", matching the Account settings list this
+                    produces a row in - the two used to say "computer"
+                    here and "Computers that don't ask for a code"
+                    there, while the list itself cheerfully showed
+                    iPhones.
+                    This label said "computer" to avoid promising
+                    something the cookie cannot deliver: trust follows
+                    the COOKIE, so a phone's other browser is still
+                    challenged. But it was never "computer" that
+                    carried that precision - the bracketed caveat
+                    below is, and it stays. Saying "computer" only
+                    bought the precision by being wrong about phones
+                    instead. */}
                 <label className="mfa-trust-row">
                   <input
                     type="checkbox"
                     checked={trustBrowser}
                     onChange={(e) => setTrustBrowser(e.target.checked)}
                   />
-                  <span>Skip the code on this computer for the next 30 days</span>
+                  <span>Skip the code on this device for the next 30 days</span>
                 </label>
                 {/* The risk, said plainly. The tickbox used to state
                     only the mechanism, so somebody at a prop desk or a
@@ -321,7 +329,7 @@ export default function LoginPage() {
                     label, because "browser" is the word people read as
                     "laptop". */}
                 <div className="mfa-trust-note">
-                  Only tick this on a computer only you use &mdash; anyone who knows your
+                  Only tick this on a device only you use &mdash; anyone who knows your
                   password could then sign in here without a code.
                   (If you use more than one web browser on it, you&apos;ll still be asked
                   in the others.)

@@ -64,7 +64,7 @@ export default function DataExportSection() {
 
   return (
     <>
-      <div className="section-heading" style={{ marginTop: '8px' }}>Data</div>
+      <div className="section-heading">Data</div>
       <div className="panel">
         <div className="danger-row">
           <div>

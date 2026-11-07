@@ -36,6 +36,7 @@ on:
           - scripts/probe-forexfactory-sources.js
           - scripts/probe-econ-sources.js
           - scripts/probe-news-sources.js
+          - scripts/probe-auth-capabilities.js
           - scripts/fetch-econ-release-detail.js
           - scripts/inspect-economic-calendar.js
           - scripts/pull-strategy-market-context.js

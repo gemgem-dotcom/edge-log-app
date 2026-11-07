@@ -171,6 +171,15 @@ export default function TwoFactorSection({ initialFactors, email }) {
           <p className="onboard-note">Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.</p>
           {enrollQr && (
             <div className="mfa-qr-wrap">
+              {/* next/image is the wrong tool here and the rule's reasoning
+                  does not apply: this is a data: URI generated at runtime by
+                  the auth server, so there is no network request to optimize,
+                  no remote host to configure, and no LCP cost beyond the
+                  bytes already inlined in the response. Routing it through
+                  the image optimizer would re-encode a QR code, which is the
+                  one kind of image where re-encoding can actually cost you a
+                  scan. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={enrollQr} alt="2FA QR code" />
             </div>
           )}

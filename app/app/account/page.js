@@ -141,7 +141,7 @@ function AccountPageInner() {
     // on desktop they share one .panel with dividers between them, so on
     // their own they each need one.
     password: <div className="panel"><PasswordSection email={email} hasPassword={hasPassword} onPasswordSet={() => setHasPassword(true)} /></div>,
-    twofactor: <div className="panel"><TwoFactorSection initialFactors={mfaFactors} /></div>,
+    twofactor: <div className="panel"><TwoFactorSection initialFactors={mfaFactors} email={email} /></div>,
     devices: <div className="panel"><SignInHistorySection initialEvents={loginEvents} timezone={timezone} /></div>,
     export: <DataExportSection />,
     danger: <DangerZoneSection email={email} hasPassword={hasPassword} />,
@@ -212,7 +212,7 @@ function AccountPageInner() {
             <div className="panel">
               <PasswordSection email={email} hasPassword={hasPassword} onPasswordSet={() => setHasPassword(true)} />
               <div className="panel-divider" />
-              <TwoFactorSection initialFactors={mfaFactors} />
+              <TwoFactorSection initialFactors={mfaFactors} email={email} />
               <div className="panel-divider" />
               <SignInHistorySection initialEvents={loginEvents} timezone={timezone} />
             </div>

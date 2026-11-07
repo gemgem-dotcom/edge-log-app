@@ -29,14 +29,24 @@ export default function RecoveryCodesSection({ twoFactorOn, email }) {
   const [copied, setCopied] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
 
-  const load = useCallback(async () => {
+  // `alive` rather than a bare await-then-setState. This block unmounts
+  // the moment the user starts enrolling a new authenticator, which is a
+  // realistic thing to do while the status request is still in flight,
+  // and a setState after that point is a warning in development and a
+  // leak in principle.
+  const load = useCallback(async (alive = () => true) => {
     const { status: s, error: e } = await getRecoveryStatus(supabase)
+    if (!alive()) return
     setStatus(s)
     setError(e ? "Couldn't check your recovery codes." : '')
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    let mounted = true
+    load(() => mounted)
+    return () => { mounted = false }
+  }, [load])
 
   async function handleGenerate() {
     setError('')

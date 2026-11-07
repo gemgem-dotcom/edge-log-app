@@ -67,6 +67,23 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
       return
     }
 
+    // Forget every remembered computer. Changing a password is what
+    // somebody does when they think their account has been reached,
+    // and a trusted-device cookie would otherwise keep skipping the
+    // second factor for whoever holds it - surviving the one action
+    // the user took to stop them. Best effort: the password is
+    // already changed, and failing that over a stale row helps
+    // nobody.
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        await fetch('/api/trusted-device?all=1', {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+      }
+    } catch { /* see above */ }
+
     setPasswordSuccess(hasPassword ? 'Password updated.' : 'Password set. You can now log in with your email and this password, or continue using Google.')
     setCurrentPassword('')
     setNewPassword('')

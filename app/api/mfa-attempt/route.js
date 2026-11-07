@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
 import * as Sentry from '@sentry/nextjs'
-import { attemptVerdict, isValidKind, lockoutMessage } from '@/lib/mfaRateLimit'
+import { attemptVerdict, isValidKind, lockoutMessage, observedSuccess } from '@/lib/mfaRateLimit'
+import { decodeJwtClaims } from '@/lib/authAssurance'
 
 // The server half of the verification rate limit.
 //
@@ -68,24 +69,26 @@ async function authenticate(req) {
   const admin = createClient(url, serviceKey)
   const { data, error } = await admin.auth.getUser(token)
   if (error || !data?.user) return { error: json(401, { error: 'Invalid session' }) }
-  return { admin, user: data.user, serviceKey }
+  return { admin, user: data.user, serviceKey, accessToken: token }
 }
 
-async function readVerdict(admin, userId, kind) {
+async function readVerdict(admin, userId, kind, ipHash) {
   // Only the window's worth of rows, and only the two columns the
   // policy reads. This sits on the login path, so it is one small
   // indexed query (mfa_attempt_user_idx covers exactly this shape).
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
   const { data, error } = await admin
     .from('mfa_attempt')
-    .select('succeeded, created_at')
+    .select('succeeded, created_at, ip_hash')
     .eq('user_id', userId)
     .eq('kind', kind)
     .gt('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(50)
+    // Enough to see the account-wide cap (20) across several sources,
+    // not just this caller's handful.
+    .limit(200)
   if (error) throw error
-  return attemptVerdict(data || [])
+  return attemptVerdict(data || [], { ipHash })
 }
 
 export async function GET(req) {
@@ -96,7 +99,7 @@ export async function GET(req) {
   if (!isValidKind(kind)) return json(400, { error: 'Unknown attempt kind' })
 
   try {
-    const verdict = await readVerdict(auth.admin, auth.user.id, kind)
+    const verdict = await readVerdict(auth.admin, auth.user.id, kind, hashIp(req, auth.serviceKey))
     return json(200, {
       allowed: verdict.allowed,
       remaining: verdict.remaining,
@@ -120,24 +123,32 @@ export async function POST(req) {
   if (auth.error) return auth.error
 
   let body = {}
-  try { body = await req.json() } catch { /* an empty body is handled below */ }
+  try { body = await req.json() } catch { /* an empty body is fine - see below */ }
   const kind = body.kind || 'totp'
   if (!isValidKind(kind)) return json(400, { error: 'Unknown attempt kind' })
-  if (typeof body.succeeded !== 'boolean') return json(400, { error: 'succeeded must be true or false' })
+
+  // The outcome is NOT taken from the request. It used to be, and that
+  // handed the lockout's off-switch to the caller: a session holding
+  // only the password could POST {"succeeded":true}, clear every
+  // recorded failure, and guess forever. See observedSuccess() for the
+  // full reasoning. The token was validated by getUser() above, so its
+  // claims are the auth server's word rather than the caller's.
+  const succeeded = observedSuccess(decodeJwtClaims(auth.accessToken))
 
   try {
     // Recorded BEFORE the verdict is read back, so the attempt just
     // made is included in its own count. Reading first would let a
     // burst of parallel requests each see a stale count and all pass.
+    const ipHash = hashIp(req, auth.serviceKey)
     const { error: insertError } = await auth.admin.from('mfa_attempt').insert({
       user_id: auth.user.id,
       kind,
-      succeeded: body.succeeded,
-      ip_hash: hashIp(req, auth.serviceKey),
+      succeeded,
+      ip_hash: ipHash,
     })
     if (insertError) throw insertError
 
-    const verdict = await readVerdict(auth.admin, auth.user.id, kind)
+    const verdict = await readVerdict(auth.admin, auth.user.id, kind, ipHash)
     return json(200, {
       allowed: verdict.allowed,
       remaining: verdict.remaining,

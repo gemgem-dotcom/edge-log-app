@@ -11,6 +11,13 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  // Arriving from the login page's "lost your phone" route. Read once
+  // at first render, before anything strips the URL. It only changes
+  // the wording - the flow is identical either way.
+  const [lostPhone] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).has('lost')
+  })
 
 async function handleSubmit(e) {
   e.preventDefault()
@@ -41,8 +48,12 @@ return (
   </>
   ) : (
     <>
-    <h1 className="auth-welcome">Forgot password?</h1>
-  <p className="auth-subtitle">Enter your email and we&apos;ll send you a reset link.</p>
+    <h1 className="auth-welcome">{lostPhone ? 'Get back into your account' : 'Forgot password?'}</h1>
+  <p className="auth-subtitle">
+    {lostPhone
+      ? "Enter your email and we'll send you a link to set a new password. Opening it also switches off the sign-in code, so you can get in without your old phone."
+      : "Enter your email and we'll send you a reset link. Use this too if you've lost the phone that gives you your sign-in code."}
+  </p>
     <form onSubmit={handleSubmit}>
     <div className="field full">
     <label>Email</label>

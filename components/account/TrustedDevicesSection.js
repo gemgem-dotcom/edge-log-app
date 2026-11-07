@@ -27,7 +27,7 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 const MOCK_DEVICES = [
   { id: 'mock-1', label: 'Mac (macOS)', valid: true, daysLeft: 28, note: "Won't ask for a code for 28 more days" },
   { id: 'mock-2', label: 'iPhone (iOS)', valid: true, daysLeft: 1, note: "Won't ask for a code for 1 more day" },
-  { id: 'mock-3', label: 'Windows PC (Windows)', valid: false, daysLeft: 0, note: 'Expired - this browser will be asked for a code' },
+  { id: 'mock-3', label: 'Windows PC (Windows)', valid: false, daysLeft: 0, note: 'Expired - this computer will be asked for a code' },
 ]
 
 export default function TrustedDevicesSection({ twoFactorOn }) {
@@ -58,12 +58,12 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       if (!alive()) return
-      if (!res.ok) { setError("Couldn't load your trusted browsers."); setLoading(false); return }
+      if (!res.ok) { setError("Couldn't load your list of computers."); setLoading(false); return }
       const data = await res.json()
       setDevices(data.devices || [])
       setError('')
     } catch {
-      if (alive()) setError("Couldn't load your trusted browsers.")
+      if (alive()) setError("Couldn't load your list of computers.")
     } finally {
       if (alive()) setLoading(false)
     }
@@ -78,8 +78,8 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
   async function forget(device) {
     const sure = await confirm({
       title: `Forget ${device.label}?`,
-      message: 'That browser will be asked for a code the next time it signs in.',
-      confirmLabel: 'Forget browser',
+      message: 'That computer will be asked for a code the next time it signs in.',
+      confirmLabel: 'Ask it for a code again',
       danger: true,
     })
     if (!sure) return
@@ -92,8 +92,8 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
     // mechanism - "revoke all trusted device tokens" is not what the
     // person having that afternoon is searching for.
     const sure = await confirm({
-      title: 'Forget every browser',
-      message: 'Every browser, including this one, will be asked for a code at the next sign-in. Do this if a device has been lost or stolen.',
+      title: 'Forget every computer',
+      message: 'Every computer, including this one, will be asked for a code at the next sign-in. Do this if a device has been lost or stolen.',
       confirmLabel: 'Forget all',
       danger: true,
     })
@@ -118,9 +118,9 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.access_token}` },
       })
-      if (!res.ok) setError("Couldn't update your trusted browsers. Please try again.")
+      if (!res.ok) setError("Couldn't update your list of computers. Please try again.")
     } catch {
-      setError("Couldn't update your trusted browsers. Please try again.")
+      setError("Couldn't update your list of computers. Please try again.")
     }
     setBusy(false)
     await load()
@@ -132,7 +132,7 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
 
   return (
     <>
-      <div className="panel-title">Remembered browsers</div>
+      <div className="panel-title">Computers that don&apos;t ask for a code</div>
       <div className="mfa-status-row">
         <div>
           <div className="danger-row-title">
@@ -140,12 +140,16 @@ export default function TrustedDevicesSection({ twoFactorOn }) {
               ? 'Checking...'
               : devices.length === 0
                 ? 'None'
-                : `${devices.length} browser${devices.length === 1 ? '' : 's'} won't be asked for a code`}
+                : `${devices.length} computer${devices.length === 1 ? '' : 's'} won't be asked for a code`}
           </div>
+          {/* The "how did these get here" sentence used to show only
+              when the list was EMPTY - that is, only when nobody
+              needed it. It is now always said, because the section
+              otherwise reads as something the app did rather than
+              something the user chose. */}
           <div className="danger-row-note">
-            {devices.length === 0
-              ? 'Tick "don’t ask for a code on this browser" when you sign in to add one.'
-              : 'Each of these can sign in with your password alone until it expires.'}
+            These are computers where you ticked &ldquo;skip the code&rdquo; when signing in.
+            {devices.length > 0 && ' Each can sign in with your password alone until the date shown.'}
           </div>
         </div>
         {devices.length > 0 && (

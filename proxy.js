@@ -75,19 +75,37 @@ export async function proxy(request) {
   // /app/* page for every visitor until Supabase recovers. A malformed or
   // absent session resolves normally (user: null, no throw), so this only
   // ever catches a genuine infrastructure problem, not "not logged in."
+  // NEVER CACHE A SIGNED-IN PAGE.
+  //
+  // Signing out and pressing Back used to re-display the app: the
+  // browser restored the rendered page from its back/forward cache,
+  // which runs no request and therefore passes no gate. The session
+  // was gone and the page was still on screen.
+  //
+  // no-store is the specific thing that disqualifies a response from
+  // that cache. It is applied through this helper rather than at one
+  // point near the end because EVERY exit from here must carry it -
+  // including the redirects, and including the fail-open return in
+  // the catch below, which was the path that would otherwise have
+  // kept serving a cacheable page during an outage.
+  const uncached = (res) => {
+    res.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+    return res
+  }
+
   let user = null
   try {
     const result = await supabase.auth.getUser()
     user = result.data.user
   } catch {
-    return response
+    return uncached(response)
   }
 
   if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''
-    return NextResponse.redirect(url)
+    return uncached(NextResponse.redirect(url))
   }
 
   // SECOND FACTOR. Until this, "is this person logged in?" was the only
@@ -148,10 +166,10 @@ export async function proxy(request) {
     // Without it, someone bounced out of a recovery session sees a bare
     // login form with no hint of why they were sent back.
     url.search = '?step=2fa'
-    return NextResponse.redirect(url)
+    return uncached(NextResponse.redirect(url))
   }
 
-  return response
+  return uncached(response)
 }
 
 // Does this request carry a valid trusted-device token for this user?

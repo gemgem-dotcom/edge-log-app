@@ -54,8 +54,31 @@ export default function AppLayout({ children }) {
       }
     })
 
+    // THE BACK BUTTON AFTER SIGNING OUT.
+    //
+    // Signing out and pressing Back used to put the app back on
+    // screen. Nothing had failed: the browser restored the page from
+    // its back/forward cache, which replays the already-rendered DOM
+    // without re-running this effect, without a network request, and
+    // so without any auth check at all. The session was gone; the
+    // pixels were not.
+    //
+    // proxy.js now sends Cache-Control: no-store on /app, which is
+    // what actually keeps the page out of that cache in Chrome and
+    // Firefox. This is the belt to that braces - Safari has honoured
+    // no-store less consistently, and a restored page showing somebody
+    // else's trades is not a thing to leave to one mechanism.
+    const onPageShow = (e) => {
+      if (!e.persisted) return
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) router.replace('/login')
+      })
+    }
+    window.addEventListener('pageshow', onPageShow)
+
     return () => {
       mounted = false
+      window.removeEventListener('pageshow', onPageShow)
       listener.subscription.unsubscribe()
     }
   }, [router])

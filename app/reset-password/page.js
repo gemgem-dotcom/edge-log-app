@@ -28,6 +28,35 @@ export default function ResetPasswordPage() {
       || window.location.hash.includes('type=recovery')
   })
 
+  // HAS THE FIRST CLIENT RENDER HAPPENED YET?
+  //
+  // Not a style preference - without it this page threw a hydration
+  // error on EVERY real recovery link, which is the one route back into
+  // an account whose authenticator is gone.
+  //
+  // The cause is the read above: `typeof window === 'undefined'` is
+  // exactly the server/client branch React's own error message names.
+  // The server renders false and the client renders true, so the server
+  // sent "Open the reset link from your email..." and the client wanted
+  // "Enter a new password for your account." React threw the mismatch
+  // away and regenerated the whole tree - which is also what produced
+  // the second error on this page, the "script tag while rendering a
+  // React component" one, since regenerating re-renders the layout's
+  // inline theme script on the client.
+  //
+  // WHY NOT JUST MOVE THE READ INTO AN EFFECT. That is the obvious fix
+  // and it is the wrong one here, for the reason the comment above
+  // already gives: the value has to be captured during the first render,
+  // before detectSessionInUrl (see lib/supabaseClient.js) consumes the
+  // recovery link and strips ?code= off the URL. An effect runs after
+  // that race, not before it.
+  //
+  // So the read stays exactly where it was, and only the RENDERING waits.
+  // Both sides paint the undetermined state first, which is what makes
+  // the markup match; the real answer arrives one commit later.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   useEffect(() => {
     // PASSWORD_RECOVERY only - deliberately NOT SIGNED_IN, and no
     // getSession() fallback. Both used to count, which meant merely holding
@@ -51,7 +80,10 @@ export default function ResetPasswordPage() {
   // arriving with a recovery code is itself proof of the emailed link,
   // unlike an existing session, which proves nothing about whether this
   // person knows the current password.
-  const ready = recoveryLinkInUrl || recoveryEvent
+  // Undetermined until mounted. `ready` stays false through the first
+  // paint, so the submit button is disabled then too - which it should
+  // be, since nothing has been established yet.
+  const ready = mounted && (recoveryLinkInUrl || recoveryEvent)
 
   // TWO-FACTOR, AND WHY THIS PAGE TOUCHES IT AT ALL.
   //
@@ -173,12 +205,20 @@ export default function ResetPasswordPage() {
         ) : (
           <>
             <h1 className="auth-welcome">Reset password</h1>
+            {/* Three states, not two. The undetermined one is real and
+                has to be rendered, because guessing either answer for
+                one frame is wrong in a way the user sees: guessing "no
+                link" flashes "open the reset link from your email" at
+                somebody who just did, and guessing "link" would promise
+                a form to somebody who has no link at all. */}
             <p className="auth-subtitle">
-              {ready
-                ? 'Enter a new password for your account.'
-                : recoveryLinkInUrl
-                  ? 'Verifying your reset link...'
-                  : 'Open the reset link from your email to set a new password. To change a password you already know, use Account settings.'}
+              {!mounted
+                ? 'Checking your link...'
+                : ready
+                  ? 'Enter a new password for your account.'
+                  : recoveryLinkInUrl
+                    ? 'Verifying your reset link...'
+                    : 'Open the reset link from your email to set a new password. To change a password you already know, use Account settings.'}
             </p>
             <form onSubmit={handleSubmit}>
               <div className="field full">

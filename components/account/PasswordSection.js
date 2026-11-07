@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import FieldTooltip from '@/components/FieldTooltip'
 import { supabase } from '@/lib/supabaseClient'
-import { validatePassword, PASSWORD_MAX_LENGTH, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/validatePassword'
+import { validatePassword, PASSWORD_MAX_LENGTH, PASSWORD_RULES_TOOLTIP } from '@/lib/validatePassword'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and fields — no .panel wrapper of its own.
@@ -123,7 +124,15 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
           </div>
         )}
         <div className="field wide">
-          <label>New password</label>
+          {/* The rules live in the "?" rather than in a line of text
+              under the field. Two lines of small print under one of
+              three inputs pushed this row out of alignment with the
+              other two and made the panel look broken, for a sentence
+              that is only wanted by someone who is actually stuck. */}
+          <div className="field-label-row">
+            <label>New password</label>
+            <FieldTooltip text={PASSWORD_RULES_TOOLTIP} />
+          </div>
           <div className="password-field">
             <input
               type={showNew ? 'text' : 'password'}
@@ -136,8 +145,6 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
               {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {/* Said before the attempt rather than revealed by failing it. */}
-          <div className="field-hint">{PASSWORD_REQUIREMENTS_TEXT}</div>
         </div>
         <div className="field wide">
           <label>Confirm new password</label>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { validatePassword, PASSWORD_REQUIREMENTS_TEXT, PASSWORD_MAX_LENGTH } from '@/lib/validatePassword'
+import { validatePassword, PASSWORD_HINT_SHORT, PASSWORD_MAX_LENGTH } from '@/lib/validatePassword'
 import { usePageTitle } from '@/lib/usePageTitle'
 
 export default function ResetPasswordPage() {
@@ -197,12 +197,13 @@ export default function ResetPasswordPage() {
                   </button>
                 </div>
               </div>
-              {/* Stated before the attempt, not after it. The field
-                  caps at 15 characters, so a longer passphrase simply
-                  stops appearing with no explanation - and the rule was
-                  only ever revealed by failing. */}
+              {/* Stated before the attempt, not after it - the rule
+                  used to be revealed only by failing it. One line, and
+                  only the branch that always works; the error teaches
+                  the shorter-with-symbols branch to the one person it
+                  helps. */}
               <div className="field-hint" style={{ marginTop: '-6px', marginBottom: '14px' }}>
-                {PASSWORD_REQUIREMENTS_TEXT}
+                {PASSWORD_HINT_SHORT}
               </div>
               <div className="field full">
                 <label>Confirm new password</label>

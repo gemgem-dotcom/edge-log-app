@@ -1240,30 +1240,46 @@ grant execute on function public.session_meets_assurance() to authenticated;
 -- the function once per query as an initplan instead of once per row.
 drop policy if exists "Second factor required for instruments" on instruments;
 create policy "Second factor required for instruments" on instruments
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for strategies" on strategies;
 create policy "Second factor required for strategies" on strategies
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for trades" on trades;
 create policy "Second factor required for trades" on trades
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for login events" on login_events;
 create policy "Second factor required for login events" on login_events
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));
 
 drop policy if exists "Second factor required for AI insights" on edge_insights;
 create policy "Second factor required for AI insights" on edge_insights
-  as restrictive to authenticated for all
+  as restrictive for all to authenticated
+  using ((select public.session_meets_assurance()))
+  with check ((select public.session_meets_assurance()));
+
+-- exit_legs is already protected transitively - its permissive policy's
+-- EXISTS subquery reads `trades`, and RLS applies inside that subquery,
+-- so a caller the gate blocks sees no trade and therefore no leg. That
+-- was measured against the live database, not assumed.
+--
+-- It is listed here anyway because that protection is a side effect of
+-- how the policy happens to be written. Denormalise a user_id onto this
+-- table one day - the obvious optimisation, since every read joins to
+-- trades for nothing but ownership - and the exit price of every trade
+-- is readable by any aal1 token, with nothing failing to say so.
+drop policy if exists "Second factor required for exit legs" on exit_legs;
+create policy "Second factor required for exit legs" on exit_legs
+  as restrictive for all to authenticated
   using ((select public.session_meets_assurance()))
   with check ((select public.session_meets_assurance()));

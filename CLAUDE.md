@@ -193,6 +193,17 @@ sentry.edge.config.js
   likely to trip it is the real owner with a phone whose clock has drifted:
   hence the short window, the success-clears-the-count rule, and messages that
   always say when the wait ends.
+- **"Remember this browser" does not make a session aal2.** Supabase won't mint
+  aal2 without a code, so a remembered browser is still aal1 — the cookie tells
+  `proxy.js`'s gate to let it through anyway. That makes the cookie as powerful
+  as the second factor for anything EdgeLog protects, which is why the token is
+  stored only as a SHA-256, the row is matched on `token_hash` **and** `user_id`
+  in one query, expiry comes from the row rather than the cookie's max-age, and
+  `/api/clear-2fa` deletes every trusted device along with the factors.
+- **Minting a trusted device requires aal2.** `/api/trusted-device` POST refuses
+  an aal1 caller — otherwise it would be a route that converts "I know the
+  password" into "I never need the code again", which is worse than no second
+  factor because the user would believe they had one.
 - Note the two different safe defaults for a missing `aal` claim.
   `sessionNeedsSecondFactor` treats it as aal1 (fail-closed: challenge them);
   `isRecoverySession` refuses it outright, because there aal1 is the permissive

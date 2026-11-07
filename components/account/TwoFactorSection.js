@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Copy, Check, Smartphone, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import TrustedDevicesSection from '@/components/account/TrustedDevicesSection'
 import { useConfirm } from '@/lib/useConfirm'
 import { checkAttemptAllowed, recordAttempt } from '@/lib/mfaAttemptClient'
 import { activatable } from '@/lib/activatable'
@@ -184,6 +185,16 @@ export default function TwoFactorSection({ initialFactors }) {
           <p className="onboard-note">Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.</p>
           {enrollQr && (
             <div className="mfa-qr-wrap">
+              {/* next/image is the wrong tool here and the rule's
+                  reasoning does not apply: this is a data: URI
+                  generated at runtime by the auth server, so there is
+                  no network request to optimize, no remote host to
+                  configure, and no LCP cost beyond the bytes already
+                  inlined in the response. Routing it through the image
+                  optimizer would also re-encode a QR code, which is the
+                  one kind of image where re-encoding can cost you a
+                  scan. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={enrollQr} alt="2FA QR code" />
             </div>
           )}
@@ -263,6 +274,17 @@ export default function TwoFactorSection({ initialFactors }) {
       )}
 
       {mfaError && !enrolling && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}
+
+      {/* Owned here because whether remembered browsers mean anything
+          at all depends on the factor state this component holds.
+          Hidden during enrolment: the user is mid-task and a second
+          call to action would compete with the one they are doing. */}
+      {!enrolling && factors.length > 0 && (
+        <div className="trusted-device-block">
+          <TrustedDevicesSection twoFactorOn />
+        </div>
+      )}
+
       {confirmModal}
     </>
   )

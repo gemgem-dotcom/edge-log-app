@@ -42,6 +42,11 @@ export default function LoginPage() {
   // login page read factors[0] and the spare was unreachable.
   const [mfaFactors, setMfaFactors] = useState([])
   const [pickingFactor, setPickingFactor] = useState(false)
+  // Unticked by default. A box that skips the second factor for a
+  // month should be something the user chooses, not something they
+  // discover they agreed to - and the people most likely to tick
+  // anything pre-ticked are the ones on a shared machine.
+  const [trustBrowser, setTrustBrowser] = useState(false)
 
   async function recordLoginEvent() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -169,8 +174,30 @@ export default function LoginPage() {
       setError(after.message || 'Incorrect code - try again.')
       return
     }
+
+    // Only after the code was accepted. The route refuses an aal1
+    // caller anyway - it has to, or it would turn "I know the
+    // password" into "I never need the code again" - but not asking
+    // until the session is aal2 keeps the two in agreement.
+    if (trustBrowser) await rememberThisBrowser()
+
     await recordLoginEvent()
     router.push('/app')
+  }
+
+  // Best effort, deliberately. The user is already signed in by this
+  // point; if remembering the browser fails they simply get asked for
+  // a code next time, which is not worth blocking a login over or
+  // showing an error about.
+  async function rememberThisBrowser() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      await fetch('/api/trusted-device', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+    } catch { /* see above */ }
   }
 
   return (
@@ -257,6 +284,19 @@ export default function LoginPage() {
                     value={mfaCode} onChange={(e) => setMfaCode(e.target.value)}
                   />
                 </div>
+                {/* Says "this browser", not "this device". A phone has
+                    several browsers and the trust only follows the
+                    cookie; "device" promises something the cookie
+                    cannot deliver, and the user finds out when the
+                    other browser asks for a code anyway. */}
+                <label className="mfa-trust-row">
+                  <input
+                    type="checkbox"
+                    checked={trustBrowser}
+                    onChange={(e) => setTrustBrowser(e.target.checked)}
+                  />
+                  <span>Don&apos;t ask for a code on this browser for 30 days</span>
+                </label>
                 {error && <div className="auth-error">{error}</div>}
                 <button type="submit" disabled={loading} className="auth-submit">
                   {loading ? 'Verifying...' : 'Verify'}

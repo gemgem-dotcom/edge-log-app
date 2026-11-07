@@ -100,6 +100,19 @@ export async function POST(req) {
     return deny(500, 'Could not remove your authenticators')
   }
 
+  // Forget every remembered browser too. A trusted-device row is a
+  // standing permission to skip a challenge; once the factors it was
+  // granted against are gone, it is a permission to skip nothing,
+  // and leaving it would let a browser trusted under the old setup
+  // sail past whatever gets enrolled next. Best effort - the factors
+  // are already gone, and failing the whole recovery over a stale row
+  // would strand the user for no gain.
+  const { error: trustError } = await admin
+    .from('mfa_trusted_device')
+    .delete()
+    .eq('user_id', user.id)
+  if (trustError) Sentry.captureException(trustError)
+
   return new Response(JSON.stringify({ success: true, removed: factors.length }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },

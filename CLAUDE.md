@@ -175,6 +175,24 @@ sentry.edge.config.js
   could navigate straight to `/app` and never be asked for a code. A bounced
   session is sent to `/login?step=2fa`; that parameter only decides whether to
   *look* at the real assurance level, never what the answer is.
+- **Verification attempts are rate limited by EdgeLog, and by nothing else.**
+  Measured 2026-11-07 with `scripts/probe-auth-rate-limits.js`: twenty failing
+  MFA-verify attempts from one IP drew **no 429 and no server-side refusal**.
+  So `lib/mfaRateLimit.js` + `app/api/mfa-attempt/route.js` are the only layer,
+  not a second one — five wrong codes in fifteen minutes, counted in
+  `mfa_attempt` because a serverless instance's memory counts to one forever.
+- **The limiter cannot prevent an attempt, only refuse to continue.**
+  `supabase.auth.mfa.verify()` runs in the *browser* against the auth server;
+  EdgeLog is not in that path. It raises the cost of attacking through the app
+  and does nothing about someone scripting the public API. Don't claim more than
+  that — in the guide or anywhere else.
+- **The limiter fails open, on purpose.** If `mfa_attempt` is unreachable, a
+  user gets more guesses at a six-digit code. If it failed closed, one table
+  hiccup would lock every 2FA account out of the app — likelier and far worse.
+  A lockout is a denial of service you build deliberately, and the person most
+  likely to trip it is the real owner with a phone whose clock has drifted:
+  hence the short window, the success-clears-the-count rule, and messages that
+  always say when the wait ends.
 - Note the two different safe defaults for a missing `aal` claim.
   `sessionNeedsSecondFactor` treats it as aal1 (fail-closed: challenge them);
   `isRecoverySession` refuses it outright, because there aal1 is the permissive

@@ -38,6 +38,7 @@ on:
           - scripts/probe-news-sources.js
           - scripts/probe-auth-capabilities.js
           - scripts/probe-recovery-session.js
+          - scripts/probe-auth-rate-limits.js
           - scripts/fetch-econ-release-detail.js
           - scripts/inspect-economic-calendar.js
           - scripts/pull-strategy-market-context.js

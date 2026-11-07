@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/validatePassword'
+import { validatePassword, PASSWORD_HINT_SHORT } from '@/lib/validatePassword'
 import { GoogleIcon } from '@/components/OAuthIcons'
 import { usePageTitle } from '@/lib/usePageTitle'
 
@@ -117,7 +117,7 @@ export default function SignupPage() {
                 only by failing it, which is how someone ends up trying
                 four variations of a password they were never going to
                 be allowed. */}
-            <div className="field-hint">{PASSWORD_REQUIREMENTS_TEXT}</div>
+            <div className="field-hint">{PASSWORD_HINT_SHORT}</div>
           </div>
           {error && <div className="auth-error">{error}</div>}
           {message && <div className="auth-message">{message}</div>}

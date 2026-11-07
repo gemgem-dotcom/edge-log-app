@@ -9,6 +9,7 @@ import {
   verifiedFactors, unverifiedFactors, factorLabel,
   suggestFactorName, validateFactorName, isLastFactor,
 } from '@/lib/mfaFactors'
+import RecoveryCodesSection from '@/components/account/RecoveryCodesSection'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and body — no .panel wrapper of its own.
@@ -19,7 +20,7 @@ import {
 // nothing the user could see, and could not be removed. The decisions all
 // live in lib/mfaFactors.js now, where they can be tested; this file is
 // the rendering of them.
-export default function TwoFactorSection({ initialFactors }) {
+export default function TwoFactorSection({ initialFactors, email }) {
   // The whole listFactors payload, not just the totp array: lib/mfaFactors
   // reads `.totp` itself, and keeping the envelope means an unverified
   // factor is still visible to the enrolment guard.
@@ -249,6 +250,18 @@ export default function TwoFactorSection({ initialFactors }) {
       )}
 
       {mfaError && !enrolling && <div className="account-msg account-msg-error" style={{ marginTop: '10px' }}>{mfaError}</div>}
+
+      {/* Owned here rather than by the account page because this
+          component holds the factor state, and whether recovery codes
+          are relevant at all depends on it. Hidden entirely during
+          enrolment: the user is mid-task and a second call to action
+          would compete with the one they are already doing. */}
+      {!enrolling && (
+        <div className="mfa-recovery-block">
+          <RecoveryCodesSection twoFactorOn={factors.length > 0} email={email} />
+        </div>
+      )}
+
       {confirmModal}
     </>
   )

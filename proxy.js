@@ -18,6 +18,9 @@ import { NextResponse } from 'next/server'
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabaseConfig'
 import { isMockDbEnabled } from '@/lib/mockMode'
 import { decodeJwtClaims, sessionNeedsSecondFactor, verifiedFactorsOf } from '@/lib/authAssurance'
+import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
+import { TRUST_COOKIE, isTrustedRowValid } from '@/lib/trustedDevice'
 
 export async function proxy(request) {
   // Mock-DB dev mode (npm run dev:mock) never talks to real Supabase -
@@ -122,6 +125,21 @@ export async function proxy(request) {
     needsSecondFactor = verifiedFactorsOf(user).length > 0
   }
 
+  // A REMEMBERED BROWSER. The session is still aal1 - Supabase will
+  // not mint aal2 without a code, so there is no way to make a
+  // remembered browser genuinely fully authenticated. What the cookie
+  // does is tell THIS gate that the browser passed a code recently
+  // enough to be let through anyway. It is a decision EdgeLog makes
+  // about EdgeLog's own pages, which is why it lives here.
+  //
+  // Checked only when the user would otherwise be bounced, so the
+  // common path - already aal2, or no 2FA at all - costs nothing. The
+  // database read happens on exactly the requests that were going to
+  // be redirected regardless.
+  if (needsSecondFactor) {
+    needsSecondFactor = !(await browserIsTrusted(request, user.id))
+  }
+
   if (needsSecondFactor) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -134,6 +152,52 @@ export async function proxy(request) {
   }
 
   return response
+}
+
+// Does this request carry a valid trusted-device token for this user?
+//
+// Every part of this fails closed. An unreadable cookie, an absent
+// row, a row for another account, an expired row, a database error -
+// each returns false and the user is asked for a code. The cost of a
+// false negative is one extra code; the cost of a false positive is
+// that the second factor stops existing for whoever holds the cookie.
+async function browserIsTrusted(request, userId) {
+  const secret = request.cookies.get(TRUST_COOKIE)?.value
+  if (!secret) return false
+
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceKey) return false
+
+  try {
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const tokenHash = createHash('sha256').update(secret).digest('hex')
+    // Matched on BOTH the hash and the user. A single-column lookup
+    // that found the row and then compared user_id afterwards is the
+    // shape this kind of bug usually takes; there is nothing to
+    // compare afterwards here.
+    const { data, error } = await admin
+      .from('mfa_trusted_device')
+      .select('id, user_id, expires_at')
+      .eq('token_hash', tokenHash)
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle()
+    if (error || !data) return false
+    if (!isTrustedRowValid(data, { userId })) return false
+
+    // Best effort, and deliberately not awaited for its result: a
+    // failed timestamp update must not cost the user their sign-in.
+    admin.from('mfa_trusted_device')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('id', data.id)
+      .then(() => {}, () => {})
+
+    return true
+  } catch {
+    return false
+  }
 }
 
 // /app itself (the cross-instrument Overview) and everything nested under

@@ -5,57 +5,58 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–681  Base: reset, typography, forms, tables, thumbnails,
+     1–682  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   682  Auth pages
-   748  Top nav
-   763  Instrument nav (topbar pill row)
-   840  Page layout
-   894  Tabs
-   904  Misc form helpers
-   910  Detail view
-   933  Holiday notice (site-wide, above the shell)
-   965  Shell layout (sidebar + topbar)
-   1336  Expandable trade rows
-   1402  Calendar
-   1450  Account settings page
-   1674  Light theme
-   1715  2FA
-   1730  Account fine print
-   1733  Screenshot preview (log new trade)
-   1775  Auth pages always dark
-   1810  Monthly P&L (calendar on Overview)
-   1897  Trade form: sections, validation, currency, screenshots
-   2135  Field tooltips
-   2197  Date/time picker (adds an optional popup to a typed input)
-   2314  In-header column filters (trade log table)
-   2362  Active filter chips
-   2425  Empty states, error banners, skeleton loaders
-   2522  Cross-instrument overview dashboard (/app)
-   2701  Not found / error boundary state pages
-   2714  Toast notifications
-   2742  Public policy pages (Privacy, Terms)
-   2761  Legal links (auth pages + account settings)
-   2800  Economic calendar card (Overview pages)
-   3072  Calendar news badge (Monthly P&L day cells)
-   3100  Streak badge (Overview + strategy detail pages)
-   3123  Market status pill (Overview + strategy detail pages)
-   3149  Today's brief & session stats
-   3184  Market context cards (all-instruments Overview)
-   3226  Edge Insights panel
-   3241  Unverified logged time badge
-   3258  Welcome transition (first-run)
-   3287  Zero-instrument empty state
-   3297  Tutorial overlay (first-run guided tour)
-   3389  Tutorial step 3 (guided form scroll)
-   3436  Press states, value changes, content fade-in
-   3533  Bottom-tab slide
-   3707  Trade log column width stability
-   3732  Strategy notes panel
-   3747  Today's brief economic outlook
-   4067  Two-factor device list
-   4118  Reset-password two-factor warning
-   4153  Mobile app shell (below 768px only)
+   683  Auth pages
+   749  Top nav
+   764  Instrument nav (topbar pill row)
+   841  Page layout
+   895  Tabs
+   905  Misc form helpers
+   911  Detail view
+   934  Holiday notice (site-wide, above the shell)
+   966  Shell layout (sidebar + topbar)
+   1337  Expandable trade rows
+   1403  Calendar
+   1451  Account settings page
+   1675  Light theme
+   1716  2FA
+   1731  Account fine print
+   1734  Screenshot preview (log new trade)
+   1776  Auth pages always dark
+   1811  Monthly P&L (calendar on Overview)
+   1898  Trade form: sections, validation, currency, screenshots
+   2136  Field tooltips
+   2198  Date/time picker (adds an optional popup to a typed input)
+   2315  In-header column filters (trade log table)
+   2363  Active filter chips
+   2426  Empty states, error banners, skeleton loaders
+   2523  Cross-instrument overview dashboard (/app)
+   2702  Not found / error boundary state pages
+   2715  Toast notifications
+   2743  Public policy pages (Privacy, Terms)
+   2762  Legal links (auth pages + account settings)
+   2801  Economic calendar card (Overview pages)
+   3073  Calendar news badge (Monthly P&L day cells)
+   3101  Streak badge (Overview + strategy detail pages)
+   3124  Market status pill (Overview + strategy detail pages)
+   3150  Today's brief & session stats
+   3185  Market context cards (all-instruments Overview)
+   3227  Edge Insights panel
+   3242  Unverified logged time badge
+   3259  Welcome transition (first-run)
+   3288  Zero-instrument empty state
+   3298  Tutorial overlay (first-run guided tour)
+   3390  Tutorial step 3 (guided form scroll)
+   3437  Press states, value changes, content fade-in
+   3534  Bottom-tab slide
+   3708  Trade log column width stability
+   3733  Strategy notes panel
+   3748  Today's brief economic outlook
+   4068  Two-factor device list
+   4119  Reset-password two-factor warning
+   4154  Remember this browser
+   4212  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -4149,6 +4150,64 @@ button:active{
   font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;
 }
 .reset-2fa-accept input{width:15px; height:15px; margin:0; accent-color:var(--accent); cursor:pointer;}
+
+/* ---------- Remember this browser ---------- */
+/*
+   The checkbox on the login page's code step, and the list of
+   remembered browsers in Account settings.
+
+   The checkbox is styled quietly on purpose. It offers to skip the
+   second factor for a month, so it should read as an option somebody
+   takes deliberately - not as the obvious next click sitting directly
+   above the Verify button competing with it.
+*/
+.mfa-trust-row{
+  display:flex; align-items:center; gap:9px;
+  margin:2px 0 14px; font-size:12.5px; color:var(--muted);
+  cursor:pointer; text-align:left;
+  /* This is a <label>, and the form styling further up uppercases
+     those - right for a one-word field name, wrong for a sentence.
+     Without this it renders as DON'T ASK FOR A CODE ON THIS BROWSER
+     FOR 30 DAYS, which shouts at someone mid-login. Same for the
+     letter-spacing and weight that come with it. */
+  text-transform:none; letter-spacing:normal; font-weight:400;
+}
+.mfa-trust-row input{width:15px; height:15px; margin:0; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
+.mfa-trust-row:hover{color:var(--text);}
+
+/* Separates the remembered-browsers block from the two-factor block
+   above it inside the shared Security panel. With 2FA on, both render
+   as rows and ran together without a rule between them. */
+.trusted-device-block{margin-top:22px; padding-top:20px; border-top:1px solid var(--line);}
+
+/* The list in Account settings. Same row shape as .mfa-factor-row so
+   the two lists in the Security panel read as one family. */
+.trusted-device-list{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:8px;}
+.trusted-device-row{
+  display:flex; align-items:center; gap:11px;
+  padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-2);
+}
+.trusted-device-icon{display:flex; align-items:center; color:var(--muted);}
+.trusted-device-icon svg{width:15px; height:15px;}
+.trusted-device-text{min-width:0; flex:1;}
+/* display:block, because these are <span>s inside the row and the
+   default inline flow ran the name and the note together on one line
+   as "Mac (macOS)Won't ask for a code for 28 more days". They are
+   spans rather than divs so the whole cell stays valid inside the
+   flex row without a nested block changing its sizing. */
+.trusted-device-name{display:block; font-size:13.5px; font-weight:600; color:var(--text); overflow-wrap:anywhere;}
+.trusted-device-note{display:block; font-size:11.5px; color:var(--muted); margin-top:2px; overflow-wrap:anywhere;}
+/* An expired row is shown rather than hidden - a list that quietly
+   drops entries is one people stop trusting - but dimmed, so the
+   rows worth revoking are the ones that stand out. */
+.trusted-device-row.is-expired{opacity:.55;}
+.trusted-device-forget{
+  background:none; border:none; padding:5px; border-radius:7px;
+  color:var(--muted); cursor:pointer; display:flex; align-items:center; box-shadow:none;
+}
+.trusted-device-forget svg{width:14px; height:14px;}
+.trusted-device-forget:hover{color:var(--loss); background:rgba(225,92,92,.1); transform:none; filter:none; box-shadow:none;}
+.trusted-device-forget:disabled{opacity:.45; cursor:not-allowed;}
 
 /* ---------- Mobile app shell (below 768px only) ---------- */
 /*

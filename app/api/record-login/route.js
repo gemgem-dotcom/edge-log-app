@@ -1,41 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
-
-function parseDevice(ua) {
-  const isIphone = /iPhone/.test(ua)
-  const isIpad = /iPad/.test(ua)
-  const isAndroid = /Android/.test(ua)
-  const isMac = /Macintosh/.test(ua)
-  const isWindows = /Windows/.test(ua)
-  const isLinux = /Linux/.test(ua) && !isAndroid && !isIphone && !isIpad
-
-  let os = 'Unknown OS'
-  if (isIphone || isIpad) os = 'iOS'
-  else if (isAndroid) os = 'Android'
-  else if (isMac) os = 'macOS'
-  else if (isWindows) os = 'Windows'
-  else if (isLinux) os = 'Linux'
-
-  let device = 'Device'
-  if (isIphone) device = 'iPhone'
-  else if (isIpad) device = 'iPad'
-  else if (isAndroid) device = 'Android device'
-  else if (isMac) device = 'Mac'
-  else if (isWindows) device = 'Windows PC'
-  else if (isLinux) device = 'Linux PC'
-
-  let browser = 'browser'
-  if (/Edg\//.test(ua)) browser = 'edge'
-  else if (/OPR\//.test(ua)) browser = 'opera'
-  else if (/Chrome\//.test(ua)) browser = 'chrome'
-  else if (/Firefox\//.test(ua)) browser = 'firefox'
-  else if (/Safari\//.test(ua)) browser = 'safari'
-
-  return {
-    label: `${device} (${os})`,
-    key: `${device}-${browser}`.toLowerCase().replace(/\s+/g, '-'),
-    }
-  }
+import { parseDevice } from '@/lib/deviceLabel'
 
 export async function POST(req) {
   const authHeader = req.headers.get('authorization') || ''

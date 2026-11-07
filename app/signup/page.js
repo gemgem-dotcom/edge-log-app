@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { validatePassword } from '@/lib/validatePassword'
+import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/validatePassword'
 import { GoogleIcon } from '@/components/OAuthIcons'
 import { usePageTitle } from '@/lib/usePageTitle'
 
@@ -22,7 +22,7 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
     setMessage('')
-    const passwordRuleError = validatePassword(password)
+    const passwordRuleError = validatePassword(password, { email })
     if (passwordRuleError) {
       setError(passwordRuleError)
       return
@@ -38,7 +38,12 @@ export default function SignupPage() {
     })
     setLoading(false)
     if (error) {
-      setError(error.message)
+      // A fixed string, not error.message. Supabase distinguishes an
+      // already-registered address, so forwarding its text turns this
+      // form into an oracle for whether a given person has an EdgeLog
+      // account. app/api/record-login already fixed the same pattern
+      // server-side.
+      setError("Couldn't create that account. Check the email and password and try again, or log in if you already have an account.")
     } else {
       // Cleared unconditionally here rather than gated behind any "is this
       // really new" heuristic (see lib/tutorialNewAccount.js's
@@ -75,7 +80,13 @@ export default function SignupPage() {
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
-    if (error) setError(error.message)
+    if (error) {
+      // Same reasoning, and the raw text here has shown users real
+      // internal strings ("invalid flow state, no valid flow state
+      // found") that they can do nothing with - app/login/page.js
+      // already made exactly this fix for the callback error.
+      setError('There was a problem signing in with Google. Please try again.')
+    }
   }
 
   return (
@@ -102,6 +113,11 @@ export default function SignupPage() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {/* Stated before the attempt. The rule used to be revealed
+                only by failing it, which is how someone ends up trying
+                four variations of a password they were never going to
+                be allowed. */}
+            <div className="field-hint">{PASSWORD_REQUIREMENTS_TEXT}</div>
           </div>
           {error && <div className="auth-error">{error}</div>}
           {message && <div className="auth-message">{message}</div>}

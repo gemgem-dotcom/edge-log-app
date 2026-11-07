@@ -44,6 +44,18 @@ export default function DataExportSection() {
       return
     }
 
+    // A spreadsheet treats a leading = + - @ (or tab / CR) as a formula,
+    // so a note beginning "=HYPERLINK(..." executes when the file is
+    // opened. Today only your own notes reach your own download, which
+    // is why this is small - but the same CSV path is the obvious basis
+    // for any future share or support export, and then it is a delivery
+    // mechanism. Prefixing with an apostrophe is the standard
+    // neutralisation and is invisible in the cell.
+    const safe = (v) => {
+      const str = v === null || v === undefined ? '' : String(v)
+      return /^[=+\-@\t\r]/.test(str) ? `'${str}` : str
+    }
+
     const rows = trades.map((t) => [
       t.instruments?.symbol || '', t.instruments?.data_symbol || '', t.strategies?.name || 'Unassigned', t.trade_date, t.trade_time,
       t.direction, t.entry, t.stop, t.stop_distance ?? '', t.target ?? '', t.target_distance ?? '',
@@ -51,7 +63,7 @@ export default function DataExportSection() {
       t.r_multiple ?? '', t.contracts ?? '', t.pnl ?? '',
       (t.reasoning || '').replace(/"/g, '""'),
     ])
-    const csv = [CSV_HEADERS.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n')
+    const csv = [CSV_HEADERS.join(','), ...rows.map((r) => r.map((v) => `"${safe(v)}"`).join(','))].join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { validatePassword } from '@/lib/validatePassword'
+import { validatePassword, PASSWORD_MAX_LENGTH, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/validatePassword'
 
 // Rendered inside the shared Security panel, so it contributes only its own
 // title and fields — no .panel wrapper of its own.
@@ -30,7 +30,7 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
       setPasswordError('Fill in both password fields.')
       return
     }
-    const passwordRuleError = validatePassword(newPassword)
+    const passwordRuleError = validatePassword(newPassword, { email })
     if (passwordRuleError) {
       setPasswordError(passwordRuleError)
       return
@@ -130,12 +130,14 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
               placeholder="Enter new password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              maxLength={15}
+              maxLength={PASSWORD_MAX_LENGTH}
             />
             <button type="button" className="eye-btn" onClick={() => setShowNew(!showNew)}>
               {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+          {/* Said before the attempt rather than revealed by failing it. */}
+          <div className="field-hint">{PASSWORD_REQUIREMENTS_TEXT}</div>
         </div>
         <div className="field wide">
           <label>Confirm new password</label>
@@ -145,7 +147,7 @@ export default function PasswordSection({ email, hasPassword, onPasswordSet }) {
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              maxLength={15}
+              maxLength={PASSWORD_MAX_LENGTH}
             />
             <button type="button" className="eye-btn" onClick={() => setShowConfirm(!showConfirm)}>
               {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}

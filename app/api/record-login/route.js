@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 import { parseDevice } from '@/lib/deviceLabel'
+import { serviceRouteNeedsSecondFactor } from '@/lib/authAssurance'
 
 export async function POST(req) {
   const authHeader = req.headers.get('authorization') || ''
@@ -21,6 +22,19 @@ export async function POST(req) {
     }
 
   const userId = userData.user.id
+
+  // The assurance gate, same as the other service-role routes - this
+  // one writes the sign-in history the user reads as a security log,
+  // and an aal1 caller could otherwise plant entries in it.
+  //
+  // Note it naturally permits the legitimate case: a session that has
+  // no verified factor is not owed one, which is exactly what a normal
+  // sign-in on a password-only account looks like. A 2FA account
+  // records its sign-in after the code, when the token is aal2.
+  if (await serviceRouteNeedsSecondFactor(admin, userId, token)) {
+    return new Response(JSON.stringify({ error: 'Not fully authenticated' }), { status: 403 })
+  }
+
   const ua = req.headers.get('user-agent') || ''
   const { label: deviceLabel, key: deviceKey } = parseDevice(ua)
 

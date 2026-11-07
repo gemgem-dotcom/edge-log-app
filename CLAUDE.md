@@ -204,6 +204,25 @@ sentry.edge.config.js
   an aal1 caller — otherwise it would be a route that converts "I know the
   password" into "I never need the code again", which is worse than no second
   factor because the user would believe they had one.
+- **Assurance is enforced at the data layer too, via RLS.** Until this, 2FA
+  protected the pages and not the rows: `auth.uid()` is satisfied by any valid
+  token, so a password-only session could read the whole journal from PostgREST
+  with the public anon key. Five **restrictive** policies now AND
+  `public.session_meets_assurance()` onto the existing ones — the originals are
+  untouched, so dropping those five policies undoes the whole thing.
+- **`mfa_assurance_grant` is what keeps "remember this browser" working.** A
+  remembered browser is aal1 and Postgres cannot see the cookie, so a naive
+  aal2 policy would load the app and show an empty journal. Postgres *can* see
+  `session_id`, so `proxy.js` records the session when it validates the cookie
+  and the policy reads the same table. The grant is server-written, capped by
+  the device row's own expiry, and deleted wherever trust is revoked
+  (`/api/clear-2fa`, forgetting a device, changing a password).
+- **That SQL is at the bottom of `schema.sql` and must be run by hand.** Nothing
+  in the code depends on it, so the app behaves identically before and after —
+  which also means merging it changes nothing until you run it. Afterwards, run
+  `scripts/verify-rls-assurance.js`; the check that matters is that an account
+  with **no** factor can still read its rows, because that branch is the one
+  that locks out everybody if it is wrong.
 - Note the two different safe defaults for a missing `aal` claim.
   `sessionNeedsSecondFactor` treats it as aal1 (fail-closed: challenge them);
   `isRecoverySession` refuses it outright, because there aal1 is the permissive

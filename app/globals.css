@@ -5,60 +5,60 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–693  Base: reset, typography, forms, tables, thumbnails,
+     1–713  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   694  Auth pages
-   760  Top nav
-   775  Instrument nav (topbar pill row)
-   852  Page layout
-   906  Tabs
-   916  Misc form helpers
-   922  Detail view
-   945  Holiday notice (site-wide, above the shell)
-   977  Shell layout (sidebar + topbar)
-   1348  Expandable trade rows
-   1414  Calendar
-   1462  Account settings page
-   1694  Light theme
-   1735  2FA
-   1763  Account fine print
-   1766  Screenshot preview (log new trade)
-   1808  Auth pages always dark
-   1843  Monthly P&L (calendar on Overview)
-   1930  Trade form: sections, validation, currency, screenshots
-   2168  Field tooltips
-   2230  Date/time picker (adds an optional popup to a typed input)
-   2347  In-header column filters (trade log table)
-   2395  Active filter chips
-   2458  Empty states, error banners, skeleton loaders
-   2555  Cross-instrument overview dashboard (/app)
-   2734  Not found / error boundary state pages
-   2747  Toast notifications
-   2775  Public policy pages (Privacy, Terms)
-   2794  Legal links (auth pages + account settings)
-   2833  Economic calendar card (Overview pages)
-   3105  Calendar news badge (Monthly P&L day cells)
-   3133  Streak badge (Overview + strategy detail pages)
-   3156  Market status pill (Overview + strategy detail pages)
-   3182  Today's brief & session stats
-   3217  Market context cards (all-instruments Overview)
-   3259  Edge Insights panel
-   3274  Unverified logged time badge
-   3291  Welcome transition (first-run)
-   3320  Zero-instrument empty state
-   3330  Tutorial overlay (first-run guided tour)
-   3422  Tutorial step 3 (guided form scroll)
-   3469  Press states, value changes, content fade-in
-   3566  Bottom-tab slide
-   3740  Trade log column width stability
-   3765  Strategy notes panel
-   3780  Today's brief economic outlook
-   4100  Two-factor device list
-   4157  Reset-password two-factor warning
-   4192  Remember this browser
-   4293  Two-factor setup instructions
-   4340  Lost-phone route on the code step
-   4362  Mobile app shell (below 768px only)
+   714  Auth pages
+   780  Top nav
+   795  Instrument nav (topbar pill row)
+   872  Page layout
+   926  Tabs
+   936  Misc form helpers
+   942  Detail view
+   965  Holiday notice (site-wide, above the shell)
+   997  Shell layout (sidebar + topbar)
+   1385  Expandable trade rows
+   1451  Calendar
+   1499  Account settings page
+   1737  Light theme
+   1778  2FA
+   1806  Account fine print
+   1809  Screenshot preview (log new trade)
+   1851  Auth pages always dark
+   1886  Monthly P&L (calendar on Overview)
+   1973  Trade form: sections, validation, currency, screenshots
+   2211  Field tooltips
+   2273  Date/time picker (adds an optional popup to a typed input)
+   2390  In-header column filters (trade log table)
+   2438  Active filter chips
+   2501  Empty states, error banners, skeleton loaders
+   2598  Cross-instrument overview dashboard (/app)
+   2777  Not found / error boundary state pages
+   2790  Toast notifications
+   2818  Public policy pages (Privacy, Terms)
+   2837  Legal links (auth pages + account settings)
+   2876  Economic calendar card (Overview pages)
+   3148  Calendar news badge (Monthly P&L day cells)
+   3176  Streak badge (Overview + strategy detail pages)
+   3199  Market status pill (Overview + strategy detail pages)
+   3225  Today's brief & session stats
+   3260  Market context cards (all-instruments Overview)
+   3302  Edge Insights panel
+   3317  Unverified logged time badge
+   3334  Welcome transition (first-run)
+   3363  Zero-instrument empty state
+   3373  Tutorial overlay (first-run guided tour)
+   3465  Tutorial step 3 (guided form scroll)
+   3512  Press states, value changes, content fade-in
+   3609  Bottom-tab slide
+   3783  Trade log column width stability
+   3808  Strategy notes panel
+   3823  Today's brief economic outlook
+   4143  Two-factor device list
+   4200  Reset-password two-factor warning
+   4235  Remember this browser
+   4336  Two-factor setup instructions
+   4383  Lost-phone route on the code step
+   4405  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -335,9 +335,23 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
    measure but everybody can feel. Only the margins differ, because one
    label sits above a card and the other inside one. */
 .panel-title{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; margin-bottom:16px;}
-/* Reusable translucent surface for the glass-panel aesthetic - not applied
-   to any element yet, opt in with class="panel glass-panel" (or on its
-   own) on nav bars, cards and panels going forward. */
+/* Reusable translucent surface for the glass aesthetic - not applied to
+   any element yet, opt in with class="glass-panel".
+   
+   ON BARS AND FLOATING CONTROLS ONLY. This used to say "nav bars, cards
+   and panels going forward", and the cards half of that is the one rule
+   Apple's Liquid Glass guidance puts first: glass is the FUNCTIONAL
+   layer - the controls and navigation that float above content - and
+   never the content layer. "Don't use Liquid Glass in the content layer
+   ... use standard materials for elements in the content layer" (HIG
+   Materials), and "use Liquid Glass effects sparingly ... limit these
+   effects to the most important functional elements".
+   A card is content. A card made of glass is the single most common way
+   this look goes wrong: everything turns translucent, nothing floats
+   above anything, and the hierarchy the material exists to create is
+   gone. `.panel` is the card surface and stays opaque.
+   Nothing had opted in yet, so nothing moves - but the instruction was
+   pointed at the mistake. */
 .glass-panel{
   background:var(--glass);
   border:1px solid var(--glass-border);
@@ -348,6 +362,12 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
      -webkit- correctly on its own when only the standard property is
      present. */
   backdrop-filter:blur(20px);
+}
+/* Opaque, edge kept - see .shell-topbar.topbar-pinned's note. Stated
+   here too so that opting a bar in cannot accidentally ship a surface
+   that ignores the setting. */
+@media (prefers-reduced-transparency: reduce){
+  .glass-panel{background:var(--panel); backdrop-filter:none;}
 }
 form{display:grid; grid-template-columns:repeat(6,1fr); gap:12px;}
 /* Grid items default to min-width:auto, i.e. their content's intrinsic
@@ -1039,6 +1059,23 @@ table{min-width:640px;}
   backdrop-filter:blur(40px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
+/* iOS's Reduce Transparency and its desktop equivalents. The mobile
+   chrome and the economic-calendar well already honour this; the two
+   desktop topbars did not, which is the whole of the gap.
+   FROSTIER, NOT GONE. The bar keeps its backing, its border and its
+   shadow and only stops being see-through. Dropping the surface instead
+   - the tempting one-liner, backdrop-filter:none on a 28%-alpha
+   background - takes the bar's backing away from the one user who asked
+   for MORE separation from the content behind it, and leaves page text
+   scrolling through a translucent bar with no blur to hide it. Apple's
+   own behaviour is to make the material frostier and obscure more, and
+   its anti-pattern list names removing it outright.
+   This is also the fallback for any browser without backdrop-filter. */
+@media (prefers-reduced-transparency: reduce){
+  .shell-topbar.topbar-pinned{
+    background:var(--panel); backdrop-filter:none;
+  }
+}
 /* No `gap` here on purpose - flex gap lands between every child,
    including the "Edge" text node and the "Log" span below, which would
    print as "EDGE LOG" with a visible gap instead of one word. The icon
@@ -1481,6 +1518,12 @@ a.shell-logo{color:inherit; text-decoration:none;}
   background:rgba(var(--panel-rgb), var(--topbar-glass-alpha, 0.28)); border-color:var(--glass-border);
   backdrop-filter:blur(40px) saturate(160%);
   box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+/* Same as .shell-topbar.topbar-pinned above - opaque, keeps the edge. */
+@media (prefers-reduced-transparency: reduce){
+  .account-topbar.topbar-pinned{
+    background:var(--panel); backdrop-filter:none;
+  }
 }
 /* min-height matches .icon-btn's fixed 36px (the tallest element in
    .shell-topbar), so .account-topbar computes to the same height as the

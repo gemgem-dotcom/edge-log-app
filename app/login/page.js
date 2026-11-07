@@ -9,6 +9,12 @@ import { checkAttemptAllowed, recordAttempt } from '@/lib/mfaAttemptClient'
 import { GoogleIcon } from '@/components/OAuthIcons'
 import { usePageTitle } from '@/lib/usePageTitle'
 
+// "Incorrect code" is true and useless. The commonest real cause is a
+// code typed a few seconds after it rotated, or a phone whose clock has
+// drifted - neither of which a person would guess, so they retype the
+// same expired number and conclude the app is broken.
+const STALE_CODE_HINT = "That code didn't work. Codes only last 30 seconds - open your authenticator app, wait for a fresh number, and type that one straight away."
+
 export default function LoginPage() {
   usePageTitle('Log In')
   const router = useRouter()
@@ -87,6 +93,16 @@ export default function LoginPage() {
         setStep('mfa')
         return
       }
+      // A code is owed and none can be found to ask for. This used to
+      // fall through to /app, which is the wrong direction entirely:
+      // the assurance level has just said this session is not fully
+      // authenticated. It happens when the account's factor is a type
+      // the picker cannot read, and the honest answer is to refuse
+      // rather than to let them in because we could not work out how
+      // to challenge them.
+      setError('Your account needs a verification code, but no usable authenticator was found. Use the link below to get back in.')
+      setStep('mfa')
+      return
     }
 
     await recordLoginEvent()
@@ -171,7 +187,7 @@ export default function LoginPage() {
     setLoading(false)
 
     if (verifyError) {
-      setError(after.message || 'Incorrect code - try again.')
+      setError(after.message || STALE_CODE_HINT)
       return
     }
 
@@ -295,8 +311,21 @@ export default function LoginPage() {
                     checked={trustBrowser}
                     onChange={(e) => setTrustBrowser(e.target.checked)}
                   />
-                  <span>Don&apos;t ask for a code on this browser for 30 days</span>
+                  <span>Skip the code on this computer for the next 30 days</span>
                 </label>
+                {/* The risk, said plainly. The tickbox used to state
+                    only the mechanism, so somebody at a prop desk or a
+                    hotel machine had nothing telling them they were
+                    handing it a month of password-only access. The
+                    browser caveat goes in brackets rather than in the
+                    label, because "browser" is the word people read as
+                    "laptop". */}
+                <div className="mfa-trust-note">
+                  Only tick this on a computer only you use &mdash; anyone who knows your
+                  password could then sign in here without a code.
+                  (If you use more than one web browser on it, you&apos;ll still be asked
+                  in the others.)
+                </div>
                 {error && <div className="auth-error">{error}</div>}
                 <button type="submit" disabled={loading} className="auth-submit">
                   {loading ? 'Verifying...' : 'Verify'}
@@ -308,6 +337,28 @@ export default function LoginPage() {
                     </a>
                   </div>
                 )}
+
+                {/* THE WAY OUT. This screen used to contain no link of
+                    any kind - the "Forgot password?" on the password
+                    step is removed at exactly the point it becomes the
+                    thing the user needs.
+
+                    EdgeLog has no backup codes, so resetting the
+                    password IS the recovery route. Someone who has lost
+                    their phone has not forgotten their password; they
+                    know it perfectly. They will never guess that a page
+                    called "Forgot password?" is where they should go,
+                    so this says what has happened to them rather than
+                    naming the mechanism. */}
+                <div className="mfa-lost-phone">
+                  <div className="mfa-lost-phone-title">Lost or replaced your phone?</div>
+                  <p>
+                    You can still get in. We&apos;ll email you a link to set a new
+                    password, and that switches off the code requirement so you
+                    can sign in.
+                  </p>
+                  <a href="/forgot-password?lost=1">Email me a link to get back in</a>
+                </div>
               </form>
             )}
           </>

@@ -50,7 +50,10 @@ export async function POST(req) {
 
   if (upsertError) {
     Sentry.captureException(upsertError)
-    return new Response(JSON.stringify({ error: upsertError.message }), { status: 500 })
+    // A fixed string, not upsertError.message. Raw Postgres error text
+    // told the client about the schema and was the one route in this
+    // set that did; the detail is in Sentry where it is useful.
+    return new Response(JSON.stringify({ error: 'Could not record this sign-in.' }), { status: 500 })
     }
 
   return new Response(JSON.stringify({ success: true }), { status: 200 })

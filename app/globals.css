@@ -5,58 +5,60 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–682  Base: reset, typography, forms, tables, thumbnails,
+     1–684  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   683  Auth pages
-   749  Top nav
-   764  Instrument nav (topbar pill row)
-   841  Page layout
-   895  Tabs
-   905  Misc form helpers
-   911  Detail view
-   934  Holiday notice (site-wide, above the shell)
-   966  Shell layout (sidebar + topbar)
-   1337  Expandable trade rows
-   1403  Calendar
-   1451  Account settings page
-   1675  Light theme
-   1716  2FA
-   1731  Account fine print
-   1734  Screenshot preview (log new trade)
-   1776  Auth pages always dark
-   1811  Monthly P&L (calendar on Overview)
-   1898  Trade form: sections, validation, currency, screenshots
-   2136  Field tooltips
-   2198  Date/time picker (adds an optional popup to a typed input)
-   2315  In-header column filters (trade log table)
-   2363  Active filter chips
-   2426  Empty states, error banners, skeleton loaders
-   2523  Cross-instrument overview dashboard (/app)
-   2702  Not found / error boundary state pages
-   2715  Toast notifications
-   2743  Public policy pages (Privacy, Terms)
-   2762  Legal links (auth pages + account settings)
-   2801  Economic calendar card (Overview pages)
-   3073  Calendar news badge (Monthly P&L day cells)
-   3101  Streak badge (Overview + strategy detail pages)
-   3124  Market status pill (Overview + strategy detail pages)
-   3150  Today's brief & session stats
-   3185  Market context cards (all-instruments Overview)
-   3227  Edge Insights panel
-   3242  Unverified logged time badge
-   3259  Welcome transition (first-run)
-   3288  Zero-instrument empty state
-   3298  Tutorial overlay (first-run guided tour)
-   3390  Tutorial step 3 (guided form scroll)
-   3437  Press states, value changes, content fade-in
-   3534  Bottom-tab slide
-   3708  Trade log column width stability
-   3733  Strategy notes panel
-   3748  Today's brief economic outlook
-   4068  Two-factor device list
-   4119  Reset-password two-factor warning
-   4154  Remember this browser
-   4212  Mobile app shell (below 768px only)
+   685  Auth pages
+   751  Top nav
+   766  Instrument nav (topbar pill row)
+   843  Page layout
+   897  Tabs
+   907  Misc form helpers
+   913  Detail view
+   936  Holiday notice (site-wide, above the shell)
+   968  Shell layout (sidebar + topbar)
+   1339  Expandable trade rows
+   1405  Calendar
+   1453  Account settings page
+   1677  Light theme
+   1718  2FA
+   1746  Account fine print
+   1749  Screenshot preview (log new trade)
+   1791  Auth pages always dark
+   1826  Monthly P&L (calendar on Overview)
+   1913  Trade form: sections, validation, currency, screenshots
+   2151  Field tooltips
+   2213  Date/time picker (adds an optional popup to a typed input)
+   2330  In-header column filters (trade log table)
+   2378  Active filter chips
+   2441  Empty states, error banners, skeleton loaders
+   2538  Cross-instrument overview dashboard (/app)
+   2717  Not found / error boundary state pages
+   2730  Toast notifications
+   2758  Public policy pages (Privacy, Terms)
+   2777  Legal links (auth pages + account settings)
+   2816  Economic calendar card (Overview pages)
+   3088  Calendar news badge (Monthly P&L day cells)
+   3116  Streak badge (Overview + strategy detail pages)
+   3139  Market status pill (Overview + strategy detail pages)
+   3165  Today's brief & session stats
+   3200  Market context cards (all-instruments Overview)
+   3242  Edge Insights panel
+   3257  Unverified logged time badge
+   3274  Welcome transition (first-run)
+   3303  Zero-instrument empty state
+   3313  Tutorial overlay (first-run guided tour)
+   3405  Tutorial step 3 (guided form scroll)
+   3452  Press states, value changes, content fade-in
+   3549  Bottom-tab slide
+   3723  Trade log column width stability
+   3748  Strategy notes panel
+   3763  Today's brief economic outlook
+   4083  Two-factor device list
+   4140  Reset-password two-factor warning
+   4175  Remember this browser
+   4245  Two-factor setup instructions
+   4292  Lost-phone route on the code step
+   4314  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -1715,7 +1717,20 @@ input:disabled, select:disabled{background-color:rgba(255,255,255,.04); color:va
 
 /* ---------- 2FA ---------- */
 .mfa-status-row{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
+/* --win is tuned for a dark panel and measures 2.32:1 on white, below
+   the 4.5:1 WCAG AA needs - and this is the one word that tells
+   someone their account is protected. color-mix darkens it only where
+   the ground is light; dark mode keeps the original, which already
+   passes.
+
+   65% rather than 70%: 70 computes to exactly 4.50, which is the
+   threshold itself rather than clear of it, and rounding in any
+   browser's color-mix puts it the wrong side. 65% gives 5.11. */
 .mfa-status-enabled{font-size:14.5px; font-weight:700; color:var(--win); margin-bottom:4px;}
+:root[data-theme="light"] .mfa-status-enabled{color:color-mix(in srgb, var(--win) 65%, #000);}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]) .mfa-status-enabled{color:color-mix(in srgb, var(--win) 65%, #000);}
+}
 .mfa-enroll-block{display:flex; flex-direction:column; gap:4px;}
 .mfa-qr-wrap{background:#fff; padding:16px; border-radius:10px; width:fit-content; margin:10px 0;}
 .mfa-qr-wrap svg, .mfa-qr-wrap img{display:block; width:160px; height:160px;}
@@ -4088,10 +4103,16 @@ button:active{
    other icon control in this file does: no accent pill, no radius, no
    shadow, no hover lift. The accessible name comes from aria-label on the
    element, since there is no text to read. */
+/* 44x44 is the smallest reliable tap target. These were 24-26px, and
+   a miss on a 24px bin lands on the row beside it - where the
+   consequence of the wrong row is a dialog titled "Turn Off
+   Two-Factor Authentication". The icon stays 14px; the hit area does
+   not have to match it. */
 .mfa-factor-remove{
   background:none; border:none; box-shadow:none; border-radius:8px;
   padding:6px; color:var(--muted); cursor:pointer; flex:none;
-  display:flex; align-items:center;
+  display:flex; align-items:center; justify-content:center;
+  min-width:44px; min-height:44px;
   transition:color .15s ease, background-color .15s ease;
 }
 .mfa-factor-remove svg{width:14px; height:14px;}
@@ -4163,7 +4184,7 @@ button:active{
 */
 .mfa-trust-row{
   display:flex; align-items:center; gap:9px;
-  margin:2px 0 14px; font-size:12.5px; color:var(--muted);
+  margin:2px 0 6px; font-size:13.5px; color:var(--text);
   cursor:pointer; text-align:left;
   /* This is a <label>, and the form styling further up uppercases
      those - right for a one-word field name, wrong for a sentence.
@@ -4172,7 +4193,13 @@ button:active{
      letter-spacing and weight that come with it. */
   text-transform:none; letter-spacing:normal; font-weight:400;
 }
-.mfa-trust-row input{width:15px; height:15px; margin:0; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
+/* 15px was under half the usable tap size, on a control that grants a
+   month of password-only access. The row itself is the target. */
+.mfa-trust-row input{width:22px; height:22px; margin:0; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
+.mfa-trust-row{min-height:44px;}
+.mfa-trust-note{
+  margin:-8px 0 14px; font-size:12px; line-height:1.5; color:var(--muted); text-align:left;
+}
 .mfa-trust-row:hover{color:var(--text);}
 
 /* Separates the remembered-browsers block from the two-factor block
@@ -4200,14 +4227,89 @@ button:active{
 /* An expired row is shown rather than hidden - a list that quietly
    drops entries is one people stop trusting - but dimmed, so the
    rows worth revoking are the ones that stand out. */
-.trusted-device-row.is-expired{opacity:.55;}
+/* Was opacity:.55 over 11.5px grey - effectively under 3:1 on text
+   that says something useful rather than decorative. The row is now
+   only slightly recessed and the note carries its own colour. */
+.trusted-device-row.is-expired{background:transparent;}
+.trusted-device-row.is-expired .trusted-device-name{color:var(--muted);}
+.trusted-device-row.is-expired .trusted-device-note{color:var(--be);}
 .trusted-device-forget{
   background:none; border:none; padding:5px; border-radius:7px;
-  color:var(--muted); cursor:pointer; display:flex; align-items:center; box-shadow:none;
+  color:var(--muted); cursor:pointer; display:flex; align-items:center;
+  justify-content:center; min-width:44px; min-height:44px; box-shadow:none;
 }
 .trusted-device-forget svg{width:14px; height:14px;}
 .trusted-device-forget:hover{color:var(--loss); background:rgba(225,92,92,.1); transform:none; filter:none; box-shadow:none;}
 .trusted-device-forget:disabled{opacity:.45; cursor:not-allowed;}
+
+/* ---------- Two-factor setup instructions ---------- */
+/*
+   The enrolment screen used to be one sentence saying "scan this QR
+   code", which is impossible to follow when the page is open on the
+   phone being set up. These are the numbered steps that replaced it,
+   plus the labelled setup key that is the route for anyone who cannot
+   scan.
+*/
+.mfa-steps{
+  margin:0 0 16px; padding-left:20px;
+  font-size:13px; line-height:1.6; color:var(--muted);
+}
+.mfa-steps li{margin-bottom:8px;}
+.mfa-steps li:last-child{margin-bottom:0;}
+.mfa-steps strong{color:var(--text); font-weight:600;}
+.mfa-steps em{font-style:normal; color:var(--accent); font-weight:600;}
+
+.mfa-secret-label{
+  font-size:11px; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--muted); margin:14px 0 5px;
+}
+
+/* A real <button> at a real tap size. It was a 44x15px <span> reusing
+   the delete-link class, which also gave it a red hover on a control
+   that destroys nothing. */
+.mfa-copy-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  min-height:44px; padding:0 14px; border-radius:9px;
+  background:var(--panel-2); border:1px solid var(--line);
+  color:var(--text); font-size:13px; font-weight:600; cursor:pointer;
+  box-shadow:none; transition:border-color .15s ease, color .15s ease;
+}
+.mfa-copy-btn svg{width:14px; height:14px;}
+.mfa-copy-btn:hover{border-color:var(--accent); color:var(--accent); transform:none; filter:none; box-shadow:none;}
+
+/* Said at enrolment because the consequence only becomes visible
+   months later, when the phone is already gone. */
+.mfa-no-codes-note{
+  margin-top:14px; padding:12px 13px; border-radius:10px;
+  border:1px solid color-mix(in srgb, var(--be) 40%, transparent);
+  background:color-mix(in srgb, var(--be) 8%, transparent);
+  font-size:12.5px; line-height:1.55; color:var(--muted);
+}
+.mfa-no-codes-note strong{color:var(--be); font-weight:650;}
+
+.field-hint{font-size:11.5px; color:var(--muted); margin-top:5px; line-height:1.45;}
+
+/* ---------- Lost-phone route on the code step ---------- */
+/*
+   EdgeLog has no backup codes, so a password reset IS the recovery
+   route - and the code screen used to contain no link of any kind.
+   Someone who has lost their phone has not forgotten their password,
+   so they would never think to look behind "Forgot password?". This
+   block is deliberately a readable paragraph rather than a faint
+   link: it is the only thing standing between a lost phone and a lost
+   account.
+*/
+.mfa-lost-phone{
+  margin-top:22px; padding-top:18px; border-top:1px solid var(--line);
+  text-align:left;
+}
+.mfa-lost-phone-title{font-size:13px; font-weight:650; color:var(--text); letter-spacing:-.01em;}
+.mfa-lost-phone p{margin:6px 0 10px; font-size:13px; line-height:1.55; color:var(--muted);}
+.mfa-lost-phone a{
+  display:inline-flex; align-items:center; min-height:44px;
+  font-size:13.5px; font-weight:600; color:var(--accent); text-decoration:none;
+}
+.mfa-lost-phone a:hover{text-decoration:underline;}
 
 /* ---------- Mobile app shell (below 768px only) ---------- */
 /*

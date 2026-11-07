@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabaseClient'
 import TrustedDevicesSection from '@/components/account/TrustedDevicesSection'
 import { useConfirm } from '@/lib/useConfirm'
 import { checkAttemptAllowed, recordAttempt } from '@/lib/mfaAttemptClient'
-import { activatable } from '@/lib/activatable'
 import {
   verifiedFactors, unverifiedFactors, factorLabel,
   suggestFactorName, validateFactorName, isLastFactor,
@@ -118,7 +117,7 @@ export default function TwoFactorSection({ initialFactors }) {
     const after = await recordAttempt('totp', !verifyError)
     setMfaBusy(false)
     if (verifyError) {
-      setMfaError(after.message || 'Incorrect code - try again.')
+      setMfaError(after.message || "That code didn't work. Codes only last 30 seconds - wait for a fresh number in your app and type that one.")
       return
     }
     closeEnrolment()
@@ -150,12 +149,15 @@ export default function TwoFactorSection({ initialFactors }) {
     // wording would either over-warn about a tidy-up or under-warn about
     // a security downgrade.
     const last = isLastFactor(factorData, factor.id)
+    // Named for the consequence rather than the mechanism. "Unenroll
+    // your TOTP factor" is accurate and tells a person nothing about
+    // what is about to happen to them.
     const sure = await confirm({
-      title: last ? 'Turn Off Two-Factor Authentication' : `Remove ${factorLabel(factor)}`,
+      title: last ? 'Stop asking for a sign-in code?' : `Remove ${factorLabel(factor)}`,
       message: last
-        ? 'This is your only authenticator. Removing it turns two-factor authentication off, and makes your account easier to access if your password is ever compromised.'
-        : `You will no longer be able to use ${factorLabel(factor)} to sign in. Your other authenticators keep working.`,
-      confirmLabel: last ? 'Turn off 2FA' : 'Remove device',
+        ? 'This is your only phone. Remove it and EdgeLog will stop asking for a code when you sign in, so your password alone would let anyone in.'
+        : `${factorLabel(factor)} will no longer give you sign-in codes. Your other phone still will.`,
+      confirmLabel: last ? 'Stop asking for codes' : 'Remove it',
       danger: true,
     })
     if (!sure) return
@@ -182,7 +184,27 @@ export default function TwoFactorSection({ initialFactors }) {
 
       {enrolling ? (
         <div className="mfa-enroll-block">
-          <p className="onboard-note">Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.</p>
+          {/* Two routes, because the single "scan this QR code"
+              instruction is physically impossible when this page is
+              open on the very phone being set up - which on mobile is
+              the likeliest case, and left people stuck with no way
+              forward. */}
+          <ol className="mfa-steps">
+            <li>
+              <strong>Get a code app on your phone.</strong> If you don&apos;t have one,
+              install Google Authenticator, Authy or 1Password - they&apos;re free.
+            </li>
+            <li>
+              <strong>On a computer:</strong> open the app on your phone, tap +, and
+              point the camera at the square below.<br />
+              <strong>On this phone:</strong> tap <em>copy</em> under the square, then in the
+              app tap + and choose &ldquo;enter a setup key&rdquo;.
+            </li>
+            <li>
+              <strong>Type the 6-digit number the app shows.</strong> It changes every
+              30 seconds, so use whatever it says right now.
+            </li>
+          </ol>
           {enrollQr && (
             <div className="mfa-qr-wrap">
               {/* next/image is the wrong tool here and the rule's
@@ -198,23 +220,42 @@ export default function TwoFactorSection({ initialFactors }) {
               <img src={enrollQr} alt="2FA QR code" />
             </div>
           )}
+          {/* Labelled. It used to be an unexplained grey string, which
+              is the one thing a person setting up on their phone
+              actually needs. */}
+          <div className="mfa-secret-label">Setup key &mdash; use this instead of the square</div>
           <div className="mfa-secret-row">
             <span className="trade-id-cell">{enrollSecret}</span>
-            <span className="del mfa-copy" {...activatable(handleCopySecret)}>
-              {secretCopied ? <><Check size={12} style={{ verticalAlign: '-2px' }} /> copied</> : <><Copy size={12} style={{ verticalAlign: '-2px' }} /> copy</>}
-            </span>
+            <button type="button" className="mfa-copy-btn" onClick={handleCopySecret}>
+              {secretCopied
+                ? <><Check size={14} /> copied</>
+                : <><Copy size={14} /> copy</>}
+            </button>
+          </div>
+
+          {/* Said at the moment they are paying attention, because the
+              consequence only becomes visible eight months later when
+              the phone is gone. */}
+          <div className="mfa-no-codes-note">
+            <strong>Keep this phone safe.</strong> EdgeLog has no backup codes. If you
+            lose it, the only way back in is to reset your password by email &mdash;
+            which switches the sign-in code off, and you set it up again on a new phone.
           </div>
           {/* Named at enrolment rather than afterwards. With more than one
               authenticator the list is unreadable without names, and the
               moment the user is holding the device is the only moment they
               can say which one it is. */}
           <div className="field wide" style={{ marginTop: '14px' }}>
-            <label>Device name</label>
+            {/* Short, because the form styling uppercases labels and a
+                full question in capitals shouts. The question itself
+                moved into the hint below. */}
+            <label>Name this phone</label>
             <input
               type="text" maxLength={60} value={deviceName}
               onChange={(e) => setDeviceName(e.target.value)}
-              placeholder="Personal phone"
+              placeholder="My phone"
             />
+            <div className="field-hint">What should we call it? Just so you can tell it apart if you add a second one.</div>
           </div>
           <div className="field wide" style={{ marginTop: '14px' }}>
             <label>6-digit code</label>

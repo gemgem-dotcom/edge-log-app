@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
+import { decodeJwtClaims } from '@/lib/authAssurance'
 
 // Every table that references auth.users. deleteUser fails if any row still
 // points at the user, and the failure surfaces as an unhelpful empty error,
@@ -61,6 +62,30 @@ export async function POST(req) {
     }
 
     const userId = userData.user.id
+
+    // ASSURANCE. This route deletes the account and every trade in it,
+    // irreversibly, and until now its only gate was "is this a valid
+    // token" - so an attacker holding the password alone could call it
+    // directly and destroy the journal without ever seeing a code.
+    // proxy.js does not help: its matcher covers /app, and /api is not
+    // under it. The in-page confirmation re-authenticates, but that is
+    // a client-side control and is bypassed by calling the route.
+    //
+    // So the check lives here. An account with a verified factor must
+    // present an aal2 token. An account with no factor is unaffected,
+    // which is also what keeps this from breaking the Google-only and
+    // no-2FA cases.
+    const { data: factorData } = await admin.auth.admin.mfa.listFactors({ userId })
+    const hasFactor = (factorData?.factors || []).some((f) => f?.status === 'verified')
+    if (hasFactor) {
+      const claims = decodeJwtClaims(token)
+      if (claims?.aal !== 'aal2') {
+        return new Response(
+          JSON.stringify({ error: 'Sign in with your authenticator code before deleting your account.' }),
+          { status: 403 },
+        )
+      }
+    }
 
     // Best-effort, not blocking - see deleteUserScreenshots' own comment on
     // why a failure here shouldn't stop the rest of account deletion.

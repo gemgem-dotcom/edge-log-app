@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
-import { createHash, randomBytes, timingSafeEqual } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import * as Sentry from '@sentry/nextjs'
 import { parseDevice } from '@/lib/deviceLabel'
+import { decodeJwtClaims } from '@/lib/authAssurance'
 import {
   TRUST_COOKIE, trustCookieOptions, trustExpiresAt, sortTrustedDevices, describeTrustedDevice,
 } from '@/lib/trustedDevice'
@@ -41,16 +42,6 @@ export function hashToken(token) {
   return createHash('sha256').update(String(token)).digest('hex')
 }
 
-// Compared in constant time. The hashes are not secrets once stored,
-// but the comparison happens against a value an attacker supplies and
-// can time, and a cheap habit here costs nothing.
-export function hashesMatch(a, b) {
-  const ba = Buffer.from(String(a || ''), 'utf8')
-  const bb = Buffer.from(String(b || ''), 'utf8')
-  if (ba.length !== bb.length || ba.length === 0) return false
-  return timingSafeEqual(ba, bb)
-}
-
 async function authenticate(req) {
   const token = (req.headers.get('authorization') || '').replace('Bearer ', '').trim()
   if (!token) return { error: json(401, { error: 'Not authenticated' }) }
@@ -73,14 +64,11 @@ async function authenticate(req) {
 // permanent 2FA skip, so it is checked explicitly rather than inferred
 // from anything else.
 function isFullyAuthenticated(accessToken) {
-  const part = String(accessToken).split('.')[1]
-  if (!part) return false
-  try {
-    const claims = JSON.parse(Buffer.from(part.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'))
-    return claims?.aal === 'aal2'
-  } catch {
-    return false
-  }
+  // decodeJwtClaims, not a second inline decoder: this file had its
+  // own copy, which meant two implementations of the same parsing
+  // free to drift, and only one of them had the base64url padding
+  // fix.
+  return decodeJwtClaims(accessToken)?.aal === 'aal2'
 }
 
 export async function POST(req) {
@@ -129,6 +117,13 @@ export async function GET(req) {
   const auth = await authenticate(req)
   if (auth.error) return auth.error
 
+  // aal2 to read the list. It names the owner's machines and when
+  // each was last used - a map of where they work, which a session
+  // holding only the password has no business being handed.
+  if (!isFullyAuthenticated(auth.accessToken)) {
+    return json(403, { error: 'Finish signing in with your code first' })
+  }
+
   try {
     const { data, error } = await auth.admin
       .from('mfa_trusted_device')
@@ -146,6 +141,14 @@ export async function GET(req) {
 export async function DELETE(req) {
   const auth = await authenticate(req)
   if (auth.error) return auth.error
+
+  // aal2 to revoke, too. On its own, forcing the owner to be
+  // challenged again is a nuisance rather than a breach - but paired
+  // with a lockout it is a way to make sure they cannot get past the
+  // step they are being held at.
+  if (!isFullyAuthenticated(auth.accessToken)) {
+    return json(403, { error: 'Finish signing in with your code first' })
+  }
 
   const params = new URL(req.url).searchParams
   const all = params.get('all') === '1'

@@ -1051,3 +1051,73 @@ create index if not exists mfa_trusted_device_user_idx
   on mfa_trusted_device(user_id, expires_at desc);
 
 alter table mfa_trusted_device enable row level security;
+
+-- ============================================================
+-- OPTIONAL, NOT YET RUN: require a second factor to read the data
+-- ============================================================
+-- An adversarial review found that two-factor authentication in this
+-- app protects the PAGES and not the ROWS. proxy.js gates /app on
+-- assurance, but every policy below keys on auth.uid() alone, and
+-- auth.uid() is satisfied by any valid token for that user - aal1
+-- included. So somebody holding only the password can skip the app
+-- entirely and read the whole journal straight from the REST API:
+--
+--   GET /rest/v1/trades?select=*
+--     apikey: <the anon key, which ships in every page>
+--     Authorization: Bearer <an aal1 token from a password grant>
+--
+-- The block below closes that. It is NOT part of the application
+-- change that added it and nothing in the code depends on it, so the
+-- app works identically whether or not it has been run. It is left
+-- unapplied deliberately, because it is the one change here that can
+-- lock real users out of their own data if it is wrong, and that is a
+-- decision to take deliberately rather than inherit.
+--
+-- WHAT IT DOES. A row is readable when the session is aal2, OR when
+-- the account has no verified factor at all. The second branch is
+-- what keeps every password-only and Google-only user working exactly
+-- as before - without it, this locks out everyone who has not set up
+-- 2FA, which is currently everyone.
+--
+-- NOTE THE DIRECTION OF THE DEFAULT. A missing aal claim must not take
+-- the permissive branch: `coalesce(auth.jwt() ->> 'aal', 'aal1')`
+-- resolves an absent claim to aal1, which fails closed here. This is
+-- the same trap that lib/authAssurance.js documents in JavaScript -
+-- aal1 is the safe default in one direction and the dangerous one in
+-- the other.
+--
+-- BEFORE RUNNING IT:
+--   1. Read it. It changes who can read your trades.
+--   2. Run it in a branch/staging project first if you have one.
+--   3. Afterwards, sign in WITHOUT 2FA and confirm the journal still
+--      loads. That is the case the second branch protects and the one
+--      that breaks if this is wrong.
+--   4. Then enable 2FA on a test account, sign in with the code, and
+--      confirm it still loads.
+--
+-- TO UNDO: re-run each policy with the `using` clause reduced back to
+-- `auth.uid() = user_id`.
+
+-- create or replace function public.session_meets_assurance()
+-- returns boolean
+-- language sql
+-- stable
+-- security definer
+-- set search_path = auth, public
+-- as $$
+--   select
+--     coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2'
+--     or not exists (
+--       select 1 from auth.mfa_factors f
+--       where f.user_id = auth.uid() and f.status = 'verified'
+--     );
+-- $$;
+--
+-- drop policy if exists "Users manage their own trades" on trades;
+-- create policy "Users manage their own trades"
+--   on trades for all
+--   using (auth.uid() = user_id and public.session_meets_assurance())
+--   with check (auth.uid() = user_id and public.session_meets_assurance());
+--
+-- (repeat for strategies, instruments, login_events, and any other
+--  table holding this user's own data)

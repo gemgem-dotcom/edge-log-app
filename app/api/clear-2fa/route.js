@@ -100,6 +100,17 @@ export async function POST(req) {
     return deny(500, 'Could not remove your authenticators')
   }
 
+  // Revoke the recovery session itself. It has just been used for the
+  // one thing it exists to do, and leaving it live means the same
+  // cookies can call this route again later. Best effort: the factors
+  // are already gone, and failing the recovery over a sign-out would
+  // strand the user for no gain.
+  try {
+    await admin.auth.admin.signOut(user.id, 'global')
+  } catch (err) {
+    Sentry.captureException(err)
+  }
+
   // Forget every remembered browser too. A trusted-device row is a
   // standing permission to skip a challenge; once the factors it was
   // granted against are gone, it is a permission to skip nothing,

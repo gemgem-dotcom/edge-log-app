@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { verifiedFactors, preferredFactor } from '@/lib/mfaFactors'
+import { checkAttemptAllowed, recordAttempt } from '@/lib/mfaAttemptClient'
 
 const DELETE_CONFIRM_TEXT = 'DELETE'
 
@@ -15,11 +17,61 @@ export default function DangerZoneSection({ email, hasPassword }) {
   const [deletePassword, setDeletePassword] = useState('')
   const [showDeletePassword, setShowDeletePassword] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteCode, setDeleteCode] = useState('')
+  const [hasFactor, setHasFactor] = useState(false)
+
+  // Whether this account has a second factor decides what proof the
+  // modal asks for, so it is read when the modal opens rather than on
+  // every page load.
+  async function openDeleteModal() {
+    setDeletePassword(''); setDeleteConfirmText(''); setDeleteCode(''); setDeleteError('')
+    const { data } = await supabase.auth.mfa.listFactors()
+    setHasFactor(verifiedFactors(data).length > 0)
+    setShowDeleteModal(true)
+  }
 
   async function handleDeleteAccount() {
     setDeleteError('')
 
-    if (hasPassword) {
+    // WITH 2FA ON, THE PROOF IS A CODE, NOT THE PASSWORD. Two reasons,
+    // and the second one is why this changed.
+    //
+    // It is stronger: a password typed into a walked-away-from session
+    // proves only that the person knows the password, which is exactly
+    // what a second factor exists to stop being sufficient.
+    //
+    // And signInWithPassword would actively break the deletion. A fresh
+    // password grant on an account with a factor lands at aal1 - that
+    // is the whole premise of the login page's challenge step - so
+    // re-authenticating that way DOWNGRADES the session, and
+    // /api/delete-account now requires aal2. Verifying a code elevates
+    // the session instead, which is both the proof and the thing the
+    // route needs.
+    if (hasFactor) {
+      if (!deleteCode.trim()) {
+        setDeleteError('Enter the 6-digit code from your authenticator app.')
+        return
+      }
+      const gate = await checkAttemptAllowed('reauth')
+      if (!gate.allowed) { setDeleteError(gate.message); return }
+
+      const { data: factorsData } = await supabase.auth.mfa.listFactors()
+      const factor = preferredFactor(factorsData)
+      if (!factor) { setDeleteError('No authenticator found on this account.'); return }
+
+      const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({ factorId: factor.id })
+      if (chErr) { setDeleteError("Couldn't check that code. Please try again."); return }
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: factor.id,
+        challengeId: challenge.id,
+        code: deleteCode.trim(),
+      })
+      const after = await recordAttempt('reauth', !vErr)
+      if (vErr) {
+        setDeleteError(after.message || 'Incorrect code - try again.')
+        return
+      }
+    } else if (hasPassword) {
       if (!deletePassword) {
         setDeleteError('Enter your password to confirm.')
         return
@@ -81,7 +133,7 @@ export default function DangerZoneSection({ email, hasPassword }) {
           </div>
           <button
             className="btn-danger-outline"
-            onClick={() => { setDeletePassword(''); setDeleteConfirmText(''); setDeleteError(''); setShowDeleteModal(true) }}
+            onClick={openDeleteModal}
             disabled={deleting}
           >
             {deleting ? 'Deleting...' : 'Delete account'}
@@ -94,7 +146,20 @@ export default function DangerZoneSection({ email, hasPassword }) {
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Delete Account</h2>
             <p>This action is permanent and cannot be undone. Your trading journal, strategies, performance data, and account information will be permanently deleted.</p>
-            {hasPassword ? (
+            {hasFactor ? (
+              <>
+                <p style={{ marginBottom: '6px' }}>Enter the 6-digit code from your authenticator app to confirm.</p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={deleteCode}
+                  onChange={(e) => setDeleteCode(e.target.value)}
+                />
+              </>
+            ) : hasPassword ? (
               <>
                 <p style={{ marginBottom: '6px' }}>Enter your password to confirm.</p>
                 <div className="password-field">

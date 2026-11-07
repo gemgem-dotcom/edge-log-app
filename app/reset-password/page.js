@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { validatePassword } from '@/lib/validatePassword'
+import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/validatePassword'
 import { usePageTitle } from '@/lib/usePageTitle'
 
 export default function ResetPasswordPage() {
@@ -196,6 +196,13 @@ export default function ResetPasswordPage() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+              </div>
+              {/* Stated before the attempt, not after it. The field
+                  caps at 15 characters, so a longer passphrase simply
+                  stops appearing with no explanation - and the rule was
+                  only ever revealed by failing. */}
+              <div className="field-hint" style={{ marginTop: '-6px', marginBottom: '14px' }}>
+                {PASSWORD_REQUIREMENTS_TEXT}
               </div>
               <div className="field full">
                 <label>Confirm new password</label>

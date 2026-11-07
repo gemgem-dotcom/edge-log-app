@@ -33,7 +33,7 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
     const sure = await confirm({
       title: 'Sign Out Everywhere',
       message: 'You will need to log in again on every device, including this one.',
-      confirmLabel: 'Log out everywhere',
+      confirmLabel: 'Sign out everywhere',
       danger: true,
     })
     if (!sure) return
@@ -110,8 +110,17 @@ export default function SignInHistorySection({ initialEvents, timezone }) {
       )}
 
       <div className="submit-row" style={{ justifyContent: 'flex-start', gap: '10px', marginTop: '16px' }}>
-        <button type="button" onClick={handleSignOutOthers} disabled={sessionBusy}>Log out of all other devices</button>
-        <button type="button" className="btn-danger-outline" onClick={handleSignOutEverywhere}>Log out everywhere</button>
+        {/* These used to read "Log out of all other devices" and "Log
+            out everywhere" - one word apart, side by side, with the
+            one that signs you out of the machine you are standing at
+            given no extra weight. Both now say what happens to THIS
+            device, and the first no longer takes the primary style. */}
+        <button type="button" className="btn-accent-outline" onClick={handleSignOutOthers} disabled={sessionBusy}>
+          Sign out everywhere else (keeps you signed in here)
+        </button>
+        <button type="button" className="btn-danger-outline" onClick={handleSignOutEverywhere}>
+          Sign out on every device, including this one
+        </button>
       </div>
       {sessionMessage && <div className="account-msg account-msg-success">{sessionMessage}</div>}
       {confirmModal}

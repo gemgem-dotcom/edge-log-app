@@ -62,6 +62,11 @@ export default function LoginPage() {
       await fetch('/api/record-login', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
+        // The default for a same-origin fetch, stated because this
+        // route now both READS and SETS a cookie (the per-browser id
+        // in lib/deviceIdentity.js). Drop it and the sign-in history
+        // silently goes back to one row per device class.
+        credentials: 'same-origin',
       })
     } catch (e) {
       // best-effort - don't block login if logging fails

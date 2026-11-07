@@ -1303,3 +1303,43 @@ create policy "Second factor required for exit legs" on exit_legs
 -- function", and the day somebody adds SECURITY DEFINER to it that
 -- protection disappears with nothing to say so.
 alter function public.shift_trade_times(numeric) set search_path = public;
+
+
+-- ============================================================
+-- Sign-in history: one row per BROWSER, not per device class
+-- ============================================================
+-- login_events was upserted on (user_id, device_key), and device_key is
+-- `${deviceClass}-${browser}` from lib/deviceLabel.js - "windows-pc-chrome".
+-- That is a device CLASS. Two different Windows laptops running Chrome
+-- produced the same key, so the second one did not appear in the list: it
+-- OVERWROTE the first one's row, taking its timestamp, address and location.
+--
+-- The panel tells the user "if you don't recognise any of these devices,
+-- change your password". An attacker on Windows + Chrome - the commonest
+-- combination there is - would have overwritten the owner's own row rather
+-- than showing up as a new one. The list could not report the sign-in it
+-- exists to report.
+--
+-- device_id is a random per-browser value set in a cookie by
+-- app/api/record-login (see lib/deviceIdentity.js). It is a LABEL, not a
+-- credential: nothing is authorised by it, which is why it is stored as
+-- written rather than hashed like mfa_trusted_device.token_hash.
+alter table login_events add column if not exists device_id text;
+
+-- NOT PARTIAL, and that is the second thing measuring caught. The first
+-- attempt was `where device_id is not null`, on the theory that a plain
+-- unique index would collapse every legacy row into one per user. It would
+-- not: Postgres treats NULLs as DISTINCT, so any number of rows may carry a
+-- null device_id. And a PARTIAL index cannot be inferred by a bare
+-- `on conflict (user_id, device_id)`, which is exactly what the client
+-- generates - so the upsert failed with "no unique or exclusion constraint
+-- matching the ON CONFLICT specification".
+create unique index if not exists login_events_user_device_id_idx
+  on login_events (user_id, device_id);
+
+-- DROP THE OLD ONE, and note what it is. This was a unique INDEX, never a
+-- named constraint, so the obvious
+--   alter table login_events drop constraint if exists login_events_user_id_device_key_key;
+-- matches nothing and reports success while the collapse carries on being
+-- enforced. Running the statement is what revealed it; reading it did not.
+drop index if exists login_events_user_device_key_idx;

@@ -148,6 +148,38 @@ sentry.edge.config.js
 - Where both are shown, dollars lead and R is the sub-value; if no trade in view has
   a dollar figure, show R only.
 
+## Two-factor authentication
+
+- **There are deliberately no recovery codes.** They are a lot of machinery to
+  put in front of a non-technical user, and most are lost before they are ever
+  needed. Completing a password reset is the single way back into an account
+  whose authenticator is gone. Don't add codes back without revisiting the whole
+  design — the reset flow depends on being the only route.
+- **A completed password reset clears every factor**, after an explicit
+  confirmation on `/reset-password`. Without that, the reset is a lockout rather
+  than a rescue: the user sets a new password, is asked for a code they can't
+  produce, and is finished. The clearing happens in `app/api/clear-2fa/route.js`
+  because Supabase requires aal2 to unenroll and a recovery session is aal1 by
+  construction — the user cannot remove their own factor, which is the entire
+  problem.
+- **`/api/clear-2fa` is the most dangerous route in the app.** Its gate is
+  `isRecoverySession` in `lib/authAssurance.js`: aal must be present and say
+  `aal1`, and `amr` must be exactly one method from `RECOVERY_AMR_METHODS`. That
+  value is **measured, not assumed** — `scripts/probe-recovery-session.js` mints
+  a real recovery session and prints the claims (2026-11-07: `aal1`,
+  `[{"method":"otp"}]`). It is only safe while EdgeLog issues no other one-time
+  password. **If email-code sign-in or a magic link is ever added, `otp` stops
+  identifying a recovery and this route needs a different proof.**
+- **Assurance is enforced in `proxy.js`, not just at the login form.** It used to
+  be checked only in `app/login/page.js`, which meant a recovery-link session
+  could navigate straight to `/app` and never be asked for a code. A bounced
+  session is sent to `/login?step=2fa`; that parameter only decides whether to
+  *look* at the real assurance level, never what the answer is.
+- Note the two different safe defaults for a missing `aal` claim.
+  `sessionNeedsSecondFactor` treats it as aal1 (fail-closed: challenge them);
+  `isRecoverySession` refuses it outright, because there aal1 is the permissive
+  answer and the same default would be fail-open.
+
 ## Gotchas
 
 - **`display:flex` on a `<td>` breaks table column alignment.** It removes the cell

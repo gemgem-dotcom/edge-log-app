@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { validatePassword, PASSWORD_HINT_SHORT, PASSWORD_MAX_LENGTH } from '@/lib/validatePassword'
 import { usePageTitle } from '@/lib/usePageTitle'
+
+// Module scope, so the reference is stable across renders.
+const subscribeNever = () => () => {}
 
 export default function ResetPasswordPage() {
   usePageTitle('Reset Password')
@@ -54,8 +57,17 @@ export default function ResetPasswordPage() {
   // So the read stays exactly where it was, and only the RENDERING waits.
   // Both sides paint the undetermined state first, which is what makes
   // the markup match; the real answer arrives one commit later.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  // useSyncExternalStore, not a useState + useEffect mount flag. React
+  // built this hook for exactly the "has this hydrated yet" question:
+  // it is given a server snapshot and a client snapshot and guarantees
+  // the server one during SSR and hydration. The flag version is the
+  // more familiar idiom but it sets state inside an effect, which costs
+  // a cascading render and which this repo's lint rule rejects by name
+  // (react-hooks/set-state-in-effect).
+  // subscribe does nothing because the answer never changes after the
+  // first commit - it returns the required unsubscribe and is a stable
+  // reference so React never resubscribes.
+  const mounted = useSyncExternalStore(subscribeNever, () => true, () => false)
 
   useEffect(() => {
     // PASSWORD_RECOVERY only - deliberately NOT SIGNED_IN, and no

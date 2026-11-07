@@ -74,10 +74,32 @@ async function main() {
 
   // ---------------------------------------------------------------
   console.log("THE ACCOUNT'S FACTORS, as the admin API sees them")
-  const { data: userList, error: listErr } = await admin.auth.admin.listUsers({ perPage: 200 })
-  if (listErr) throw new Error(`could not list users: ${listErr.message}`)
-  const user = (userList?.users || []).find((u) => (u.email || '').toLowerCase() === email.toLowerCase())
-  if (!user) throw new Error(`no user with the email ${email}`)
+  // Paged, because listUsers caps a page and a missed page would read as
+  // "no such user" - which is exactly how this probe failed first time.
+  const users = []
+  for (let page = 1; page <= 20; page += 1) {
+    const { data: pageData, error: listErr } = await admin.auth.admin.listUsers({ page, perPage: 200 })
+    if (listErr) throw new Error(`could not list users: ${listErr.message}`)
+    const batch = pageData?.users || []
+    users.push(...batch)
+    if (batch.length < 200) break
+  }
+  const user = users.find((u) => (u.email || '').toLowerCase() === email.toLowerCase())
+  if (!user) {
+    // Masked, never the addresses themselves. This log is a CI artifact
+    // on a repo that may not stay private, and the point here is only to
+    // tell the operator which account to name - not to publish a user
+    // list to anyone who can read a build log.
+    const mask = (e) => {
+      const [name = '', host = ''] = String(e || '').split('@')
+      const head = name.slice(0, 1) || '?'
+      const tail = name.length > 1 ? name.slice(-1) : ''
+      return `${head}${'*'.repeat(Math.max(1, name.length - 2))}${tail}@${host}`
+    }
+    console.log(`\n  No account with that email. This project has ${users.length} user(s):`)
+    for (const u of users) line('', `${mask(u.email)}  (${(u.factors || []).filter((f) => f.status === 'verified').length} verified factor(s))`)
+    throw new Error(`no user with the email ${email} - pick one of the masked addresses above`)
+  }
   line('user id', user.id)
   const { data: factorData } = await admin.auth.admin.mfa.listFactors({ userId: user.id })
   const factors = factorData?.factors || []

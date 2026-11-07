@@ -261,10 +261,25 @@ sentry.edge.config.js
   serving with `next start` and walking the pages, not assumed. The font hosts
   must stay in `style-src`/`font-src`: the first version of the policy omitted them
   and silently blocked every page's typography.
-- **Passwords are 10–128 characters**, with 12+ accepted on length alone and three
-  of four character classes required below that. The old rule was 8–15 from a
-  restricted charset with no complexity requirement, which accepted `password` and
-  blocked every password manager.
+- **Passwords are 12–128 characters and need all four character classes** —
+  uppercase, lowercase, a number and a symbol. One rule, no branches. The old
+  rule was 8–15 from a restricted charset with no complexity requirement, which
+  accepted `password` and blocked every password manager; an interim rule took
+  12+ on length alone or 10+ with three of four classes.
+  **The maximum is 128, not 16.** "12 to 16" in the user-facing text is advice
+  about a good length, not a cap — capping at 16 would block generated
+  passphrases and password managers, which is the exact bug the 8–15 rule had.
+  The trade is recorded in `lib/validatePassword.js`: requiring all four classes
+  rejects a bare passphrase (`correct horse battery staple` is 28 characters,
+  genuinely strong, and fails) while `Passw0rd!123` passes at 12. That is a
+  deliberate choice of one requirement everybody recognises over a rule that is
+  stronger on paper and confusing to read — and the floor went up from 10 to 12
+  in the same move.
+  Errors name **what is missing** ("Add an uppercase letter, a number and a
+  symbol.") rather than reprinting the rule. The full sentence lives in the "?"
+  beside the field on Account settings, and as a visible one-liner on signup and
+  `/reset-password`, which are the two places somebody picks a password for the
+  first time.
 
 ## Assurance at the data layer
 

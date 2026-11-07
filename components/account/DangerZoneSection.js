@@ -124,7 +124,7 @@ export default function DangerZoneSection({ email, hasPassword }) {
 
   return (
     <>
-      <div className="section-heading" style={{ marginTop: '8px' }}>Danger zone</div>
+      <div className="section-heading">Danger zone</div>
       <div className="panel danger-panel">
         <div className="danger-row">
           <div>

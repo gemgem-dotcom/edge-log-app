@@ -5,60 +5,60 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–684  Base: reset, typography, forms, tables, thumbnails,
+     1–693  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   685  Auth pages
-   751  Top nav
-   766  Instrument nav (topbar pill row)
-   843  Page layout
-   897  Tabs
-   907  Misc form helpers
-   913  Detail view
-   936  Holiday notice (site-wide, above the shell)
-   968  Shell layout (sidebar + topbar)
-   1339  Expandable trade rows
-   1405  Calendar
-   1453  Account settings page
-   1677  Light theme
-   1718  2FA
-   1746  Account fine print
-   1749  Screenshot preview (log new trade)
-   1791  Auth pages always dark
-   1826  Monthly P&L (calendar on Overview)
-   1913  Trade form: sections, validation, currency, screenshots
-   2151  Field tooltips
-   2213  Date/time picker (adds an optional popup to a typed input)
-   2330  In-header column filters (trade log table)
-   2378  Active filter chips
-   2441  Empty states, error banners, skeleton loaders
-   2538  Cross-instrument overview dashboard (/app)
-   2717  Not found / error boundary state pages
-   2730  Toast notifications
-   2758  Public policy pages (Privacy, Terms)
-   2777  Legal links (auth pages + account settings)
-   2816  Economic calendar card (Overview pages)
-   3088  Calendar news badge (Monthly P&L day cells)
-   3116  Streak badge (Overview + strategy detail pages)
-   3139  Market status pill (Overview + strategy detail pages)
-   3165  Today's brief & session stats
-   3200  Market context cards (all-instruments Overview)
-   3242  Edge Insights panel
-   3257  Unverified logged time badge
-   3274  Welcome transition (first-run)
-   3303  Zero-instrument empty state
-   3313  Tutorial overlay (first-run guided tour)
-   3405  Tutorial step 3 (guided form scroll)
-   3452  Press states, value changes, content fade-in
-   3549  Bottom-tab slide
-   3723  Trade log column width stability
-   3748  Strategy notes panel
-   3763  Today's brief economic outlook
-   4083  Two-factor device list
-   4140  Reset-password two-factor warning
-   4175  Remember this browser
-   4245  Two-factor setup instructions
-   4292  Lost-phone route on the code step
-   4314  Mobile app shell (below 768px only)
+   694  Auth pages
+   760  Top nav
+   775  Instrument nav (topbar pill row)
+   852  Page layout
+   906  Tabs
+   916  Misc form helpers
+   922  Detail view
+   945  Holiday notice (site-wide, above the shell)
+   977  Shell layout (sidebar + topbar)
+   1348  Expandable trade rows
+   1414  Calendar
+   1462  Account settings page
+   1694  Light theme
+   1735  2FA
+   1763  Account fine print
+   1766  Screenshot preview (log new trade)
+   1808  Auth pages always dark
+   1843  Monthly P&L (calendar on Overview)
+   1930  Trade form: sections, validation, currency, screenshots
+   2168  Field tooltips
+   2230  Date/time picker (adds an optional popup to a typed input)
+   2347  In-header column filters (trade log table)
+   2395  Active filter chips
+   2458  Empty states, error banners, skeleton loaders
+   2555  Cross-instrument overview dashboard (/app)
+   2734  Not found / error boundary state pages
+   2747  Toast notifications
+   2775  Public policy pages (Privacy, Terms)
+   2794  Legal links (auth pages + account settings)
+   2833  Economic calendar card (Overview pages)
+   3105  Calendar news badge (Monthly P&L day cells)
+   3133  Streak badge (Overview + strategy detail pages)
+   3156  Market status pill (Overview + strategy detail pages)
+   3182  Today's brief & session stats
+   3217  Market context cards (all-instruments Overview)
+   3259  Edge Insights panel
+   3274  Unverified logged time badge
+   3291  Welcome transition (first-run)
+   3320  Zero-instrument empty state
+   3330  Tutorial overlay (first-run guided tour)
+   3422  Tutorial step 3 (guided form scroll)
+   3469  Press states, value changes, content fade-in
+   3566  Bottom-tab slide
+   3740  Trade log column width stability
+   3765  Strategy notes panel
+   3780  Today's brief economic outlook
+   4100  Two-factor device list
+   4157  Reset-password two-factor warning
+   4192  Remember this browser
+   4293  Two-factor setup instructions
+   4340  Lost-phone route on the code step
+   4362  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -325,7 +325,16 @@ h1{font-family:'Archivo',sans-serif; font-size:28px; font-weight:800; letter-spa
   box-shadow:var(--panel-shadow);
   transition:background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
-.panel-title{font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; margin-bottom:16px;}
+/* The in-card label. Its type metrics are deliberately IDENTICAL to
+   .section-heading's below (11px/700/.08em, not the 12px/600/.1em this
+   used to be): the two sit inches apart on Account settings - "Security"
+   above the card, "Two-factor authentication" inside it - and two
+   uppercase muted labels at almost-but-not-quite the same size read as a
+   mistake rather than as a hierarchy. They differ in POSITION, which is
+   what actually carries the nesting, not in a 1px size step nobody can
+   measure but everybody can feel. Only the margins differ, because one
+   label sits above a card and the other inside one. */
+.panel-title{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; margin-bottom:16px;}
 /* Reusable translucent surface for the glass-panel aesthetic - not applied
    to any element yet, opt in with class="panel glass-panel" (or on its
    own) on nav bars, cards and panels going forward. */
@@ -1490,6 +1499,14 @@ a.shell-logo{color:inherit; text-decoration:none;}
 .back-btn:hover{border-color:var(--accent); color:var(--accent); background:rgba(59,167,255,.1);}
 
 .account-wrap{padding:32px 230px 60px;}
+/* Every .section-heading on this page follows either the page subtitle
+   or a .panel, both of which already carry their own bottom margin, so
+   the global 24px on top of that opens a gap twice the size the page
+   wants. Four of the five sections used to carry an inline
+   `marginTop: '8px'` to say this and the fifth (Profile) did not, which
+   is exactly the kind of drift an inline style invites - stated once
+   here instead. */
+.account-wrap .section-heading{margin-top:8px;}
 /* The 230px side padding above only reads right on a genuinely wide
    desktop viewport - it exists to narrow/center this page's content since,
    unlike every other page, it has no sidebar doing that already. Below
@@ -4205,7 +4222,38 @@ button:active{
 /* Separates the remembered-browsers block from the two-factor block
    above it inside the shared Security panel. With 2FA on, both render
    as rows and ran together without a rule between them. */
-.trusted-device-block{margin-top:22px; padding-top:20px; border-top:1px solid var(--line);}
+/* Remembering a browser is a setting ON two-factor authentication, not
+   a sibling of it - with 2FA off it means nothing, and the parent does
+   not render it at all. It used to be separated by a full-bleed
+   border-top, the same divider the Security panel uses BETWEEN its three
+   peer sections, so the one relationship the layout communicated was the
+   wrong one.
+   Nothing visual separates it at all now - no rule, no border, no
+   indent. Both a left rule and an inset were tried and removed: the
+   rule drew a hard vertical line down a card whose whole look is soft
+   edges, and the inset left this block's text starting 16px right of
+   every other line in the panel, which reads as a misalignment before
+   it reads as a hierarchy.
+   The nesting is carried entirely by the heading instead. Its peers
+   ("TWO-FACTOR AUTHENTICATION", "RECENT SIGN-INS") are uppercase muted
+   micro-labels; this one is sentence case at body size, which is a
+   clear step down without moving anything off the panel's one left
+   edge. */
+.trusted-device-block{margin-top:22px;}
+/* The subsection's own heading. NOT .panel-title - that style now reads
+   identically to .section-heading (see its comment), and reusing it here
+   made "Computers that don't ask for a code" look like a peer of
+   "Two-factor authentication" directly above it. Sentence case at body
+   size in the foreground colour is a step DOWN from an uppercase muted
+   micro-label, not another one of them. */
+.panel-subtitle{
+  font-size:14px; font-weight:700; color:var(--text);
+  letter-spacing:0; text-transform:none; margin-bottom:12px;
+}
+/* Muted, so the heading above it leads. Both were var(--text) at first
+   and the count - which is the heading's ANSWER, in nearly the heading's
+   own words - read as a competing second title. */
+.trusted-device-count{font-size:13px; font-weight:600; color:var(--muted); margin-bottom:3px;}
 
 /* The list in Account settings. Same row shape as .mfa-factor-row so
    the two lists in the Security panel read as one family. */

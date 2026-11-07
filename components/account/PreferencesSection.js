@@ -61,7 +61,7 @@ export default function PreferencesSection({ initialTheme, timezone, onTimezoneC
 
   return (
     <>
-      <div className="section-heading" style={{ marginTop: '8px' }}>General</div>
+      <div className="section-heading">General</div>
       <div className="panel">
         <div className="field wide">
           <label>Theme</label>

@@ -9,7 +9,7 @@ import EmptyState from '@/components/EmptyState'
 export default function BillingSection() {
   return (
     <>
-      <div className="section-heading" style={{ marginTop: '8px' }}>Billing</div>
+      <div className="section-heading">Billing</div>
       <div className="panel">
         <div className="billing-row">
           <div>

@@ -6,6 +6,7 @@ import { decodeJwtClaims } from '@/lib/authAssurance'
 import {
   TRUST_COOKIE, trustCookieOptions, trustExpiresAt, sortTrustedDevices, describeTrustedDevice,
 } from '@/lib/trustedDevice'
+import { readDeviceId } from '@/lib/deviceIdentity'
 
 // Minting, listing and revoking "don't ask for a code on this browser".
 //
@@ -81,15 +82,39 @@ export async function POST(req) {
 
   const secret = randomBytes(TOKEN_BYTES).toString('hex')
   const { label } = parseDevice(req.headers.get('user-agent') || '')
+  const deviceId = readDeviceId(req.headers.get('cookie'))
+
+  // ONE ROW PER BROWSER, not one row per token.
+  //
+  // This used to be a plain insert, so every tick of the box minted a
+  // fresh token and added a fresh row. The same iPhone appeared three
+  // times in a list headed "devices that don't ask for a code" - twice
+  // from sign-ins six seconds apart. A list whose whole job is to let
+  // the owner recognise their own machines cannot show the same machine
+  // three times and expect to be read.
+  //
+  // Re-trusting a browser replaces its row: a new token, a fresh thirty
+  // days, the same entry. The old token stops working, which is right -
+  // one live token per browser is the smaller surface.
+  //
+  // Without a device id (cookie blocked, embedded web view) there is
+  // nothing to collapse on, so it inserts as before rather than
+  // guessing. Two rows for one browser is a cosmetic failure; merging
+  // two different browsers is a security one.
+  const row = {
+    user_id: auth.user.id,
+    token_hash: hashToken(secret),
+    device_id: deviceId,
+    label,
+    expires_at: trustExpiresAt(),
+    last_seen_at: new Date().toISOString(),
+  }
 
   try {
-    const { error } = await auth.admin.from('mfa_trusted_device').insert({
-      user_id: auth.user.id,
-      token_hash: hashToken(secret),
-      label,
-      expires_at: trustExpiresAt(),
-      last_seen_at: new Date().toISOString(),
-    })
+    const { error } = deviceId
+      ? await auth.admin.from('mfa_trusted_device')
+        .upsert(row, { onConflict: 'user_id,device_id' })
+      : await auth.admin.from('mfa_trusted_device').insert(row)
     if (error) throw error
   } catch (err) {
     Sentry.captureException(err)

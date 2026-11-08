@@ -54,6 +54,21 @@ export default function LoginPage() {
   // anything pre-ticked are the ones on a shared machine.
   const [trustBrowser, setTrustBrowser] = useState(false)
 
+  // Give this browser its id while the user is still typing.
+  //
+  // Both /api/record-login and /api/trusted-device read-or-mint the same
+  // cookie, but both run at the END of a sign-in, as POSTs from a page
+  // about to navigate away. When that Set-Cookie is lost the id is never
+  // established and the next sign-in mints another one - which is what
+  // the data showed: the same iPhone, same user agent, same address,
+  // a different id eight hours later, and a third trusted-device row
+  // for a browser already trusted twice.
+  // Asking for it on mount puts the cookie in place before anything
+  // depends on it. It grants nothing and needs no session.
+  useEffect(() => {
+    fetch('/api/device-id', { credentials: 'same-origin' }).catch(() => {})
+  }, [])
+
   async function recordLoginEvent() {
     const { data: { session } } = await supabase.auth.getSession()
     const token = session ? session.access_token : null
@@ -90,6 +105,26 @@ export default function LoginPage() {
     setLoading(false)
 
     if (needsSecondFactor(levelData)) {
+      // ASK WHETHER THIS BROWSER IS ALREADY REMEMBERED, before asking
+      // for a code.
+      //
+      // This is the whole of "remember this browser for 30 days", and
+      // it was missing. The cookie was read only by proxy.js, which
+      // guards /app - but this form decided on the assurance level
+      // alone and never looked at it, so a remembered browser was
+      // asked for a code every time and never reached the gate that
+      // would have waved it through.
+      //
+      // Skipping the prompt does NOT make the session aal2. proxy.js
+      // revalidates the same cookie on the way into /app and is still
+      // what writes the grant the RLS policies read, so nothing
+      // downstream trusts this answer.
+      if (await browserAlreadyTrusted()) {
+        await recordLoginEvent()
+        router.push('/app')
+        return
+      }
+
       const { data: factorsData } = await supabase.auth.mfa.listFactors()
       const factor = preferredFactor(factorsData)
       if (factor) {
@@ -206,6 +241,26 @@ export default function LoginPage() {
     router.push('/app')
   }
 
+  // Fails to FALSE on anything unexpected - a refusal, a network error,
+  // a misconfigured server. The cost of a wrong false is being asked
+  // for a code you did not need; the cost of a wrong true is skipping
+  // one you did.
+  async function browserAlreadyTrusted() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return false
+      const res = await fetch('/api/trusted-device/check', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        credentials: 'same-origin',
+      })
+      if (!res.ok) return false
+      const body = await res.json()
+      return body.trusted === true
+    } catch {
+      return false
+    }
+  }
+
   // Best effort, deliberately. The user is already signed in by this
   // point; if remembering the browser fails they simply get asked for
   // a code next time, which is not worth blocking a login over or
@@ -217,6 +272,10 @@ export default function LoginPage() {
       await fetch('/api/trusted-device', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
+        // Stated, because this route both READS the device-id cookie
+        // and SETS the trust cookie. Without them it silently reverts
+        // to a new row per sign-in.
+        credentials: 'same-origin',
       })
     } catch { /* see above */ }
   }

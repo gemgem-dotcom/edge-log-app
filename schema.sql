@@ -1343,3 +1343,26 @@ create unique index if not exists login_events_user_device_id_idx
 -- matches nothing and reports success while the collapse carries on being
 -- enforced. Running the statement is what revealed it; reading it did not.
 drop index if exists login_events_user_device_key_idx;
+
+-- ============================================================
+-- Trusted devices: one row per BROWSER, not one per token
+-- ============================================================
+-- mfa_trusted_device had no device identity at all. Every tick of
+-- "remember this browser" minted a fresh token and INSERTED a fresh row,
+-- so the same iPhone appeared three times in a list headed "devices that
+-- don't ask for a code" - two of them from sign-ins six seconds apart.
+-- A list whose job is to let the owner recognise their own machines
+-- cannot show one machine three times and expect to be read.
+--
+-- Same identity as login_events.device_id: the edgelog_did cookie, issued
+-- by app/api/device-id. One id for both lists, so they can agree about
+-- what a device is.
+--
+-- Re-trusting a browser now REPLACES its row - new token, fresh thirty
+-- days, same entry - so there is one live token per browser.
+alter table mfa_trusted_device add column if not exists device_id text;
+
+-- NULLs are distinct in Postgres, so rows written before this (and rows
+-- from a browser that will not keep a cookie) coexist freely.
+create unique index if not exists mfa_trusted_device_user_device_idx
+  on mfa_trusted_device (user_id, device_id);

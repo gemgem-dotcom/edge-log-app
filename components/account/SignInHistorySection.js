@@ -99,7 +99,11 @@ export default function SignInHistorySection({ initialEvents }) {
                   <td data-label="Device">
                     {editingDeviceId === ev.id ? (
                       <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                        <input type="text" value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={ev.device || 'Unknown device'} style={{ padding: '4px 8px', fontSize: '13px', width: '140px' }} autoFocus />
+                        {/* No inline fontSize. An inline style beats the stylesheet, so a
+                            13px here would keep zooming iOS on focus - in the
+                            one component that exists to stop that. Sizing
+                            lives in .signin-nickname-input. */}
+                        <input type="text" className="signin-nickname-input" value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={ev.device || 'Unknown device'} autoFocus />
                         <span className="del save-link" {...activatable(() => handleSaveNickname(ev.id))}>Save</span>
                         <span className="del" {...activatable(() => { setEditingDeviceId(null); setNicknameInput('') })}>Cancel</span>
                       </span>

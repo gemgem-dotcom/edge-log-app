@@ -36,6 +36,7 @@ import MarketStatusPill from '@/components/MarketStatusPill'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
+import { peekDashboard, writeDashboard } from '@/lib/dashboardCache'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
@@ -331,7 +332,26 @@ useEffect(() => {
 async function loadData() {
   const loadId = ++loadIdRef.current
   const superseded = () => loadId !== loadIdRef.current
-  setLoading(true)
+
+  // PAINT WHAT WE ALREADY HAVE, then refresh underneath it.
+  //
+  // This is the Overview tab whenever an instrument is selected, which is
+  // a trader's normal state, so it is the most-visited page in the app.
+  // Without this it showed a skeleton for ~1.7s on EVERY visit - the
+  // third as readily as the first - while re-fetching rows that had not
+  // changed. The fetches below still run and still win; this only decides
+  // whether that wait is spent looking at the last figures or at nothing.
+  const cached = peekDashboard(symbol)
+  if (cached) {
+    setStrategies(cached.strategies)
+    setTradesByStrategy(cached.tradesByStrategy)
+    setAllTrades(cached.allTrades)
+    setInstrumentId(cached.instrumentId)
+    setRegime(cached.regime)
+    setLoading(false)
+  } else {
+    setLoading(true)
+  }
   setError(null)
   // Strategy ids and regime data are scoped to one instrument - carrying a
   // filter or regime reading over from whichever instrument was viewed
@@ -344,8 +364,24 @@ async function loadData() {
   setPerfStrategy('all')
   setCalStrategy('all')
   setSelectedDate(null)
-  setRegime(null)
+  // Not reset to null when there is a cached reading for THIS symbol:
+  // the reset exists so a previous instrument's regime cannot be shown
+  // against this one, and a reading keyed on this symbol is not that.
+  if (!cached) setRegime(null)
   try {
+    // Kick this off first and await it last. It depends only on `symbol`,
+    // which comes from the route, so it can run alongside everything
+    // below instead of after it.
+    //
+    // The attached catch is needed because nothing awaits this promise
+    // for a while, and an unawaited rejection is an unhandled one. It
+    // also CHANGES BEHAVIOUR, deliberately: a failing regime query used
+    // to reach the catch below and blank the whole dashboard with
+    // "something went wrong". It now resolves null, which is already an
+    // expected value here (see the comment at the await) and which the
+    // regime card already renders as "not available". Losing one card
+    // beats losing the page.
+    const regimePromise = latestClosedSessionRegime(supabase, symbol).catch(() => null)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('no session')
     const { data: instrument } = await supabase
@@ -364,16 +400,28 @@ async function loadData() {
     }
     setInstrumentId(instrument.id)
 
-    const { data: stratData, error: stratError } = await supabase
-    .from('strategies').select('*').eq('instrument_id', instrument.id).eq('archived', false)
-    .order('created_at', { ascending: true })
+    // IN PARALLEL, not one after another. These three queries do not
+    // depend on each other's results - strategies and trades each need
+    // only instrument.id, and the regime needs only the symbol from the
+    // route, so it never needed to wait for the instrument lookup at
+    // all. Awaiting them in sequence made the skeleton last as long as
+    // all three added together: measured at 1.7s on a throttled phone,
+    // on EVERY visit to this tab, which is the "lag switching tabs".
+    // Nothing here is cached and nothing can go stale as a result -
+    // this is the same data, fetched at the same time, waited on once.
+    const [stratRes, tradeRes] = await Promise.all([
+      supabase
+        .from('strategies').select('*').eq('instrument_id', instrument.id).eq('archived', false)
+        .order('created_at', { ascending: true }),
+      // Paged - every stat, the calendar, the equity curve and the streak
+      // on this page are computed from this array, so silently stopping
+      // at PostgREST's 1000-row cap would understate all of them at once.
+      fetchAllRows((from, to) => supabase
+        .from('trades').select('*').eq('instrument_id', instrument.id).order('id', { ascending: true }).range(from, to)),
+    ])
+    const { data: stratData, error: stratError } = stratRes
     if (stratError) throw stratError
-
-    // Paged - every stat, the calendar, the equity curve and the streak on
-    // this page are computed from this array, so silently stopping at
-    // PostgREST's 1000-row cap would understate all of them at once.
-    const { data: tradeData, error: tradeError } = await fetchAllRows((from, to) => supabase
-    .from('trades').select('*').eq('instrument_id', instrument.id).order('id', { ascending: true }).range(from, to))
+    const { data: tradeData, error: tradeError } = tradeRes
     if (tradeError) throw tradeError
 
     const grouped = {}
@@ -391,12 +439,28 @@ async function loadData() {
     // contract), so there's no NQ-family gate here anymore - a symbol whose
     // own daily job hasn't stored enough history yet simply resolves null,
     // exactly as an unsupported instrument used to.
-    const nextRegime = await latestClosedSessionRegime(supabase, symbol)
+    // Started BEFORE the instrument lookup (see regimePromise above): it
+    // keys off the route's symbol, not off anything fetched here, so
+    // waiting for it last was pure dead time.
+    const nextRegime = await regimePromise
     if (superseded()) return
     setRegime(nextRegime)
+
+    // Written last, so only a fully successful load is ever cached - a
+    // half-fetched dashboard must not become the next visit's first paint.
+    writeDashboard(symbol, {
+      strategies: stratData || [],
+      tradesByStrategy: grouped,
+      allTrades: tradeData || [],
+      instrumentId: instrument.id,
+      regime: nextRegime,
+    })
   } catch {
     if (superseded()) return
-    setError('something went wrong.')
+    // Only surface the error if there is nothing on screen. Replacing good
+    // figures with "something went wrong" because a background refresh
+    // failed is a worse outcome than briefly showing the rows we had.
+    if (!cached) setError('something went wrong.')
   } finally {
     // A superseded load must not clear the spinner - the load that replaced
     // it is still running, and the page would flash its empty state.

@@ -29,6 +29,7 @@ import PageError from '@/components/PageError'
 import EmptyState from '@/components/EmptyState'
 import ErrorBanner from '@/components/ErrorBanner'
 import { activatable } from '@/lib/activatable'
+import { invalidateTrades } from '@/lib/tradesCache'
 
 function hasDollar(t) {
   return t.pnl !== null && t.pnl !== undefined
@@ -260,6 +261,8 @@ export default function StrategyDetailPage({ params }) {
     setFormError(null)
     setDeleting(true)
     await supabase.from('trades').update({ strategy_id: null }).eq('strategy_id', strategyId)
+    // Trades just moved off this strategy - every cached set is stale.
+    invalidateTrades()
     const { error } = await supabase.from('strategies').delete().eq('id', strategyId)
     if (error) {
       setFormError('Could not delete this strategy. Please try again.')

@@ -50,18 +50,18 @@
    3482  Tutorial step 3 (guided form scroll)
    3529  Press states, value changes, content fade-in
    3626  Bottom-tab slide
-   3800  Trade log column width stability
-   3825  Strategy notes panel
-   3840  Today's brief economic outlook
-   4160  Two-factor device list
-   4217  Reset-password two-factor warning
-   4252  Remember this browser
-   4353  Two-factor setup instructions
-   4400  Lost-phone route on the code step
-   4428  Sign-in history on a phone
-   4493  Economic calendar on a phone
-   4529  Stop iOS zooming in on a tapped field
-   4568  Mobile app shell (below 768px only)
+   3823  Trade log column width stability
+   3848  Strategy notes panel
+   3863  Today's brief economic outlook
+   4183  Two-factor device list
+   4240  Reset-password two-factor warning
+   4275  Remember this browser
+   4376  Two-factor setup instructions
+   4423  Lost-phone route on the code step
+   4451  Sign-in history on a phone
+   4516  Economic calendar on a phone
+   4552  Stop iOS zooming in on a tapped field
+   4591  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3661,21 +3661,44 @@ button:active{
 
    32px is still enough to read as direction without asking the eye to
    track something across a screen. */
+/* THE TWO SCREENS MUST NEVER BE VISIBLE AT THE SAME TIME.
+
+   The outgoing screen used to fade out over 160ms while the arriving one
+   faded in from 100ms - a deliberate 60ms window with both on screen at
+   once. That was invisible for as long as the arriving screen was a
+   SKELETON at that moment: pale grey bars over text read as loading.
+
+   Once arriving screens started painting real content immediately, the
+   same 60ms blended two dense pages of text, and the result was two
+   headings superimposed into an unreadable smear. It shipped, and it was
+   photographed on a real phone within the hour.
+
+   So the fades are now strictly sequential: the outgoing screen is gone
+   before the arriving one begins. 150ms out, then in. They touch at
+   exactly one instant rather than overlapping, which costs a single frame
+   where the page background shows through - imperceptible, and the two
+   fixed bars never move, so there is always something anchoring the eye.
+
+   The slide still runs across the whole 420ms on both, so the sense of
+   direction is unchanged; only the opacity timing moved. The important
+   property is that this now looks the same whether the arriving screen
+   has content or a skeleton under it, which is what makes every tab
+   behave alike. */
 ::view-transition-old(.tab-forward){
   --tab-slide:-32px;
-  animation:160ms ease-in both tab-fade reverse, 420ms cubic-bezier(.4,0,.2,1) both tab-slide reverse;
+  animation:150ms ease-in both tab-fade reverse, 420ms cubic-bezier(.4,0,.2,1) both tab-slide reverse;
 }
 ::view-transition-new(.tab-forward){
   --tab-slide:32px;
-  animation:220ms ease-out 100ms both tab-fade, 420ms cubic-bezier(.4,0,.2,1) both tab-slide;
+  animation:220ms ease-out 150ms both tab-fade, 420ms cubic-bezier(.4,0,.2,1) both tab-slide;
 }
 ::view-transition-old(.tab-back){
   --tab-slide:32px;
-  animation:160ms ease-in both tab-fade reverse, 420ms cubic-bezier(.4,0,.2,1) both tab-slide reverse;
+  animation:150ms ease-in both tab-fade reverse, 420ms cubic-bezier(.4,0,.2,1) both tab-slide reverse;
 }
 ::view-transition-new(.tab-back){
   --tab-slide:-32px;
-  animation:220ms ease-out 100ms both tab-fade, 420ms cubic-bezier(.4,0,.2,1) both tab-slide;
+  animation:220ms ease-out 150ms both tab-fade, 420ms cubic-bezier(.4,0,.2,1) both tab-slide;
 }
 @keyframes tab-fade{
   from{opacity:0;}

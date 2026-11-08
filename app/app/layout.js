@@ -7,6 +7,7 @@ import { clearReferenceDataCache } from '@/lib/referenceDataCache'
 import { invalidateTrades } from '@/lib/tradesCache'
 import { clearStrategyIndexCache } from '@/lib/strategyIndexData'
 import { clearDashboardCache } from '@/lib/dashboardCache'
+import { clearAccountCache } from '@/lib/accountCache'
 import { invalidateTags } from '@/lib/tagsCache'
 import { UTC_OFFSETS } from '@/lib/timezone'
 import { backfillOwnTradeSessions } from '@/lib/tradeSessions'
@@ -61,6 +62,7 @@ export default function AppLayout({ children }) {
         invalidateTrades()
         clearStrategyIndexCache()
         clearDashboardCache()
+        clearAccountCache()
         router.replace('/login')
       }
     })

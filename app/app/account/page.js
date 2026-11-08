@@ -24,6 +24,7 @@ import DangerZoneSection from '@/components/account/DangerZoneSection'
 import PageLoading from '@/components/PageLoading'
 import AccountSkeleton from '@/components/AccountSkeleton'
 import { displayNameOf } from '@/lib/displayName'
+import { peekAccount, writeAccount } from '@/lib/accountCache'
 
 // Loads the account data once and hands it to the sections, each of which
 // owns the state for its own concern. Timezone is the exception: it lives
@@ -59,25 +60,38 @@ function AccountPageInner() {
     document.body.classList.add('m-app')
     return () => document.body.classList.remove('m-app')
   }, [isMobile])
-  const [loading, setLoading] = useState(true)
-  const [email, setEmail] = useState('')
-  const [fullName, setFullName] = useState('')
+  // Seeded from the last known state, so coming back to this tab paints
+  // immediately instead of showing a skeleton for four round-trips - see
+  // lib/accountCache.js. loadData() still runs and still wins.
+  const [warm] = useState(peekAccount)
+  const [loading, setLoading] = useState(!warm)
+  const [email, setEmail] = useState(warm?.email ?? '')
+  const [fullName, setFullName] = useState(warm?.fullName ?? '')
   const [theme, setTheme] = useState('dark')
-  const [timezone, setTimezone] = useState('0')
-  const [mfaFactors, setMfaFactors] = useState([])
-  const [loginEvents, setLoginEvents] = useState([])
-  const [hasPassword, setHasPassword] = useState(true)
+  const [timezone, setTimezone] = useState(warm?.timezone ?? '0')
+  const [mfaFactors, setMfaFactors] = useState(warm?.mfaFactors ?? [])
+  const [loginEvents, setLoginEvents] = useState(warm?.loginEvents ?? [])
+  const [hasPassword, setHasPassword] = useState(warm?.hasPassword ?? true)
   // Only for the mobile scope selector in the topbar. Read through the
   // shared reference-data cache, so arriving here from any other screen
   // costs no extra query - the app shells have already populated it.
-  const [instruments, setInstruments] = useState([])
+  const [instruments, setInstruments] = useState(warm?.instruments ?? [])
 
   useEffect(() => {
     loadData()
   }, [])
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser()
+    // getSession(), not getUser(). getUser() revalidates the token against
+    // the auth server - a real network round-trip - and everything read
+    // from it here (email, name, identities, the saved timezone) is already
+    // on the stored session. Nothing on this screen is a trust decision:
+    // the routes that actually change a password, a factor or the account
+    // itself each re-check server-side. app/app/page.js makes the same swap
+    // for the same reason; see its comment.
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    if (!user) return
     setEmail(user.email)
     setFullName(displayNameOf(user))
 
@@ -88,29 +102,47 @@ function AccountPageInner() {
     setHasPassword((user.identities || []).some((identity) => identity.provider === 'email'))
 
     const savedTz = user.user_metadata?.timezone
-    if (savedTz !== undefined && savedTz !== null && UTC_OFFSETS.some((o) => o.value === String(savedTz))) {
-      setTimezone(String(savedTz))
-    } else {
-      setTimezone(browserOffsetGuess())
-    }
+    const savedTzValue =
+      savedTz !== undefined && savedTz !== null && UTC_OFFSETS.some((o) => o.value === String(savedTz))
+        ? String(savedTz)
+        : browserOffsetGuess()
+    setTimezone(savedTzValue)
 
     // Theme - read from localStorage (matches the inline script in layout.js
     // that prevents a flash of the wrong theme on page load).
     const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('edgelog-theme') : null
     setTheme(storedTheme || 'dark')
 
-    const { data: factorsData } = await supabase.auth.mfa.listFactors()
-    setMfaFactors(factorsData?.totp || [])
+    // IN PARALLEL. None of these three depends on another's result, and
+    // run in series they were three round-trips of skeleton stacked end
+    // to end on a screen that is mostly static text.
+    const [factorsRes, instrumentList, eventsRes] = await Promise.all([
+      supabase.auth.mfa.listFactors(),
+      getInstruments(supabase, user.id),
+      supabase
+        .from('login_events')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ])
+    const factors = factorsRes?.data?.totp || []
+    const events = eventsRes?.data || []
+    setMfaFactors(factors)
+    setInstruments(instrumentList)
+    setLoginEvents(events)
 
-    setInstruments(await getInstruments(supabase, user.id))
-
-    const { data: events } = await supabase
-      .from('login_events')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20)
-    setLoginEvents(events || [])
+    // Theme is deliberately left out: it is per-device, read from
+    // localStorage above, and must not be carried between sessions here.
+    writeAccount({
+      email: user.email,
+      fullName: displayNameOf(user),
+      timezone: savedTzValue,
+      mfaFactors: factors,
+      loginEvents: events,
+      hasPassword: (user.identities || []).some((identity) => identity.provider === 'email'),
+      instruments: instrumentList,
+    })
 
     setLoading(false)
   }

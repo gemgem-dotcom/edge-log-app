@@ -1,63 +1,46 @@
 'use client'
 
-import { ViewTransition } from 'react'
-import { usePathname } from 'next/navigation'
-
-// The horizontal slide between bottom-tab destinations.
+// Tab switches are an INSTANT SWAP. This component is the record of why,
+// because the obvious improvement is to put the slide back.
 //
-// Wraps the CONTENT of a screen, never the chrome. The topbar and the tab
-// bar have to stay nailed down while the content moves - a bar that slides
-// with the page takes away the fixed reference that tells the eye it was
-// the content that moved, not the whole phone. The usual way to anchor
-// them is a `view-transition-name`, and that is exactly what must NOT be
-// done here: view-transition-name makes an element a containing block and
-// its own stacking context, which would break the two stacked pseudo-
-// element blur passes the glass bars are built from. Leaving the bars
-// outside this wrapper costs nothing and breaks nothing.
+// It used to wrap each screen in a React <ViewTransition>, keyed on the
+// pathname, so the outgoing and arriving screens cross-faded and slid 32px.
+// It shipped two user-visible regressions in one day, both the same shape:
+// the two screens were briefly painted ON TOP OF EACH OTHER, headings
+// superimposed into an unreadable smear. Photographed on a real phone,
+// twice.
 //
-// `key` is load-bearing, and so is WHERE this is mounted. React pairs an
-// old and a new screen only if this boundary survives the commit, so it
-// has to sit in a layout that PERSISTS across the navigation, re-keyed on
-// the pathname so React treats the two screens as an exit/enter pair
-// rather than an in-place update. Pathname and not the full URL on
-// purpose: the account screen's drill-downs are ?section= on one path,
-// and those are not tab switches.
+// WHY IT KEPT COMING BACK. A cross-fade between two screens is, by
+// definition, a window in which both are partly visible. That window was
+// harmless for exactly as long as the arriving screen was a SKELETON at
+// that moment - pale grey bars under text read as loading. The moment
+// arriving screens started painting real content immediately (the tab
+// caches), the same window blended two dense pages of text.
 //
-// THAT IS WHY ACCOUNT DOES NOT SLIDE, and the limit is worth stating
-// rather than rediscovering. Only /app/[instrument]/* has a persistent
-// layout; /app, /app/log, /app/strategies and /app/account each render
-// their own AppShell from inside the page, so the whole subtree -
-// this boundary with it - unmounts and remounts on every navigation.
-// Measured: a wrapper in those pages produces no transition at all, with
-// or without a shared `name`; the same wrapper moved into the persistent
-// /app layout fires on every one of them. The fix is to hoist the chrome
-// into that layout, which is a bigger change than this one; until then
-// those routes degrade to the instant swap they already had.
+// Sequencing the two fades so they could not run at once was tried, and
+// was not enough. React keys the two screens as separate elements, so it
+// emits an EXIT group and a separate ENTER group with different names
+// (measured: ::view-transition-old(_t_3_) against
+// ::view-transition-new(_t_4_)) rather than one paired group. They are
+// independent, their timing is not something one pair of CSS rules
+// reliably governs, and which groups appear at all depends on the route
+// and on whether the boundary happened to be mounted - /app, /app/log,
+// /app/strategies and /app/account each render their own AppShell, so the
+// boundary survives some navigations and not others. Measured: the same
+// Account -> Overview tap produced the named groups when reached by a
+// soft navigation and no groups at all when reached by a fresh load.
 //
-// Note for whoever does hoist it: the obvious next step, anchoring the
-// bars with a `view-transition-name` the way Next's own guide anchors a
-// header, does NOT work here. view-transition-name makes an element a
-// backdrop root, which kills the two stacked blur passes the glass bars
-// are built from - measured, backdrop sd 24.3 -> 4.3 without it and
-// 24.3 -> 24.3 with it. The bars have to be outside the subtree instead.
+// A transition whose behaviour depends on how you arrived at the screen
+// cannot be made consistent by tuning it, and consistency is the whole
+// requirement. So there is no transition. An instant swap cannot overlap,
+// looks the same on every route, and is what the desktop already does.
 //
-// Every animation here is opt-in per navigation. Only MobileTabBar passes
-// a transition type, so desktop navigation, in-page links, the browser's
-// own back button and router.refresh() all fall through to `none` and
-// behave exactly as they did. A browser with no View Transitions support
-// does the same.
-const DIRECTIONS = {
-  'tab-forward': 'tab-forward',
-  'tab-back': 'tab-back',
-  default: 'none',
-}
-
+// IF YOU REINSTATE IT, the bar is: capture composited frames with CDP
+// Page.startScreencast - NOT Playwright page.screenshot(), which captures
+// the DOM paint and not the compositor's view-transition layers, returns
+// clean frames while this bug is live, and is how it shipped the first
+// time. Check mid-animation, on a warm tab, a cold tab, an instrument
+// route and a fresh load of each.
 export default function TabTransition({ children }) {
-  const pathname = usePathname()
-
-  return (
-    <ViewTransition key={pathname} enter={DIRECTIONS} exit={DIRECTIONS} default="none">
-      {children}
-    </ViewTransition>
-  )
+  return children
 }

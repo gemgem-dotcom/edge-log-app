@@ -273,12 +273,18 @@ export default function DashboardPage({ params }) {
   usePageTitle('Overview')
   const symbol = use(params).instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
-  const [loading, setLoading] = useState(true)
+  // SEEDED AT CONSTRUCTION. loadData() peeks the same cache, but an
+  // effect runs after the first paint, so starting `loading` at true
+  // painted this screen's skeleton for a frame or two on every arrival
+  // even when the figures were already in memory - see the same note in
+  // components/OverviewDashboard.js.
+  const warmDash = useState(() => peekDashboard(symbol))[0]
+  const [loading, setLoading] = useState(!warmDash)
   const [error, setError] = useState(null)
-  const [instrumentId, setInstrumentId] = useState(null)
-  const [strategies, setStrategies] = useState([])
-  const [tradesByStrategy, setTradesByStrategy] = useState({})
-  const [allTrades, setAllTrades] = useState([])
+  const [instrumentId, setInstrumentId] = useState(warmDash?.instrumentId ?? null)
+  const [strategies, setStrategies] = useState(warmDash?.strategies ?? [])
+  const [tradesByStrategy, setTradesByStrategy] = useState(warmDash?.tradesByStrategy ?? {})
+  const [allTrades, setAllTrades] = useState(warmDash?.allTrades ?? [])
   const [calCursor, setCalCursor] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() } })
 
   // Above the loading early-return below, because hooks have to run on
@@ -288,7 +294,7 @@ export default function DashboardPage({ params }) {
   const [perfStrategy, setPerfStrategy] = useState('all')
   const [equityGroup, setEquityGroup] = useState('day')
   const [selectedDate, setSelectedDate] = useState(null)
-  const [regime, setRegime] = useState(null)
+  const [regime, setRegime] = useState(warmDash?.regime ?? null)
 
   // Above the loading/error returns below, because it is a hook and those
   // returns are conditional. It owns its own ticking clock so the countdown

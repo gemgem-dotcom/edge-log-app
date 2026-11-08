@@ -50,18 +50,18 @@
    3482  Tutorial step 3 (guided form scroll)
    3529  Press states, value changes, content fade-in
    3626  Bottom-tab slide
-   3823  Trade log column width stability
-   3848  Strategy notes panel
-   3863  Today's brief economic outlook
-   4183  Two-factor device list
-   4240  Reset-password two-factor warning
-   4275  Remember this browser
-   4376  Two-factor setup instructions
-   4423  Lost-phone route on the code step
-   4451  Sign-in history on a phone
-   4516  Economic calendar on a phone
-   4552  Stop iOS zooming in on a tapped field
-   4591  Mobile app shell (below 768px only)
+   3832  Trade log column width stability
+   3857  Strategy notes panel
+   3872  Today's brief economic outlook
+   4192  Two-factor device list
+   4249  Reset-password two-factor warning
+   4284  Remember this browser
+   4385  Two-factor setup instructions
+   4432  Lost-phone route on the code step
+   4460  Sign-in history on a phone
+   4525  Economic calendar on a phone
+   4561  Stop iOS zooming in on a tapped field
+   4600  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -3684,6 +3684,15 @@ button:active{
    property is that this now looks the same whether the arriving screen
    has content or a skeleton under it, which is what makes every tab
    behave alike. */
+/* CURRENTLY INERT. Tab switches are an instant swap - nothing starts a
+   view transition any more, so none of the ::view-transition rules in
+   this section match anything today. See components/mobile/
+   TabTransition.js for why the slide was removed and what has to be
+   measured before it comes back. Kept rather than deleted because it is
+   the worked-out answer to several non-obvious problems (the bars
+   painting under the content, the backdrop-filter losing its backdrop,
+   inset() resolving against a 0x0 box) that whoever reinstates the
+   animation would otherwise have to solve again from scratch. */
 ::view-transition-old(.tab-forward){
   --tab-slide:-32px;
   animation:150ms ease-in both tab-fade reverse, 420ms cubic-bezier(.4,0,.2,1) both tab-slide reverse;

@@ -452,14 +452,17 @@ export default function EconomicCalendarCard() {
                       "better" is not always "higher" (an unemployment print
                       beats by falling), so it's a judgement only the source
                       can make. */}
-                  <span className={`econ-calendar-figure${e.actual ? ' econ-figure-actual' : ''}${e.actual && e.actual_status ? ` econ-figure-${e.actual_status}` : ''}`}>
+                  {/* data-label carries the column name for the phone
+                      layout, where the sticky header is hidden and each
+                      figure has to say what it is. Desktop ignores it. */}
+                  <span data-label="Actual" className={`econ-calendar-figure${e.actual ? ' econ-figure-actual' : ''}${e.actual && e.actual_status ? ` econ-figure-${e.actual_status}` : ''}`}>
                     {/* The emphasis classes are only applied when there IS
                         an actual - otherwise the placeholder dash renders
                         bolder than the real figures around it. */}
                     {e.actual ?? '–'}
                   </span>
-                  <span className="econ-calendar-figure">{e.forecast ?? '–'}</span>
-                  <span className="econ-calendar-figure">
+                  <span data-label="Forecast" className="econ-calendar-figure">{e.forecast ?? '–'}</span>
+                  <span data-label="Previous" className="econ-calendar-figure">
                     {e.previous ?? '–'}
                     {e.previous_revised && <span className="econ-figure-revised" title="Revised since first published">*</span>}
                   </span>

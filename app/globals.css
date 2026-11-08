@@ -5,62 +5,63 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–715  Base: reset, typography, forms, tables, thumbnails,
+     1–716  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   716  Auth pages
-   782  Top nav
-   797  Instrument nav (topbar pill row)
-   874  Page layout
-   928  Tabs
-   938  Misc form helpers
-   944  Detail view
-   967  Holiday notice (site-wide, above the shell)
-   999  Shell layout (sidebar + topbar)
-   1387  Expandable trade rows
-   1453  Calendar
-   1501  Account settings page
-   1753  Light theme
-   1794  2FA
-   1822  Account fine print
-   1825  Screenshot preview (log new trade)
-   1867  Auth pages always dark
-   1902  Monthly P&L (calendar on Overview)
-   1989  Trade form: sections, validation, currency, screenshots
-   2227  Field tooltips
-   2289  Date/time picker (adds an optional popup to a typed input)
-   2406  In-header column filters (trade log table)
-   2454  Active filter chips
-   2517  Empty states, error banners, skeleton loaders
-   2614  Cross-instrument overview dashboard (/app)
-   2793  Not found / error boundary state pages
-   2806  Toast notifications
-   2834  Public policy pages (Privacy, Terms)
-   2853  Legal links (auth pages + account settings)
-   2892  Economic calendar card (Overview pages)
-   3164  Calendar news badge (Monthly P&L day cells)
-   3192  Streak badge (Overview + strategy detail pages)
-   3215  Market status pill (Overview + strategy detail pages)
-   3241  Today's brief & session stats
-   3276  Market context cards (all-instruments Overview)
-   3318  Edge Insights panel
-   3333  Unverified logged time badge
-   3350  Welcome transition (first-run)
-   3379  Zero-instrument empty state
-   3389  Tutorial overlay (first-run guided tour)
-   3481  Tutorial step 3 (guided form scroll)
-   3528  Press states, value changes, content fade-in
-   3625  Bottom-tab slide
-   3799  Trade log column width stability
-   3824  Strategy notes panel
-   3839  Today's brief economic outlook
-   4159  Two-factor device list
-   4216  Reset-password two-factor warning
-   4251  Remember this browser
-   4352  Two-factor setup instructions
-   4399  Lost-phone route on the code step
-   4427  Sign-in history on a phone
-   4492  Stop iOS zooming in on a tapped field
-   4531  Mobile app shell (below 768px only)
+   717  Auth pages
+   783  Top nav
+   798  Instrument nav (topbar pill row)
+   875  Page layout
+   929  Tabs
+   939  Misc form helpers
+   945  Detail view
+   968  Holiday notice (site-wide, above the shell)
+   1000  Shell layout (sidebar + topbar)
+   1388  Expandable trade rows
+   1454  Calendar
+   1502  Account settings page
+   1754  Light theme
+   1795  2FA
+   1823  Account fine print
+   1826  Screenshot preview (log new trade)
+   1868  Auth pages always dark
+   1903  Monthly P&L (calendar on Overview)
+   1990  Trade form: sections, validation, currency, screenshots
+   2228  Field tooltips
+   2290  Date/time picker (adds an optional popup to a typed input)
+   2407  In-header column filters (trade log table)
+   2455  Active filter chips
+   2518  Empty states, error banners, skeleton loaders
+   2615  Cross-instrument overview dashboard (/app)
+   2794  Not found / error boundary state pages
+   2807  Toast notifications
+   2835  Public policy pages (Privacy, Terms)
+   2854  Legal links (auth pages + account settings)
+   2893  Economic calendar card (Overview pages)
+   3165  Calendar news badge (Monthly P&L day cells)
+   3193  Streak badge (Overview + strategy detail pages)
+   3216  Market status pill (Overview + strategy detail pages)
+   3242  Today's brief & session stats
+   3277  Market context cards (all-instruments Overview)
+   3319  Edge Insights panel
+   3334  Unverified logged time badge
+   3351  Welcome transition (first-run)
+   3380  Zero-instrument empty state
+   3390  Tutorial overlay (first-run guided tour)
+   3482  Tutorial step 3 (guided form scroll)
+   3529  Press states, value changes, content fade-in
+   3626  Bottom-tab slide
+   3800  Trade log column width stability
+   3825  Strategy notes panel
+   3840  Today's brief economic outlook
+   4160  Two-factor device list
+   4217  Reset-password two-factor warning
+   4252  Remember this browser
+   4353  Two-factor setup instructions
+   4400  Lost-phone route on the code step
+   4428  Sign-in history on a phone
+   4493  Economic calendar on a phone
+   4529  Stop iOS zooming in on a tapped field
+   4568  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -4487,6 +4488,42 @@ button:active{
      width this layout runs at; if it ever stops fitting, the label above
      it wraps first, which is the cheaper loss. */
   .signin-table td .signin-when{white-space:nowrap;}
+}
+
+/* ---------- Economic calendar on a phone ---------- */
+/* THE ROW IS 639px WIDE AND THE SCREEN IS 393px. Fixed columns - 46px of
+   date, 44px of time, 32px of currency, a 190px title floor and three
+   72px figures - and `min-width:max-content` on the row so it is
+   ALLOWED to exceed its list and scroll sideways. That is right on a
+   desktop. On a phone the scrollbar is invisible until you drag, so the
+   card reads as content that has been cut off: the title truncated
+   mid-word at the right edge, and the page itself draggable sideways
+   away from the heading.
+
+   Below 700px the row wraps instead. Date, time and currency stay on the
+   first line, the title takes the full width under them, and the three
+   figures share a labelled line of their own - labelled because the
+   sticky header that named those columns is hidden here. */
+@media (max-width:700px){
+  .econ-calendar-head{display:none;}
+  .econ-calendar-row,
+  .econ-calendar-head{min-width:0;}
+  .econ-calendar-row{flex-wrap:wrap; gap:4px 10px; padding:12px 10px;}
+  /* The title stops being a 190px column that must not wrap, and becomes
+     a full-width line that may. Clipping a release's name to an ellipsis
+     is the one thing this card must not do - the name IS the content. */
+  .econ-calendar-event{
+    flex:1 1 100%; white-space:normal; overflow:visible; text-overflow:clip;
+  }
+  .econ-calendar-figure{
+    width:auto; flex:0 0 auto; text-align:left;
+    display:inline-flex; align-items:baseline; gap:4px;
+  }
+  .econ-calendar-figure::before{
+    content:attr(data-label);
+    font-family:'Inter',sans-serif; font-size:10px; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--muted-2, var(--muted)); font-weight:700;
+  }
 }
 
 /* ---------- Stop iOS zooming in on a tapped field ---------- */

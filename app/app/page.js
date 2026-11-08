@@ -11,6 +11,7 @@ import OverviewDashboard from '@/components/OverviewDashboard'
 import WelcomeTransition from '@/components/WelcomeTransition'
 import TutorialOverlay from '@/components/TutorialOverlay'
 import TimezoneGate from '@/components/TimezoneGate'
+import { displayNameOf, displayNameUpdate } from '@/lib/displayName'
 
 export default function AppHome() {
   // Seeded from the shared instruments/strategies cache, so arriving here
@@ -106,7 +107,7 @@ export default function AppHome() {
     // so this can't go stale.
     const loadedInstruments = await getInstruments(supabase, user.id)
     setInstruments(loadedInstruments)
-    setUserName(user.user_metadata?.full_name || '')
+    setUserName(displayNameOf(user))
 
     // Read fresh on every load (not just mount) so a page refresh
     // mid-tutorial (step 0 only happens here - steps 1/2 live on the
@@ -128,7 +129,7 @@ export default function AppHome() {
       setLoading(false)
       return
     }
-    if (!user.user_metadata?.full_name) {
+    if (!displayNameOf(user)) {
       setStep('name')
     } else if (!user.user_metadata?.timezone) {
       setStep('timezone')
@@ -141,7 +142,7 @@ export default function AppHome() {
   async function handleNameSubmit(e) {
     e.preventDefault()
     setSavingName(true)
-    const { data: { user } } = await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
+    const { data: { user } } = await supabase.auth.updateUser({ data: displayNameUpdate(fullName) })
     setSavingName(false)
     setUserName(fullName.trim())
     // Straight from name into timezone (the same order loadInstruments()

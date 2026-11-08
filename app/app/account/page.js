@@ -23,6 +23,7 @@ import DataExportSection from '@/components/account/DataExportSection'
 import DangerZoneSection from '@/components/account/DangerZoneSection'
 import PageLoading from '@/components/PageLoading'
 import AccountSkeleton from '@/components/AccountSkeleton'
+import { displayNameOf } from '@/lib/displayName'
 
 // Loads the account data once and hands it to the sections, each of which
 // owns the state for its own concern. Timezone is the exception: it lives
@@ -78,7 +79,7 @@ function AccountPageInner() {
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser()
     setEmail(user.email)
-    setFullName(user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : '')
+    setFullName(displayNameOf(user))
 
     // A Google-only account has an identity for 'google' but none for
     // 'email', so signInWithPassword has nothing to check it against -
@@ -142,7 +143,7 @@ function AccountPageInner() {
     // their own they each need one.
     password: <div className="panel"><PasswordSection email={email} hasPassword={hasPassword} onPasswordSet={() => setHasPassword(true)} /></div>,
     twofactor: <div className="panel"><TwoFactorSection initialFactors={mfaFactors} /></div>,
-    devices: <div className="panel"><SignInHistorySection initialEvents={loginEvents} timezone={timezone} /></div>,
+    devices: <div className="panel"><SignInHistorySection initialEvents={loginEvents} /></div>,
     export: <DataExportSection />,
     danger: <DangerZoneSection email={email} hasPassword={hasPassword} />,
   }
@@ -214,7 +215,7 @@ function AccountPageInner() {
               <div className="panel-divider" />
               <TwoFactorSection initialFactors={mfaFactors} />
               <div className="panel-divider" />
-              <SignInHistorySection initialEvents={loginEvents} timezone={timezone} />
+              <SignInHistorySection initialEvents={loginEvents} />
             </div>
 
             {sectionEls.export}

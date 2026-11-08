@@ -3,13 +3,16 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/lib/toast'
+import { displayNameUpdate } from '@/lib/displayName'
 
 export default function ProfileSection({ email, initialFullName }) {
   const [fullName, setFullName] = useState(initialFullName)
 
   async function handleNameBlur() {
     if (fullName.trim() === initialFullName) return
-    const { error } = await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
+    // displayNameUpdate, not { full_name }. Google overwrites full_name
+    // on every OAuth sign-in - see lib/displayName.js.
+    const { error } = await supabase.auth.updateUser({ data: displayNameUpdate(fullName) })
     if (!error) toast.success('Name updated.')
   }
 

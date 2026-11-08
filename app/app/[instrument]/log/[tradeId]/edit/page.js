@@ -18,6 +18,7 @@ import TradeFormSkeleton from '@/components/TradeFormSkeleton'
 import PageError from '@/components/PageError'
 import ErrorBanner from '@/components/ErrorBanner'
 import { activatable } from '@/lib/activatable'
+import { invalidateTrades } from '@/lib/tradesCache'
 
 export default function EditTradePage({ params }) {
   usePageTitle('Edit Trade')
@@ -135,6 +136,7 @@ export default function EditTradePage({ params }) {
       requestTradeExcursionBackfill(symbol, tradeId)
     }
     invalidateTags()
+    invalidateTrades()
 
     // Same as Cancel/Discard changes (onCancel below) - returns to wherever
     // the trader opened this edit from (the trade detail page, the log, a
@@ -156,6 +158,7 @@ export default function EditTradePage({ params }) {
       return
     }
     invalidateTags()
+    invalidateTrades()
     toast.success('Trade deleted.')
     router.push(`/app/${symbol}/log`)
   }

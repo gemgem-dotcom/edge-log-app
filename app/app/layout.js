@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { clearReferenceDataCache } from '@/lib/referenceDataCache'
+import { invalidateTrades } from '@/lib/tradesCache'
+import { clearStrategyIndexCache } from '@/lib/strategyIndexData'
+import { clearDashboardCache } from '@/lib/dashboardCache'
 import { invalidateTags } from '@/lib/tagsCache'
 import { UTC_OFFSETS } from '@/lib/timezone'
 import { backfillOwnTradeSessions } from '@/lib/tradeSessions'
@@ -49,8 +52,15 @@ export default function AppLayout({ children }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
+        // Every per-session cache, not just the reference data. These
+        // hold one user's trades and strategies in module variables with
+        // no user id on them, so a second user signing in on the same tab
+        // must start from empty - see each cache's own comment.
         clearReferenceDataCache()
         invalidateTags()
+        invalidateTrades()
+        clearStrategyIndexCache()
+        clearDashboardCache()
         router.replace('/login')
       }
     })

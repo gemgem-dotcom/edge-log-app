@@ -15,6 +15,7 @@ import { invalidateTags } from '@/lib/tagsCache'
 import ScreenshotLightbox from '@/components/ScreenshotLightbox'
 import ScreenshotThumb from '@/components/ScreenshotThumb'
 import FieldTooltip from '@/components/FieldTooltip'
+import { invalidateTrades } from '@/lib/tradesCache'
 
 // The trade log, as a phone actually wants it.
 //
@@ -387,6 +388,7 @@ export default function MobileTradeList({
     const { error } = await supabase.from('trades').delete().eq('id', trade.id)
     if (error) { setDeleteError("Couldn't delete that trade. Please try again."); return }
     invalidateTags()
+    invalidateTrades()
     // The caller owns the rows (every mobile call site fetches its own
     // page), so it refetches rather than this trimming a local copy that
     // the page's own stats were never computed from.

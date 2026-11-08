@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import AppShell from '@/components/AppShell'
 import { usePageTitle } from '@/lib/usePageTitle'
-import { loadAllStrategies, peekAllStrategies, STRATEGY_INDEX_ERRORS } from '@/lib/strategyIndexData'
+import { loadAllStrategies, STRATEGY_INDEX_ERRORS } from '@/lib/strategyIndexData'
 import StrategyList from '@/components/StrategyList'
 import StrategyListSkeleton from '@/components/StrategyListSkeleton'
 import PageError from '@/components/PageError'
@@ -21,16 +21,7 @@ import EmptyState from '@/components/EmptyState'
 // does.
 export default function AllStrategiesPage() {
   usePageTitle('Strategies')
-  // Seeded from the last-known result, so returning to this tab paints
-  // the real list on the very first frame instead of a skeleton that the
-  // whole-history trades query then replaces a second later - measured at
-  // ~1.4s of skeleton on a throttled phone. The effect below still runs
-  // the real load and overwrites this, so a stale figure lasts one
-  // request, not until a reload. See peekStrategyIndex's comment.
-  const [state, setState] = useState(() => {
-    const warm = peekAllStrategies()
-    return warm ? { status: 'ready', ...warm } : { status: 'loading' }
-  })
+  const [state, setState] = useState({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {

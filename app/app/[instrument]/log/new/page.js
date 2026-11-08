@@ -16,7 +16,6 @@ import { usePageTitle } from '@/lib/usePageTitle'
 import TradeForm, { EMPTY_TRADE_FORM } from '@/components/TradeForm'
 import ErrorBanner from '@/components/ErrorBanner'
 import TutorialScrollGuide from '@/components/TutorialScrollGuide'
-import { invalidateTrades } from '@/lib/tradesCache'
 
 export default function NewTradePage({ params, searchParams }) {
   usePageTitle('Log New Trade')
@@ -134,7 +133,6 @@ export default function NewTradePage({ params, searchParams }) {
 
     requestTradeExcursionBackfill(symbol, inserted.id)
     invalidateTags()
-    invalidateTrades()
 
     toast.success('Trade logged.')
     router.push(`/app/${symbol}/log`)

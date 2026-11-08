@@ -16,7 +16,6 @@ import ScreenshotLightbox from './ScreenshotLightbox'
 import ScreenshotThumb from './ScreenshotThumb'
 import FieldTooltip from './FieldTooltip'
 import { activatable } from '@/lib/activatable'
-import { invalidateTrades } from '@/lib/tradesCache'
 
 const DIRECTION_LABELS = { long: 'Long', short: 'Short' }
 const RESULT_LABELS = { win: 'Win', loss: 'Loss', breakeven: 'Breakeven', open: 'Open' }
@@ -329,7 +328,6 @@ export default function TradeLogTable({
       // the next page, and the total count is now one lower) rather than
       // this component optimistically trimming its own local array.
       invalidateTags()
-      invalidateTrades()
       if (remote) remote.onTradeDeleted?.()
       else {
         setRows((prev) => prev.filter((t) => t.id !== trade.id))

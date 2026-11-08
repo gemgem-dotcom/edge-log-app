@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { catalogEntryFor } from '@/lib/instrumentCatalog'
 import { usePageTitle } from '@/lib/usePageTitle'
-import { loadStrategyIndex, STRATEGY_INDEX_ERRORS } from '@/lib/strategyIndexData'
+import { loadStrategyIndex, peekStrategyIndex, STRATEGY_INDEX_ERRORS } from '@/lib/strategyIndexData'
 import StrategyList from '@/components/StrategyList'
 import StrategyListSkeleton from '@/components/StrategyListSkeleton'
 import PageError from '@/components/PageError'
@@ -26,7 +26,15 @@ export default function StrategiesPage({ params }) {
   const symbol = use(params).instrument
   const displayName = catalogEntryFor(symbol)?.display_name || symbol
 
-  const [state, setState] = useState({ status: 'loading' })
+  // Seeded from the last-known result for THIS symbol, so coming back to
+  // it paints on the first frame rather than behind a whole-history
+  // trades query. The effect still runs the real load and overwrites
+  // this - see peekStrategyIndex's comment on why one stale request is
+  // the worst case.
+  const [state, setState] = useState(() => {
+    const warm = peekStrategyIndex(symbol)
+    return warm ? { status: 'ready', ...warm } : { status: 'loading' }
+  })
   // Bumped to force a reload on retry, since the effect is keyed on it.
   const [attempt, setAttempt] = useState(0)
 

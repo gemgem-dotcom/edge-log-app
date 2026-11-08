@@ -14,21 +14,49 @@ import MobilePager from '@/components/mobile/MobilePager'
 import TradeLogSkeleton from '@/components/TradeLogSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
+import { getInstruments, peekReferenceData } from '@/lib/referenceDataCache'
+import { readTradePage, writeTradePage, readLogStrategies, writeLogStrategies } from '@/lib/tradesCache'
 
 // Real DB-side pagination and filtering (lib/tradeQuery.js) rather than
 // fetching every trade across every instrument and slicing it in the
 // browser - see app/app/[instrument]/log/page.js's identical comment; this
 // page is the same shape, just scoped to every instrument id instead of one.
 const PAGE_SIZE = 25
+// Archived strategies are filtered out of this page's query, unlike the
+// per-instrument log's - so the two cannot share a cache key.
+const STRATEGIES_VARIANT = 'all-log-unarchived'
 
 export default function AllTradesPage() {
   usePageTitle('Trade Log')
+  // Seeded from the last-known page-0 result, so returning to this tab
+  // paints the real table on the first frame instead of a skeleton that a
+  // round-trip then replaces. Stale-while-revalidate: the loadPage effect
+  // below runs regardless and overwrites this, so a stale row lasts one
+  // request rather than until a reload - see lib/tradesCache.js.
+  //
+  // `instruments` has to be seeded in the same breath. The skeleton gate
+  // keys on `trades.length === 0`, so seeding rows without the instruments
+  // they belong to would render the table with no way to resolve each
+  // row's symbol for the instrument column.
+  const [warm] = useState(() => {
+    const ref = peekReferenceData()
+    if (!ref) return null
+    const ids = ref.instruments.map((i) => i.id)
+    const hit = readTradePage({ instrumentIds: ids, page: 0, pageSize: PAGE_SIZE, filters: EMPTY_FILTERS })
+    // BOTH, or neither - each row's strategy name comes from this list,
+    // and rows without it paint a column of em-dashes. Read from this
+    // page's own cache rather than peekReferenceData's strategies, which
+    // are keyed per instrument and may be only partly warm.
+    const strats = readLogStrategies(ids, STRATEGIES_VARIANT)
+    if (!hit || !strats) return null
+    return { instruments: ref.instruments, strategies: strats, ...hit }
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [instruments, setInstruments] = useState([])
-  const [strategies, setStrategies] = useState([])
-  const [trades, setTrades] = useState([])
-  const [totalCount, setTotalCount] = useState(0)
+  const [instruments, setInstruments] = useState(warm?.instruments ?? [])
+  const [strategies, setStrategies] = useState(warm?.strategies ?? [])
+  const [trades, setTrades] = useState(warm?.trades ?? [])
+  const [totalCount, setTotalCount] = useState(warm?.totalCount ?? 0)
   const [tagOptions, setTagOptions] = useState([])
   const [page, setPage] = useState(0)
   const [filters, setFilters] = useState(EMPTY_FILTERS)
@@ -60,19 +88,17 @@ export default function AllTradesPage() {
       const { data: { session } } = await supabase.auth.getSession()
       const user = session?.user
       if (!user) throw new Error('no session')
-      const { data: instrumentData, error: instError } = await supabase
-        .from('instruments').select('*').eq('user_id', user.id).eq('archived', false).order('created_at', { ascending: true })
-      if (instError) throw instError
-      const ids = (instrumentData || []).map((i) => i.id)
-
-      const { data: stratData, error: stratError } = await supabase
-        .from('strategies').select('*').in('instrument_id', ids).eq('archived', false)
-        .order('created_at', { ascending: true })
-      if (stratError) throw stratError
+      // The sidebar's own cache, so this is a hit on any navigation
+      // within /app - see referenceDataCache. Same query as before,
+      // same filters and order.
+      const instrumentData = await getInstruments(supabase, user.id)
       if (superseded()) return
+      const ids = instrumentData.map((i) => i.id)
 
-      setInstruments(instrumentData || [])
-      setStrategies(stratData || [])
+      // Set BEFORE awaiting the strategies: `instruments` is what the
+      // trade-page effect keys on, so the rows and the strategies now
+      // load concurrently instead of the table waiting on a dropdown.
+      setInstruments(instrumentData)
       setPage(0)
       setFilters(EMPTY_FILTERS)
       if (ids.length > 0) {
@@ -80,6 +106,14 @@ export default function AllTradesPage() {
       } else {
         setLoading(false)
       }
+
+      const { data: stratData, error: stratError } = await supabase
+        .from('strategies').select('*').in('instrument_id', ids).eq('archived', false)
+        .order('created_at', { ascending: true })
+      if (stratError) throw stratError
+      if (superseded()) return
+      setStrategies(stratData || [])
+      writeLogStrategies(ids, stratData || [], STRATEGIES_VARIANT)
     } catch {
       if (superseded()) return
       setError('something went wrong.')
@@ -100,6 +134,7 @@ export default function AllTradesPage() {
       if (superseded()) return
       setTrades(pageTrades)
       setTotalCount(count)
+      writeTradePage({ instrumentIds: instruments.map((i) => i.id), page, pageSize: PAGE_SIZE, filters }, pageTrades, count)
     } catch {
       if (superseded()) return
       setError('something went wrong.')

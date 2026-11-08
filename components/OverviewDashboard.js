@@ -36,6 +36,7 @@ import OverviewSkeleton from '@/components/OverviewSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
 import { displayNameOf } from '@/lib/displayName'
+import { readTrades, writeTrades } from '@/lib/tradesCache'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
@@ -268,10 +269,47 @@ export default function OverviewDashboard({ instruments, strategies }) {
   }, [instrumentIds])
 
   async function loadData() {
-    setLoading(true)
+    const ids = instruments.map((i) => i.id)
+
+    // PAINT WHAT WE ALREADY HAVE, then refresh underneath it.
+    //
+    // Without this, every return to this tab showed a skeleton for about
+    // 1.7s while the same rows were fetched again - measured on a
+    // throttled phone, on the third visit as readily as the first. The
+    // rows almost never differ between two visits a minute apart, so the
+    // skeleton was paying full price for an answer already known.
+    //
+    // The fetch below still runs and still wins; this only decides
+    // whether the wait is spent looking at the last figures or at
+    // nothing. See lib/tradesCache.js for why it is
+    // stale-while-revalidate rather than a plain cache.
+    const cached = readTrades(ids)
+    if (cached) {
+      setAllTrades(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     setError(null)
+
     try {
-      const ids = instruments.map((i) => i.id)
+      // getSession(), not getUser(), and BEFORE the trades rather than
+      // beside them.
+      //
+      // getUser() revalidates the token against the auth server - a real
+      // network round-trip - and all this needs from it is the name in
+      // user_metadata, which getSession() reads from the already-stored
+      // session locally. app/app/page.js makes the same swap for the same
+      // reason; see its comment. Nothing here is a trust decision, so a
+      // revalidated token buys nothing.
+      //
+      // It mattered visibly rather than just on paper: the greeting is
+      // this page's heading, so on a cached paint every figure was
+      // already on screen while the heading alone was still waiting on
+      // that round-trip - the title appeared a second late and pushed
+      // the rest of the page down as it did.
+      const { data: { session } } = await supabase.auth.getSession()
+      setGreeting(pickGreeting(displayNameOf(session?.user)))
 
       // Paged - this array feeds every figure on the Overview page, so
       // stopping at PostgREST's 1000-row cap would understate all of them.
@@ -280,11 +318,13 @@ export default function OverviewDashboard({ instruments, strategies }) {
       if (tradeError) throw tradeError
 
       setAllTrades(tradeData || [])
-
-      const { data: { user } } = await supabase.auth.getUser()
-      setGreeting(pickGreeting(displayNameOf(user)))
+      writeTrades(ids, tradeData || [])
     } catch {
-      setError('something went wrong.')
+      // Only surface the error if there is nothing on screen. Replacing
+      // good figures with "something went wrong" because a background
+      // refresh failed is a worse outcome than briefly showing the rows
+      // we already had.
+      if (!cached) setError('something went wrong.')
     } finally {
       setLoading(false)
     }

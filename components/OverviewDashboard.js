@@ -244,9 +244,21 @@ export default function OverviewDashboard({ instruments, strategies }) {
   // read from the calendar rows above: different table, different
   // refresh cadence, and the brief is useful without it.
   const econDetail = useEconReleaseDetail()
-  const [loading, setLoading] = useState(true)
+  // SEEDED AT CONSTRUCTION, not inside the effect below, and that
+  // distinction is the whole bug it fixes.
+  //
+  // loadData() reads the same cache and clears `loading` the moment it
+  // finds a hit - but an effect runs AFTER the first paint, so `loading`
+  // starting at true meant this screen always painted its skeleton for a
+  // frame or two before the cached figures replaced it. On a throttled
+  // phone that is ~300ms of skeleton on a tab whose data was already in
+  // memory, which is exactly the "awkward skeleton loaders" this caching
+  // was supposed to remove. Reading the cache during the first render
+  // instead means the skeleton is never painted at all when it hits.
+  const warmTrades = useState(() => readTrades(instruments.map((i) => i.id)))[0]
+  const [loading, setLoading] = useState(!warmTrades)
   const [error, setError] = useState(null)
-  const [allTrades, setAllTrades] = useState([])
+  const [allTrades, setAllTrades] = useState(warmTrades ?? [])
   const [greeting, setGreeting] = useState('')
   const [equityGroup, setEquityGroup] = useState('day')
   const [perfInstrument, setPerfInstrument] = useState('all')

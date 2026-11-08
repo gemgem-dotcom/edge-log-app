@@ -92,13 +92,6 @@ export default function MobileTabBar({ symbol, instruments = [] }) {
         {MOBILE_TABS.map(({ key, label, path }, index) => {
           const Icon = TAB_ICONS[key]
           const isActive = active === key
-          // Undefined on the tab you are already on - a navigation that
-          // goes nowhere should not animate. Undefined rather than [] so
-          // Link leaves the navigation untyped entirely, which is what
-          // TabTransition's `default: none` is keyed on.
-          const transitionTypes = isActive
-            ? undefined
-            : [index > activeIndex ? 'tab-forward' : 'tab-back']
           // Uniform: no tab is visually privileged. The Log tab used to
           // be a raised accent circle, which is the most template-looking
           // element in mobile design and made one of five equals shout.
@@ -143,7 +136,6 @@ export default function MobileTabBar({ symbol, instruments = [] }) {
               href={path(symbol)}
               className={className}
               aria-current={isActive ? 'page' : undefined}
-              transitionTypes={transitionTypes}
             >
               {inner}
             </Link>

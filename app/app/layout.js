@@ -11,6 +11,7 @@ import PageLoading from '@/components/PageLoading'
 import HolidayNotice from '@/components/HolidayNotice'
 import TimezoneGate from '@/components/TimezoneGate'
 import MobileChrome from '@/components/mobile/MobileChrome'
+import { displayNameOf } from '@/lib/displayName'
 
 function hasValidTimezone(user) {
   const tz = user.user_metadata?.timezone
@@ -41,7 +42,7 @@ export default function AppLayout({ children }) {
       if (!session) {
         router.replace('/login')
       } else {
-        setNeedsTimezone(!!session.user.user_metadata?.full_name && !hasValidTimezone(session.user))
+        setNeedsTimezone(!!displayNameOf(session.user) && !hasValidTimezone(session.user))
         setChecked(true)
       }
     })

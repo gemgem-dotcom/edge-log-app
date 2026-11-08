@@ -35,6 +35,7 @@ import MarketStatusPill from '@/components/MarketStatusPill'
 import OverviewSkeleton from '@/components/OverviewSkeleton'
 import EmptyState from '@/components/EmptyState'
 import PageError from '@/components/PageError'
+import { displayNameOf } from '@/lib/displayName'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const CAL_HEADINGS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Weekly P&L']
@@ -281,7 +282,7 @@ export default function OverviewDashboard({ instruments, strategies }) {
       setAllTrades(tradeData || [])
 
       const { data: { user } } = await supabase.auth.getUser()
-      setGreeting(pickGreeting(user?.user_metadata?.full_name))
+      setGreeting(pickGreeting(displayNameOf(user)))
     } catch {
       setError('something went wrong.')
     } finally {

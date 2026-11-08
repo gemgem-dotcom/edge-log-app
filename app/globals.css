@@ -5,60 +5,63 @@
    Line numbers shift whenever this file is edited — update this
    block in the same change that adds or moves a section.
    ------------------------------------------------------------
-     1–713  Base: reset, typography, forms, tables, thumbnails,
+     1–716  Base: reset, typography, forms, tables, thumbnails,
             modals, and the mobile breakpoints for all of them
-   714  Auth pages
-   780  Top nav
-   795  Instrument nav (topbar pill row)
-   872  Page layout
-   926  Tabs
-   936  Misc form helpers
-   942  Detail view
-   965  Holiday notice (site-wide, above the shell)
-   997  Shell layout (sidebar + topbar)
-   1385  Expandable trade rows
-   1451  Calendar
-   1499  Account settings page
-   1737  Light theme
-   1778  2FA
-   1806  Account fine print
-   1809  Screenshot preview (log new trade)
-   1851  Auth pages always dark
-   1886  Monthly P&L (calendar on Overview)
-   1973  Trade form: sections, validation, currency, screenshots
-   2211  Field tooltips
-   2273  Date/time picker (adds an optional popup to a typed input)
-   2390  In-header column filters (trade log table)
-   2438  Active filter chips
-   2501  Empty states, error banners, skeleton loaders
-   2598  Cross-instrument overview dashboard (/app)
-   2777  Not found / error boundary state pages
-   2790  Toast notifications
-   2818  Public policy pages (Privacy, Terms)
-   2837  Legal links (auth pages + account settings)
-   2876  Economic calendar card (Overview pages)
-   3148  Calendar news badge (Monthly P&L day cells)
-   3176  Streak badge (Overview + strategy detail pages)
-   3199  Market status pill (Overview + strategy detail pages)
-   3225  Today's brief & session stats
-   3260  Market context cards (all-instruments Overview)
-   3302  Edge Insights panel
-   3317  Unverified logged time badge
-   3334  Welcome transition (first-run)
-   3363  Zero-instrument empty state
-   3373  Tutorial overlay (first-run guided tour)
-   3465  Tutorial step 3 (guided form scroll)
-   3512  Press states, value changes, content fade-in
-   3609  Bottom-tab slide
-   3783  Trade log column width stability
-   3808  Strategy notes panel
-   3823  Today's brief economic outlook
-   4143  Two-factor device list
-   4200  Reset-password two-factor warning
-   4235  Remember this browser
-   4336  Two-factor setup instructions
-   4383  Lost-phone route on the code step
-   4405  Mobile app shell (below 768px only)
+   717  Auth pages
+   783  Top nav
+   798  Instrument nav (topbar pill row)
+   875  Page layout
+   929  Tabs
+   939  Misc form helpers
+   945  Detail view
+   968  Holiday notice (site-wide, above the shell)
+   1000  Shell layout (sidebar + topbar)
+   1388  Expandable trade rows
+   1454  Calendar
+   1502  Account settings page
+   1754  Light theme
+   1795  2FA
+   1823  Account fine print
+   1826  Screenshot preview (log new trade)
+   1868  Auth pages always dark
+   1903  Monthly P&L (calendar on Overview)
+   1990  Trade form: sections, validation, currency, screenshots
+   2228  Field tooltips
+   2290  Date/time picker (adds an optional popup to a typed input)
+   2407  In-header column filters (trade log table)
+   2455  Active filter chips
+   2518  Empty states, error banners, skeleton loaders
+   2615  Cross-instrument overview dashboard (/app)
+   2794  Not found / error boundary state pages
+   2807  Toast notifications
+   2835  Public policy pages (Privacy, Terms)
+   2854  Legal links (auth pages + account settings)
+   2893  Economic calendar card (Overview pages)
+   3165  Calendar news badge (Monthly P&L day cells)
+   3193  Streak badge (Overview + strategy detail pages)
+   3216  Market status pill (Overview + strategy detail pages)
+   3242  Today's brief & session stats
+   3277  Market context cards (all-instruments Overview)
+   3319  Edge Insights panel
+   3334  Unverified logged time badge
+   3351  Welcome transition (first-run)
+   3380  Zero-instrument empty state
+   3390  Tutorial overlay (first-run guided tour)
+   3482  Tutorial step 3 (guided form scroll)
+   3529  Press states, value changes, content fade-in
+   3626  Bottom-tab slide
+   3800  Trade log column width stability
+   3825  Strategy notes panel
+   3840  Today's brief economic outlook
+   4160  Two-factor device list
+   4217  Reset-password two-factor warning
+   4252  Remember this browser
+   4353  Two-factor setup instructions
+   4400  Lost-phone route on the code step
+   4428  Sign-in history on a phone
+   4493  Economic calendar on a phone
+   4529  Stop iOS zooming in on a tapped field
+   4568  Mobile app shell (below 768px only)
    ============================================================ */
 
 :root{
@@ -1564,6 +1567,20 @@ a.shell-logo{color:inherit; text-decoration:none;}
 }
 
 .signin-table-wrap{overflow-x:auto;}
+/* The device cell: name on top, browser underneath. "iPhone (iOS)" on
+   its own cannot be told from another iPhone, which is the one question
+   this list asks. */
+.signin-device{display:inline-flex; flex-direction:column; gap:1px; min-width:0;}
+.signin-device-name{font-weight:600;}
+.signin-device-sub,
+.signin-ip,
+.signin-ago{display:block; font-size:12px; color:var(--muted);}
+.signin-where,
+.signin-when{display:block;}
+/* Sized here rather than inline so the coarse-pointer 16px rule can
+   reach it - an inline fontSize cannot be overridden by a stylesheet,
+   and a 13px field zooms iOS on focus. */
+.signin-nickname-input{padding:4px 8px; font-size:13px; width:140px;}
 
 /* background-color, not the background shorthand - select's chevron is a
    background-image (see the base select{} rule), and the shorthand would
@@ -4401,6 +4418,152 @@ button:active{
   font-size:13.5px; font-weight:600; color:var(--accent); text-decoration:none;
 }
 .mfa-lost-phone a:hover{text-decoration:underline;}
+
+/* NOTE ON PLACEMENT. The two sections below sit BEFORE the "Mobile app
+   shell" banner deliberately. lib/useIsMobile.test.js asserts that every
+   rule after that banner is inside its one media query, so that above the
+   breakpoint the mobile rules do not merely lose a specificity contest -
+   they do not apply at all. Appending at the end of the file breaks that,
+   and the test catches it. Anything new goes here, above the banner. */
+/* ---------- Sign-in history on a phone ---------- */
+/* THE TABLE WAS 760px WIDE INSIDE A 335px SCREEN. .signin-table-wrap
+   scrolls horizontally, and a touch device paints no scrollbar until you
+   are already dragging, so the panel showed whichever slice it happened
+   to be scrolled to - in practice the date column with two empty ones
+   beside it, which reads as a broken list rather than a scrollable one.
+
+   Below 700px the same rows stack instead: each <tr> becomes a card and
+   each <td> a labelled line, with the header hidden because the labels
+   carry it. One DOM, two layouts - no JS, no hydration mismatch, and
+   nothing for a viewport-guess to get wrong. */
+@media (max-width:700px){
+  .signin-table-wrap{overflow-x:visible;}
+  .signin-table thead{
+    /* Not display:none - that removes it from the accessibility tree
+       too, and a screen reader still wants the column names. */
+    position:absolute; width:1px; height:1px; overflow:hidden;
+    clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
+  }
+  /* min-width IS THE WHOLE BUG. A global `table{min-width:760px}` further
+     up this file gives the trade log its horizontal scroll on a phone,
+     and it applies to every table - so this one was pinned at 760px
+     inside a 393px screen however it was displayed. The page then
+     overflowed, the browser zoomed out to fit, and EVERY other element
+     went with it: the topbar measured 766px wide on an iPhone. That is
+     what "the mobile version has gone super buggy" was.
+     display:block alone does nothing about a min-width, which is why
+     the first attempt at this changed nothing measurable. */
+  .signin-table,
+  .signin-table tbody,
+  .signin-table tr,
+  .signin-table td{display:block; width:auto; min-width:0;}
+  .signin-table tr{
+    padding:12px 0; border-bottom:1px solid var(--line);
+  }
+  .signin-table tr:last-child{border-bottom:none;}
+  .signin-table td{
+    padding:2px 0; border:none;
+    /* The header is gone, so each line says what it is. */
+    display:flex; gap:10px; align-items:baseline; justify-content:space-between;
+    flex-wrap:wrap;
+  }
+  .signin-table td::before{
+    content:attr(data-label);
+    font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--muted); font-weight:700; flex:0 0 auto;
+  }
+  /* The value side, right-aligned against its label. min-width:0 so a
+     long nickname wraps instead of forcing the row wide again - the
+     whole fault this block exists to fix. */
+  .signin-table td > *{text-align:right; min-width:0; overflow-wrap:anywhere;}
+  .signin-table td .signin-device{align-items:flex-end;}
+  /* The secondary value takes its own line rather than sharing one with
+     the primary. Sharing cost more than it saved: "Nov 8, 2026, 7:40 AM"
+     and "20 minutes ago" side by side left about 110px each, which broke
+     the timestamp after the minutes and orphaned "AM" on a line of its
+     own - on the row the reader most needs to read at a glance. */
+  .signin-table td .signin-ago,
+  .signin-table td .signin-ip{flex-basis:100%;}
+  /* And the timestamp itself never breaks. It fits in one line at every
+     width this layout runs at; if it ever stops fitting, the label above
+     it wraps first, which is the cheaper loss. */
+  .signin-table td .signin-when{white-space:nowrap;}
+}
+
+/* ---------- Economic calendar on a phone ---------- */
+/* THE ROW IS 639px WIDE AND THE SCREEN IS 393px. Fixed columns - 46px of
+   date, 44px of time, 32px of currency, a 190px title floor and three
+   72px figures - and `min-width:max-content` on the row so it is
+   ALLOWED to exceed its list and scroll sideways. That is right on a
+   desktop. On a phone the scrollbar is invisible until you drag, so the
+   card reads as content that has been cut off: the title truncated
+   mid-word at the right edge, and the page itself draggable sideways
+   away from the heading.
+
+   Below 700px the row wraps instead. Date, time and currency stay on the
+   first line, the title takes the full width under them, and the three
+   figures share a labelled line of their own - labelled because the
+   sticky header that named those columns is hidden here. */
+@media (max-width:700px){
+  .econ-calendar-head{display:none;}
+  .econ-calendar-row,
+  .econ-calendar-head{min-width:0;}
+  .econ-calendar-row{flex-wrap:wrap; gap:4px 10px; padding:12px 10px;}
+  /* The title stops being a 190px column that must not wrap, and becomes
+     a full-width line that may. Clipping a release's name to an ellipsis
+     is the one thing this card must not do - the name IS the content. */
+  .econ-calendar-event{
+    flex:1 1 100%; white-space:normal; overflow:visible; text-overflow:clip;
+  }
+  .econ-calendar-figure{
+    width:auto; flex:0 0 auto; text-align:left;
+    display:inline-flex; align-items:baseline; gap:4px;
+  }
+  .econ-calendar-figure::before{
+    content:attr(data-label);
+    font-family:'Inter',sans-serif; font-size:10px; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--muted-2, var(--muted)); font-weight:700;
+  }
+}
+
+/* ---------- Stop iOS zooming in on a tapped field ---------- */
+/* THIS IS WHY "MOBILE ALWAYS ZOOMS IN AND FITS CLOSER TO FULL SCREEN".
+   Mobile Safari zooms the page whenever a focused form control has a
+   font-size under 16px, and it does NOT zoom back out when the field
+   loses focus. The login inputs were 14px, so signing in left the whole
+   app zoomed - every page after it clipped at both edges, the heading
+   cut off on the left and content running off the right. It reads as a
+   broken layout and is really a sticky zoom from one tap.
+
+   16px is the threshold, not a preference: at 15.9px Safari still zooms.
+   Applied only on coarse pointers so desktop keeps its own scale, and
+   only to the controls that take text - a checkbox cannot be typed into
+   and Safari does not zoom for one.
+
+   Scoped by pointer rather than by width because an iPad in landscape is
+   wider than many laptops and still zooms. */
+@media (pointer:coarse){
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea,
+  .auth-card input:not([type="checkbox"]):not([type="file"]){
+    font-size:16px;
+  }
+  /* AND THE BOX HAS TO GROW WITH THE TEXT. Raising the font alone
+     clipped descenders on every coarse-pointer device wide enough to
+     get the DESKTOP 36px control height - an iPad in landscape, an
+     Android tablet. Measured there: 36px tall, 18px of padding and
+     border, so 16px of room for a line that now needs 20.8px. Phones
+     were never affected (those controls are already 46px), which is
+     exactly why this needed measuring on a tablet rather than a phone.
+     min-height, not height, so anything already taller keeps its size. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select{
+    min-height:44px;
+  }
+  /* 44px is also the touch-target floor, so this is the size these
+     controls should always have had on a finger-driven device. */
+}
 
 /* ---------- Mobile app shell (below 768px only) ---------- */
 /*

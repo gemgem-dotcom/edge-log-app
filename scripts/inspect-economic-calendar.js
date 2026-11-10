@@ -415,6 +415,25 @@ async function reportLock(admin) {
     line('', 'and nothing about it will appear in Sentry')
     return 1
   }
+  // The backoff, where the columns exist. Printed before the verdict
+  // because it changes how the verdict reads: a declined attempt with a
+  // not_before in the future is the route waiting on purpose.
+  const { consecutive_failures: streak, last_ok_at: lastOk, not_before: notBefore } = data[0]
+  if (streak !== undefined) {
+    line('declined in a row', streak)
+    line('last stored rows', lastOk ? `${lastOk} (${ago(lastOk)})` : 'never recorded')
+    if (notBefore && Date.parse(notBefore) > Date.now()) line('next attempt', `not before ${notBefore}`)
+  }
+  if (outcome === 'upstream-declined') {
+    // Forex Factory said no, or could not be reached, and the route is
+    // backing off. Not a fault in the table and not a red check: the
+    // scheduled job feeds the card from GitHub's addresses regardless.
+    // What would be worth a person's attention is this persisting, and
+    // the route reports that itself, once, when the streak gets there.
+    line('verdict', 'the source DECLINED the last attempt - the route is backing off,')
+    line('', 'and the card is on the scheduled job until it answers')
+    return 0
+  }
   if (outcome && outcome !== 'ok') {
     line('verdict', `the attempt RAN and concluded "${outcome}" - the source answered,`)
     line('', 'so this is about what came back, not about being cut off')

@@ -888,6 +888,36 @@ alter table econ_refresh_lock add column if not exists last_finished_at timestam
 alter table econ_refresh_lock add column if not exists last_outcome text;
 alter table econ_refresh_lock add column if not exists last_detail text;
 
+-- BACKING OFF WHEN FOREX FACTORY DECLINES.
+--
+-- FF refuses requests from Vercel's addresses a good deal of the time. The
+-- route used to treat each refusal as an error: report it to Sentry, hold
+-- the ordinary ten minutes, ask again. 85 Sentry events in a fortnight,
+-- none of them a fault in this app, and the same request repeated at the
+-- same rate into a site that had just said no.
+--
+--   consecutive_failures  how many times running FF has declined. Kept
+--                         here because a serverless instance counts to
+--                         one and forgets.
+--   last_ok_at            when the route last stored rows, which is the
+--                         one question "is Vercel blocked?" turns on.
+--   not_before            the earliest the next attempt may be claimed.
+--                         Doubles with each refusal, capped at six hours.
+--
+-- not_before is NOT NULL with an epoch default so the claim stays two
+-- plain ANDed comparisons in one UPDATE:
+--
+--   update econ_refresh_lock set claimed_at = now()
+--    where id = 1 and claimed_at < now() - interval '10 minutes'
+--      and not_before <= now()
+--
+-- It is a column of its own rather than a claimed_at pushed into the
+-- future because scripts/inspect-economic-calendar.js reads a future
+-- claimed_at as a wedged lock, correctly. See lib/econRefreshBackoff.mjs.
+alter table econ_refresh_lock add column if not exists consecutive_failures int not null default 0;
+alter table econ_refresh_lock add column if not exists last_ok_at timestamptz;
+alter table econ_refresh_lock add column if not exists not_before timestamptz not null default to_timestamp(0);
+
 -- ============================================================
 -- Release detail behind the brief's "Read" line
 -- ============================================================

@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
-import { parseCalendarHtml, weekUrl } from '@/lib/econCalendarHtml.mjs'
+import { parseCalendarHtml, readPageAnchor, weekUrl } from '@/lib/econCalendarHtml.mjs'
+import {
+  COOLDOWN_MS, backoffMs, notBeforeAfterFailure, shouldEscalate, isUpstreamFailure,
+} from '@/lib/econRefreshBackoff.mjs'
 import { isMockDbEnabled } from '@/lib/mockMode'
 
 // Refreshes the current week of economic_events on demand, so the calendar
@@ -81,10 +84,10 @@ import { isMockDbEnabled } from '@/lib/mockMode'
 // and this only stops the platform from cutting it off mid-flight.
 export const maxDuration = 60
 
-const COOLDOWN_MS = 10 * 60_000
 const USER_AGENT = 'EdgeLog/1.0 (trading journal; +https://github.com/gemgem-dotcom/edge-log-app)'
 const FETCH_TIMEOUT_MS = 15000
 const FORBIDDEN_RETRY_DELAY_MS = 2000
+const ANCHOR_TIMEOUT_MS = 10000
 
 // One retry, and only on a 403. Across seven runs on 2026-09-12/13 the
 // FIRST request of every process came back 403 and every later one came
@@ -107,6 +110,56 @@ async function fetchWeekPage() {
   return request()
 }
 
+// FF said no, or could not be reached. Thrown rather than returned so the
+// one catch below sees every way the fetch can fail, and tagged so it can
+// tell this from a fault of ours - see isUpstreamFailure.
+class UpstreamFailure extends Error {
+  constructor(message, status) {
+    super(message)
+    this.name = 'UpstreamFailure'
+    this.upstream = true
+    if (Number.isFinite(status)) this.status = status
+  }
+}
+
+async function fetchWeekHtml() {
+  let res
+  try {
+    res = await fetchWeekPage()
+  } catch (err) {
+    // A timeout, a reset, DNS: nothing arrived. `fetch failed` is a bare
+    // TypeError with the reason in `cause`, so the reason is kept.
+    throw new UpstreamFailure(`forexfactory unreachable: ${err?.cause?.code || err?.name || 'error'}`)
+  }
+  if (!res.ok) throw new UpstreamFailure(`forexfactory returned ${res.status}`, res.status)
+  try {
+    // Awaited HERE, inside the try. Returned bare, a connection dropped
+    // half way through a 1.6MB body would reject outside this function
+    // and be filed as a fault of ours.
+    return await res.text()
+  } catch (err) {
+    throw new UpstreamFailure(`forexfactory body cut short: ${err?.cause?.code || err?.name || 'error'}`)
+  }
+}
+
+// The first day of the week AFTER this one, when the current week alone
+// cannot say which timezone FF rendered it in - which happens in the
+// weeks the clocks change (see lib/econCalendarZone.mjs). One request, no
+// retry, a short timeout: this is evidence for placing rows, not the rows
+// themselves, and if it does not arrive the undecidable days are simply
+// not written this time. The scheduled job places them.
+async function fetchAnchorAfter(date) {
+  try {
+    const res = await fetch(weekUrl(new Date(`${date}T12:00:00Z`)), {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+      signal: AbortSignal.timeout(ANCHOR_TIMEOUT_MS),
+    })
+    return res.ok ? readPageAnchor(await res.text()) : null
+  } catch {
+    return null
+  }
+}
+
 // Records what this attempt concluded, for scripts/inspect-economic-
 // calendar.js to read later. Paired with claimed_at, which was stamped
 // before the fetch: an attempt that finishes stamps a time AFTER its
@@ -117,19 +170,38 @@ async function fetchWeekPage() {
 // Never allowed to affect the request. A failure to write a diagnostic
 // is not a failure to refresh, and the claim does not depend on any of
 // these columns, so a stuck outcome cannot wedge the route.
-async function record(admin, outcome, detail) {
+async function record(admin, outcome, detail, extra = {}) {
+  const base = {
+    last_finished_at: new Date().toISOString(),
+    last_outcome: outcome,
+    last_detail: detail === undefined || detail === null ? null : String(detail).slice(0, 300),
+  }
   try {
-    await admin
-      .from('econ_refresh_lock')
-      .update({
-        last_finished_at: new Date().toISOString(),
-        last_outcome: outcome,
-        // Bounded: this is a log line in a column, not a payload.
-        last_detail: detail === undefined || detail === null ? null : String(detail).slice(0, 300),
-      })
-      .eq('id', 1)
+    const { error } = await admin.from('econ_refresh_lock').update({ ...base, ...extra }).eq('id', 1)
+    // `extra` carries columns added after the table shipped. If they have
+    // not been run in yet the whole update is rejected, and losing the
+    // outcome as well would hide the very thing this row exists to show -
+    // so it is written again without them.
+    if (error && Object.keys(extra).length > 0) {
+      await admin.from('econ_refresh_lock').update(base).eq('id', 1)
+    }
   } catch {
-    // Deliberately silent - see above.
+    // Deliberately swallowed - see above.
+  }
+}
+
+// How many times in a row FF has declined this route. Read, not carried
+// in memory: a serverless instance counts to one and forgets.
+async function failureStreak(admin) {
+  try {
+    const { data } = await admin
+      .from('econ_refresh_lock')
+      .select('consecutive_failures, last_ok_at')
+      .eq('id', 1)
+      .maybeSingle()
+    return { failures: Number(data?.consecutive_failures) || 0, lastOkAt: data?.last_ok_at || null }
+  } catch {
+    return { failures: 0, lastOkAt: null }
   }
 }
 
@@ -170,13 +242,29 @@ export async function POST(req) {
   // everyone else is told to wait. Doing this BEFORE the fetch is the
   // whole point - a check that only advanced on success let a failing
   // fetch be retried by every open tab on every poll.
-  const cutoff = new Date(Date.now() - COOLDOWN_MS).toISOString()
-  const { data: claimed, error: claimError } = await admin
+  const now = Date.now()
+  const cutoff = new Date(now - COOLDOWN_MS).toISOString()
+  // Still ONE conditional UPDATE, which is the lock's whole safety
+  // argument (see schema.sql). `not_before` is the backoff after FF has
+  // declined: both conditions are plain ANDed column comparisons, so
+  // concurrent callers still block on the row and exactly one wins.
+  let { data: claimed, error: claimError } = await admin
     .from('econ_refresh_lock')
-    .update({ claimed_at: new Date().toISOString() })
+    .update({ claimed_at: new Date(now).toISOString() })
     .eq('id', 1)
     .lt('claimed_at', cutoff)
+    .lte('not_before', new Date(now).toISOString())
     .select('claimed_at')
+  if (claimError && /not_before/.test(claimError.message || '')) {
+    // The column has not been run in. Fall back to the claim as it was
+    // rather than take the route down over a missing backoff.
+    ;({ data: claimed, error: claimError } = await admin
+      .from('econ_refresh_lock')
+      .update({ claimed_at: new Date(now).toISOString() })
+      .eq('id', 1)
+      .lt('claimed_at', cutoff)
+      .select('claimed_at'))
+  }
 
   if (claimError) {
     Sentry.captureException(new Error(`Economic calendar refresh could not claim: ${claimError.message}`))
@@ -187,16 +275,31 @@ export async function POST(req) {
   }
 
   try {
-    const res = await fetchWeekPage()
-    if (!res.ok) throw new Error(`forexfactory returned ${res.status}`)
+    const html = await fetchWeekHtml()
 
-    const { events } = parseCalendarHtml(await res.text())
+    let page = parseCalendarHtml(html)
+    if (page.zoneAmbiguous && page.anchorAfter) {
+      const anchor = await fetchAnchorAfter(page.anchorAfter)
+      if (anchor) page = parseCalendarHtml(html, { anchors: [anchor] })
+    }
+    const { events, untrustedDays, untrustedRows } = page
+
     if (events.length === 0) {
       // Never an empty write: a page that parsed to nothing means the
-      // markup moved, and the right response is to leave the table alone
-      // and say so, not to report a successful refresh of nothing.
-      Sentry.captureMessage('Economic calendar on-demand refresh parsed 0 events', 'warning')
-      await record(admin, 'no-events', 'page fetched but parsed to zero events')
+      // markup moved - or no day on it could be placed - and the right
+      // response is to leave the table alone and say so, not to report a
+      // successful refresh of nothing.
+      const why = untrustedRows > 0
+        ? `${untrustedRows} row(s) on ${untrustedDays.length} day(s) could not be placed`
+        : 'page fetched but parsed to zero events'
+      // Reported only when the page parsed to nothing at all, which is
+      // markup having moved. A week whose days could not be PLACED is the
+      // clock-change case: expected, already the scheduled job's to
+      // resolve and report, and here it would repeat every ten minutes.
+      if (untrustedRows === 0) {
+        Sentry.captureMessage(`Economic calendar on-demand refresh stored nothing: ${why}`, 'warning')
+      }
+      await record(admin, 'no-events', why, { consecutive_failures: 0 })
       return Response.json({ refreshed: false, reason: 'no-events' })
     }
 
@@ -208,14 +311,48 @@ export async function POST(req) {
       )
     if (error) throw new Error(error.message)
 
-    await record(admin, 'ok', `${events.length} rows`)
+    // Days whose instants could not be established are not written - an
+    // unknown time is a gap, a wrong one is a lie. Said in the outcome so
+    // a partly-stored week is visible rather than reading as a full one.
+    const detail = untrustedDays.length > 0
+      ? `${events.length} rows; ${untrustedRows} withheld on ${untrustedDays.length} day(s)`
+      : `${events.length} rows`
+    await record(admin, 'ok', detail, { consecutive_failures: 0, last_ok_at: new Date().toISOString() })
     return Response.json({ refreshed: true, count: events.length })
   } catch (err) {
     // A failed refresh is not a failed page. The card already has whatever
-    // the scheduled job last stored, so this reports the miss and lets the
-    // client carry on showing it.
-    Sentry.captureException(err)
-    await record(admin, 'fetch-failed', err?.message)
-    return Response.json({ refreshed: false, reason: 'fetch-failed' }, { status: 200 })
+    // the scheduled job last stored, so the client carries on showing it.
+    if (!isUpstreamFailure(err)) {
+      // Ours: the write failed, or something threw while handling a page
+      // that did arrive. Always reported.
+      Sentry.captureException(err)
+      await record(admin, 'fetch-failed', err?.message)
+      return Response.json({ refreshed: false, reason: 'fetch-failed' }, { status: 200 })
+    }
+
+    // Theirs: FF declined, or could not be reached. An outcome, not an
+    // error - see lib/econRefreshBackoff.mjs for why this used to be 85
+    // Sentry events a fortnight and what it does instead.
+    const { failures: before, lastOkAt } = await failureStreak(admin)
+    const failures = before + 1
+    // Ask less often. The claim taken above already holds the ordinary
+    // ten minutes; not_before pushes the next attempt out to the backoff
+    // for this streak. If the write is lost the ordinary cooldown still
+    // stands, which costs FF one early request rather than anything worse.
+    await record(admin, 'upstream-declined', err?.message, {
+      consecutive_failures: failures,
+      not_before: notBeforeAfterFailure(Date.now(), failures),
+    })
+    if (shouldEscalate(failures)) {
+      Sentry.captureMessage(
+        `Economic calendar on-demand refresh: Forex Factory has declined ${failures} times running `
+        + `(last success ${lastOkAt || 'not recorded'}) - the card is on the scheduled job alone`,
+        'warning',
+      )
+    }
+    return Response.json(
+      { refreshed: false, reason: 'upstream-declined', retryAfterMs: backoffMs(failures) },
+      { status: 200 },
+    )
   }
 }

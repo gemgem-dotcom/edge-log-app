@@ -15,6 +15,8 @@ export default function ScreenshotThumb({ url, index, size = 70, className = '',
   const style = { width: `${size}px`, height: `${size}px` }
   if (!url) return <div className={`skel skel-thumb ${className}`.trim()} style={style} />
   return (
+    // Deliberate - see the note above this component.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={url}
       alt={`Trade screenshot ${index + 1}`}

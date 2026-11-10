@@ -234,10 +234,19 @@ with a guard that fell back to the naive sum when a page's dateline wasn't midni
 that zone. The guard worked perfectly; the constant was wrong for nearly every caller,
 so the correction it protected never fired anywhere, and both changeover days a year
 were silently an hour out - despite a comment claiming the caller was told. The
-correction now comes from the page's own shape: consecutive datelines are 86400s apart
-on an ordinary day and 82800/90000 across a changeover, so **the day's own length is
-the offset shift**. The only remaining assumption is that the change happens at 02:00
-local, stated at `instantFor` rather than buried.
+correction was then derived from the page's own shape - consecutive datelines 86400s
+apart on an ordinary day and 82800/90000 across a changeover.
+
+**2b. ...and neither did its replacement (2026-11-10).** That second correction was
+reasoned from how a dateline ought to behave and tested against fixtures built to
+behave that way. Measured against live pages, FF never emits a 23- or 25-hour gap: it
+stamps the page's first-day offset on every day, and on a page that starts on the
+autumn changeover every dateline is a whole day late as well. 214 of November 2026's
+411 events were stored on the wrong day. The instant now comes from FF's PRINTED date
+and clock, read in a timezone inferred from evidence and never named; a day the
+evidence cannot place is withheld rather than stored. CLAUDE.md's "The instant of a
+release" has the full account, `lib/econCalendarZone.mjs` the mechanism, and
+`lib/econCalendarDatelines.test.js` the real markup it is tested against.
 
 **3. All-day rows showed a day early west of FF.** A row with no clock time is anchored
 to midnight in FF's zone - the only honest thing its timestamp can say - but midnight is
@@ -351,8 +360,9 @@ because it's the one piece of the pipeline that destroys data.
 
 Three rails, each there for a specific near-miss:
 
-- **The page must speak for the day.** "Covered days" are consecutive-dateline windows,
-  not the outer span of the page. FF omits days with no events, and a span let a page
+- **The page must speak for the day.** "Covered days" are one window per day whose
+  instants were established, whose date FF printed, and which is followed by the next
+  calendar day - not the outer span of the page. FF omits days with no events, and a span let a page
   speak for days it never rendered.
 - **A threshold, which is a tripwire and not a quota.** 10% of the rows in range, floored
   at 5 so a quiet week isn't held to zero, and **capped at 15** so the proportion can't

@@ -132,7 +132,14 @@ async function fetchWeekHtml() {
     throw new UpstreamFailure(`forexfactory unreachable: ${err?.cause?.code || err?.name || 'error'}`)
   }
   if (!res.ok) throw new UpstreamFailure(`forexfactory returned ${res.status}`, res.status)
-  return res.text()
+  try {
+    // Awaited HERE, inside the try. Returned bare, a connection dropped
+    // half way through a 1.6MB body would reject outside this function
+    // and be filed as a fault of ours.
+    return await res.text()
+  } catch (err) {
+    throw new UpstreamFailure(`forexfactory body cut short: ${err?.cause?.code || err?.name || 'error'}`)
+  }
 }
 
 // The first day of the week AFTER this one, when the current week alone
@@ -285,7 +292,13 @@ export async function POST(req) {
       const why = untrustedRows > 0
         ? `${untrustedRows} row(s) on ${untrustedDays.length} day(s) could not be placed`
         : 'page fetched but parsed to zero events'
-      Sentry.captureMessage(`Economic calendar on-demand refresh stored nothing: ${why}`, 'warning')
+      // Reported only when the page parsed to nothing at all, which is
+      // markup having moved. A week whose days could not be PLACED is the
+      // clock-change case: expected, already the scheduled job's to
+      // resolve and report, and here it would repeat every ten minutes.
+      if (untrustedRows === 0) {
+        Sentry.captureMessage(`Economic calendar on-demand refresh stored nothing: ${why}`, 'warning')
+      }
       await record(admin, 'no-events', why, { consecutive_failures: 0 })
       return Response.json({ refreshed: false, reason: 'no-events' })
     }

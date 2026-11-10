@@ -294,17 +294,87 @@ function reportDuplicates(rows) {
     if (!byIdentity.has(id)) byIdentity.set(id, new Set())
     byIdentity.get(id).add(r.event_key)
   }
-  const identityDupes = [...byIdentity.entries()].filter(([, keys]) => keys.size > 1)
+  const allIdentityDupes = [...byIdentity.entries()].filter(([, keys]) => keys.size > 1)
+
+  // A RE-LISTING, not a double listing. FF sometimes lists two separate
+  // rows that share an instant, a currency and a title; every fetch
+  // refreshes both, and they are FF's to list. What is a fault is one
+  // release under an id FF has STOPPED serving - and that has a signature:
+  // the old row stops being refreshed, so the pair's fetched_at drift
+  // apart. Rows refreshed within the same half day came off the same
+  // pages. This is the same line lib/econCalendarRemoval.mjs draws, for
+  // the same reason: treating every collision as a duplicate had the
+  // fetch job deleting a live row every run, and this check then had
+  // nothing to say about it because the row was always back by morning.
+  const fetchedAtOf = new Map(rows.map((r) => [r.event_key, Date.parse(r.fetched_at)]))
+  const DRIFT_MS = 12 * 60 * 60 * 1000
+  const drifted = ([, keys]) => {
+    const stamps = [...keys].map((k) => fetchedAtOf.get(k)).filter(Number.isFinite)
+    return stamps.length < keys.size || Math.max(...stamps) - Math.min(...stamps) > DRIFT_MS
+  }
+  const identityDupes = allIdentityDupes.filter(drifted)
+  const liveCollisions = allIdentityDupes.length - identityDupes.length
 
   const withoutFfId = rows.filter((r) => !r.ff_event_id).length
   line('rows carrying FF\'s event id', `${rows.length - withoutFfId} of ${rows.length}`)
   line('one FF id under several keys', idDupes.length === 0 ? '0  (none - good)' : `${idDupes.length}  <- DUPLICATED`)
   line('same time+currency+title, 2 keys', identityDupes.length === 0 ? '0  (none - good)' : `${identityDupes.length}  <- DUPLICATED`)
+  if (liveCollisions > 0) line('...listed twice by FF itself', `${liveCollisions}  (both rows current - left alone)`)
 
   for (const [id, keys] of idDupes.slice(0, 5)) log(`    ff_event_id ${id}: ${[...keys].join('  ')}`)
   for (const [id, keys] of identityDupes.slice(0, 5)) log(`    ${id}\n      ${[...keys].join('\n      ')}`)
 
   return idDupes.length + identityDupes.length
+}
+
+// Does each row sit on the day Forex Factory filed it under?
+//
+// detail_url carries FF's own day for the row (?day=nov30.2026), taken
+// from the date FF PRINTS. event_time is the instant. They are derived
+// separately, so they can be checked against each other - and on
+// 2026-11-10 they disagreed for 214 of November's 411 rows: FF's month
+// page had emitted every dateline a day late, the parser trusted it, and
+// `Chicago PMI`, filed under nov30, was stored at 2026-12-01T13:45Z.
+// Nothing reported it. The first sign was a removal guard refusing
+// "seventeen December rows FF has removed" that were November's.
+//
+// No timezone is assumed. FF's day D, in whatever zone FF served, begins
+// somewhere between D 00:00Z - 14h and D 00:00Z + 12h and lasts a day, so
+// an instant filed under D lies in [D - 14h, D + 36h). Anything outside
+// cannot be on day D in any timezone on Earth.
+//
+// That window is deliberately generous, so it does not catch every
+// misplaced row - a release in the small hours, moved a day, can still
+// land inside it. It does not need to: a page that is a day out is a day
+// out for every row on it, and the daytime releases alone trip this.
+function reportDayAgreement(rows) {
+  log('\nDAY AGREEMENT')
+  const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+  const HOUR = 3600000
+  let checked = 0
+  const wrong = []
+  for (const r of rows) {
+    const m = /[?&]day=([a-z]{3})(\d{1,2})\.(\d{4})/i.exec(r.detail_url || '')
+    const at = Date.parse(r.event_time)
+    if (!m || !Number.isFinite(at)) continue
+    const month = MONTHS.indexOf(m[1].toLowerCase())
+    if (month < 0) continue
+    checked++
+    const hours = (at - Date.UTC(Number(m[3]), month, Number(m[2]))) / HOUR
+    if (hours < -14 || hours >= 36) wrong.push({ r, hours })
+  }
+  line('rows with an FF day to check', `${checked} of ${rows.length}`)
+  line('on a day that cannot be theirs', wrong.length === 0 ? '0  (none - good)' : `${wrong.length}  <- WRONG DAY`)
+  if (wrong.length > 0) {
+    const byMonth = tally(wrong.map((w) => ({ month: String(w.r.event_time).slice(0, 7) })), 'month')
+    for (const [month, n] of byMonth.slice(0, 6)) log(`    ${month}: ${n}`)
+    for (const w of wrong.slice(0, 5)) {
+      log(`    ${w.r.event_time}  filed under ${/day=([^&]+)/.exec(w.r.detail_url)[1]}  ${w.r.currency}  ${w.r.title}`)
+    }
+    line('', 'the instants on these rows did not come from the day FF printed -')
+    line('', 'see lib/econCalendarZone.mjs, and run the fetch with dry_run to see what would move')
+  }
+  return wrong.length
 }
 
 // Rows the sweeps should have touched and did not.
@@ -529,6 +599,7 @@ async function main() {
     reportPrecision(rows)
     problems += await reportKeyShape(rows)
     problems += reportDuplicates(rows)
+    problems += reportDayAgreement(rows)
     problems += reportStaleness(rows)
     reportDistributions(rows)
   }

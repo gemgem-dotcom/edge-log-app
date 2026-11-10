@@ -97,6 +97,11 @@ lib/
   econCalendarHtml.mjs         parses forexfactory.com/calendar's own HTML - the
                                primary source. Pure functions over a string, so it
                                is tested against real captured markup
+  econCalendarZone.mjs         which timezone FF rendered a page in, inferred from
+                               evidence and never named - see "The instant of a
+                               release" below. Withholds a day rather than guess
+  econRefreshBackoff.mjs       what the on-demand route does when FF declines:
+                               back off, report once per outage
   econCalendarQuery.js         reads economic_events for a local-day date range
 schema.sql                    tables + row level security
 storage-setup.sql             screenshots storage bucket
@@ -110,6 +115,9 @@ scripts/
                               actual, event_key/timezone invariants, the
                               refresh lock, and an anon-key RLS probe
   probe-forexfactory-sources.js  read-only recon on FF's page + feed
+  probe-forexfactory-datelines.js  read-only: does each day's dateline agree with
+                              the date FF prints beside it? The measurement the
+                              parser's time logic now rests on
   smoke-test-forexfactory-feed.js  read-only health check on the fallback feed
 next.config.js                only exists for the mock-DB dev alias - see below
 vitest.config.mjs             unit test runner - `lib/*.test.js` sit next to the module
@@ -378,28 +386,86 @@ than instantly. It is rate-limited by a claim on the single-row
 `econ_refresh_lock` table, not by a per-user cooldown. That ten minutes is
 deliberate restraint, not caution: at the original 60s one open dashboard asked
 FF for the same page sixty times an hour, and FF started returning 403 for the
-pages we requested most. Nothing here retries a 403 or disguises a request, and
-nothing that does should be added.
+pages we requested most. Nothing here disguises a request, and nothing that does
+should be added.
 
-**Times are never assumed, and FF's timezone is never named.** FF prints wall-clock
-times in its own display timezone, and each day's first row carries
-`data-day-dateline`, the epoch of local midnight. Midnight plus the row's
-wall-clock minutes is the exact instant on any ordinary day, in any zone, with
-nothing assumed — and `dayFor` reads FF's calendar day off the dateline without a
-zone either, which is what makes `event_key` and `detail_url` agree with FF about
-which day an evening release belongs to.
+**FF declining the on-demand route is an outcome, not an error.** FF refuses Vercel's
+addresses a good deal of the time. The route used to send every refusal to Sentry and
+ask again ten minutes later: 85 events in a fortnight, none a fault in this app, burying
+the three issues in the same list that were real. It now backs off - doubling per
+refusal, capped at six hours, held in `econ_refresh_lock.not_before` - and reports
+**once per outage** (`lib/econRefreshBackoff.mjs`). Only a fault of ours (a failed write,
+a page that arrived and broke the handler) still reaches Sentry. `not_before` is a
+column of its own because `inspect-economic-calendar.js` reads a future `claimed_at` as
+a wedged lock, correctly.
 
-**Don't reintroduce a named zone.** `FF_DISPLAY_TIMEZONE` used to be
-`'America/Chicago'`, with a guard that fell back when a page's dateline wasn't
-midnight in it. The guard worked; the constant didn't. **FF picks its display zone
-from the client's IP** — a GitHub runner in Azure `westcentralus` (Wyoming) is served
-`America/Denver`, confirmed live on 2026-09-14 — so no fixed name can be right for
-every caller, and the DST correction the guard protected never ran anywhere. The two
-changeover days a year were an hour out, silently, despite a comment claiming the
-caller was told. The correction now comes from the page's own shape: consecutive
-datelines are 86400s apart on an ordinary day and 82800/90000 across a changeover, so
-the day's own length *is* the offset shift. The only remaining assumption is that the
-change happens at 02:00 local, and that is stated at `instantFor` rather than buried.
+**The de-duplication pass only removes a row FF has stopped serving.** It used to treat
+any two rows sharing instant, currency and title as a re-listing and drop the older.
+FF also lists genuinely separate rows that collide, and every run refreshes both - so
+the pass dropped one, the next run restored it, and it was dropped again: 21 Sentry
+warnings, all the same row. A re-listing has a signature a double listing does not:
+the old id stops being refreshed. `planIdentityDedupe(rows, liveSince)` acts only then.
+
+**The instant of a release comes from what FF PRINTS, not from `data-day-dateline`.**
+This is the third version of this paragraph and the first that was measured rather
+than reasoned. The parser used to store `dateline + clock time`, on the understanding
+that the dateline is the epoch of local midnight. `scripts/probe-forexfactory-datelines.js`
+showed on 2026-11-10 that it is not reliably that:
+
+- FF stamps the page's **first-day** offset onto every day. Every gap between
+  consecutive datelines is exactly 86400s, on every page, including the ones that
+  contain a clock change. `?week=mar8.2026` carries 05:00Z all week; true local
+  midnight from the 9th is 04:00Z. One hour out, every row, all week.
+- On a page that **starts** on the autumn changeover, every dateline is also a whole
+  day late. `?week=nov1.2026` and `?month=nov.2026` both print "Mon Nov 2" beside
+  `2026-11-03T04:00Z`.
+
+The second put **214 of November 2026's 411 events on the wrong day** in production.
+`Chicago PMI`, filed by FF under Nov 30, was stored at `2026-12-01T13:45Z`. Nothing
+reported it; the first sign was the removal guard refusing "17 December rows FF has
+removed" that were November's.
+
+What FF gets right on every page checked is the printed date label and the printed
+clock time: true local wall time, clock changes included. So those are the authority,
+and the dateline is demoted to evidence of **which timezone the page was rendered in**
+(`lib/econCalendarZone.mjs`).
+
+**A correction that never ran, twice.** The first DST fix asked a named zone and the
+name was wrong for most callers. Its replacement waited for a 23- or 25-hour gap
+between consecutive datelines - reasoned from how a dateline ought to behave, tested
+against fixtures built to behave that way. FF has never emitted such a gap, so it never
+fired either. `lib/econCalendarDatelines.test.js` is built from FF's real labels and
+datelines for exactly this reason; **do not add a synthetic DST fixture and call it
+coverage.**
+
+**Still no named zone - and now no assumed one either.** FF picks its display zone from
+the client's IP (a GitHub runner in Wyoming is served Denver, one in Virginia New York,
+Vercel `iad1` New York), so no fixed name can be right. Every timezone the runtime knows
+is a candidate; the evidence eliminates the ones that could not have produced the page;
+and a day is stored **only when every surviving candidate puts its midnight at the same
+instant**. When they disagree the rows are *withheld*, loudly, and keep whatever was
+stored before. An unknown time is a gap; a wrong one is a lie.
+
+That matters in practice in the two weeks a year the clocks change. New York and Puerto
+Rico are both UTC-4 on the Sunday and an hour apart from the Monday, and one page cannot
+tell them apart. What settles it is the first day of **another page from the same
+caller** - which is the one dateline FF's bug does not corrupt. The daily sweep's three
+month pages lend each other theirs for free; the hourly run and the on-demand route
+fetch the following week's page, once, only when a page says it needs it.
+
+- **A withheld day gates removal for the whole page.** Its rows were not refreshed, and
+  if an earlier run stored them at the wrong instant they sit inside a *neighbouring*
+  day's window, where they read as events FF removed.
+- **A day with no readable date label is stored but not vouched for.** Dropping every
+  row because a label moved would turn a cosmetic markup change into an outage; but it
+  has not been cross-checked, so the page may not speak for absence on it.
+- **`CALENDAR_DRY_RUN=1`** (the workflow's `dry_run` input) parses and reports which
+  stored rows would move and by how much, writing nothing. Use it before any change to
+  how an instant is derived. "It passes its tests" was true of both corrections above.
+- **Untimed rows are anchored to the caller's local midnight**, so an All Day row's
+  `event_time` moves by an hour or two depending on which region fetched last. That is
+  expected and harmless - the day lives in `detail_url` - and it is why a dry run always
+  reports a few dozen small moves.
 
 **`event_key` is `ff|<FF's event id>`, and the day is not an identity.** This is the
 second thing FF's IP-derived timezone broke, and the more expensive one. A release
@@ -485,7 +551,8 @@ pending a paid market-data source.
   (without writing) whether it's currently stale, for a sanity check before a commit.
 - **`npm run lint:ci`** is what CI runs: `eslint .` capped at the current warning
   baseline via `--max-warnings`. Plain `npm run lint` exits 0 no matter how many
-  warnings accumulate, which is how forty-nine of them built up unnoticed. Clear
+  warnings accumulate, which is how forty-nine of them built up unnoticed
+  (forty-two now, and the ceiling in `package.json` came down with them). Clear
   warnings and lower the number in `package.json`; never raise it.
 - **Need to run a script that requires real credentials?** Use the "Run a
   diagnostic script" workflow (`.github/workflows/run-diagnostic.yml`,

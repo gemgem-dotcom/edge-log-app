@@ -23,6 +23,11 @@ export default function Error({ error, reset }) {
         </p>
         <div className="state-actions">
           <button type="button" onClick={() => reset()}>Try again</button>
+          {/* A plain <a>, on purpose. This is the error boundary: the
+              client-side router's state may be the very thing that broke,
+              and <Link> would navigate inside it. A full document load is
+              the one way out that does not depend on what just failed. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/" className="btn-accent-outline" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
             Back to dashboard
           </a>

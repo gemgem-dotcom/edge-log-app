@@ -407,7 +407,11 @@ export default function TradeForm({
       window.removeEventListener('scroll', dismissOnScroll, true)
       window.removeEventListener('resize', dismissOnResize)
     }
-  }, [showSuggestions])
+    // tagDropdownRef is a useRef object - the same one for the life of the
+    // component - so listing it changes nothing about when this runs. It
+    // is here because the effect reads it, and the lint rule is right
+    // that a dependency list should say so.
+  }, [showSuggestions, tagDropdownRef])
 
   // Discipline's issue picker is a plain click-to-toggle list, not a typed
   // input like the tag dropdown above - no autofocus/keyboard/scroll
@@ -1218,6 +1222,9 @@ export default function TradeForm({
                 {existingScreenshots.map((path, i) => (
                   <div key={path} className="screenshot-preview-wrap">
                     {resolvedExistingThumbs[i] ? (
+                      // A signed Storage URL - see ScreenshotThumb.js for
+                      // why next/image is the wrong tool for it.
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={resolvedExistingThumbs[i]}
                         alt={`Screenshot ${i + 1}`}
@@ -1239,6 +1246,10 @@ export default function TradeForm({
                 ))}
                 {screenshots.map((shot, i) => (
                   <div key={shot.previewUrl} className="screenshot-preview-wrap">
+                    {/* A blob: object URL for a file that has not been
+                        uploaded yet. There is no server for next/image to
+                        fetch it from. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={shot.previewUrl}
                       alt={`New screenshot ${i + 1}`}

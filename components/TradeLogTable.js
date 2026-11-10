@@ -80,7 +80,9 @@ function TagFilterMenu({ options, selected, onChange }) {
       window.removeEventListener('scroll', dismissOnScroll, true)
       window.removeEventListener('resize', dismiss)
     }
-  }, [open])
+    // wrapRef is a stable useRef object, so listing it does not change
+    // when this runs - see the same note in TradeForm.js.
+  }, [open, wrapRef])
 
   function toggle(value) {
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])

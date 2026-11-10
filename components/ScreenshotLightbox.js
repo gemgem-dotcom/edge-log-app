@@ -49,6 +49,10 @@ export default function ScreenshotLightbox({ shots, index, onIndexChange, onClos
       )}
       <div className={`modal-content${hasMultiple ? ' has-nav' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="modal-close" {...activatable(onClose)}>✕</div>
+        {/* A signed Supabase Storage URL that expires - next/image cannot
+            optimise it without a remotePatterns entry, and would cache a
+            URL that stops working. Deliberate; see ScreenshotThumb.js. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={shots[index]} alt={`Trade screenshot ${index + 1} of ${shots.length}`} />
       </div>
       {hasMultiple && (

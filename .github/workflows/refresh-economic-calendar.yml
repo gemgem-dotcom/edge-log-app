@@ -73,6 +73,13 @@ on:
         required: false
         default: '0'
         type: string
+      dry_run:
+        description: >-
+          Parse and report what would change, without writing or removing
+          anything
+        required: false
+        default: false
+        type: boolean
 
 # The hourly and daily crons are ten minutes apart and GitHub delays
 # scheduled runs routinely, so without this they overlap - and both write
@@ -118,4 +125,5 @@ jobs:
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           CALENDAR_MONTHS_BACK: ${{ github.event.schedule == '17 4 * * *' && '1' || inputs.months_back || '0' }}
           CALENDAR_MONTHS_FORWARD: ${{ github.event.schedule == '17 4 * * *' && '1' || inputs.months_forward || '0' }}
+          CALENDAR_DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
         run: node scripts/fetch-economic-calendar.js

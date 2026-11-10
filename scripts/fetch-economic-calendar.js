@@ -85,6 +85,7 @@ const PAGE_GAP_MS = 1500
 // Even a quiet holiday month carries events on most weekdays; 20 is well
 // under any real month and well over any truncated one.
 const MIN_DAYS_PER_MONTH_PAGE = 20
+const MAX_ANCHOR_FETCHES = 2
 
 // Removing events FF has removed. The decision - which rows count as
 // vanished, and how many is too many to be believable - lives in
@@ -279,7 +280,7 @@ async function removeVanishedEvents(admin, planRemoval, { label, coveredFrom, co
 // on the run that introduces it rather than after it has been compounding
 // for weeks - which is how the ADP duplicate reached production and sat
 // there.
-async function dedupeIdentityDuplicates(admin, planIdentityDedupe, { label, coveredFrom, coveredTo, cap }) {
+async function dedupeIdentityDuplicates(admin, planIdentityDedupe, { label, coveredFrom, coveredTo, cap, liveSince }) {
   if (!coveredFrom || !coveredTo) return 0
 
   // Paged for the same reason the removal scan is: PostgREST silently caps
@@ -303,7 +304,7 @@ async function dedupeIdentityDuplicates(admin, planIdentityDedupe, { label, cove
     if (rows.length < SCAN_PAGE) break
   }
 
-  const { pairs, duplicateCount, allowed, removable } = planIdentityDedupe(inRange)
+  const { pairs, duplicateCount, allowed, removable } = planIdentityDedupe(inRange, liveSince)
   if (duplicateCount === 0) return 0
 
   if (!allowed) {
@@ -319,7 +320,12 @@ async function dedupeIdentityDuplicates(admin, planIdentityDedupe, { label, cove
   }
 
   const keys = removable.map((r) => r.event_key)
-  const { error: delErr } = await admin.from('economic_events').delete().in('event_key', keys)
+  // Conditioned on fetched_at as well as the key, for the same reason the
+  // removal pass is: a row another writer refreshed between the scan and
+  // this delete has just been confirmed present on FF.
+  let del = admin.from('economic_events').delete().in('event_key', keys)
+  if (liveSince) del = del.lt('fetched_at', liveSince)
+  const { error: delErr } = await del
   if (delErr) throw new Error(`de-duplication failed: ${delErr.message}`)
 
   // Named, like the removal pass: this destroys data, so the log has to be
@@ -339,6 +345,44 @@ async function dedupeIdentityDuplicates(admin, planIdentityDedupe, { label, cove
     'warning',
   )
   return removable.length
+}
+
+// What a run WOULD change, without changing it.
+//
+// Reads the stored instant of every row the page parsed and reports how
+// many would be new, how many would stay put and how many would MOVE,
+// naming the first few. It exists because the alternative is finding out
+// in production: the fix for the clock-change datelines rewrote the
+// instant of several hundred rows, and "it passes its tests" is not the
+// same as "it moves the right rows to the right place".
+async function reportDryRun(admin, label, events) {
+  const stored = new Map()
+  for (let i = 0; i < events.length; i += UPSERT_CHUNK) {
+    const keys = events.slice(i, i + UPSERT_CHUNK).map((e) => e.event_key)
+    const { data, error } = await admin.from('economic_events').select('event_key, event_time').in('event_key', keys)
+    if (error) throw new Error(`dry-run read failed: ${error.message}`)
+    for (const row of data || []) stored.set(row.event_key, row.event_time)
+  }
+  let fresh = 0
+  let same = 0
+  const moved = []
+  for (const e of events) {
+    if (!stored.has(e.event_key)) { fresh++; continue }
+    const was = Date.parse(stored.get(e.event_key))
+    const now = Date.parse(e.event_time)
+    if (was === now) same++
+    else moved.push({ e, hours: (now - was) / 3600000, was: stored.get(e.event_key) })
+  }
+  log(`  ${label}: DRY RUN - ${events.length} parsed: ${same} unchanged, ${moved.length} would move, ${fresh} new`)
+  const byShift = new Map()
+  for (const m of moved) byShift.set(m.hours, (byShift.get(m.hours) || 0) + 1)
+  for (const [hours, n] of [...byShift].sort((a, b) => b[1] - a[1])) {
+    log(`      ${n} row(s) by ${hours > 0 ? '+' : ''}${hours}h`)
+  }
+  for (const m of moved.slice(0, 6)) {
+    log(`      ${m.was} -> ${m.e.event_time}  ${m.e.currency}  ${m.e.title}`)
+  }
+  return moved.length
 }
 
 function monthsAround(back, forward) {
@@ -390,7 +434,7 @@ async function main() {
   // Dynamic import: these are .mjs so a CommonJS script can read them -
   // see lib/econCalendarEvents.mjs's own header for why they are shared
   // rather than duplicated.
-  const { parseCalendarHtml, weekUrl, monthUrl } = await import('../lib/econCalendarHtml.mjs')
+  const { parseCalendarHtml, readPageAnchor, weekUrl, monthUrl } = await import('../lib/econCalendarHtml.mjs')
   const { normalizeFeed } = await import('../lib/econCalendarEvents.mjs')
   const { planRemoval, planIdentityDedupe, MAX_IDENTITY_DUPLICATES } = await import('../lib/econCalendarRemoval.mjs')
 
@@ -401,6 +445,9 @@ async function main() {
   }
 
   const wide = monthsBack > 0 || monthsForward > 0
+  // Parse and report; write and delete nothing. See reportDryRun.
+  const dryRun = /^(1|true|yes)$/i.test(process.env.CALENDAR_DRY_RUN || '')
+  if (dryRun) log('DRY RUN - nothing will be written or removed')
   const targets = wide
     ? monthsAround(monthsBack, monthsForward).map((d) => ({ label: `month ${d.toISOString().slice(0, 7)}`, url: monthUrl(d) }))
     : [{ label: 'this week', url: weekUrl(new Date()) }]
@@ -411,20 +458,68 @@ async function main() {
   let totalEvents = 0
   let totalRemoved = 0
   let totalDeduped = 0
+  let totalWithheld = 0
   let failures = 0
+  // Stamped once, before anything is written. A row refreshed at or after
+  // this was listed by FF somewhere in THIS run - see the de-duplication
+  // pass for why that is the line between "re-listed" and "still listed".
+  const runStartedAt = new Date().toISOString()
 
+  // FETCH EVERYTHING FIRST, THEN PARSE.
+  //
+  // A page cannot always say which timezone FF rendered it in - see
+  // lib/econCalendarZone.mjs. In the week the clocks change, New York and
+  // Puerto Rico produce the same first day and differ by an hour from the
+  // Monday. What settles it is the first day of ANOTHER page from the same
+  // caller, and the daily sweep already fetches three. So every page is in
+  // hand before any is interpreted, and each lends the others its anchor.
+  const pages = []
   for (const [i, target] of targets.entries()) {
     if (i > 0) await sleep(PAGE_GAP_MS)
     try {
-      const html = await fetchPage(target.url, 'text/html')
-      const { events, skipped, days, dstDays, oddDatelines, coveredFrom, coveredTo, coveredDays } = parseCalendarHtml(html)
+      pages.push({ target, html: await fetchPage(target.url, 'text/html') })
+    } catch (err) {
+      Sentry.captureMessage(`Economic calendar ${target.label} failed: ${err.message}`, 'warning')
+      log(`  ${target.label}: FAILED - ${err.message}`)
+      failures++
+    }
+  }
+
+  const anchors = pages.map((p) => readPageAnchor(p.html)).filter(Boolean)
+
+  // One more request, and only when a page says it needs it: the page
+  // that starts the day after an undecidable one ends carries the offset
+  // in force once any clock change inside it has happened. On fifty weeks
+  // of the year this never runs. Bounded, because a zone that stays
+  // undecidable after two extra pages will not be decided by a third.
+  let extraFetches = 0
+  for (const page of pages) {
+    if (extraFetches >= MAX_ANCHOR_FETCHES) break
+    const probe = parseCalendarHtml(page.html, { anchors })
+    if (!probe.zoneAmbiguous || !probe.anchorAfter) continue
+    const after = new Date(`${probe.anchorAfter}T12:00:00Z`)
+    if (anchors.some((a) => a.date === probe.anchorAfter)) continue
+    extraFetches++
+    try {
+      await sleep(PAGE_GAP_MS)
+      log(`  ${page.target.label}: cannot tell which timezone it was rendered in - reading the page after it for its first day`)
+      const anchor = readPageAnchor(await fetchPage(wide ? monthUrl(after) : weekUrl(after), 'text/html'))
+      if (anchor) anchors.push(anchor)
+    } catch (err) {
+      // Not a failure of the run. The page is then stored for the days it
+      // can place and the rest are withheld below, loudly.
+      log(`  ${page.target.label}: the extra page failed (${err.message}) - undecidable days will be withheld`)
+    }
+  }
+
+  for (const { target, html } of pages) {
+    try {
+      const {
+        events, skipped, days, dstDays, oddDatelines, coveredFrom, coveredTo, coveredDays,
+        untrustedDays, untrustedRows, unlabelledDays, zones,
+      } = parseCalendarHtml(html, { anchors })
       if (skipped > 0) log(`  ${target.label}: skipped ${skipped} unusable row(s)`)
-      // The parser corrects a clock-change day using the page's own day
-      // lengths. Saying so is the point: the previous implementation
-      // claimed to tell the caller when it could not correct one, and then
-      // returned nothing to say it with, so a silent hour of drift twice a
-      // year had no signal anywhere at all.
-      if (dstDays > 0) log(`  ${target.label}: ${dstDays} clock-change day(s) corrected`)
+      if (dstDays > 0) log(`  ${target.label}: ${dstDays} clock-change day(s) placed with their real length`)
       if (oddDatelines > 0) {
         // A dateline is midnight somewhere, so it is always a whole number
         // of minutes from a UTC day. Anything else means the attribute
@@ -432,11 +527,34 @@ async function main() {
         log(`  ${target.label}: ${oddDatelines} dateline(s) are not a whole minute - format may have changed`)
         Sentry.captureMessage(`Economic calendar: ${target.label} had ${oddDatelines} odd dateline(s)`, 'warning')
       }
+      if (untrustedDays.length > 0) {
+        // WITHHELD, NOT STORED. These are days the page rendered whose
+        // instants could not be established - the zone was undecidable, or
+        // a dateline said something the parser does not understand. Their
+        // rows keep whatever was stored before. That is deliberate: this
+        // job stored November 2026 a day late for a week because it had no
+        // way to say "I do not know", and a stale row is recoverable where
+        // a confidently wrong one is not.
+        totalWithheld += untrustedRows
+        const reasons = [...new Set(untrustedDays.map((d) => d.reason))].join(', ')
+        log(`  ${target.label}: WITHHELD ${untrustedRows} row(s) on ${untrustedDays.length} day(s) - ${reasons}`)
+        for (const d of untrustedDays.slice(0, 5)) log(`      ${d.date}  "${d.label}"  ${d.reason}  (${d.rows} row(s))`)
+        Sentry.captureMessage(
+          `Economic calendar: ${target.label} withheld ${untrustedDays.length} day(s) - ${reasons}`,
+          'warning',
+        )
+      }
+      if (unlabelledDays > 0) {
+        // Stored, but not cross-checked against FF's printed date. If this
+        // is every day, the date cell's markup has moved.
+        log(`  ${target.label}: ${unlabelledDays} day(s) carried no readable date label - placed by dateline alone`)
+        Sentry.captureMessage(`Economic calendar: ${target.label} had ${unlabelledDays} unlabelled day(s)`, 'warning')
+      }
       if (events.length === 0) {
         // A real calendar page always has events. Zero means the markup
-        // moved, so say so loudly rather than reporting a clean run that
-        // stored nothing.
-        log(`  ${target.label}: NO EVENTS PARSED (${html.length}b fetched) - markup may have changed`)
+        // moved - or every day was withheld - so say so loudly rather than
+        // reporting a clean run that stored nothing.
+        log(`  ${target.label}: NO EVENTS ${untrustedRows > 0 ? 'COULD BE PLACED' : 'PARSED'} (${html.length}b fetched)`)
         Sentry.captureMessage(`Economic calendar: ${target.label} parsed 0 events from ${html.length}b`, 'warning')
         failures++
         continue
@@ -457,12 +575,16 @@ async function main() {
       // which omits exactly those columns and therefore succeeded. A green
       // run, a correct-looking schedule, and no actuals, forever.
       totalEvents += events.length
+      if (dryRun) {
+        await reportDryRun(admin, target.label, events)
+        continue
+      }
       // Stamped before the write, so a slow store cannot make its own rows
       // look older than the run that wrote them.
       const storeStartedAt = new Date().toISOString()
       const stored = await storeEvents(admin, events)
       totalStored += stored
-      log(`  ${target.label}: ${events.length} event(s) across ${days} day(s), stored ${stored}`)
+      log(`  ${target.label}: ${events.length} event(s) across ${days} day(s), stored ${stored}${zones.length ? ` (rendered in ${zones[0]} or equivalent)` : ''}`)
 
       // Only a page that passed its own checks is allowed to speak for what
       // is NOT on it. A month page that came back thin already warned above;
@@ -473,7 +595,16 @@ async function main() {
       // they exist from earlier runs, and this run will not refresh them.
       // The relationship is one for one, so the clearest signal that the
       // parser is dropping real rows has to gate the destructive step.
-      const trustedForRemoval = skipped === 0 && (!wide || days >= MIN_DAYS_PER_MONTH_PAGE)
+      //
+      // A withheld day gates it for the same reason and one more. Its rows
+      // were not refreshed either - and if they were stored at the wrong
+      // instant by an earlier run, they are sitting inside a NEIGHBOURING
+      // day's window, where they read as events FF has removed. That is
+      // precisely how November's rows came to be reported as seventeen
+      // December removals.
+      const trustedForRemoval = skipped === 0
+        && untrustedDays.length === 0
+        && (!wide || days >= MIN_DAYS_PER_MONTH_PAGE)
       if (trustedForRemoval) {
         totalRemoved += await removeVanishedEvents(admin, planRemoval, {
           label: target.label,
@@ -491,9 +622,13 @@ async function main() {
           coveredFrom,
           coveredTo,
           cap: MAX_IDENTITY_DUPLICATES,
+          liveSince: runStartedAt,
         })
       } else {
-        log(`  ${target.label}: not removing anything - ${skipped > 0 ? `${skipped} row(s) were skipped` : 'the page is too thin'}, so it cannot be trusted for absence`)
+        const why = skipped > 0
+          ? `${skipped} row(s) were skipped`
+          : untrustedDays.length > 0 ? `${untrustedDays.length} day(s) were withheld` : 'the page is too thin'
+        log(`  ${target.label}: not removing anything - ${why}, so it cannot be trusted for absence`)
       }
     } catch (err) {
       Sentry.captureMessage(`Economic calendar ${target.label} failed: ${err.message}`, 'warning')
@@ -502,7 +637,7 @@ async function main() {
     }
   }
 
-  if (totalEvents === 0 && !wide) {
+  if (totalEvents === 0 && !wide && !dryRun) {
     // A floor, not a rescue: the feed keeps the schedule current while the
     // page is unavailable, but it carries no actuals, so the run is still
     // a failure of the thing this job exists to do.
@@ -512,7 +647,8 @@ async function main() {
   const pagesOk = targets.length - failures
   log(`Done. ${pagesOk}/${targets.length} page(s) OK, ${totalStored} row(s) written`
     + `${totalRemoved > 0 ? `, ${totalRemoved} removed` : ''}`
-    + `${totalDeduped > 0 ? `, ${totalDeduped} de-duplicated` : ''}.`)
+    + `${totalDeduped > 0 ? `, ${totalDeduped} de-duplicated` : ''}`
+    + `${totalWithheld > 0 ? `, ${totalWithheld} withheld` : ''}.`)
 
   // Red when the page gave us nothing at all, whatever the fallback then
   // salvaged. This used to exit 0 in that case and the workflow went green

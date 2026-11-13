@@ -240,6 +240,18 @@ sentry.edge.config.js
   `scripts/verify-rls-assurance.js`; the check that matters is that an account
   with **no** factor can still read its rows, because that branch is the one
   that locks out everybody if it is wrong.
+- **A user object with no `factors` field has no factors.** The auth server
+  omits the field rather than sending an empty list. `sessionNeedsSecondFactor`
+  used to read absence as "unknown, so challenge", which locked **every account
+  without 2FA** out of the app on 2026-11-13: the login form (auth-js's own
+  `factors ?? []`) sent them to `/app`, `proxy.js` sent them back to
+  `/login?step=2fa`, and nothing could break the loop. It hid for six days
+  because the only account signing in had a factor and `proxy.js` is skipped
+  entirely in mock mode, so no local run can reproduce it. Reading absence as
+  none is safe because `session_meets_assurance()` reads `auth.mfa_factors`
+  directly; a lockout at this gate has no such backstop. **Any new branch in
+  this gate needs a test using the server's real response shape**, not a
+  hand-written one.
 - Note the two different safe defaults for a missing `aal` claim.
   `sessionNeedsSecondFactor` treats it as aal1 (fail-closed: challenge them);
   `isRecoverySession` refuses it outright, because there aal1 is the permissive
